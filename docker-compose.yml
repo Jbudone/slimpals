@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-slimpals}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-slimpals}
+      MYSQL_USER: ${MYSQL_USER:-slimpals}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-slimpals}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-slimpals}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-slimpals}:${MYSQL_PASSWORD:-slimpals}@mysql:3306/${MYSQL_DATABASE:-slimpals}
+      NODE_ENV: production
+      PORT: 3000
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

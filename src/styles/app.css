@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* ── Theme tokens ─────────────────────────────────────────── */
+
+:root,
+[data-theme="midnight"] {
+	--color-bg: #0d1117;
+	--color-surface: #161b22;
+	--color-surface-2: #21262d;
+	--color-border: #30363d;
+	--color-text: #e6edf3;
+	--color-text-muted: #8b949e;
+	--color-accent: #7c3aed;
+	--color-accent-hover: #6d28d9;
+	--color-success: #3fb950;
+	--color-warning: #d29922;
+	--color-danger: #f85149;
+}
+
+[data-theme="forest"] {
+	--color-bg: #0d1a0d;
+	--color-surface: #132213;
+	--color-surface-2: #1a2e1a;
+	--color-border: #2d4a2d;
+	--color-text: #d4edda;
+	--color-text-muted: #7ea37e;
+	--color-accent: #22c55e;
+	--color-accent-hover: #16a34a;
+	--color-success: #4ade80;
+	--color-warning: #fbbf24;
+	--color-danger: #f87171;
+}
+
+[data-theme="sunset"] {
+	--color-bg: #1a0d08;
+	--color-surface: #2a1510;
+	--color-surface-2: #3d1f17;
+	--color-border: #5c2e22;
+	--color-text: #fde8d8;
+	--color-text-muted: #c4846a;
+	--color-accent: #f97316;
+	--color-accent-hover: #ea580c;
+	--color-success: #4ade80;
+	--color-warning: #fbbf24;
+	--color-danger: #f87171;
+}
+
+[data-theme="ocean"] {
+	--color-bg: #061220;
+	--color-surface: #0a1f35;
+	--color-surface-2: #0e2d4d;
+	--color-border: #1a4a6e;
+	--color-text: #cce8ff;
+	--color-text-muted: #6baed6;
+	--color-accent: #0ea5e9;
+	--color-accent-hover: #0284c7;
+	--color-success: #4ade80;
+	--color-warning: #fbbf24;
+	--color-danger: #f87171;
+}
+
+[data-theme="light"] {
+	--color-bg: #f8f9fa;
+	--color-surface: #ffffff;
+	--color-surface-2: #f1f3f5;
+	--color-border: #dee2e6;
+	--color-text: #212529;
+	--color-text-muted: #6c757d;
+	--color-accent: #6d28d9;
+	--color-accent-hover: #5b21b6;
+	--color-success: #16a34a;
+	--color-warning: #d97706;
+	--color-danger: #dc2626;
+}
+
+[data-theme="neon"] {
+	--color-bg: #000000;
+	--color-surface: #0a0a0a;
+	--color-surface-2: #111111;
+	--color-border: #333333;
+	--color-text: #ffffff;
+	--color-text-muted: #888888;
+	--color-accent: #00ff88;
+	--color-accent-hover: #00dd77;
+	--color-success: #00ff88;
+	--color-warning: #ffff00;
+	--color-danger: #ff0055;
+}
+
+/* ── Base styles ───────────────────────────────────────────── */
+
+body {
+	background-color: var(--color-bg);
+	color: var(--color-text);
+	font-family: system-ui, -apple-system, sans-serif;
+	margin: 0;
+}

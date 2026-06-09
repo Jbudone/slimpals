@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment — copy .env.example and fill in values
+.env
+*.env.local
+
+# User uploads (keep directory structure)
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.local
+
+# Claude Code session data
+.claude/

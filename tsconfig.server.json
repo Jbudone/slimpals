@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"strict": true,
+		"verbatimModuleSyntax": true,
+		"esModuleInterop": true,
+		"outDir": "./dist/server",
+		"rootDir": ".",
+		"lib": ["ESNext"],
+		"skipLibCheck": true,
+		"paths": {
+			"shared/*": ["./shared/*"]
+		}
+	},
+	"include": ["server", "shared"],
+	"exclude": ["node_modules", "dist"]
+}
