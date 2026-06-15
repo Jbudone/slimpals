@@ -3,12 +3,15 @@ import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
 import { requireAuth } from "./middleware/requireAuth.js"
+import { createFoodRouter } from "./routes/food.js"
 import { healthRouter } from "./routes/health.js"
 import { validateInvite } from "./routes/register.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
+import { type AIService, GeminiAIService } from "./services/ai/index.js"
 
-export function createApp() {
+export function createApp(deps: { aiService?: AIService } = {}) {
+	const aiService = deps.aiService ?? new GeminiAIService()
 	const app = express()
 
 	app.use(
@@ -31,9 +34,13 @@ export function createApp() {
 	// All /api/* routes beyond auth require a valid session
 	app.use("/api", requireAuth)
 
+	// Serve uploaded files
+	app.use("/uploads", express.static("uploads"))
+
 	// Protected routes
 	app.use("/api", usersRouter)
 	app.use("/api", weightRouter)
+	app.use("/api", createFoodRouter(aiService))
 
 	return app
 }

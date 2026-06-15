@@ -3,6 +3,7 @@ import { onMount } from "svelte"
 import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
 import { fetchUserProfile } from "./lib/user.svelte.js"
 import Dashboard from "./pages/Dashboard.svelte"
+import Food from "./pages/Food.svelte"
 import Login from "./pages/Login.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
@@ -50,6 +51,7 @@ async function handleLogout() {
 		<span class="brand">SlimPals</span>
 		<a class="nav-link" href="/" onclick={(e) => { e.preventDefault(); page("/") }}>Dashboard</a>
 		<a class="nav-link" href="/weight" onclick={(e) => { e.preventDefault(); page("/weight") }}>Weight</a>
+		<a class="nav-link" href="/food" onclick={(e) => { e.preventDefault(); page("/food") }}>Food</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
@@ -58,6 +60,8 @@ async function handleLogout() {
 		<Dashboard />
 	{:else if currentPath === "/weight"}
 		<Weight />
+	{:else if currentPath === "/food"}
+		<Food />
 	{:else if currentPath === "/settings"}
 		<Settings />
 	{/if}
