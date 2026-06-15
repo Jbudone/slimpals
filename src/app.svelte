@@ -1,9 +1,11 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
+import { fetchUserProfile } from "./lib/user.svelte.js"
 import Dashboard from "./pages/Dashboard.svelte"
 import Login from "./pages/Login.svelte"
 import Register from "./pages/Register.svelte"
+import Settings from "./pages/Settings.svelte"
 import { initRouter, nav, page } from "./router.svelte.js"
 
 let currentPath = $derived(nav.path)
@@ -13,6 +15,10 @@ let isLoading = $derived(authState.loading)
 onMount(async () => {
 	await fetchSession()
 	initRouter()
+
+	if (authState.user) {
+		await fetchUserProfile()
+	}
 
 	// Redirect to /login if unauthenticated and on a protected route
 	if (
@@ -41,11 +47,14 @@ async function handleLogout() {
 {:else}
 	<nav class="top-nav">
 		<span class="brand">SlimPals</span>
+		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
 
 	{#if currentPath === "/"}
 		<Dashboard />
+	{:else if currentPath === "/settings"}
+		<Settings />
 	{/if}
 {/if}
 
@@ -72,6 +81,18 @@ async function handleLogout() {
 	font-weight: 700;
 	font-size: 1.125rem;
 	color: var(--color-accent);
+}
+
+.nav-link {
+	color: var(--color-text-muted);
+	font-size: 0.875rem;
+	text-decoration: none;
+	margin-right: auto;
+	margin-left: 1.5rem;
+}
+
+.nav-link:hover {
+	color: var(--color-text);
 }
 
 .logout-btn {

@@ -5,6 +5,7 @@ import { auth } from "./auth.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { healthRouter } from "./routes/health.js"
 import { validateInvite } from "./routes/register.js"
+import { usersRouter } from "./routes/users.js"
 
 export function createApp() {
 	const app = express()
@@ -26,8 +27,11 @@ export function createApp() {
 	// All other Better Auth routes (sign-in, sign-out, session, etc.)
 	app.use("/api/auth", toNodeHandler(auth))
 
-	// Protected API placeholder — all /api/* beyond auth requires a session
+	// All /api/* routes beyond auth require a valid session
 	app.use("/api", requireAuth)
+
+	// Protected routes
+	app.use("/api", usersRouter)
 
 	return app
 }

@@ -2,6 +2,13 @@ import { fromNodeHeaders } from "better-auth/node"
 import type { NextFunction, Request, Response } from "express"
 import { auth } from "../auth.js"
 
+export type AuthRequest = Request & {
+	user: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>["user"]
+	session: NonNullable<
+		Awaited<ReturnType<typeof auth.api.getSession>>
+	>["session"]
+}
+
 export async function requireAuth(
 	req: Request,
 	res: Response,
