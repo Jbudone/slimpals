@@ -6,6 +6,7 @@ import { requireAuth } from "./middleware/requireAuth.js"
 import { healthRouter } from "./routes/health.js"
 import { validateInvite } from "./routes/register.js"
 import { usersRouter } from "./routes/users.js"
+import { weightRouter } from "./routes/weight.js"
 
 export function createApp() {
 	const app = express()
@@ -32,6 +33,7 @@ export function createApp() {
 
 	// Protected routes
 	app.use("/api", usersRouter)
+	app.use("/api", weightRouter)
 
 	return app
 }

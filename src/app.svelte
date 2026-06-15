@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard.svelte"
 import Login from "./pages/Login.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
+import Weight from "./pages/Weight.svelte"
 import { initRouter, nav, page } from "./router.svelte.js"
 
 let currentPath = $derived(nav.path)
@@ -47,12 +48,16 @@ async function handleLogout() {
 {:else}
 	<nav class="top-nav">
 		<span class="brand">SlimPals</span>
+		<a class="nav-link" href="/" onclick={(e) => { e.preventDefault(); page("/") }}>Dashboard</a>
+		<a class="nav-link" href="/weight" onclick={(e) => { e.preventDefault(); page("/weight") }}>Weight</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
 
 	{#if currentPath === "/"}
 		<Dashboard />
+	{:else if currentPath === "/weight"}
+		<Weight />
 	{:else if currentPath === "/settings"}
 		<Settings />
 	{/if}
