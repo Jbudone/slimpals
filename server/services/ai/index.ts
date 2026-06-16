@@ -21,7 +21,7 @@ export class GeminiAIService implements AIService {
 
 	async analyzeFood(imageUrl: string, _userId: string): Promise<FoodAnalysis> {
 		const model = this.client.getGenerativeModel({
-			model: "gemini-2.0-flash",
+			model: "gemini-2.5-flash",
 		})
 
 		// Fetch the image and convert to base64 for Gemini vision
@@ -45,7 +45,8 @@ export class GeminiAIService implements AIService {
 		])
 
 		const text = result.response.text().trim()
-		const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
-		return JSON.parse(cleaned) as FoodAnalysis
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match) throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as FoodAnalysis
 	}
 }

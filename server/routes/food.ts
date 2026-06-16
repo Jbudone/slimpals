@@ -48,7 +48,19 @@ export function createFoodRouter(aiService: AIService) {
 		const baseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
 		const absoluteUrl = `${baseUrl}${photoUrl}`
 
-		const analysis = await aiService.analyzeFood(absoluteUrl, userId)
+		let analysis: Awaited<ReturnType<typeof aiService.analyzeFood>>
+		try {
+			analysis = await aiService.analyzeFood(absoluteUrl, userId)
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : ""
+			const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota")
+			res.status(502).json({
+				error: isQuota
+					? "AI quota exceeded — please try again later"
+					: "Food analysis failed — please try again",
+			})
+			return
+		}
 
 		const [inserted] = await db
 			.insert(foodLogs)

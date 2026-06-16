@@ -3,6 +3,7 @@ import { Router } from "express"
 import { db } from "../db/index.js"
 import { weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { ensureCheckin } from "./checkins.js"
 
 export const weightRouter = Router()
 
@@ -48,6 +49,8 @@ weightRouter.post("/weight", async (req, res) => {
 		.select()
 		.from(weightEntries)
 		.where(eq(weightEntries.id, inserted.id))
+
+	await ensureCheckin(userId)
 
 	res.status(201).json(entryPayload(row))
 })

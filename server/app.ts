@@ -3,6 +3,7 @@ import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
 import { requireAuth } from "./middleware/requireAuth.js"
+import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
 import { healthRouter } from "./routes/health.js"
 import { validateInvite } from "./routes/register.js"
@@ -41,6 +42,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", usersRouter)
 	app.use("/api", weightRouter)
 	app.use("/api", createFoodRouter(aiService))
+	app.use("/api", checkinsRouter)
 
 	return app
 }
