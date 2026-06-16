@@ -7,6 +7,7 @@ import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
 import { healthRouter } from "./routes/health.js"
 import { validateInvite } from "./routes/register.js"
+import { socialRouter } from "./routes/social.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
 import { type AIService, GeminiAIService } from "./services/ai/index.js"
@@ -43,6 +44,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", weightRouter)
 	app.use("/api", createFoodRouter(aiService))
 	app.use("/api", checkinsRouter)
+	app.use("/api", socialRouter)
 
 	return app
 }

@@ -7,7 +7,11 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!!**/server/db/migrations/meta"]
+		"includes": [
+			"**",
+			"!!**/server/db/migrations/meta",
+			"!!verify-walkthrough.mjs"
+		]
 	},
 	"formatter": {
 		"enabled": true,

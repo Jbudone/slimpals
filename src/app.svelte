@@ -7,6 +7,7 @@ import Food from "./pages/Food.svelte"
 import Login from "./pages/Login.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
+import Social from "./pages/Social.svelte"
 import Weight from "./pages/Weight.svelte"
 import { initRouter, nav, page } from "./router.svelte.js"
 
@@ -52,6 +53,7 @@ async function handleLogout() {
 		<a class="nav-link" href="/" onclick={(e) => { e.preventDefault(); page("/") }}>Dashboard</a>
 		<a class="nav-link" href="/weight" onclick={(e) => { e.preventDefault(); page("/weight") }}>Weight</a>
 		<a class="nav-link" href="/food" onclick={(e) => { e.preventDefault(); page("/food") }}>Food</a>
+		<a class="nav-link" href="/social" onclick={(e) => { e.preventDefault(); page("/social") }}>Social</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
@@ -62,6 +64,8 @@ async function handleLogout() {
 		<Weight />
 	{:else if currentPath === "/food"}
 		<Food />
+	{:else if currentPath === "/social"}
+		<Social />
 	{:else if currentPath === "/settings"}
 		<Settings />
 	{/if}
