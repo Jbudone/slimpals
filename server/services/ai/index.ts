@@ -46,7 +46,8 @@ export class GeminiAIService implements AIService {
 
 		const text = result.response.text().trim()
 		const match = text.match(/\{[\s\S]*\}/)
-		if (!match) throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as FoodAnalysis
 	}
 }
