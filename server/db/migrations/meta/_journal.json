@@ -1,20 +1,27 @@
 {
-	"version": "7",
-	"dialect": "mysql",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "5",
-			"when": 1780886443723,
-			"tag": "0000_bright_sleepwalker",
-			"breakpoints": true
-		},
-		{
-			"idx": 1,
-			"version": "5",
-			"when": 1780894198872,
-			"tag": "0001_soft_riptide",
-			"breakpoints": true
-		}
-	]
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1780886443723,
+      "tag": "0000_bright_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780894198872,
+      "tag": "0001_soft_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1781649992592,
+      "tag": "0002_tiresome_giant_girl",
+      "breakpoints": true
+    }
+  ]
 }

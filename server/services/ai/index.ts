@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { eq } from "drizzle-orm"
+import type { CoachPersonality } from "../../../shared/types.js"
 import { db } from "../../db/index.js"
 import { users } from "../../db/schema.js"
 import { PERSONALITIES } from "./prompts/index.js"
@@ -14,6 +15,12 @@ export type FoodAnalysis = {
 
 export interface AIService {
 	analyzeFood(imageUrl: string, userId: string): Promise<FoodAnalysis>
+	generateVictoryMessage(
+		userName: string,
+		tournamentName: string,
+		tournamentType: string,
+		personality: string,
+	): Promise<string>
 }
 
 export class GeminiAIService implements AIService {
@@ -57,5 +64,34 @@ export class GeminiAIService implements AIService {
 		if (!match)
 			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as FoodAnalysis
+	}
+
+	async generateVictoryMessage(
+		userName: string,
+		tournamentName: string,
+		tournamentType: string,
+		personality: string,
+	): Promise<string> {
+		const coachKey = (
+			personality in PERSONALITIES ? personality : "friendly"
+		) as CoachPersonality
+		const systemInstruction = PERSONALITIES[coachKey]
+
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+			systemInstruction,
+		})
+
+		const typeLabels: Record<string, string> = {
+			weight_loss: "weight loss",
+			streak: "check-in streak",
+			food_challenge: "food quality",
+			step_count: "step count",
+		}
+
+		const prompt = `Write a short, enthusiastic victory message (2-3 sentences max) for ${userName} who just won the "${tournamentName}" ${typeLabels[tournamentType] ?? tournamentType} tournament. Speak in your coaching personality's voice. Make it celebratory and motivating. Plain text only, no markdown.`
+
+		const result = await model.generateContent(prompt)
+		return result.response.text().trim()
 	}
 }

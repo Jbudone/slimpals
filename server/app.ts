@@ -13,6 +13,7 @@ import { healthRouter } from "./routes/health.js"
 import { invitesRouter } from "./routes/invites.js"
 import { validateInvite } from "./routes/register.js"
 import { socialRouter } from "./routes/social.js"
+import { createTournamentsRouter } from "./routes/tournaments.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
 import { type AIService, GeminiAIService } from "./services/ai/index.js"
@@ -55,6 +56,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
 	app.use("/api", badgesRouter)
+	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", adminRouter)
 
 	return app

@@ -18,6 +18,12 @@ export type BadgeContext =
 	| { type: "social_share" }
 	| { type: "social_react_given"; totalGiven: number }
 	| { type: "social_reaction_received"; reactionsOnPost: number }
+	| { type: "tournament_join" }
+	| {
+			type: "tournament_win"
+			totalWins: number
+			tournamentType: string
+	  }
 
 export type NewBadge = {
 	key: string
@@ -79,6 +85,16 @@ function badgeKeysForContext(ctx: BadgeContext): string[] {
 		case "social_reaction_received": {
 			const keys = ["social_first_reaction_received"]
 			if (ctx.reactionsOnPost >= 10) keys.push("social_10_reacts")
+			return keys
+		}
+		case "tournament_join":
+			return ["tournament_first_join"]
+		case "tournament_win": {
+			const keys = ["tournament_first_win"]
+			if (ctx.totalWins >= 3) keys.push("tournament_3_wins")
+			if (ctx.tournamentType === "weight_loss")
+				keys.push("tournament_weight_win")
+			if (ctx.tournamentType === "streak") keys.push("tournament_streak_win")
 			return keys
 		}
 	}

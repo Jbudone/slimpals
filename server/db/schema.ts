@@ -251,6 +251,9 @@ export const tournaments = mysqlTable("tournaments", {
 	]).notNull(),
 	goalValue: int("goal_value"),
 	rewardDescription: text("reward_description"),
+	winnerId: varchar("winner_id", { length: 36 }).references(() => users.id),
+	victoryMessage: text("victory_message"),
+	resolvedAt: timestamp("resolved_at"),
 })
 
 export const tournamentParticipants = mysqlTable("tournament_participants", {
