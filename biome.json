@@ -10,7 +10,8 @@
 		"includes": [
 			"**",
 			"!!**/server/db/migrations/meta",
-			"!!verify-walkthrough.mjs"
+			"!!verify-walkthrough.mjs",
+			"!!verify-social.mjs"
 		]
 	},
 	"formatter": {

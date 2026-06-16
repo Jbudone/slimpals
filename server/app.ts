@@ -6,6 +6,7 @@ import { requireAuth } from "./middleware/requireAuth.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
 import { healthRouter } from "./routes/health.js"
+import { invitesRouter } from "./routes/invites.js"
 import { validateInvite } from "./routes/register.js"
 import { socialRouter } from "./routes/social.js"
 import { usersRouter } from "./routes/users.js"
@@ -45,6 +46,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", createFoodRouter(aiService))
 	app.use("/api", checkinsRouter)
 	app.use("/api", socialRouter)
+	app.use("/api", invitesRouter)
 
 	return app
 }
