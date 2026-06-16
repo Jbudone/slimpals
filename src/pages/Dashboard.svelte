@@ -1,6 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { api } from "../lib/api.js"
+import { showBadgeToast } from "../lib/toast.svelte.js"
+
+type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 type CheckinStatus = {
 	checkedInToday: boolean
@@ -27,12 +30,14 @@ async function loadStatus() {
 async function handleCheckin() {
 	checkingIn = true
 	try {
-		const res = await api.post<CheckinStatus & { streakCount: number }>(
-			"/checkins",
-			{},
-		)
+		const res = await api.post<
+			CheckinStatus & { streakCount: number; newBadges?: NewBadge[] }
+		>("/checkins", {})
 		status = { checkedInToday: true, streakCount: res.streakCount }
 		checkinDone = true
+		if (res.newBadges?.length) {
+			for (const b of res.newBadges) showBadgeToast(b)
+		}
 	} finally {
 		checkingIn = false
 	}

@@ -3,6 +3,7 @@ import { Router } from "express"
 import { db } from "../db/index.js"
 import { dailyCheckins } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { checkAndAward } from "../services/badges/index.js"
 
 export const checkinsRouter = Router()
 
@@ -118,7 +119,13 @@ checkinsRouter.post("/checkins", async (req, res) => {
 		.from(dailyCheckins)
 		.where(eq(dailyCheckins.id, inserted.id))
 
-	res.status(201).json(checkinPayload(row))
+	const newBadges = await checkAndAward(
+		userId,
+		{ type: "checkin", streakCount },
+		db,
+	)
+
+	res.status(201).json({ ...checkinPayload(row), newBadges })
 })
 
 export async function ensureCheckin(userId: string): Promise<void> {

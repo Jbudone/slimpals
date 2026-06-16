@@ -1,8 +1,9 @@
-import { and, desc, eq, inArray } from "drizzle-orm"
+import { and, count, desc, eq, inArray } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import { reactions, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { checkAndAward } from "../services/badges/index.js"
 
 export const socialRouter = Router()
 
@@ -83,7 +84,7 @@ socialRouter.post("/social/react", async (req, res) => {
 	}
 
 	const [post] = await db
-		.select({ id: socialPosts.id })
+		.select({ id: socialPosts.id, userId: socialPosts.userId })
 		.from(socialPosts)
 		.where(eq(socialPosts.id, postId ?? -1))
 		.limit(1)
@@ -105,6 +106,7 @@ socialRouter.post("/social/react", async (req, res) => {
 		)
 		.limit(1)
 
+	const wasExisting = !!existing
 	if (existing) {
 		await db.delete(reactions).where(eq(reactions.id, existing.id))
 	} else {
@@ -118,5 +120,33 @@ socialRouter.post("/social/react", async (req, res) => {
 		.from(reactions)
 		.where(eq(reactions.postId, post.id))
 
-	res.json(buildReactions(postReactions, userId))
+	// Badge checks (fire-and-forget shape; errors are non-fatal)
+	const newBadges = []
+	if (!wasExisting) {
+		// Reactor earned a "react given" badge
+		const [{ value: totalGiven }] = await db
+			.select({ value: count() })
+			.from(reactions)
+			.where(eq(reactions.userId, userId))
+		newBadges.push(
+			...(await checkAndAward(
+				userId,
+				{ type: "social_react_given", totalGiven },
+				db,
+			)),
+		)
+
+		// Post owner earns a "reaction received" badge
+		const postOwnerId = post.userId
+		if (postOwnerId !== userId) {
+			const reactionsOnPost = postReactions.length
+			await checkAndAward(
+				postOwnerId,
+				{ type: "social_reaction_received", reactionsOnPost },
+				db,
+			)
+		}
+	}
+
+	res.json({ reactions: buildReactions(postReactions, userId), newBadges })
 })

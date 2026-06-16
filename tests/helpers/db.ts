@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/mysql2"
 import { migrate } from "drizzle-orm/mysql2/migrator"
 import mysql from "mysql2/promise"
 import * as schema from "../../server/db/schema.js"
+import { seedBadges } from "../../server/db/seed.js"
 
 const TEST_DB_URL =
 	process.env.TEST_DATABASE_URL ??
@@ -73,6 +74,9 @@ export async function truncateAll() {
 	} finally {
 		conn.release()
 	}
+	// Re-seed the static badge catalog after each truncation
+	const db = await getTestDb()
+	await seedBadges(db)
 }
 
 export async function closeTestDb() {

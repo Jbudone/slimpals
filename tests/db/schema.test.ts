@@ -177,8 +177,8 @@ describe("badges.key unique constraint", () => {
 	it("rejects a duplicate badge key", async () => {
 		const db = await getTestDb()
 		const badge = {
-			key: "streak_7",
-			name: "7-Day Streak",
+			key: "test_unique_key_constraint",
+			name: "Test Badge",
 			tier: "bronze" as const,
 		}
 		await db.insert(badges).values(badge)

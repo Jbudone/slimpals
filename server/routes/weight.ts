@@ -1,8 +1,9 @@
-import { asc, eq } from "drizzle-orm"
+import { asc, count, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import { users, weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { checkAndAward } from "../services/badges/index.js"
 import { ensureCheckin } from "./checkins.js"
 
 const USER_COLORS = [
@@ -63,7 +64,46 @@ weightRouter.post("/weight", async (req, res) => {
 
 	await ensureCheckin(userId)
 
-	res.status(201).json(entryPayload(row))
+	const newBadges = []
+
+	// Weight log count badges
+	const [{ value: totalLogs }] = await db
+		.select({ value: count() })
+		.from(weightEntries)
+		.where(eq(weightEntries.userId, userId))
+	newBadges.push(
+		...(await checkAndAward(userId, { type: "weight_log", totalLogs }, db)),
+	)
+
+	// Weight loss badges: compare current vs. first entry
+	const [firstEntry] = await db
+		.select({ weightKg: weightEntries.weightKg })
+		.from(weightEntries)
+		.where(eq(weightEntries.userId, userId))
+		.orderBy(asc(weightEntries.recordedAt))
+		.limit(1)
+
+	if (firstEntry) {
+		const lossKg = (firstEntry.weightKg - stored) / 10
+		if (lossKg > 0) {
+			const [user] = await db
+				.select({ goalWeightKg: users.goalWeightKg })
+				.from(users)
+				.where(eq(users.id, userId))
+				.limit(1)
+			const goalReached =
+				user?.goalWeightKg != null && stored <= user.goalWeightKg
+			newBadges.push(
+				...(await checkAndAward(
+					userId,
+					{ type: "weight_loss", lossKg, goalReached },
+					db,
+				)),
+			)
+		}
+	}
+
+	res.status(201).json({ ...entryPayload(row), newBadges })
 })
 
 weightRouter.get("/weight", async (req, res) => {

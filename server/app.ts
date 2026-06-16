@@ -2,7 +2,10 @@ import { toNodeHandler } from "better-auth/node"
 import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
+import { db } from "./db/index.js"
+import { seedBadges } from "./db/seed.js"
 import { requireAuth } from "./middleware/requireAuth.js"
+import { badgesRouter } from "./routes/badges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
 import { healthRouter } from "./routes/health.js"
@@ -16,6 +19,9 @@ import { type AIService, GeminiAIService } from "./services/ai/index.js"
 export function createApp(deps: { aiService?: AIService } = {}) {
 	const aiService = deps.aiService ?? new GeminiAIService()
 	const app = express()
+
+	// Seed badge catalog idempotently at startup
+	seedBadges(db).catch((err) => console.error("Badge seed failed:", err))
 
 	app.use(
 		cors({
@@ -47,6 +53,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", checkinsRouter)
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
+	app.use("/api", badgesRouter)
 
 	return app
 }

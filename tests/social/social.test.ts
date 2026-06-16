@@ -169,8 +169,14 @@ describe("POST /api/social/react — add reaction", () => {
 			.send({ postId, emoji: "❤️" })
 
 		expect(res.status).toBe(200)
-		expect(res.body["❤️"]).toMatchObject({ count: 1, userReacted: true })
-		expect(res.body["💪"]).toMatchObject({ count: 0, userReacted: false })
+		expect(res.body.reactions["❤️"]).toMatchObject({
+			count: 1,
+			userReacted: true,
+		})
+		expect(res.body.reactions["💪"]).toMatchObject({
+			count: 0,
+			userReacted: false,
+		})
 	})
 })
 
@@ -198,7 +204,10 @@ describe("POST /api/social/react — toggle off", () => {
 			.send({ postId, emoji: "💪" })
 
 		expect(res.status).toBe(200)
-		expect(res.body["💪"]).toMatchObject({ count: 0, userReacted: false })
+		expect(res.body.reactions["💪"]).toMatchObject({
+			count: 0,
+			userReacted: false,
+		})
 	})
 })
 

@@ -1,6 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { api } from "../lib/api.js"
+import { showBadgeToast } from "../lib/toast.svelte.js"
+
+type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 const EMOJIS = ["❤️", "😂", "💪", "🔥", "😭"] as const
 type Emoji = (typeof EMOJIS)[number]
@@ -61,13 +64,16 @@ async function react(postId: number, emoji: Emoji) {
 	})
 
 	try {
-		const updated = await api.post<Reactions>("/social/react", {
-			postId,
-			emoji,
-		})
-		posts = posts.map((p) =>
-			p.id === postId ? { ...p, reactions: updated } : p,
+		const res = await api.post<{ reactions: Reactions; newBadges: NewBadge[] }>(
+			"/social/react",
+			{ postId, emoji },
 		)
+		posts = posts.map((p) =>
+			p.id === postId ? { ...p, reactions: res.reactions } : p,
+		)
+		if (res.newBadges?.length) {
+			for (const b of res.newBadges) showBadgeToast(b)
+		}
 	} catch {
 		// Revert optimistic update on failure
 		await loadFeed()

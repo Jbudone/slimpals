@@ -3,7 +3,10 @@ import { onMount } from "svelte"
 import SocialWeightChart from "../components/SocialWeightChart.svelte"
 import WeightChart from "../components/WeightChart.svelte"
 import { api } from "../lib/api.js"
+import { showBadgeToast } from "../lib/toast.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
+
+type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 type WeightEntry = {
 	id: number
@@ -88,11 +91,18 @@ async function handleSubmit(e: SubmitEvent) {
 	}
 	submitting = true
 	try {
-		const entry = await api.post<WeightEntry>("/weight", {
-			weightKg: kg,
-			note: noteInput.trim() || undefined,
-			recordedAt: new Date(dateInput).toISOString(),
-		})
+		const res = await api.post<WeightEntry & { newBadges?: NewBadge[] }>(
+			"/weight",
+			{
+				weightKg: kg,
+				note: noteInput.trim() || undefined,
+				recordedAt: new Date(dateInput).toISOString(),
+			},
+		)
+		const { newBadges, ...entry } = res
+		if (newBadges?.length) {
+			for (const b of newBadges) showBadgeToast(b)
+		}
 		entries = [...entries, entry].sort(
 			(a, b) =>
 				new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),

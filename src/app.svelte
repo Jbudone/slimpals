@@ -1,7 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import Toast from "./components/Toast.svelte"
 import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
 import { fetchUserProfile } from "./lib/user.svelte.js"
+import Badges from "./pages/Badges.svelte"
 import Dashboard from "./pages/Dashboard.svelte"
 import Food from "./pages/Food.svelte"
 import Login from "./pages/Login.svelte"
@@ -54,6 +56,7 @@ async function handleLogout() {
 		<a class="nav-link" href="/weight" onclick={(e) => { e.preventDefault(); page("/weight") }}>Weight</a>
 		<a class="nav-link" href="/food" onclick={(e) => { e.preventDefault(); page("/food") }}>Food</a>
 		<a class="nav-link" href="/social" onclick={(e) => { e.preventDefault(); page("/social") }}>Social</a>
+		<a class="nav-link" href="/badges" onclick={(e) => { e.preventDefault(); page("/badges") }}>Badges</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
@@ -66,9 +69,12 @@ async function handleLogout() {
 		<Food />
 	{:else if currentPath === "/social"}
 		<Social />
+	{:else if currentPath === "/badges"}
+		<Badges />
 	{:else if currentPath === "/settings"}
 		<Settings />
 	{/if}
+	<Toast />
 {/if}
 
 <style>
