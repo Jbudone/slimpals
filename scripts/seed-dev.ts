@@ -92,6 +92,13 @@ async function registerTestUser(inviteCode: string): Promise<string | null> {
 
 	if (existing) {
 		console.log(`  test account already exists (${TEST_EMAIL})`)
+		if (!existing.isAdmin) {
+			await db
+				.update(schema.users)
+				.set({ isAdmin: true })
+				.where(eq(schema.users.id, existing.id))
+			console.log("  ✓ isAdmin set to true")
+		}
 		return existing.id
 	}
 
@@ -117,7 +124,12 @@ async function registerTestUser(inviteCode: string): Promise<string | null> {
 		.from(schema.users)
 		.where(eq(schema.users.email, TEST_EMAIL))
 
-	console.log(`  ✓ test account created (id: ${user.id})`)
+	await db
+		.update(schema.users)
+		.set({ isAdmin: true })
+		.where(eq(schema.users.id, user.id))
+
+	console.log(`  ✓ test account created (id: ${user.id}), isAdmin: true`)
 	return user.id
 }
 

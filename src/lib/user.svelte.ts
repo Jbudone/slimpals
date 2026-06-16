@@ -9,6 +9,7 @@ export type UserProfile = {
 	viewMode: ViewMode
 	goalWeightKg: number | null
 	goalDate: string | null
+	isAdmin: boolean
 }
 
 export const userProfile = $state<{ data: UserProfile | null }>({ data: null })

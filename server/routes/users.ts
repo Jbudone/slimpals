@@ -34,6 +34,7 @@ function userPayload(user: typeof users.$inferSelect) {
 		viewMode: user.viewMode,
 		goalWeightKg: user.goalWeightKg != null ? user.goalWeightKg / 10 : null,
 		goalDate: user.goalDate ?? null,
+		isAdmin: user.isAdmin,
 	}
 }
 

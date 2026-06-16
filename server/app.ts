@@ -5,6 +5,7 @@ import { auth } from "./auth.js"
 import { db } from "./db/index.js"
 import { seedBadges } from "./db/seed.js"
 import { requireAuth } from "./middleware/requireAuth.js"
+import { adminRouter } from "./routes/admin.js"
 import { badgesRouter } from "./routes/badges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
@@ -54,6 +55,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
 	app.use("/api", badgesRouter)
+	app.use("/api", adminRouter)
 
 	return app
 }

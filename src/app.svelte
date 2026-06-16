@@ -2,7 +2,8 @@
 import { onMount } from "svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
-import { fetchUserProfile } from "./lib/user.svelte.js"
+import { fetchUserProfile, userProfile } from "./lib/user.svelte.js"
+import Admin from "./pages/Admin.svelte"
 import Badges from "./pages/Badges.svelte"
 import Dashboard from "./pages/Dashboard.svelte"
 import Food from "./pages/Food.svelte"
@@ -16,6 +17,7 @@ import { initRouter, nav, page } from "./router.svelte.js"
 let currentPath = $derived(nav.path)
 let isLoggedIn = $derived(authState.user !== null)
 let isLoading = $derived(authState.loading)
+let isAdmin = $derived(userProfile.data?.isAdmin ?? false)
 
 onMount(async () => {
 	await fetchSession()
@@ -58,6 +60,9 @@ async function handleLogout() {
 		<a class="nav-link" href="/social" onclick={(e) => { e.preventDefault(); page("/social") }}>Social</a>
 		<a class="nav-link" href="/badges" onclick={(e) => { e.preventDefault(); page("/badges") }}>Badges</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
+		{#if isAdmin}
+			<a class="nav-link admin-link" href="/admin" onclick={(e) => { e.preventDefault(); page("/admin") }}>Admin</a>
+		{/if}
 		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
 	</nav>
 
@@ -73,6 +78,8 @@ async function handleLogout() {
 		<Badges />
 	{:else if currentPath === "/settings"}
 		<Settings />
+	{:else if currentPath === "/admin"}
+		<Admin />
 	{/if}
 	<Toast />
 {/if}
@@ -112,6 +119,10 @@ async function handleLogout() {
 
 .nav-link:hover {
 	color: var(--color-text);
+}
+
+.admin-link {
+	color: #ef4444;
 }
 
 .logout-btn {
