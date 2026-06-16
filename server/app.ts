@@ -3,12 +3,13 @@ import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
 import { db } from "./db/index.js"
-import { seedBadges } from "./db/seed.js"
+import { seedBadges, seedGymUpgrades } from "./db/seed.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { adminRouter } from "./routes/admin.js"
 import { badgesRouter } from "./routes/badges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
+import { gymRouter } from "./routes/gym.js"
 import { healthRouter } from "./routes/health.js"
 import { invitesRouter } from "./routes/invites.js"
 import { validateInvite } from "./routes/register.js"
@@ -22,8 +23,10 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	const aiService = deps.aiService ?? new GeminiAIService()
 	const app = express()
 
-	// Seed badge catalog idempotently at startup
 	seedBadges(db).catch((err) => console.error("Badge seed failed:", err))
+	seedGymUpgrades(db).catch((err) =>
+		console.error("Gym upgrade seed failed:", err),
+	)
 
 	app.use(
 		cors({
@@ -56,6 +59,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
 	app.use("/api", badgesRouter)
+	app.use("/api", gymRouter)
 	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", adminRouter)
 

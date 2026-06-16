@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/mysql2"
 import { migrate } from "drizzle-orm/mysql2/migrator"
 import mysql from "mysql2/promise"
 import * as schema from "../../server/db/schema.js"
-import { seedBadges } from "../../server/db/seed.js"
+import { seedBadges, seedGymUpgrades } from "../../server/db/seed.js"
 
 const TEST_DB_URL =
 	process.env.TEST_DATABASE_URL ??
@@ -50,8 +50,8 @@ export async function truncateAll() {
 			"social_posts",
 			"tournament_participants",
 			"tournaments",
-			"user_pet_items",
-			"pet_companions",
+			"user_gym_upgrades",
+			"user_gyms",
 			"user_badges",
 			"daily_checkins",
 			"user_challenges",
@@ -64,8 +64,8 @@ export async function truncateAll() {
 			"verification",
 			"users",
 			"badges",
+			"gym_upgrades_catalog",
 			"challenges",
-			"pet_items",
 		]
 		for (const t of tables) {
 			await conn.query(`TRUNCATE TABLE \`${t}\``)
@@ -74,9 +74,9 @@ export async function truncateAll() {
 	} finally {
 		conn.release()
 	}
-	// Re-seed the static badge catalog after each truncation
 	const db = await getTestDb()
 	await seedBadges(db)
+	await seedGymUpgrades(db)
 }
 
 export async function closeTestDb() {

@@ -6,6 +6,7 @@ import { foodLogs } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { awardGymXp } from "../services/gym/index.js"
 import { createStorageService } from "../services/storage/index.js"
 
 function startOfDayUtc(d: Date = new Date()): Date {
@@ -133,6 +134,12 @@ export function createFoodRouter(aiService: AIService) {
 			},
 			db,
 		)
+
+		let gymXp = 5
+		for (const _badge of newBadges) {
+			gymXp += 10
+		}
+		await awardGymXp(userId, gymXp, "food_log", db)
 
 		res.status(201).json({
 			id: row.id,

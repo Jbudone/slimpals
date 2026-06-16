@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import { dailyCheckins } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { awardGymXp } from "../services/gym/index.js"
 
 export const checkinsRouter = Router()
 
@@ -124,6 +125,12 @@ checkinsRouter.post("/checkins", async (req, res) => {
 		{ type: "checkin", streakCount },
 		db,
 	)
+
+	let gymXp = 15
+	for (const _badge of newBadges) {
+		gymXp += 10
+	}
+	await awardGymXp(userId, gymXp, "checkin", db)
 
 	res.status(201).json({ ...checkinPayload(row), newBadges })
 })

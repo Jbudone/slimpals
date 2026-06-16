@@ -22,7 +22,12 @@ export type WeightSource = "manual" | "apple_health" | "fitbit" | "garmin"
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack"
 
-export type PetType = "dragon" | "bear" | "cat" | "bunny" | "phoenix"
+export type GymUpgradeCategory =
+	| "cardio"
+	| "weights"
+	| "amenities"
+	| "decor"
+	| "staff"
 
 export type TournamentType =
 	| "weight_loss"

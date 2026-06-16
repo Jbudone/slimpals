@@ -189,50 +189,45 @@ export const userBadges = mysqlTable("user_badges", {
 	earnedAt: timestamp("earned_at").notNull().defaultNow(),
 })
 
-export const petCompanions = mysqlTable("pet_companions", {
+export const userGyms = mysqlTable("user_gyms", {
 	id: int("id").autoincrement().primaryKey(),
 	userId: varchar("user_id", { length: 36 })
 		.notNull()
 		.references(() => users.id)
 		.unique(),
 	name: varchar("name", { length: 128 }).notNull(),
-	type: mysqlEnum("type", ["dragon", "bear", "cat", "bunny", "phoenix"])
-		.notNull()
-		.default("cat"),
-	level: int("level").notNull().default(1),
+	level: int("level").notNull().default(0),
 	xp: int("xp").notNull().default(0),
-	evolutionStage: int("evolution_stage").notNull().default(1),
-	equippedItems: json("equipped_items").notNull().default([]),
-	lastAdventureAt: timestamp("last_adventure_at"),
-	currentAdventure: json("current_adventure"),
+	pendingUpgradeKeys: json("pending_upgrade_keys").notNull().default([]),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
-export const petItems = mysqlTable("pet_items", {
+export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
 	id: int("id").autoincrement().primaryKey(),
+	key: varchar("key", { length: 128 }).notNull().unique(),
 	name: varchar("name", { length: 255 }).notNull(),
 	description: text("description"),
-	iconUrl: varchar("icon_url", { length: 500 }),
-	rarity: mysqlEnum("rarity", [
-		"common",
-		"uncommon",
-		"rare",
-		"epic",
-		"legendary",
-	])
-		.notNull()
-		.default("common"),
-	unlockCondition: varchar("unlock_condition", { length: 255 }),
+	category: mysqlEnum("category", [
+		"cardio",
+		"weights",
+		"amenities",
+		"decor",
+		"staff",
+	]).notNull(),
+	requiredXp: int("required_xp").notNull().default(0),
+	sortOrder: int("sort_order").notNull().default(0),
+	assetPrompt: text("asset_prompt"),
+	unlocksNpcKey: varchar("unlocks_npc_key", { length: 128 }),
 })
 
-export const userPetItems = mysqlTable("user_pet_items", {
+export const userGymUpgrades = mysqlTable("user_gym_upgrades", {
 	id: int("id").autoincrement().primaryKey(),
-	userId: varchar("user_id", { length: 36 })
+	gymId: int("gym_id")
 		.notNull()
-		.references(() => users.id),
-	itemId: int("item_id")
-		.notNull()
-		.references(() => petItems.id),
-	acquiredAt: timestamp("acquired_at").notNull().defaultNow(),
+		.references(() => userGyms.id),
+	upgradeKey: varchar("upgrade_key", { length: 128 }).notNull(),
+	unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+	placementData: json("placement_data"),
 })
 
 export const tournaments = mysqlTable("tournaments", {

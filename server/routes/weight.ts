@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import { users, weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { awardGymXp } from "../services/gym/index.js"
 import { ensureCheckin } from "./checkins.js"
 
 const USER_COLORS = [
@@ -101,6 +102,12 @@ weightRouter.post("/weight", async (req, res) => {
 				)),
 			)
 		}
+	}
+
+	// Award gym XP for badges earned
+	for (const badge of newBadges) {
+		const xp = badge.key === "loss_5kg" ? 50 : 10
+		await awardGymXp(userId, xp, `badge:${badge.key}`, db)
 	}
 
 	res.status(201).json({ ...entryPayload(row), newBadges })

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "./schema.js"
-import { badges } from "./schema.js"
+import { badges, gymUpgradesCatalog } from "./schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -241,48 +241,42 @@ const BADGE_CATALOG: BadgeRow[] = [
 		tier: "gold",
 	},
 
-	// ── Pet milestones ─────────────────────────────────────────────────────
+	// ── Gym milestones ────────────────────────────────────────────────────
 	{
-		key: "pet_level_10",
-		name: "Companion Bond",
-		description: "Reach pet level 10",
+		key: "gym_level_5",
+		name: "Growing Gym",
+		description: "Reach gym level 5",
 		tier: "bronze",
 	},
 	{
-		key: "pet_evolve_1",
-		name: "First Evolution",
-		description: "Evolve your pet for the first time",
+		key: "gym_level_10",
+		name: "Popular Gym",
+		description: "Reach gym level 10",
 		tier: "silver",
 	},
 	{
-		key: "pet_level_25",
-		name: "Trusted Partner",
-		description: "Reach pet level 25",
-		tier: "silver",
-	},
-	{
-		key: "pet_evolve_2",
-		name: "Second Evolution",
-		description: "Evolve your pet to stage 3",
+		key: "gym_level_20",
+		name: "Elite Gym",
+		description: "Reach gym level 20",
 		tier: "gold",
 	},
 	{
-		key: "pet_level_50",
-		name: "Legendary Companion",
-		description: "Reach pet level 50",
-		tier: "platinum",
-	},
-	{
-		key: "pet_items_5",
-		name: "Fashionista",
-		description: "Collect 5 pet items",
+		key: "gym_first_upgrade",
+		name: "First Upgrade",
+		description: "Claim your first gym upgrade",
 		tier: "bronze",
 	},
 	{
-		key: "pet_items_20",
-		name: "Wardrobe Master",
-		description: "Collect 20 pet items",
+		key: "gym_10_upgrades",
+		name: "Fully Equipped",
+		description: "Unlock 10 gym upgrades",
 		tier: "silver",
+	},
+	{
+		key: "gym_all_categories",
+		name: "Complete Gym",
+		description: "Unlock at least one upgrade in every category",
+		tier: "gold",
 	},
 
 	// ── App engagement ─────────────────────────────────────────────────────
@@ -344,9 +338,306 @@ const BADGE_CATALOG: BadgeRow[] = [
 
 export async function seedBadges(db: Db) {
 	if (BADGE_CATALOG.length === 0) return
-	// ON DUPLICATE KEY UPDATE makes this idempotent
 	await db
 		.insert(badges)
 		.values(BADGE_CATALOG)
+		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
+}
+
+type UpgradeRow = {
+	key: string
+	name: string
+	description: string
+	category: "cardio" | "weights" | "amenities" | "decor" | "staff"
+	requiredXp: number
+	sortOrder: number
+	assetPrompt: string
+	unlocksNpcKey: string | null
+}
+
+const GYM_UPGRADES: UpgradeRow[] = [
+	// ── Cardio ────────────────────────────────────────────────────────────
+	{
+		key: "cardio_treadmill",
+		name: "Basic Treadmill",
+		description: "A simple treadmill to get started",
+		category: "cardio",
+		requiredXp: 0,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art treadmill, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "cardio_rowing",
+		name: "Rowing Machine",
+		description: "Full-body cardio workout station",
+		category: "cardio",
+		requiredXp: 200,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art rowing machine, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "cardio_bikes",
+		name: "Stationary Bikes",
+		description: "A row of spin bikes",
+		category: "cardio",
+		requiredXp: 500,
+		sortOrder: 3,
+		assetPrompt:
+			"pixel art stationary bike row, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "cardio_stairs",
+		name: "Stair Climbers",
+		description: "Intense stair climbing machines",
+		category: "cardio",
+		requiredXp: 900,
+		sortOrder: 4,
+		assetPrompt:
+			"pixel art stair climber machine, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "cardio_cinema",
+		name: "Cardio Cinema",
+		description: "Treadmills with personal screens showing movies",
+		category: "cardio",
+		requiredXp: 1500,
+		sortOrder: 5,
+		assetPrompt:
+			"pixel art treadmill with screen showing movie, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+
+	// ── Weights ───────────────────────────────────────────────────────────
+	{
+		key: "weights_dumbbells",
+		name: "Dumbbell Rack",
+		description: "A rack of dumbbells from 5 to 50 lbs",
+		category: "weights",
+		requiredXp: 0,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art dumbbell rack, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "weights_barbell",
+		name: "Barbell Station",
+		description: "Bench press and squat rack combo",
+		category: "weights",
+		requiredXp: 200,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art barbell bench press station, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "weights_cable",
+		name: "Cable Machine",
+		description: "Versatile cable crossover system",
+		category: "weights",
+		requiredXp: 500,
+		sortOrder: 3,
+		assetPrompt:
+			"pixel art cable crossover machine, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "weights_smith",
+		name: "Smith Machine",
+		description: "Guided barbell for safe solo lifting",
+		category: "weights",
+		requiredXp: 900,
+		sortOrder: 4,
+		assetPrompt:
+			"pixel art smith machine, stardew valley style, gym equipment, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "weights_olympic",
+		name: "Olympic Platform",
+		description: "Competition-grade lifting platform with bumper plates",
+		category: "weights",
+		requiredXp: 1500,
+		sortOrder: 5,
+		assetPrompt:
+			"pixel art olympic lifting platform, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+
+	// ── Amenities ─────────────────────────────────────────────────────────
+	{
+		key: "amenity_water",
+		name: "Water Cooler",
+		description: "Stay hydrated between sets",
+		category: "amenities",
+		requiredXp: 0,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art water cooler dispenser, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "amenity_lockers",
+		name: "Locker Room",
+		description: "Secure storage for members",
+		category: "amenities",
+		requiredXp: 100,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art gym locker room entrance, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "amenity_showers",
+		name: "Showers",
+		description: "Clean up after a tough workout",
+		category: "amenities",
+		requiredXp: 350,
+		sortOrder: 3,
+		assetPrompt: "pixel art shower room entrance, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "amenity_sauna",
+		name: "Sauna",
+		description: "Relax and recover in the steam room",
+		category: "amenities",
+		requiredXp: 700,
+		sortOrder: 4,
+		assetPrompt: "pixel art wooden sauna room, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "amenity_juice",
+		name: "Juice Bar",
+		description: "Fresh smoothies and protein shakes",
+		category: "amenities",
+		requiredXp: 1200,
+		sortOrder: 5,
+		assetPrompt:
+			"pixel art juice bar counter with blender, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_barista",
+	},
+
+	// ── Decor ─────────────────────────────────────────────────────────────
+	{
+		key: "decor_posters",
+		name: "Motivational Posters",
+		description: '"No pain, no gain" and other classics',
+		category: "decor",
+		requiredXp: 0,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art motivational poster on wall, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "decor_plants",
+		name: "Plants",
+		description: "Add some greenery to liven things up",
+		category: "decor",
+		requiredXp: 100,
+		sortOrder: 2,
+		assetPrompt: "pixel art potted plant in gym, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "decor_mirrors",
+		name: "Wall Mirrors",
+		description: "Full-length mirrors for form checking",
+		category: "decor",
+		requiredXp: 350,
+		sortOrder: 3,
+		assetPrompt:
+			"pixel art large wall mirror in gym, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "decor_trophy",
+		name: "Trophy Case",
+		description: "Display your tournament victories",
+		category: "decor",
+		requiredXp: 700,
+		sortOrder: 4,
+		assetPrompt:
+			"pixel art glass trophy display case, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "decor_neon",
+		name: "Neon Sign",
+		description: "A glowing neon sign with your gym name",
+		category: "decor",
+		requiredXp: 1200,
+		sortOrder: 5,
+		assetPrompt: "pixel art neon gym sign glowing, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+
+	// ── Staff ─────────────────────────────────────────────────────────────
+	{
+		key: "staff_reception",
+		name: "Reception Desk",
+		description: "A welcoming front desk for your gym",
+		category: "staff",
+		requiredXp: 0,
+		sortOrder: 1,
+		assetPrompt: "pixel art gym reception desk, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_receptionist",
+	},
+	{
+		key: "staff_trainer",
+		name: "Personal Trainer Station",
+		description: "Hire a personal trainer for your members",
+		category: "staff",
+		requiredXp: 200,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art personal trainer corner with clipboard, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_trainer",
+	},
+	{
+		key: "staff_massage",
+		name: "Massage Chair",
+		description: "Post-workout relaxation station",
+		category: "staff",
+		requiredXp: 500,
+		sortOrder: 3,
+		assetPrompt: "pixel art massage chair station, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "staff_physio",
+		name: "Physical Therapy Room",
+		description: "Professional rehab and recovery room",
+		category: "staff",
+		requiredXp: 900,
+		sortOrder: 4,
+		assetPrompt: "pixel art physical therapy room, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_physio",
+	},
+	{
+		key: "staff_nutrition",
+		name: "Nutrition Corner",
+		description: "Expert dietary advice and meal planning",
+		category: "staff",
+		requiredXp: 1500,
+		sortOrder: 5,
+		assetPrompt: "pixel art nutrition advice desk, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_nutritionist",
+	},
+]
+
+export async function seedGymUpgrades(db: Db) {
+	if (GYM_UPGRADES.length === 0) return
+	await db
+		.insert(gymUpgradesCatalog)
+		.values(GYM_UPGRADES)
 		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
 }
