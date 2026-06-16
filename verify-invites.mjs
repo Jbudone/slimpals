@@ -13,21 +13,21 @@ let passed = 0
 let failed = 0
 
 function ok(label, value) {
-  if (value) {
-    console.log(`  ✅ ${label}`)
-    passed++
-  } else {
-    console.log(`  ❌ ${label}`)
-    failed++
-  }
+	if (value) {
+		console.log(`  ✅ ${label}`)
+		passed++
+	} else {
+		console.log(`  ❌ ${label}`)
+		failed++
+	}
 }
 
 async function login(page) {
-  await page.goto(`${BASE}/login`)
-  await page.fill('input[type="email"]', EMAIL)
-  await page.fill('input[type="password"]', PASSWORD)
-  await page.click('button[type="submit"]')
-  await page.waitForURL(`${BASE}/`)
+	await page.goto(`${BASE}/login`)
+	await page.fill('input[type="email"]', EMAIL)
+	await page.fill('input[type="password"]', PASSWORD)
+	await page.click('button[type="submit"]')
+	await page.waitForURL(`${BASE}/`)
 }
 
 const browser = await chromium.launch({ headless: true })
@@ -50,17 +50,24 @@ ok("Settings heading visible", h1?.trim() === "Settings")
 
 // ── 3. Invite Codes section present ──────────────────────────────────────────
 console.log("\n── 3. Invite Codes section")
-const inviteHeading = await page.locator("h2", { hasText: "Invite Codes" }).isVisible()
+const inviteHeading = await page
+	.locator("h2", { hasText: "Invite Codes" })
+	.isVisible()
 ok("'Invite Codes' section heading visible", inviteHeading)
 
-const generateBtn = await page.locator("button", { hasText: "Generate new invite" }).isVisible()
+const generateBtn = await page
+	.locator("button", { hasText: "Generate new invite" })
+	.isVisible()
 ok("'Generate new invite' button visible", generateBtn)
 
 // ── 4. Empty state ────────────────────────────────────────────────────────────
 console.log("\n── 4. Empty state (or existing codes)")
 // Either empty state message or existing list is acceptable
 const emptyMsg = await page.locator("text=No invite codes yet").isVisible()
-const hasList = await page.locator(".invite-list").isVisible().catch(() => false)
+const hasList = await page
+	.locator(".invite-list")
+	.isVisible()
+	.catch(() => false)
 ok("Empty state or existing list shown", emptyMsg || hasList)
 
 // ── 5. Generate first invite code ─────────────────────────────────────────────
@@ -72,7 +79,10 @@ const codes = await page.locator(".invite-code").all()
 ok("At least one code appears in the list", codes.length >= 1)
 
 const firstCode = await codes[0].textContent()
-ok("Code matches SLIM-XXXXXXXX format", /^SLIM-[A-Z0-9]{8}$/.test(firstCode?.trim() ?? ""))
+ok(
+	"Code matches SLIM-XXXXXXXX format",
+	/^SLIM-[A-Z0-9]{8}$/.test(firstCode?.trim() ?? ""),
+)
 
 // ── 6. Active status badge ────────────────────────────────────────────────────
 console.log("\n── 6. Active status badge")
@@ -98,7 +108,10 @@ ok("Copy button shows 'Copied!' feedback", copiedFeedback)
 
 // Verify clipboard content matches the code
 const clipboardText = await page.evaluate(() => navigator.clipboard.readText())
-ok("Clipboard contains the invite code", clipboardText?.trim() === firstCode?.trim())
+ok(
+	"Clipboard contains the invite code",
+	clipboardText?.trim() === firstCode?.trim(),
+)
 
 // Feedback reverts after 2 seconds
 await page.waitForTimeout(2200)
@@ -114,23 +127,33 @@ const allCodes = await page.locator(".invite-code").all()
 ok("Two codes now listed", allCodes.length >= 2)
 
 const secondCode = await allCodes[allCodes.length - 1].textContent()
-ok("Second code is different from first", secondCode?.trim() !== firstCode?.trim())
-ok("Second code also matches SLIM-XXXXXXXX format", /^SLIM-[A-Z0-9]{8}$/.test(secondCode?.trim() ?? ""))
+ok(
+	"Second code is different from first",
+	secondCode?.trim() !== firstCode?.trim(),
+)
+ok(
+	"Second code also matches SLIM-XXXXXXXX format",
+	/^SLIM-[A-Z0-9]{8}$/.test(secondCode?.trim() ?? ""),
+)
 
 // ── 9. Generating button is disabled during request ───────────────────────────
 console.log("\n── 9. Button state")
 // Hard to test async disable without slowing network; verify button is re-enabled after
-const btnEnabled = await page.locator("button:has-text('Generate new invite')").isEnabled()
+const btnEnabled = await page
+	.locator("button:has-text('Generate new invite')")
+	.isEnabled()
 ok("Generate button re-enabled after request completes", btnEnabled)
 
 // ── 10. Auth enforcement (API) ────────────────────────────────────────────────
 console.log("\n── 10. Auth enforcement")
-const getRes = await fetch("http://localhost:3000/api/invites", { credentials: "omit" })
+const getRes = await fetch("http://localhost:3000/api/invites", {
+	credentials: "omit",
+})
 ok("GET /api/invites returns 401 without session", getRes.status === 401)
 
 const postRes = await fetch("http://localhost:3000/api/invites", {
-  method: "POST",
-  credentials: "omit",
+	method: "POST",
+	credentials: "omit",
 })
 ok("POST /api/invites returns 401 without session", postRes.status === 401)
 
@@ -147,8 +170,8 @@ await browser.close()
 console.log(`\n${"─".repeat(50)}`)
 console.log(`Passed: ${passed}  Failed: ${failed}  Total: ${passed + failed}`)
 if (failed === 0) {
-  console.log("✅ All checks passed\n")
+	console.log("✅ All checks passed\n")
 } else {
-  console.log("❌ Some checks failed\n")
-  process.exit(1)
+	console.log("❌ Some checks failed\n")
+	process.exit(1)
 }

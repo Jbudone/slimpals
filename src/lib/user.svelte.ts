@@ -7,6 +7,8 @@ export type UserProfile = {
 	theme: Theme
 	coachPersonality: CoachPersonality
 	viewMode: ViewMode
+	goalWeightKg: number | null
+	goalDate: string | null
 }
 
 export const userProfile = $state<{ data: UserProfile | null }>({ data: null })

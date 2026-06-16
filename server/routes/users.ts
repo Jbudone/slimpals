@@ -23,6 +23,8 @@ function userPayload(user: typeof users.$inferSelect) {
 		theme: user.theme,
 		coachPersonality: user.coachPersonality,
 		viewMode: user.viewMode,
+		goalWeightKg: user.goalWeightKg != null ? user.goalWeightKg / 10 : null,
+		goalDate: user.goalDate ?? null,
 	}
 }
 
@@ -38,7 +40,11 @@ usersRouter.get("/users/me", async (req, res) => {
 
 usersRouter.patch("/users/me", async (req, res) => {
 	const userId = (req as AuthRequest).user.id
-	const { theme } = req.body as { theme?: string }
+	const { theme, goalWeightKg, goalDate } = req.body as {
+		theme?: string
+		goalWeightKg?: number
+		goalDate?: string
+	}
 
 	if (
 		theme !== undefined &&
@@ -50,9 +56,20 @@ usersRouter.patch("/users/me", async (req, res) => {
 		return
 	}
 
+	if (
+		goalWeightKg !== undefined &&
+		(typeof goalWeightKg !== "number" || goalWeightKg <= 0)
+	) {
+		res.status(400).json({ error: "goalWeightKg must be a positive number" })
+		return
+	}
+
 	const updates: Partial<typeof users.$inferInsert> = {}
 	if (theme !== undefined)
 		updates.theme = theme as (typeof VALID_THEMES)[number]
+	if (goalWeightKg !== undefined)
+		updates.goalWeightKg = Math.round(goalWeightKg * 10)
+	if (goalDate !== undefined) updates.goalDate = new Date(goalDate)
 
 	await db.update(users).set(updates).where(eq(users.id, userId))
 
