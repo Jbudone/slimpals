@@ -44,3 +44,18 @@ export async function updateTheme(theme: Theme) {
 		applyTheme(data.theme)
 	}
 }
+
+export async function updateCoachPersonality(
+	coachPersonality: CoachPersonality,
+) {
+	const res = await fetch("/api/users/me", {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		credentials: "include",
+		body: JSON.stringify({ coachPersonality }),
+	})
+	if (res.ok) {
+		const data = (await res.json()) as UserProfile
+		userProfile.data = data
+	}
+}

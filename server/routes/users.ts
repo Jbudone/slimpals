@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm"
 import { Router } from "express"
+import type { CoachPersonality } from "../../shared/types.js"
 import { db } from "../db/index.js"
 import { users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
@@ -14,6 +15,14 @@ const VALID_THEMES = [
 	"light",
 	"neon",
 ] as const
+
+const VALID_PERSONALITIES: CoachPersonality[] = [
+	"drill_sergeant",
+	"friendly",
+	"roaster",
+	"anime_sensei",
+	"bro",
+]
 
 function userPayload(user: typeof users.$inferSelect) {
 	return {
@@ -40,10 +49,11 @@ usersRouter.get("/users/me", async (req, res) => {
 
 usersRouter.patch("/users/me", async (req, res) => {
 	const userId = (req as AuthRequest).user.id
-	const { theme, goalWeightKg, goalDate } = req.body as {
+	const { theme, goalWeightKg, goalDate, coachPersonality } = req.body as {
 		theme?: string
 		goalWeightKg?: number
 		goalDate?: string
+		coachPersonality?: string
 	}
 
 	if (
@@ -52,6 +62,16 @@ usersRouter.patch("/users/me", async (req, res) => {
 	) {
 		res.status(400).json({
 			error: `Invalid theme. Must be one of: ${VALID_THEMES.join(", ")}`,
+		})
+		return
+	}
+
+	if (
+		coachPersonality !== undefined &&
+		!VALID_PERSONALITIES.includes(coachPersonality as CoachPersonality)
+	) {
+		res.status(400).json({
+			error: `Invalid personality. Must be one of: ${VALID_PERSONALITIES.join(", ")}`,
 		})
 		return
 	}
@@ -67,6 +87,8 @@ usersRouter.patch("/users/me", async (req, res) => {
 	const updates: Partial<typeof users.$inferInsert> = {}
 	if (theme !== undefined)
 		updates.theme = theme as (typeof VALID_THEMES)[number]
+	if (coachPersonality !== undefined)
+		updates.coachPersonality = coachPersonality as CoachPersonality
 	if (goalWeightKg !== undefined)
 		updates.goalWeightKg = Math.round(goalWeightKg * 10)
 	if (goalDate !== undefined) updates.goalDate = new Date(goalDate)

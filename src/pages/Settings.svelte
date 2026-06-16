@@ -1,8 +1,54 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import type { CoachPersonality } from "../../shared/types.js"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
-import { userProfile } from "../lib/user.svelte.js"
+import { updateCoachPersonality, userProfile } from "../lib/user.svelte.js"
+
+type PersonalityOption = {
+	id: CoachPersonality
+	name: string
+	description: string
+	sample: string
+}
+
+const PERSONALITY_OPTIONS: PersonalityOption[] = [
+	{
+		id: "friendly",
+		name: "Coach Sam",
+		description: "Warm, encouraging, and always in your corner.",
+		sample:
+			"Amazing work — that meal is packed with nutrients to fuel your goals!",
+	},
+	{
+		id: "drill_sergeant",
+		name: "Sarge",
+		description: "Tough love, military intensity, zero excuses.",
+		sample: "Listen up, soldier — that meal is mission fuel. Keep executing!",
+	},
+	{
+		id: "roaster",
+		name: "The Roaster",
+		description: "Brutally funny with a heart of gold.",
+		sample:
+			"Was this meal a cry for help? Bold choice. At least the protein's decent.",
+	},
+	{
+		id: "anime_sensei",
+		name: "Sensei",
+		description: "Philosophical, dramatic, and epically motivating.",
+		sample: "Every bite... is a step upon the warrior's path. Choose wisely.",
+	},
+	{
+		id: "bro",
+		name: "Bro",
+		description: "Gym-bro hype energy, ALL CAPS when excited.",
+		sample:
+			"BRO those macros are CLEAN — your gains are gonna be UNREAL today!",
+	},
+]
+
+let savingPersonality = $state(false)
 
 type Invite = {
 	id: number
@@ -65,6 +111,42 @@ onMount(loadInvites)
 				<dt>Email</dt>
 				<dd>{userProfile.data.email}</dd>
 			</dl>
+		</section>
+
+		<section class="section">
+			<h2>Coach Personality</h2>
+			<p class="section-desc">Choose who delivers your AI coaching messages.</p>
+			<ul class="personality-list">
+				{#each PERSONALITY_OPTIONS as option (option.id)}
+					{@const selected = userProfile.data.coachPersonality === option.id}
+					<li>
+						<button
+							type="button"
+							class="personality-card"
+							class:selected
+							disabled={savingPersonality}
+							onclick={async () => {
+								if (selected) return
+								savingPersonality = true
+								try {
+									await updateCoachPersonality(option.id)
+								} finally {
+									savingPersonality = false
+								}
+							}}
+						>
+							<div class="personality-header">
+								<span class="personality-name">{option.name}</span>
+								{#if selected}
+									<span class="personality-active">Active</span>
+								{/if}
+							</div>
+							<p class="personality-desc">{option.description}</p>
+							<p class="personality-sample">"{option.sample}"</p>
+						</button>
+					</li>
+				{/each}
+			</ul>
 		</section>
 	{/if}
 
@@ -244,6 +326,80 @@ dd {
 	background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
 	color: var(--color-text-muted);
 	border: 1px solid var(--color-border);
+}
+
+/* Personality selector */
+.personality-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.personality-card {
+	width: 100%;
+	text-align: left;
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: 0.5rem;
+	padding: 0.75rem 1rem;
+	cursor: pointer;
+	transition: border-color 0.15s;
+}
+
+.personality-card:hover:not(:disabled) {
+	border-color: var(--color-accent);
+}
+
+.personality-card.selected {
+	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+}
+
+.personality-card:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+
+.personality-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.25rem;
+}
+
+.personality-name {
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.personality-active {
+	font-size: 0.6875rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	padding: 0.125rem 0.4rem;
+	border-radius: 99px;
+	background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+	color: var(--color-accent);
+	border: 1px solid var(--color-accent);
+}
+
+.personality-desc {
+	font-size: 0.8125rem;
+	color: var(--color-text-muted);
+	margin: 0 0 0.375rem;
+}
+
+.personality-sample {
+	font-size: 0.8125rem;
+	color: var(--color-text);
+	font-style: italic;
+	margin: 0;
+	opacity: 0.75;
 }
 
 /* Buttons */
