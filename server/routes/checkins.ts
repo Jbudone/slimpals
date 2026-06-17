@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import { dailyCheckins } from "../db/schema.js"
+import { dailyCheckins, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
@@ -131,6 +131,27 @@ checkinsRouter.post("/checkins", async (req, res) => {
 		gymXp += 10
 	}
 	await awardGymXp(userId, gymXp, "checkin", db)
+
+	if (newBadges.length > 0) {
+		const [user] = await db
+			.select({ autoShareBadges: users.autoShareBadges })
+			.from(users)
+			.where(eq(users.id, userId))
+
+		if (user?.autoShareBadges) {
+			for (const badge of newBadges) {
+				await db.insert(socialPosts).values({
+					userId,
+					type: "milestone",
+					content: {
+						badgeKey: badge.key,
+						badgeName: badge.name,
+						badgeTier: badge.tier,
+					},
+				})
+			}
+		}
+	}
 
 	res.status(201).json({ ...checkinPayload(row), newBadges })
 })

@@ -35,6 +35,9 @@ function userPayload(user: typeof users.$inferSelect) {
 		goalWeightKg: user.goalWeightKg != null ? user.goalWeightKg / 10 : null,
 		goalDate: user.goalDate ?? null,
 		isAdmin: user.isAdmin,
+		autoShareFoodLogs: user.autoShareFoodLogs,
+		autoShareBadges: user.autoShareBadges,
+		autoShareWeightMilestones: user.autoShareWeightMilestones,
 	}
 }
 
@@ -50,11 +53,22 @@ usersRouter.get("/users/me", async (req, res) => {
 
 usersRouter.patch("/users/me", async (req, res) => {
 	const userId = (req as AuthRequest).user.id
-	const { theme, goalWeightKg, goalDate, coachPersonality } = req.body as {
+	const {
+		theme,
+		goalWeightKg,
+		goalDate,
+		coachPersonality,
+		autoShareFoodLogs,
+		autoShareBadges,
+		autoShareWeightMilestones,
+	} = req.body as {
 		theme?: string
 		goalWeightKg?: number
 		goalDate?: string
 		coachPersonality?: string
+		autoShareFoodLogs?: boolean
+		autoShareBadges?: boolean
+		autoShareWeightMilestones?: boolean
 	}
 
 	if (
@@ -93,6 +107,11 @@ usersRouter.patch("/users/me", async (req, res) => {
 	if (goalWeightKg !== undefined)
 		updates.goalWeightKg = Math.round(goalWeightKg * 10)
 	if (goalDate !== undefined) updates.goalDate = new Date(goalDate)
+	if (autoShareFoodLogs !== undefined)
+		updates.autoShareFoodLogs = autoShareFoodLogs
+	if (autoShareBadges !== undefined) updates.autoShareBadges = autoShareBadges
+	if (autoShareWeightMilestones !== undefined)
+		updates.autoShareWeightMilestones = autoShareWeightMilestones
 
 	await db.update(users).set(updates).where(eq(users.id, userId))
 

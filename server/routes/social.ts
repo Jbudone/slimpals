@@ -1,7 +1,14 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import { reactions, socialPosts, users } from "../db/schema.js"
+import {
+	badges,
+	foodLogs,
+	reactions,
+	socialPosts,
+	userBadges,
+	users,
+} from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
 
@@ -149,4 +156,88 @@ socialRouter.post("/social/react", async (req, res) => {
 	}
 
 	res.json({ reactions: buildReactions(postReactions, userId), newBadges })
+})
+
+socialRouter.post("/social/share", async (req, res) => {
+	const userId = (req as AuthRequest).user.id
+	const { source_type, source_id } = req.body as {
+		source_type?: string
+		source_id?: number
+	}
+
+	if (!source_type || !source_id) {
+		res.status(400).json({ error: "source_type and source_id are required" })
+		return
+	}
+
+	if (source_type === "food_log") {
+		const [log] = await db
+			.select()
+			.from(foodLogs)
+			.where(and(eq(foodLogs.id, source_id), eq(foodLogs.userId, userId)))
+			.limit(1)
+
+		if (!log) {
+			res.status(404).json({ error: "Food log not found" })
+			return
+		}
+
+		const [post] = await db
+			.insert(socialPosts)
+			.values({
+				userId,
+				type: "food_photo",
+				content: {
+					foodLogId: log.id,
+					photoUrl: log.photoUrl,
+					foodName:
+						(log.aiAnalysis as { foodName?: string } | null)?.foodName ??
+						"Food",
+					mealType: log.mealType,
+				},
+			})
+			.$returningId()
+
+		res.status(201).json({ postId: post.id })
+		return
+	}
+
+	if (source_type === "badge") {
+		const [ub] = await db
+			.select({
+				badgeId: userBadges.badgeId,
+				key: badges.key,
+				name: badges.name,
+				tier: badges.tier,
+			})
+			.from(userBadges)
+			.innerJoin(badges, eq(userBadges.badgeId, badges.id))
+			.where(and(eq(userBadges.id, source_id), eq(userBadges.userId, userId)))
+			.limit(1)
+
+		if (!ub) {
+			res.status(404).json({ error: "Badge not found" })
+			return
+		}
+
+		const [post] = await db
+			.insert(socialPosts)
+			.values({
+				userId,
+				type: "milestone",
+				content: {
+					badgeKey: ub.key,
+					badgeName: ub.name,
+					badgeTier: ub.tier,
+				},
+			})
+			.$returningId()
+
+		res.status(201).json({ postId: post.id })
+		return
+	}
+
+	res
+		.status(400)
+		.json({ error: "Invalid source_type. Must be food_log or badge" })
 })

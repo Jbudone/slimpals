@@ -10,6 +10,9 @@ export type UserProfile = {
 	goalWeightKg: number | null
 	goalDate: string | null
 	isAdmin: boolean
+	autoShareFoodLogs: boolean
+	autoShareBadges: boolean
+	autoShareWeightMilestones: boolean
 }
 
 export const userProfile = $state<{ data: UserProfile | null }>({ data: null })

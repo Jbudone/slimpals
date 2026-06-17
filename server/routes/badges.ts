@@ -16,6 +16,7 @@ badgesRouter.get("/badges/mine", async (req, res) => {
 	const earned = await db
 		.select({
 			id: badges.id,
+			userBadgeId: userBadges.id,
 			key: badges.key,
 			name: badges.name,
 			description: badges.description,

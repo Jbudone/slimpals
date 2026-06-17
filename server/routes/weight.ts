@@ -1,7 +1,7 @@
 import { asc, count, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import { users, weightEntries } from "../db/schema.js"
+import { socialPosts, users, weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
@@ -108,6 +108,49 @@ weightRouter.post("/weight", async (req, res) => {
 	for (const badge of newBadges) {
 		const xp = badge.key === "loss_5kg" ? 50 : 10
 		await awardGymXp(userId, xp, `badge:${badge.key}`, db)
+	}
+
+	const [userRow] = await db
+		.select({
+			autoShareBadges: users.autoShareBadges,
+			autoShareWeightMilestones: users.autoShareWeightMilestones,
+		})
+		.from(users)
+		.where(eq(users.id, userId))
+
+	if (userRow?.autoShareBadges && newBadges.length > 0) {
+		for (const badge of newBadges) {
+			await db.insert(socialPosts).values({
+				userId,
+				type: "milestone",
+				content: {
+					badgeKey: badge.key,
+					badgeName: badge.name,
+					badgeTier: badge.tier,
+				},
+			})
+		}
+	}
+
+	if (userRow?.autoShareWeightMilestones && firstEntry) {
+		const lossKg = (firstEntry.weightKg - stored) / 10
+		const MILESTONES = [5, 10, 15, 20, 25, 30]
+		for (const m of MILESTONES) {
+			if (lossKg >= m) {
+				const weightBadge = newBadges.find((b) => b.key === `loss_${m}kg`)
+				if (weightBadge) {
+					await db.insert(socialPosts).values({
+						userId,
+						type: "weight_update",
+						content: {
+							milestoneKg: m,
+							currentWeightKg: stored / 10,
+							text: `Lost ${m}kg!`,
+						},
+					})
+				}
+			}
+		}
 	}
 
 	res.status(201).json({ ...entryPayload(row), newBadges })

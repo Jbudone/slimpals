@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lt } from "drizzle-orm"
 import { Router } from "express"
 import multer from "multer"
 import { db } from "../db/index.js"
-import { foodLogs } from "../db/schema.js"
+import { foodLogs, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
@@ -140,6 +140,43 @@ export function createFoodRouter(aiService: AIService) {
 			gymXp += 10
 		}
 		await awardGymXp(userId, gymXp, "food_log", db)
+
+		const [user] = await db
+			.select({
+				autoShareFoodLogs: users.autoShareFoodLogs,
+				autoShareBadges: users.autoShareBadges,
+			})
+			.from(users)
+			.where(eq(users.id, userId))
+
+		if (user?.autoShareFoodLogs) {
+			await db.insert(socialPosts).values({
+				userId,
+				type: "food_photo",
+				content: {
+					foodLogId: row.id,
+					photoUrl: row.photoUrl,
+					foodName:
+						(row.aiAnalysis as { foodName?: string } | null)?.foodName ??
+						"Food",
+					mealType: row.mealType,
+				},
+			})
+		}
+
+		if (user?.autoShareBadges && newBadges.length > 0) {
+			for (const badge of newBadges) {
+				await db.insert(socialPosts).values({
+					userId,
+					type: "milestone",
+					content: {
+						badgeKey: badge.key,
+						badgeName: badge.name,
+						badgeTier: badge.tier,
+					},
+				})
+			}
+		}
 
 		res.status(201).json({
 			id: row.id,

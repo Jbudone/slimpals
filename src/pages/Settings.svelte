@@ -3,7 +3,11 @@ import { onMount } from "svelte"
 import type { CoachPersonality } from "../../shared/types.js"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
-import { updateCoachPersonality, userProfile } from "../lib/user.svelte.js"
+import {
+	type UserProfile,
+	updateCoachPersonality,
+	userProfile,
+} from "../lib/user.svelte.js"
 
 type PersonalityOption = {
 	id: CoachPersonality
@@ -49,6 +53,22 @@ const PERSONALITY_OPTIONS: PersonalityOption[] = [
 ]
 
 let savingPersonality = $state(false)
+let savingShare = $state<string | null>(null)
+
+async function toggleShare(
+	field: "autoShareFoodLogs" | "autoShareBadges" | "autoShareWeightMilestones",
+) {
+	if (!userProfile.data || savingShare) return
+	savingShare = field
+	try {
+		const data = await api.patch<UserProfile>("/users/me", {
+			[field]: !userProfile.data[field],
+		})
+		userProfile.data = data
+	} finally {
+		savingShare = null
+	}
+}
 
 type Invite = {
 	id: number
@@ -146,6 +166,61 @@ onMount(loadInvites)
 						</button>
 					</li>
 				{/each}
+			</ul>
+		</section>
+
+		<section class="section">
+			<h2>Sharing</h2>
+			<p class="section-desc">Choose what gets posted to the social feed automatically.</p>
+			<ul class="toggle-list">
+				<li class="toggle-row">
+					<div class="toggle-info">
+						<span class="toggle-label">Food logs</span>
+						<span class="toggle-desc">Auto-share when you log a meal</span>
+					</div>
+					<button
+						type="button"
+						class="toggle-switch"
+						class:on={userProfile.data.autoShareFoodLogs}
+						disabled={savingShare === "autoShareFoodLogs"}
+						onclick={() => toggleShare("autoShareFoodLogs")}
+						aria-label="Toggle auto-share food logs"
+					>
+						<span class="toggle-knob"></span>
+					</button>
+				</li>
+				<li class="toggle-row">
+					<div class="toggle-info">
+						<span class="toggle-label">Badges</span>
+						<span class="toggle-desc">Auto-share when you earn a badge</span>
+					</div>
+					<button
+						type="button"
+						class="toggle-switch"
+						class:on={userProfile.data.autoShareBadges}
+						disabled={savingShare === "autoShareBadges"}
+						onclick={() => toggleShare("autoShareBadges")}
+						aria-label="Toggle auto-share badges"
+					>
+						<span class="toggle-knob"></span>
+					</button>
+				</li>
+				<li class="toggle-row">
+					<div class="toggle-info">
+						<span class="toggle-label">Weight milestones</span>
+						<span class="toggle-desc">Auto-share when you hit a weight loss milestone</span>
+					</div>
+					<button
+						type="button"
+						class="toggle-switch"
+						class:on={userProfile.data.autoShareWeightMilestones}
+						disabled={savingShare === "autoShareWeightMilestones"}
+						onclick={() => toggleShare("autoShareWeightMilestones")}
+						aria-label="Toggle auto-share weight milestones"
+					>
+						<span class="toggle-knob"></span>
+					</button>
+				</li>
 			</ul>
 		</section>
 	{/if}
@@ -436,5 +511,81 @@ dd {
 .btn-copy:hover {
 	border-color: var(--color-accent);
 	color: var(--color-accent);
+}
+
+/* Toggle switches */
+.toggle-list {
+	list-style: none;
+	padding: 0;
+	margin: 0.75rem 0 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.toggle-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: 0.5rem;
+	padding: 0.625rem 0.875rem;
+}
+
+.toggle-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+}
+
+.toggle-label {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.toggle-desc {
+	font-size: 0.75rem;
+	color: var(--color-text-muted);
+}
+
+.toggle-switch {
+	position: relative;
+	width: 44px;
+	height: 24px;
+	border-radius: 12px;
+	border: 1px solid var(--color-border);
+	background: var(--color-surface-2, #333);
+	cursor: pointer;
+	padding: 0;
+	flex-shrink: 0;
+	transition: background 0.2s, border-color 0.2s;
+}
+
+.toggle-switch.on {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+}
+
+.toggle-switch:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.toggle-knob {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 0.2s;
+}
+
+.toggle-switch.on .toggle-knob {
+	transform: translateX(20px);
 }
 </style>
