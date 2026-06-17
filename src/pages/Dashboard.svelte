@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import type { CoachPersonality } from "../../shared/types.js"
 import { api } from "../lib/api.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
 
@@ -10,10 +11,27 @@ type CheckinStatus = {
 	streakCount: number
 }
 
+type WeeklyInspiration = {
+	id: number
+	message: string
+	weekStart: string
+	generatedAt: string
+	coachPersonality: CoachPersonality
+} | null
+
+const COACH_NAMES: Record<CoachPersonality, string> = {
+	friendly: "Coach Sam",
+	drill_sergeant: "Sarge",
+	roaster: "The Roaster",
+	anime_sensei: "Sensei",
+	bro: "Bro",
+}
+
 let status = $state<CheckinStatus | null>(null)
 let loading = $state(true)
 let checkingIn = $state(false)
 let checkinDone = $state(false)
+let inspiration = $state<WeeklyInspiration>(null)
 
 const MILESTONES = [7, 30, 100]
 
@@ -24,6 +42,14 @@ async function loadStatus() {
 		// ignore — widget stays hidden
 	} finally {
 		loading = false
+	}
+}
+
+async function loadInspiration() {
+	try {
+		inspiration = await api.get<WeeklyInspiration>("/inspiration/weekly")
+	} catch {
+		// ignore — card stays hidden
 	}
 }
 
@@ -47,11 +73,24 @@ function nextMilestone(streak: number): number | null {
 	return MILESTONES.find((m) => m > streak) ?? null
 }
 
-onMount(loadStatus)
+onMount(() => {
+	loadStatus()
+	loadInspiration()
+})
 </script>
 
 <div class="dashboard">
 	<h1>Dashboard</h1>
+
+	{#if inspiration}
+		<section class="card inspiration-card">
+			<div class="inspiration-header">
+				<span class="inspiration-icon">💬</span>
+				<span class="inspiration-coach">{COACH_NAMES[inspiration.coachPersonality]}</span>
+			</div>
+			<p class="inspiration-message">{inspiration.message}</p>
+		</section>
+	{/if}
 
 	{#if !loading && status}
 		<section class="card streak-card">
@@ -196,5 +235,38 @@ h1 {
 	font-size: 0.8125rem;
 	color: var(--color-text-muted);
 	margin: 0;
+}
+
+/* Inspiration card */
+.inspiration-card {
+	border-color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+
+.inspiration-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.inspiration-icon {
+	font-size: 1.25rem;
+	line-height: 1;
+}
+
+.inspiration-coach {
+	font-size: 0.8125rem;
+	font-weight: 700;
+	color: var(--color-accent);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.inspiration-message {
+	font-size: 0.9375rem;
+	color: var(--color-text);
+	line-height: 1.5;
+	margin: 0;
+	font-style: italic;
 }
 </style>

@@ -18,6 +18,9 @@ const stubAI: AIService = {
 		alternatives: ["Add grilled chicken for more protein"],
 		rating: 7,
 	}),
+	generateVictoryMessage: async (userName) =>
+		`Congrats ${userName}, you crushed it!`,
+	generateWeeklyInspiration: async () => "Keep pushing this week!",
 }
 
 // Minimal valid 1×1 PNG for upload tests

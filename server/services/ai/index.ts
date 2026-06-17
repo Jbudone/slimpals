@@ -13,12 +13,24 @@ export type FoodAnalysis = {
 	rating: number
 }
 
+export type WeeklyStats = {
+	checkins: number
+	weightDeltaKg: number | null
+	foodLogs: number
+	badgesEarned: number
+}
+
 export interface AIService {
 	analyzeFood(imageUrl: string, userId: string): Promise<FoodAnalysis>
 	generateVictoryMessage(
 		userName: string,
 		tournamentName: string,
 		tournamentType: string,
+		personality: string,
+	): Promise<string>
+	generateWeeklyInspiration(
+		userName: string,
+		stats: WeeklyStats,
 		personality: string,
 	): Promise<string>
 }
@@ -90,6 +102,40 @@ export class GeminiAIService implements AIService {
 		}
 
 		const prompt = `Write a short, enthusiastic victory message (2-3 sentences max) for ${userName} who just won the "${tournamentName}" ${typeLabels[tournamentType] ?? tournamentType} tournament. Speak in your coaching personality's voice. Make it celebratory and motivating. Plain text only, no markdown.`
+
+		const result = await model.generateContent(prompt)
+		return result.response.text().trim()
+	}
+
+	async generateWeeklyInspiration(
+		userName: string,
+		stats: WeeklyStats,
+		personality: string,
+	): Promise<string> {
+		const coachKey = (
+			personality in PERSONALITIES ? personality : "friendly"
+		) as CoachPersonality
+		const systemInstruction = PERSONALITIES[coachKey]
+
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+			systemInstruction,
+		})
+
+		const weightLine =
+			stats.weightDeltaKg !== null
+				? `Weight change: ${stats.weightDeltaKg > 0 ? "+" : ""}${stats.weightDeltaKg.toFixed(1)}kg`
+				: "No weight entries this week"
+
+		const prompt = `Write a short, personalized weekly inspiration message (2-4 sentences) for ${userName} based on their past week's activity. Speak in your coaching personality's voice. Make it motivating and specific to their stats. Plain text only, no markdown.
+
+Their week in review:
+- Check-ins: ${stats.checkins}/7 days
+- ${weightLine}
+- Food logs: ${stats.foodLogs} meals tracked
+- Badges earned: ${stats.badgesEarned}
+
+Focus on what they did well and encourage them for the coming week.`
 
 		const result = await model.generateContent(prompt)
 		return result.response.text().trim()
