@@ -5,6 +5,7 @@ import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
 import { fetchUserProfile, userProfile } from "./lib/user.svelte.js"
 import Admin from "./pages/Admin.svelte"
 import Badges from "./pages/Badges.svelte"
+import Challenges from "./pages/Challenges.svelte"
 import Dashboard from "./pages/Dashboard.svelte"
 import Food from "./pages/Food.svelte"
 import Login from "./pages/Login.svelte"
@@ -78,6 +79,8 @@ async function handleLogout() {
 		<Social />
 	{:else if currentPath === "/tournaments"}
 		<Tournaments />
+	{:else if currentPath === "/challenges"}
+		<Challenges />
 	{:else if currentPath === "/badges"}
 		<Badges />
 	{:else if currentPath === "/settings"}

@@ -8,6 +8,7 @@ import { requireAuth } from "./middleware/requireAuth.js"
 import { adminRouter } from "./routes/admin.js"
 import { appleHealthRouter } from "./routes/appleHealth.js"
 import { badgesRouter } from "./routes/badges.js"
+import { createChallengesRouter } from "./routes/challenges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
 import { gymRouter } from "./routes/gym.js"
@@ -64,6 +65,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", gymRouter)
 	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", createInspirationRouter(aiService))
+	app.use("/api", createChallengesRouter(aiService))
 	app.use("/api", appleHealthRouter)
 	app.use("/api", adminRouter)
 

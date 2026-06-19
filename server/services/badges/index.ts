@@ -24,6 +24,7 @@ export type BadgeContext =
 			totalWins: number
 			tournamentType: string
 	  }
+	| { type: "challenge_complete"; totalCompleted: number }
 
 export type NewBadge = {
 	key: string
@@ -95,6 +96,13 @@ function badgeKeysForContext(ctx: BadgeContext): string[] {
 			if (ctx.tournamentType === "weight_loss")
 				keys.push("tournament_weight_win")
 			if (ctx.tournamentType === "streak") keys.push("tournament_streak_win")
+			return keys
+		}
+		case "challenge_complete": {
+			const keys = ["challenge_first"]
+			if (ctx.totalCompleted >= 3) keys.push("challenge_3")
+			if (ctx.totalCompleted >= 6) keys.push("challenge_6")
+			if (ctx.totalCompleted >= 12) keys.push("challenge_12")
 			return keys
 		}
 	}
