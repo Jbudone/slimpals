@@ -7,6 +7,7 @@ export type UserProfile = {
 	theme: Theme
 	coachPersonality: CoachPersonality
 	viewMode: ViewMode
+	heightCm: number | null
 	goalWeightKg: number | null
 	goalDate: string | null
 	isAdmin: boolean

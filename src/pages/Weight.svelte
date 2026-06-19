@@ -226,7 +226,11 @@ onMount(async () => {
 				/>
 			{/if}
 		{:else}
-			<WeightChart {entries} />
+			<WeightChart
+				{entries}
+				viewMode={userProfile.data?.viewMode ?? "simple"}
+				heightCm={userProfile.data?.heightCm ?? null}
+			/>
 
 			{#if entries.length > 0}
 				<table class="history-table">

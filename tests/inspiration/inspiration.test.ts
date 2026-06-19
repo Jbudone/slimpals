@@ -16,11 +16,11 @@ import {
 	truncateAll,
 } from "../helpers/db.js"
 
-let lastInspirationCall: {
+let allInspirationCalls: {
 	userName: string
 	stats: WeeklyStats
 	personality: string
-} | null = null
+}[] = []
 
 const stubAI: AIService = {
 	analyzeFood: async () => ({
@@ -33,7 +33,7 @@ const stubAI: AIService = {
 	generateVictoryMessage: async (userName) =>
 		`Congrats ${userName}, you crushed it!`,
 	generateWeeklyInspiration: async (userName, stats, personality) => {
-		lastInspirationCall = { userName, stats, personality }
+		allInspirationCalls.push({ userName, stats, personality })
 		return `Great week ${userName}! You checked in ${stats.checkins} times.`
 	},
 }
@@ -82,7 +82,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await truncateAll()
 	await seedBase()
-	lastInspirationCall = null
+	allInspirationCalls = []
 })
 
 afterAll(async () => {
@@ -130,9 +130,11 @@ describe("POST /api/inspiration/generate", () => {
 			.from(users)
 			.where(eq(users.email, "a@sp.test"))
 
-		// Seed some activity in the previous week
+		// Seed activity in the middle of the previous week
 		const lastWeek = new Date()
-		lastWeek.setUTCDate(lastWeek.getUTCDate() - 3)
+		const dayOfWeek = lastWeek.getUTCDay()
+		const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+		lastWeek.setUTCDate(lastWeek.getUTCDate() - daysSinceMonday - 4)
 
 		await db.insert(dailyCheckins).values({
 			userId: alice.id,
@@ -149,10 +151,10 @@ describe("POST /api/inspiration/generate", () => {
 
 		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
 
-		expect(lastInspirationCall).not.toBeNull()
-		expect(lastInspirationCall?.userName).toBe("Alice")
-		expect(lastInspirationCall?.stats.checkins).toBeGreaterThanOrEqual(1)
-		expect(lastInspirationCall?.stats.foodLogs).toBeGreaterThanOrEqual(1)
+		const aliceCall = allInspirationCalls.find((c) => c.userName === "Alice")
+		expect(aliceCall).toBeDefined()
+		expect(aliceCall?.stats.checkins).toBeGreaterThanOrEqual(1)
+		expect(aliceCall?.stats.foodLogs).toBeGreaterThanOrEqual(1)
 	})
 
 	it("uses the user's coach personality", async () => {

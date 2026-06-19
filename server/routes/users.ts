@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm"
 import { Router } from "express"
-import type { CoachPersonality } from "../../shared/types.js"
+import type { CoachPersonality, ViewMode } from "../../shared/types.js"
 import { db } from "../db/index.js"
 import { users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
@@ -34,6 +34,7 @@ function userPayload(user: typeof users.$inferSelect) {
 		viewMode: user.viewMode,
 		goalWeightKg: user.goalWeightKg != null ? user.goalWeightKg / 10 : null,
 		goalDate: user.goalDate ?? null,
+		heightCm: user.heightCm,
 		isAdmin: user.isAdmin,
 		autoShareFoodLogs: user.autoShareFoodLogs,
 		autoShareBadges: user.autoShareBadges,
@@ -58,6 +59,8 @@ usersRouter.patch("/users/me", async (req, res) => {
 		goalWeightKg,
 		goalDate,
 		coachPersonality,
+		viewMode,
+		heightCm,
 		autoShareFoodLogs,
 		autoShareBadges,
 		autoShareWeightMilestones,
@@ -66,6 +69,8 @@ usersRouter.patch("/users/me", async (req, res) => {
 		goalWeightKg?: number
 		goalDate?: string
 		coachPersonality?: string
+		viewMode?: string
+		heightCm?: number | null
 		autoShareFoodLogs?: boolean
 		autoShareBadges?: boolean
 		autoShareWeightMilestones?: boolean
@@ -99,11 +104,33 @@ usersRouter.patch("/users/me", async (req, res) => {
 		return
 	}
 
+	const VALID_VIEW_MODES: ViewMode[] = ["simple", "technical"]
+	if (
+		viewMode !== undefined &&
+		!VALID_VIEW_MODES.includes(viewMode as ViewMode)
+	) {
+		res.status(400).json({
+			error: `Invalid viewMode. Must be one of: ${VALID_VIEW_MODES.join(", ")}`,
+		})
+		return
+	}
+
+	if (
+		heightCm !== undefined &&
+		heightCm !== null &&
+		(typeof heightCm !== "number" || heightCm <= 0)
+	) {
+		res.status(400).json({ error: "heightCm must be a positive number" })
+		return
+	}
+
 	const updates: Partial<typeof users.$inferInsert> = {}
 	if (theme !== undefined)
 		updates.theme = theme as (typeof VALID_THEMES)[number]
 	if (coachPersonality !== undefined)
 		updates.coachPersonality = coachPersonality as CoachPersonality
+	if (viewMode !== undefined) updates.viewMode = viewMode as ViewMode
+	if (heightCm !== undefined) updates.heightCm = heightCm
 	if (goalWeightKg !== undefined)
 		updates.goalWeightKg = Math.round(goalWeightKg * 10)
 	if (goalDate !== undefined) updates.goalDate = new Date(goalDate)

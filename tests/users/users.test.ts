@@ -130,4 +130,93 @@ describe("PATCH /api/users/me", () => {
 
 		expect(getRes.body.theme).toBe("forest")
 	})
+
+	it("returns 'simple' as default viewMode for new users", async () => {
+		const cookie = await registerAndLogin()
+
+		const res = await request(app).get("/api/users/me").set("Cookie", cookie)
+
+		expect(res.status).toBe(200)
+		expect(res.body.viewMode).toBe("simple")
+	})
+
+	it("updates viewMode to technical and persists it", async () => {
+		const cookie = await registerAndLogin()
+
+		const patch = await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ viewMode: "technical" })
+
+		expect(patch.status).toBe(200)
+		expect(patch.body.viewMode).toBe("technical")
+
+		const get = await request(app).get("/api/users/me").set("Cookie", cookie)
+		expect(get.body.viewMode).toBe("technical")
+	})
+
+	it("returns 400 for an invalid viewMode value", async () => {
+		const cookie = await registerAndLogin()
+
+		const res = await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ viewMode: "advanced" })
+
+		expect(res.status).toBe(400)
+		expect(res.body.error).toMatch(/invalid viewMode/i)
+	})
+
+	it("returns null as default heightCm for new users", async () => {
+		const cookie = await registerAndLogin()
+
+		const res = await request(app).get("/api/users/me").set("Cookie", cookie)
+
+		expect(res.status).toBe(200)
+		expect(res.body.heightCm).toBeNull()
+	})
+
+	it("updates heightCm with a valid value and persists it", async () => {
+		const cookie = await registerAndLogin()
+
+		const patch = await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ heightCm: 175 })
+
+		expect(patch.status).toBe(200)
+		expect(patch.body.heightCm).toBe(175)
+
+		const get = await request(app).get("/api/users/me").set("Cookie", cookie)
+		expect(get.body.heightCm).toBe(175)
+	})
+
+	it("clears heightCm when set to null", async () => {
+		const cookie = await registerAndLogin()
+
+		await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ heightCm: 175 })
+
+		const patch = await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ heightCm: null })
+
+		expect(patch.status).toBe(200)
+		expect(patch.body.heightCm).toBeNull()
+	})
+
+	it("returns 400 for a negative heightCm", async () => {
+		const cookie = await registerAndLogin()
+
+		const res = await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ heightCm: -10 })
+
+		expect(res.status).toBe(400)
+		expect(res.body.error).toMatch(/heightCm/i)
+	})
 })

@@ -1,6 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
-import type { CoachPersonality } from "../../shared/types.js"
+import type { CoachPersonality, ViewMode } from "../../shared/types.js"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
 import {
@@ -54,6 +54,39 @@ const PERSONALITY_OPTIONS: PersonalityOption[] = [
 
 let savingPersonality = $state(false)
 let savingShare = $state<string | null>(null)
+let savingViewMode = $state(false)
+let heightInput = $state("")
+let savingHeight = $state(false)
+let heightSaved = $state(false)
+
+async function setViewMode(mode: ViewMode) {
+	if (!userProfile.data || savingViewMode || userProfile.data.viewMode === mode)
+		return
+	savingViewMode = true
+	try {
+		const data = await api.patch<UserProfile>("/users/me", { viewMode: mode })
+		userProfile.data = data
+	} finally {
+		savingViewMode = false
+	}
+}
+
+async function saveHeight() {
+	if (!userProfile.data || savingHeight) return
+	const cm = heightInput ? Math.round(Number.parseFloat(heightInput)) : null
+	if (heightInput && (Number.isNaN(cm as number) || (cm as number) <= 0)) return
+	savingHeight = true
+	try {
+		const data = await api.patch<UserProfile>("/users/me", { heightCm: cm })
+		userProfile.data = data
+		heightSaved = true
+		setTimeout(() => {
+			heightSaved = false
+		}, 2000)
+	} finally {
+		savingHeight = false
+	}
+}
 
 async function toggleShare(
 	field: "autoShareFoodLogs" | "autoShareBadges" | "autoShareWeightMilestones",
@@ -110,7 +143,12 @@ async function copyCode(invite: Invite) {
 	}, 2000)
 }
 
-onMount(loadInvites)
+onMount(() => {
+	loadInvites()
+	if (userProfile.data?.heightCm) {
+		heightInput = String(userProfile.data.heightCm)
+	}
+})
 </script>
 
 <div class="settings">
@@ -131,6 +169,58 @@ onMount(loadInvites)
 				<dt>Email</dt>
 				<dd>{userProfile.data.email}</dd>
 			</dl>
+		</section>
+
+		<section class="section">
+			<h2>View Mode</h2>
+			<p class="section-desc">Simple shows clean charts. Technical adds moving averages, regression, and BMI.</p>
+			<div class="view-mode-toggle">
+				<button
+					type="button"
+					class="mode-btn"
+					class:active={userProfile.data.viewMode === "simple"}
+					disabled={savingViewMode}
+					onclick={() => setViewMode("simple")}
+				>Simple</button>
+				<button
+					type="button"
+					class="mode-btn"
+					class:active={userProfile.data.viewMode === "technical"}
+					disabled={savingViewMode}
+					onclick={() => setViewMode("technical")}
+				>Technical</button>
+			</div>
+		</section>
+
+		<section class="section">
+			<h2>Height</h2>
+			<p class="section-desc">Used for BMI calculation in Technical view mode.</p>
+			<div class="height-form">
+				<input
+					type="number"
+					min="50"
+					max="300"
+					step="1"
+					placeholder="e.g. 175"
+					bind:value={heightInput}
+					class="height-input"
+				/>
+				<span class="height-unit">cm</span>
+				<button
+					type="button"
+					class="btn-save-height"
+					disabled={savingHeight}
+					onclick={saveHeight}
+				>
+					{#if heightSaved}
+						Saved!
+					{:else if savingHeight}
+						Saving…
+					{:else}
+						Save
+					{/if}
+				</button>
+			</div>
 		</section>
 
 		<section class="section">
@@ -587,5 +677,86 @@ dd {
 
 .toggle-switch.on .toggle-knob {
 	transform: translateX(20px);
+}
+
+/* View mode toggle */
+.view-mode-toggle {
+	display: flex;
+	gap: 0;
+	margin-top: 0.75rem;
+	border: 1px solid var(--color-border);
+	border-radius: 0.5rem;
+	overflow: hidden;
+	width: fit-content;
+}
+
+.mode-btn {
+	padding: 0.5rem 1.25rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	background: var(--color-surface);
+	color: var(--color-text-muted);
+	border: none;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn + .mode-btn {
+	border-left: 1px solid var(--color-border);
+}
+
+.mode-btn.active {
+	background: var(--color-accent);
+	color: #fff;
+}
+
+.mode-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Height form */
+.height-form {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+.height-input {
+	width: 100px;
+	background: var(--color-surface-2, #333);
+	border: 1px solid var(--color-border);
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.625rem;
+	color: var(--color-text);
+	font-size: 0.9375rem;
+}
+
+.height-input:focus {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 1px;
+	border-color: var(--color-accent);
+}
+
+.height-unit {
+	font-size: 0.875rem;
+	color: var(--color-text-muted);
+}
+
+.btn-save-height {
+	padding: 0.5rem 1rem;
+	background: var(--color-accent);
+	color: #fff;
+	border: none;
+	border-radius: 0.375rem;
+	font-size: 0.8125rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.btn-save-height:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 </style>
