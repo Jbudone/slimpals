@@ -23,6 +23,7 @@
 		"cors": "^2.8.5",
 		"drizzle-orm": "^0.45.2",
 		"express": "^5.2.1",
+		"fast-xml-parser": "^5.9.3",
 		"multer": "^2.2.0",
 		"mysql2": "^3.22.5",
 		"page": "^1.11.6",

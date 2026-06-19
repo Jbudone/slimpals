@@ -112,6 +112,45 @@ type Invite = {
 	usedByName: string | null
 }
 
+// Apple Health import
+type ImportSummary = {
+	weightEntriesImported: number
+	weightEntriesSkipped: number
+	stepRecordsSaved: number
+}
+let importing = $state(false)
+let importError = $state<string | null>(null)
+let importSummary = $state<ImportSummary | null>(null)
+let fileInputEl = $state<HTMLInputElement | undefined>(undefined)
+
+async function handleImport() {
+	if (!fileInputEl?.files?.length) return
+	const file = fileInputEl.files[0]
+	importing = true
+	importError = null
+	importSummary = null
+	const formData = new FormData()
+	formData.append("file", file)
+	try {
+		const res = await fetch("/api/health/import", {
+			method: "POST",
+			body: formData,
+			credentials: "include",
+		})
+		const data = await res.json()
+		if (!res.ok) {
+			importError = data.error ?? "Import failed"
+			return
+		}
+		importSummary = data as ImportSummary
+	} catch {
+		importError = "Upload failed. Please try again."
+	} finally {
+		importing = false
+		if (fileInputEl) fileInputEl.value = ""
+	}
+}
+
 let inviteList = $state<Invite[]>([])
 let invitesLoading = $state(true)
 let generating = $state(false)
@@ -314,6 +353,46 @@ onMount(() => {
 			</ul>
 		</section>
 	{/if}
+
+	<section class="section">
+		<h2>Apple Health Import</h2>
+		<p class="section-desc">Upload an Apple Health XML export to import weight and step data.</p>
+
+		<div class="import-form">
+			<input
+				type="file"
+				accept=".xml"
+				bind:this={fileInputEl}
+				class="file-input"
+			/>
+			<button
+				type="button"
+				class="btn-primary"
+				disabled={importing}
+				onclick={handleImport}
+			>
+				{importing ? "Importing…" : "Upload & Import"}
+			</button>
+		</div>
+
+		{#if importError}
+			<div class="import-error">{importError}</div>
+		{/if}
+
+		{#if importSummary}
+			<div class="import-summary">
+				<h3>Import Complete</h3>
+				<dl class="import-stats">
+					<dt>Weight entries imported</dt>
+					<dd>{importSummary.weightEntriesImported}</dd>
+					<dt>Weight entries skipped (duplicates)</dt>
+					<dd>{importSummary.weightEntriesSkipped}</dd>
+					<dt>Step records saved</dt>
+					<dd>{importSummary.stepRecordsSaved}</dd>
+				</dl>
+			</div>
+		{/if}
+	</section>
 
 	<section class="section">
 		<div class="section-header">
@@ -758,5 +837,74 @@ dd {
 .btn-save-height:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+/* Apple Health import */
+.import-form {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 0.75rem;
+}
+
+.file-input {
+	font-size: 0.875rem;
+	color: var(--color-text-muted);
+}
+
+.file-input::file-selector-button {
+	background: var(--color-surface-2, #333);
+	border: 1px solid var(--color-border);
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.75rem;
+	color: var(--color-text);
+	font-size: 0.8125rem;
+	font-weight: 600;
+	cursor: pointer;
+	margin-right: 0.5rem;
+}
+
+.import-error {
+	margin-top: 0.75rem;
+	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+	border: 1px solid var(--color-danger);
+	color: var(--color-danger);
+	border-radius: 0.375rem;
+	padding: 0.625rem 0.875rem;
+	font-size: 0.875rem;
+}
+
+.import-summary {
+	margin-top: 0.75rem;
+	background: color-mix(in srgb, var(--color-success, #22c55e) 10%, transparent);
+	border: 1px solid var(--color-success, #22c55e);
+	border-radius: 0.5rem;
+	padding: 1rem;
+}
+
+.import-summary h3 {
+	font-size: 0.9375rem;
+	font-weight: 600;
+	color: var(--color-success, #22c55e);
+	margin: 0 0 0.5rem;
+}
+
+.import-stats {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0.25rem 1rem;
+	margin: 0;
+	font-size: 0.875rem;
+}
+
+.import-stats dt {
+	color: var(--color-text-muted);
+}
+
+.import-stats dd {
+	color: var(--color-text);
+	font-weight: 600;
+	text-align: right;
+	margin: 0;
 }
 </style>

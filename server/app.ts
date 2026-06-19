@@ -6,6 +6,7 @@ import { db } from "./db/index.js"
 import { seedBadges, seedGymUpgrades } from "./db/seed.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { adminRouter } from "./routes/admin.js"
+import { appleHealthRouter } from "./routes/appleHealth.js"
 import { badgesRouter } from "./routes/badges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
@@ -63,6 +64,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", gymRouter)
 	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", createInspirationRouter(aiService))
+	app.use("/api", appleHealthRouter)
 	app.use("/api", adminRouter)
 
 	return app

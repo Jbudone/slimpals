@@ -299,3 +299,15 @@ export const weeklyInspirations = mysqlTable("weekly_inspirations", {
 	message: text("message").notNull(),
 	generatedAt: timestamp("generated_at").notNull().defaultNow(),
 })
+
+export const stepRecords = mysqlTable("step_records", {
+	id: int("id").autoincrement().primaryKey(),
+	userId: varchar("user_id", { length: 36 })
+		.notNull()
+		.references(() => users.id),
+	steps: int("steps").notNull(),
+	source: mysqlEnum("source", ["apple_health", "fitbit", "garmin"])
+		.notNull()
+		.default("apple_health"),
+	recordedAt: timestamp("recorded_at").notNull(),
+})

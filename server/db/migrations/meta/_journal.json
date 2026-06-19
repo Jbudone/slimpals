@@ -29,6 +29,13 @@
       "when": 1781858400000,
       "tag": "0003_gym_replaces_pets",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1781942400000,
+      "tag": "0004_step_records",
+      "breakpoints": true
     }
   ]
 }

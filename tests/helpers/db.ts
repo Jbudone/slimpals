@@ -57,6 +57,7 @@ export async function truncateAll() {
 			"user_challenges",
 			"food_logs",
 			"weight_entries",
+			"step_records",
 			"weekly_inspirations",
 			"invites",
 			"session",
