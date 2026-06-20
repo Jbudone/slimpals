@@ -36,6 +36,13 @@
       "when": 1781942400000,
       "tag": "0004_step_records",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1782028800000,
+      "tag": "0005_sprints",
+      "breakpoints": true
     }
   ]
 }

@@ -238,9 +238,9 @@ describe("GET /api/inspiration/weekly", () => {
 	})
 })
 
-describe("POST /api/inspiration/generate — auth", () => {
-	it("returns 401 without auth", async () => {
+describe("POST /api/inspiration/generate — no auth required", () => {
+	it("succeeds without auth (cron-style endpoint)", async () => {
 		const res = await request(app).post("/api/inspiration/generate")
-		expect(res.status).toBe(401)
+		expect(res.status).toBe(200)
 	})
 })

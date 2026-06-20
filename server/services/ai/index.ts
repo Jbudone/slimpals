@@ -54,6 +54,27 @@ export interface AIService {
 		month: number,
 		year: number,
 	): Promise<GeneratedChallenge>
+	generateWeeklySprint(
+		userName: string,
+		recentActivity: SprintContext,
+	): Promise<SprintResult>
+}
+
+export type SprintContext = {
+	checkins: number
+	foodLogs: number
+	weightEntries: number
+	hasChallenge: boolean
+}
+
+export type SprintTask = {
+	id: string
+	title: string
+}
+
+export type SprintResult = {
+	title: string
+	tasks: SprintTask[]
 }
 
 export class GeminiAIService implements AIService {
@@ -219,5 +240,44 @@ Generate exactly 3 goals. Each goal is a cumulative monthly total built from a s
 		if (!match)
 			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as GeneratedChallenge
+	}
+
+	async generateWeeklySprint(
+		userName: string,
+		ctx: SprintContext,
+	): Promise<SprintResult> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+
+		const activityLines = [
+			`Check-ins last week: ${ctx.checkins}/7`,
+			`Food logs: ${ctx.foodLogs}`,
+			`Weight entries: ${ctx.weightEntries}`,
+			ctx.hasChallenge
+				? "Currently in a monthly challenge"
+				: "No active monthly challenge",
+		]
+
+		const prompt = `Generate a personalized weekly sprint for ${userName}. These are 5-7 light, achievable tasks for this week. Respond with JSON only (no markdown):
+{
+  "title": "short sprint name (2-4 words)",
+  "tasks": [
+    { "id": "task_1", "title": "short task description (under 10 words)" },
+    ...
+  ]
+}
+
+Their recent activity:
+${activityLines.join("\n")}
+
+Generate exactly 6 tasks. Make them specific to their activity level — if they've been active, push a bit harder; if quiet, start easy. Tasks should be completable within a single week. Mix: exercise, nutrition, mindfulness, social. Task IDs: task_1 through task_6.`
+
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as SprintResult
 	}
 }

@@ -17,10 +17,17 @@ import { createInspirationRouter } from "./routes/inspiration.js"
 import { invitesRouter } from "./routes/invites.js"
 import { validateInvite } from "./routes/register.js"
 import { socialRouter } from "./routes/social.js"
+import { createSprintsRouter } from "./routes/sprints.js"
 import { createTournamentsRouter } from "./routes/tournaments.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
 import { type AIService, GeminiAIService } from "./services/ai/index.js"
+
+const OPEN_ROUTES = new Set([
+	"POST:/api/challenges/generate",
+	"POST:/api/sprints/generate",
+	"POST:/api/inspiration/generate",
+])
 
 export function createApp(deps: { aiService?: AIService } = {}) {
 	const aiService = deps.aiService ?? new GeminiAIService()
@@ -48,8 +55,15 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	// All other Better Auth routes (sign-in, sign-out, session, etc.)
 	app.use("/api/auth", toNodeHandler(auth))
 
-	// All /api/* routes beyond auth require a valid session
-	app.use("/api", requireAuth)
+	// All /api/* routes beyond auth require a valid session,
+	// except cron-style generation endpoints
+	app.use("/api", (req, res, next) => {
+		if (OPEN_ROUTES.has(`${req.method}:${req.baseUrl}${req.path}`)) {
+			next()
+			return
+		}
+		requireAuth(req, res, next)
+	})
 
 	// Serve uploaded files
 	app.use("/uploads", express.static("uploads"))
@@ -66,6 +80,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", createInspirationRouter(aiService))
 	app.use("/api", createChallengesRouter(aiService))
+	app.use("/api", createSprintsRouter(aiService))
 	app.use("/api", appleHealthRouter)
 	app.use("/api", adminRouter)
 

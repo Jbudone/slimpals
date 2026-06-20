@@ -12,6 +12,18 @@ type Goal = {
 	dailyAmount: number
 	dailyPrompt: string
 }
+type SprintTask = { id: string; title: string }
+
+type SprintData = {
+	id: number
+	title: string
+	weekStart: string
+	tasks: SprintTask[]
+	completedTasks: string[]
+	completedAt: string | null
+	progress: number
+}
+
 type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 type ChallengeData = {
@@ -37,11 +49,46 @@ let savingGoal = $state<string | null>(null)
 let justCompleted = $state(false)
 let gymXpAwarded = $state(0)
 
+let sprint = $state<SprintData | null>(null)
+let sprintSaving = $state<string | null>(null)
+
 async function loadChallenge() {
 	try {
-		challenge = await api.get<ChallengeData | null>("/challenges/current")
+		const [c, s] = await Promise.all([
+			api.get<ChallengeData | null>("/challenges/current"),
+			api.get<SprintData | null>("/sprints/current"),
+		])
+		challenge = c
+		sprint = s
 	} finally {
 		loading = false
+	}
+}
+
+async function toggleSprintTask(taskId: string) {
+	if (!sprint || sprintSaving || sprint.completedAt) return
+	sprintSaving = taskId
+
+	const current = new Set(sprint.completedTasks)
+	if (current.has(taskId)) current.delete(taskId)
+	else current.add(taskId)
+
+	try {
+		const res = await api.patch<{
+			completedTasks: string[]
+			progress: number
+			completed: boolean
+			gymXpAwarded: number
+		}>(`/sprints/${sprint.id}/tasks`, { completedTasks: [...current] })
+
+		sprint = {
+			...sprint,
+			completedTasks: res.completedTasks,
+			progress: res.progress,
+			completedAt: res.completed ? new Date().toISOString() : null,
+		}
+	} finally {
+		sprintSaving = null
 	}
 }
 
@@ -228,6 +275,50 @@ onMount(loadChallenge)
 			{/if}
 		</section>
 	{/if}
+
+	<!-- Weekly Sprint -->
+	{#if !loading && sprint}
+		<section class="sprint-card">
+			<div class="sprint-header">
+				<span class="sprint-badge">This Week</span>
+				<h2>{sprint.title}</h2>
+			</div>
+
+			<div class="sprint-progress-row">
+				<div class="sprint-bar">
+					<div
+						class="sprint-fill"
+						class:complete={sprint.progress === 100}
+						style="width: {sprint.progress}%"
+					></div>
+				</div>
+				<span class="sprint-pct">{sprint.progress}%</span>
+			</div>
+
+			{#if sprint.completedAt}
+				<p class="sprint-done-msg">Sprint complete — nice work this week! +50 Gym XP</p>
+			{/if}
+
+			<ul class="sprint-tasks">
+				{#each sprint.tasks as task (task.id)}
+					{@const checked = sprint.completedTasks.includes(task.id)}
+					<li class="sprint-task" class:checked>
+						<button
+							type="button"
+							class="sprint-task-btn"
+							disabled={sprintSaving === task.id || !!sprint.completedAt}
+							onclick={() => toggleSprintTask(task.id)}
+						>
+							<span class="sprint-check" class:checked>
+								{#if checked}✓{/if}
+							</span>
+							<span class="sprint-task-title">{task.title}</span>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
 </div>
 
 <style>
@@ -348,4 +439,51 @@ h1 { font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0 0 
 	font-size: 0.8125rem; font-weight: 700; color: var(--color-accent);
 	white-space: nowrap; flex-shrink: 0;
 }
+
+/* Sprint section */
+.sprint-card {
+	background: var(--color-surface); border: 1px solid var(--color-border);
+	border-radius: 0.75rem; padding: 1.5rem; margin-top: 1.5rem;
+}
+.sprint-header { margin-bottom: 1rem; }
+.sprint-badge {
+	display: inline-block; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+	letter-spacing: 0.06em; padding: 0.125rem 0.5rem; border-radius: 99px;
+	background: color-mix(in srgb, var(--color-success, #22c55e) 20%, transparent);
+	color: var(--color-success, #22c55e); border: 1px solid var(--color-success, #22c55e);
+	margin-bottom: 0.375rem;
+}
+.sprint-header h2 { font-size: 1.125rem; font-weight: 700; color: var(--color-text); margin: 0.375rem 0 0; }
+
+.sprint-progress-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.sprint-bar { flex: 1; height: 6px; background: var(--color-surface-2, #333); border-radius: 3px; overflow: hidden; }
+.sprint-fill { height: 100%; background: var(--color-success, #22c55e); border-radius: 3px; transition: width 0.3s; }
+.sprint-fill.complete { background: var(--color-success, #22c55e); }
+.sprint-pct { font-size: 0.8125rem; font-weight: 700; color: var(--color-success, #22c55e); }
+.sprint-done-msg {
+	font-size: 0.8125rem; color: var(--color-success, #22c55e); font-weight: 600;
+	margin: 0 0 0.75rem; text-align: center;
+}
+
+.sprint-tasks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.375rem; }
+.sprint-task { border-radius: 0.375rem; }
+.sprint-task.checked { opacity: 0.5; }
+
+.sprint-task-btn {
+	width: 100%; display: flex; align-items: center; gap: 0.625rem;
+	padding: 0.625rem 0.75rem; background: var(--color-surface-2, #333);
+	border: 1px solid var(--color-border); border-radius: 0.375rem;
+	cursor: pointer; color: inherit; text-align: left;
+	transition: border-color 0.15s;
+}
+.sprint-task-btn:hover:not(:disabled) { border-color: var(--color-success, #22c55e); }
+.sprint-task-btn:disabled { cursor: not-allowed; }
+
+.sprint-check {
+	flex-shrink: 0; width: 20px; height: 20px; border: 2px solid var(--color-border);
+	border-radius: 4px; display: flex; align-items: center; justify-content: center;
+	font-size: 0.7rem; font-weight: 700; color: #fff; transition: background 0.15s, border-color 0.15s;
+}
+.sprint-check.checked { background: var(--color-success, #22c55e); border-color: var(--color-success, #22c55e); }
+.sprint-task-title { font-size: 0.875rem; color: var(--color-text); }
 </style>

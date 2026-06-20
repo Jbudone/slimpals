@@ -300,6 +300,19 @@ export const weeklyInspirations = mysqlTable("weekly_inspirations", {
 	generatedAt: timestamp("generated_at").notNull().defaultNow(),
 })
 
+export const sprints = mysqlTable("sprints", {
+	id: int("id").autoincrement().primaryKey(),
+	userId: varchar("user_id", { length: 36 })
+		.notNull()
+		.references(() => users.id),
+	weekStart: timestamp("week_start").notNull(),
+	title: varchar("title", { length: 255 }).notNull(),
+	tasks: json("tasks").notNull(),
+	completedTasks: json("completed_tasks").notNull().default([]),
+	completedAt: timestamp("completed_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
 export const stepRecords = mysqlTable("step_records", {
 	id: int("id").autoincrement().primaryKey(),
 	userId: varchar("user_id", { length: 36 })
