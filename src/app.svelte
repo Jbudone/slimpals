@@ -61,6 +61,7 @@ async function handleLogout() {
 		<a class="nav-link" href="/food" onclick={(e) => { e.preventDefault(); page("/food") }}>Food</a>
 		<a class="nav-link" href="/social" onclick={(e) => { e.preventDefault(); page("/social") }}>Social</a>
 		<a class="nav-link" href="/tournaments" onclick={(e) => { e.preventDefault(); page("/tournaments") }}>Tournaments</a>
+		<a class="nav-link" href="/challenges" onclick={(e) => { e.preventDefault(); page("/challenges") }}>Challenges</a>
 		<a class="nav-link" href="/badges" onclick={(e) => { e.preventDefault(); page("/badges") }}>Badges</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		{#if isAdmin}

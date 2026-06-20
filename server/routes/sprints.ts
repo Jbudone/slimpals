@@ -33,7 +33,7 @@ export function createSprintsRouter(aiService: AIService) {
 	const router = Router()
 
 	router.get("/sprints/current", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const monday = getMondayOfWeek()
 
 		const [sprint] = await db
@@ -65,7 +65,7 @@ export function createSprintsRouter(aiService: AIService) {
 	})
 
 	router.patch("/sprints/:id/tasks", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const sprintId = Number.parseInt(req.params.id, 10)
 
 		if (Number.isNaN(sprintId)) {

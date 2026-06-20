@@ -1,3 +1,4 @@
+import path from "node:path"
 import { toNodeHandler } from "better-auth/node"
 import cors from "cors"
 import express from "express"
@@ -29,6 +30,11 @@ const OPEN_ROUTES = new Set([
 	"POST:/api/inspiration/generate",
 ])
 
+const CLIENT_DIR =
+	process.env.NODE_ENV === "production"
+		? path.resolve(import.meta.dirname, "../../client")
+		: ""
+
 export function createApp(deps: { aiService?: AIService } = {}) {
 	const aiService = deps.aiService ?? new GeminiAIService()
 	const app = express()
@@ -45,6 +51,10 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 		}),
 	)
 	app.use(express.json())
+
+	if (CLIENT_DIR) {
+		app.use(express.static(CLIENT_DIR))
+	}
 
 	// Health check (no auth required)
 	app.use("/api", healthRouter)
@@ -83,6 +93,12 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", createSprintsRouter(aiService))
 	app.use("/api", appleHealthRouter)
 	app.use("/api", adminRouter)
+
+	if (CLIENT_DIR) {
+		app.get("/{*path}", (_req, res) => {
+			res.sendFile(path.join(CLIENT_DIR, "index.html"))
+		})
+	}
 
 	return app
 }

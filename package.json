@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "concurrently -n vite,server -c cyan,green \"vite\" \"tsx watch --env-file=.env server/index.ts\"",
-		"build": "vite build",
-		"build:server": "tsc -p tsconfig.server.json",
+		"build": "vite build --outDir dist/client && tsc -p tsconfig.server.json",
+		"start": "NODE_ENV=production node dist/server/server/index.js",
 		"preview": "vite preview",
 		"check": "biome check .",
 		"format": "biome format --write .",

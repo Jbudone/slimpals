@@ -315,7 +315,7 @@ export function createTournamentsRouter(aiService: AIService) {
 	})
 
 	router.post("/tournaments/:id/join", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const tournamentId = Number(req.params.id)
 
 		if (Number.isNaN(tournamentId)) {

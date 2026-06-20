@@ -11,5 +11,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/db/migrations ./server/db/migrations
+COPY drizzle.config.ts ./
 EXPOSE 3000
 CMD ["node", "dist/server/server/index.js"]

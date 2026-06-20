@@ -6,8 +6,6 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-slimpals}
       MYSQL_USER: ${MYSQL_USER:-slimpals}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-slimpals}
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -18,18 +16,47 @@ services:
 
   app:
     build: .
-    ports:
-      - "3000:3000"
     environment:
       DATABASE_URL: mysql://${MYSQL_USER:-slimpals}:${MYSQL_PASSWORD:-slimpals}@mysql:3306/${MYSQL_DATABASE:-slimpals}
       NODE_ENV: production
       PORT: 3000
-    env_file:
-      - path: .env
-        required: false
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      BUNNYCDN_API_KEY: ${BUNNYCDN_API_KEY:-}
+      BUNNYCDN_STORAGE_ZONE: ${BUNNYCDN_STORAGE_ZONE:-}
+      BUNNYCDN_CDN_URL: ${BUNNYCDN_CDN_URL:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://${DOMAIN:-localhost}}
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy
 
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/templates/default.conf.template:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      - app
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+
 volumes:
   mysql_data:
+  uploads:
+  certbot_www:
+  certbot_certs:

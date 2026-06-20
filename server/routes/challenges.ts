@@ -13,7 +13,7 @@ export function createChallengesRouter(aiService: AIService) {
 	const router = Router()
 
 	router.get("/challenges/current", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const now = new Date()
 		const month = now.getUTCMonth() + 1
 		const year = now.getUTCFullYear()
@@ -67,7 +67,7 @@ export function createChallengesRouter(aiService: AIService) {
 	})
 
 	router.post("/challenges/:id/join", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const challengeId = Number.parseInt(req.params.id, 10)
 
 		if (Number.isNaN(challengeId)) {
@@ -112,7 +112,7 @@ export function createChallengesRouter(aiService: AIService) {
 	})
 
 	router.patch("/challenges/:id/progress", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const challengeId = Number.parseInt(req.params.id, 10)
 
 		if (Number.isNaN(challengeId)) {
