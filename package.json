@@ -15,7 +15,8 @@
 		"db:migrate": "drizzle-kit migrate",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"seed": "tsx --env-file=.env scripts/seed-dev.ts"
+		"seed": "tsx --env-file=.env scripts/seed-dev.ts",
+		"generate-gym-assets": "tsx --env-file=.env scripts/generate-gym-assets.ts"
 	},
 	"dependencies": {
 		"@google/generative-ai": "^0.24.1",
@@ -27,6 +28,7 @@
 		"multer": "^2.2.0",
 		"mysql2": "^3.22.5",
 		"page": "^1.11.6",
+		"phaser": "^3.90.0",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

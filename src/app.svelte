@@ -8,6 +8,7 @@ import Badges from "./pages/Badges.svelte"
 import Challenges from "./pages/Challenges.svelte"
 import Dashboard from "./pages/Dashboard.svelte"
 import Food from "./pages/Food.svelte"
+import Gym from "./pages/Gym.svelte"
 import Login from "./pages/Login.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
@@ -63,6 +64,7 @@ async function handleLogout() {
 		<a class="nav-link" href="/tournaments" onclick={(e) => { e.preventDefault(); page("/tournaments") }}>Tournaments</a>
 		<a class="nav-link" href="/challenges" onclick={(e) => { e.preventDefault(); page("/challenges") }}>Challenges</a>
 		<a class="nav-link" href="/badges" onclick={(e) => { e.preventDefault(); page("/badges") }}>Badges</a>
+		<a class="nav-link" href="/gym" onclick={(e) => { e.preventDefault(); page("/gym") }}>Gym</a>
 		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
 		{#if isAdmin}
 			<a class="nav-link admin-link" href="/admin" onclick={(e) => { e.preventDefault(); page("/admin") }}>Admin</a>
@@ -84,6 +86,8 @@ async function handleLogout() {
 		<Challenges />
 	{:else if currentPath === "/badges"}
 		<Badges />
+	{:else if currentPath === "/gym"}
+		<Gym />
 	{:else if currentPath === "/settings"}
 		<Settings />
 	{:else if currentPath === "/admin"}
