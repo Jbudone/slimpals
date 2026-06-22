@@ -82,10 +82,82 @@ const EQUIPMENT_ASSETS: AssetSpec[] = EQUIPMENT_KEYS.map(({ key, name }) => ({
 	prompt: `Pixel art, top-down view, Stardew Valley style, ${name} gym equipment, 64x64 pixels, transparent background, warm color palette`,
 }))
 
-const ALL_ASSETS = [...TILE_ASSETS, ...EQUIPMENT_ASSETS]
+const NPC_SPRITES: AssetSpec[] = [
+	{
+		filename: "sprites/trainer_marcus.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, muscular male gym trainer, tank top, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/receptionist_lisa.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, friendly female receptionist, gym polo shirt, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/regular_derek.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, quiet serious male powerlifter, sleeveless hoodie, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/regular_priya.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, calm female yoga enthusiast, yoga outfit, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/regular_tom.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, loud enthusiastic male gym bro, muscle shirt, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/regular_elena.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, disciplined female runner, running outfit, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/specialist_coach.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, authoritative male sports coach, tracksuit with whistle, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/specialist_nutritionist.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, caring female nutritionist, lab coat, facing down, 64x64 pixels, transparent background, warm color palette",
+	},
+]
+
+const ANIM_SPRITES: AssetSpec[] = [
+	{
+		filename: "sprites/anim-treadmill-run.png",
+		prompt:
+			"Pixel art sprite sheet, top-down view, Stardew Valley style, character running on treadmill, 4 frames of running animation, 32x32 per frame, 128x32 total image, transparent background",
+	},
+	{
+		filename: "sprites/anim-barbell-lift.png",
+		prompt:
+			"Pixel art sprite sheet, top-down view, Stardew Valley style, character lifting barbell, 4 frames of lifting animation, 32x32 per frame, 128x32 total image, transparent background",
+	},
+	{
+		filename: "sprites/anim-bike-pedal.png",
+		prompt:
+			"Pixel art sprite sheet, top-down view, Stardew Valley style, character pedaling stationary bike, 4 frames of pedaling animation, 32x32 per frame, 128x32 total image, transparent background",
+	},
+	{
+		filename: "sprites/anim-stretch.png",
+		prompt:
+			"Pixel art sprite sheet, top-down view, Stardew Valley style, character stretching on floor, 4 frames of stretching animation, 32x32 per frame, 128x32 total image, transparent background",
+	},
+]
+
+const ALL_ASSETS = [
+	...TILE_ASSETS,
+	...EQUIPMENT_ASSETS,
+	...NPC_SPRITES,
+	...ANIM_SPRITES,
+]
 
 async function generateImage(spec: AssetSpec): Promise<void> {
 	const outPath = path.join(OUT_DIR, spec.filename)
+	fs.mkdirSync(path.dirname(outPath), { recursive: true })
 	if (fs.existsSync(outPath)) {
 		console.log(`  SKIP ${spec.filename} (already exists)`)
 		return

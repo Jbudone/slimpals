@@ -28,6 +28,17 @@ const EQUIPMENT_KEYS = [
 	"staff_nutrition",
 ]
 
+export const NPC_KEYS = [
+	"trainer_marcus",
+	"receptionist_lisa",
+	"regular_derek",
+	"regular_priya",
+	"regular_tom",
+	"regular_elena",
+	"specialist_coach",
+	"specialist_nutritionist",
+]
+
 export class PreloadScene extends Phaser.Scene {
 	constructor() {
 		super({ key: "PreloadScene" })
@@ -46,6 +57,10 @@ export class PreloadScene extends Phaser.Scene {
 
 		for (const key of EQUIPMENT_KEYS) {
 			this.load.image(key, `${base}/${key}.png`)
+		}
+
+		for (const key of NPC_KEYS) {
+			this.load.image(`npc_${key}`, `${base}/sprites/${key}.png`)
 		}
 	}
 
