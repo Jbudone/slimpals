@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/mysql2"
 import { migrate } from "drizzle-orm/mysql2/migrator"
 import mysql from "mysql2/promise"
 import * as schema from "../../server/db/schema.js"
-import { seedBadges, seedGymUpgrades } from "../../server/db/seed.js"
+import { seedBadges, seedGymUpgrades, seedNpcs } from "../../server/db/seed.js"
 
 const TEST_DB_URL =
 	process.env.TEST_DATABASE_URL ??
@@ -50,6 +50,8 @@ export async function truncateAll() {
 			"social_posts",
 			"tournament_participants",
 			"tournaments",
+			"gym_npc_daily_state",
+			"user_gym_npc_relationships",
 			"user_gym_upgrades",
 			"user_gyms",
 			"user_badges",
@@ -66,6 +68,7 @@ export async function truncateAll() {
 			"verification",
 			"users",
 			"badges",
+			"gym_npcs",
 			"gym_upgrades_catalog",
 			"challenges",
 		]
@@ -79,6 +82,7 @@ export async function truncateAll() {
 	const db = await getTestDb()
 	await seedBadges(db)
 	await seedGymUpgrades(db)
+	await seedNpcs(db)
 }
 
 export async function closeTestDb() {

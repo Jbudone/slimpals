@@ -230,6 +230,52 @@ export const userGymUpgrades = mysqlTable("user_gym_upgrades", {
 	placementData: json("placement_data"),
 })
 
+export const gymNpcs = mysqlTable("gym_npcs", {
+	id: int("id").autoincrement().primaryKey(),
+	key: varchar("key", { length: 128 }).notNull().unique(),
+	name: varchar("name", { length: 255 }).notNull(),
+	role: mysqlEnum("role", [
+		"trainer",
+		"receptionist",
+		"regular",
+		"specialist",
+	]).notNull(),
+	personalityProfile: json("personality_profile").notNull(),
+	defaultSchedule: json("default_schedule").notNull(),
+	portraitUrl: varchar("portrait_url", { length: 500 }),
+	spriteKey: varchar("sprite_key", { length: 128 }).notNull(),
+	unlockedByUpgradeKey: varchar("unlocked_by_upgrade_key", { length: 128 }),
+})
+
+export const userGymNpcRelationships = mysqlTable(
+	"user_gym_npc_relationships",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		npcKey: varchar("npc_key", { length: 128 }).notNull(),
+		relationshipLevel: int("relationship_level").notNull().default(0),
+		personalityNotes: json("personality_notes").notNull().default([]),
+		interactionCount: int("interaction_count").notNull().default(0),
+		lastInteractedAt: timestamp("last_interacted_at"),
+		moodHistory: json("mood_history").notNull().default([]),
+	},
+)
+
+export const gymNpcDailyState = mysqlTable("gym_npc_daily_state", {
+	id: int("id").autoincrement().primaryKey(),
+	gymId: int("gym_id")
+		.notNull()
+		.references(() => userGyms.id),
+	npcKey: varchar("npc_key", { length: 128 }).notNull(),
+	date: timestamp("date").notNull(),
+	mood: int("mood").notNull().default(0),
+	goalSequence: json("goal_sequence").notNull().default([]),
+	equipmentHistory: json("equipment_history").notNull().default([]),
+	moodEvents: json("mood_events").notNull().default([]),
+})
+
 export const tournaments = mysqlTable("tournaments", {
 	id: int("id").autoincrement().primaryKey(),
 	name: varchar("name", { length: 255 }).notNull(),

@@ -4,7 +4,7 @@ import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
 import { db } from "./db/index.js"
-import { seedBadges, seedGymUpgrades } from "./db/seed.js"
+import { seedBadges, seedGymUpgrades, seedNpcs } from "./db/seed.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { adminRouter } from "./routes/admin.js"
 import { appleHealthRouter } from "./routes/appleHealth.js"
@@ -43,6 +43,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	seedGymUpgrades(db).catch((err) =>
 		console.error("Gym upgrade seed failed:", err),
 	)
+	seedNpcs(db).catch((err) => console.error("NPC seed failed:", err))
 
 	app.use(
 		cors({

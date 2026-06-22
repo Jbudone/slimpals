@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "./schema.js"
-import { badges, gymUpgradesCatalog } from "./schema.js"
+import { badges, gymNpcs, gymUpgradesCatalog } from "./schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -639,5 +639,330 @@ export async function seedGymUpgrades(db: Db) {
 	await db
 		.insert(gymUpgradesCatalog)
 		.values(GYM_UPGRADES)
+		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
+}
+
+type NpcRow = {
+	key: string
+	name: string
+	role: "trainer" | "receptionist" | "regular" | "specialist"
+	personalityProfile: object
+	defaultSchedule: object
+	spriteKey: string
+	unlockedByUpgradeKey: string | null
+}
+
+const NPC_CATALOG: NpcRow[] = [
+	{
+		key: "trainer_marcus",
+		name: "Marcus",
+		role: "trainer",
+		personalityProfile: {
+			traits: ["disciplined", "competitive"],
+			goals: ["build_strength", "help_others"],
+			quirks: ["always_counts_reps_out_loud", "hates_people_hogging_equipment"],
+			equipmentPreferences: ["weights_barbell", "weights_cable"],
+			avoidEquipment: ["cardio_treadmill"],
+			friendlyWith: ["regular_priya"],
+			rivalWith: ["regular_tom"],
+			moodBaseline: 60,
+		},
+		defaultSchedule: {
+			arrivalHour: 6,
+			departureHour: 20,
+			daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+			activitySequence: [
+				{
+					type: "warmup",
+					durationMin: 10,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "main",
+					durationMin: 45,
+					equipmentCategory: "weights",
+				},
+				{
+					type: "cooldown",
+					durationMin: 10,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_trainer_marcus",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "receptionist_lisa",
+		name: "Lisa",
+		role: "receptionist",
+		personalityProfile: {
+			traits: ["bubbly", "social"],
+			goals: ["greet_everyone", "keep_gym_organized"],
+			quirks: ["remembers_everyones_name", "gossips_nicely"],
+			equipmentPreferences: ["staff_reception"],
+			avoidEquipment: [],
+			friendlyWith: ["trainer_marcus", "regular_priya"],
+			rivalWith: [],
+			moodBaseline: 75,
+		},
+		defaultSchedule: {
+			arrivalHour: 7,
+			departureHour: 15,
+			daysOfWeek: [1, 2, 3, 4, 5],
+			activitySequence: [
+				{
+					type: "main",
+					durationMin: 480,
+					equipmentCategory: "staff",
+				},
+			],
+		},
+		spriteKey: "npc_receptionist_lisa",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "regular_derek",
+		name: "Derek",
+		role: "regular",
+		personalityProfile: {
+			traits: ["quiet", "focused"],
+			goals: ["build_strength"],
+			quirks: ["never_talks_during_sets", "dislikes_cardio"],
+			equipmentPreferences: [
+				"weights_olympic",
+				"weights_barbell",
+				"weights_dumbbells",
+			],
+			avoidEquipment: ["cardio_treadmill", "cardio_bikes", "cardio_rowing"],
+			friendlyWith: [],
+			rivalWith: ["regular_tom"],
+			moodBaseline: 50,
+		},
+		defaultSchedule: {
+			arrivalHour: 6,
+			departureHour: 8,
+			daysOfWeek: [1, 2, 3, 4, 5, 6],
+			activitySequence: [
+				{
+					type: "warmup",
+					durationMin: 5,
+					equipmentCategory: "weights",
+				},
+				{
+					type: "main",
+					durationMin: 100,
+					equipmentCategory: "weights",
+				},
+				{
+					type: "cooldown",
+					durationMin: 10,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_regular_derek",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "regular_priya",
+		name: "Priya",
+		role: "regular",
+		personalityProfile: {
+			traits: ["calm", "welcoming"],
+			goals: ["flexibility", "mindfulness"],
+			quirks: ["always_on_time", "befriends_newcomers"],
+			equipmentPreferences: ["amenity_sauna", "cardio_bikes"],
+			avoidEquipment: ["weights_olympic"],
+			friendlyWith: ["trainer_marcus", "receptionist_lisa"],
+			rivalWith: [],
+			moodBaseline: 70,
+		},
+		defaultSchedule: {
+			arrivalHour: 12,
+			departureHour: 14,
+			daysOfWeek: [1, 2, 3, 4, 5],
+			activitySequence: [
+				{
+					type: "warmup",
+					durationMin: 15,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "main",
+					durationMin: 60,
+					equipmentCategory: "amenities",
+				},
+				{
+					type: "cooldown",
+					durationMin: 15,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_regular_priya",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "regular_tom",
+		name: "Tom",
+		role: "regular",
+		personalityProfile: {
+			traits: ["loud", "enthusiastic"],
+			goals: ["build_muscle", "show_off"],
+			quirks: ["tells_everyone_about_gains", "grunts_loudly"],
+			equipmentPreferences: [
+				"weights_dumbbells",
+				"weights_smith",
+				"decor_mirrors",
+			],
+			avoidEquipment: ["cardio_stairs"],
+			friendlyWith: [],
+			rivalWith: ["regular_derek", "trainer_marcus"],
+			moodBaseline: 65,
+		},
+		defaultSchedule: {
+			arrivalHour: 17,
+			departureHour: 19,
+			daysOfWeek: [1, 2, 3, 4, 5],
+			activitySequence: [
+				{
+					type: "warmup",
+					durationMin: 5,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "main",
+					durationMin: 90,
+					equipmentCategory: "weights",
+				},
+				{
+					type: "cooldown",
+					durationMin: 10,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_regular_tom",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "regular_elena",
+		name: "Elena",
+		role: "regular",
+		personalityProfile: {
+			traits: ["reserved", "disciplined"],
+			goals: ["cardio_fitness", "personal_bests"],
+			quirks: ["ocd_about_treadmill", "warms_up_slowly_to_people"],
+			equipmentPreferences: [
+				"cardio_treadmill",
+				"cardio_stairs",
+				"cardio_rowing",
+			],
+			avoidEquipment: ["weights_olympic"],
+			friendlyWith: ["regular_priya"],
+			rivalWith: [],
+			moodBaseline: 55,
+		},
+		defaultSchedule: {
+			arrivalHour: 7,
+			departureHour: 9,
+			daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+			activitySequence: [
+				{
+					type: "warmup",
+					durationMin: 10,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "main",
+					durationMin: 60,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "cooldown",
+					durationMin: 15,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_regular_elena",
+		unlockedByUpgradeKey: null,
+	},
+	{
+		key: "specialist_coach",
+		name: "Coach Rivera",
+		role: "specialist",
+		personalityProfile: {
+			traits: ["authoritative", "inspiring"],
+			goals: ["run_group_classes", "build_team_spirit"],
+			quirks: ["blows_whistle", "calls_everyone_champ"],
+			equipmentPreferences: ["cardio_treadmill", "cardio_bikes"],
+			avoidEquipment: [],
+			friendlyWith: ["trainer_marcus"],
+			rivalWith: [],
+			moodBaseline: 70,
+		},
+		defaultSchedule: {
+			arrivalHour: 9,
+			departureHour: 12,
+			daysOfWeek: [2, 4, 6],
+			activitySequence: [
+				{
+					type: "main",
+					durationMin: 120,
+					equipmentCategory: "cardio",
+				},
+				{
+					type: "cooldown",
+					durationMin: 30,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_specialist_coach",
+		unlockedByUpgradeKey: "staff_trainer",
+	},
+	{
+		key: "specialist_nutritionist",
+		name: "Dr. Kim",
+		role: "specialist",
+		personalityProfile: {
+			traits: ["analytical", "caring"],
+			goals: ["help_with_nutrition", "educate"],
+			quirks: ["references_food_logs", "always_has_healthy_snack"],
+			equipmentPreferences: ["staff_nutrition", "amenity_juice"],
+			avoidEquipment: [],
+			friendlyWith: ["receptionist_lisa", "regular_priya"],
+			rivalWith: [],
+			moodBaseline: 65,
+		},
+		defaultSchedule: {
+			arrivalHour: 13,
+			departureHour: 16,
+			daysOfWeek: [1, 3, 5],
+			activitySequence: [
+				{
+					type: "main",
+					durationMin: 150,
+					equipmentCategory: "staff",
+				},
+				{
+					type: "cooldown",
+					durationMin: 20,
+					equipmentCategory: "amenities",
+				},
+			],
+		},
+		spriteKey: "npc_specialist_nutritionist",
+		unlockedByUpgradeKey: "staff_nutrition",
+	},
+]
+
+export async function seedNpcs(db: Db) {
+	if (NPC_CATALOG.length === 0) return
+	await db
+		.insert(gymNpcs)
+		.values(NPC_CATALOG)
 		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
 }

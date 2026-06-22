@@ -1,13 +1,23 @@
 import { asc, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import { gymUpgradesCatalog, userGymUpgrades } from "../db/schema.js"
+import {
+	gymNpcs,
+	gymUpgradesCatalog,
+	userGymNpcRelationships,
+	userGymUpgrades,
+} from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import {
 	claimUpgrade,
 	computeLevel,
 	getOrCreateGym,
 } from "../services/gym/index.js"
+import {
+	computeGymSimState,
+	type GymNpc,
+	type NpcRelationship,
+} from "../services/gym/simulation.js"
 
 export const gymRouter = Router()
 
@@ -179,4 +189,90 @@ gymRouter.get("/gym/catalog", async (_req, res) => {
 			unlocksNpcKey: c.unlocksNpcKey,
 		})),
 	)
+})
+
+gymRouter.get("/gym/sim-state", async (req, res) => {
+	const userId = (req as AuthRequest).user.id
+	const gym = await getOrCreateGym(userId, db)
+
+	const allNpcs = await db.select().from(gymNpcs)
+
+	const unlockedRows = await db
+		.select()
+		.from(userGymUpgrades)
+		.where(eq(userGymUpgrades.gymId, gym.id))
+
+	const unlockedKeys = unlockedRows.map((r) => r.upgradeKey)
+
+	const relRows = await db
+		.select()
+		.from(userGymNpcRelationships)
+		.where(eq(userGymNpcRelationships.gymId, gym.id))
+
+	const relationships: NpcRelationship[] = relRows.map((r) => ({
+		npcKey: r.npcKey,
+		relationshipLevel: r.relationshipLevel,
+	}))
+
+	const npcData: GymNpc[] = allNpcs.map((n) => ({
+		key: n.key,
+		name: n.name,
+		role: n.role,
+		personalityProfile: n.personalityProfile,
+		defaultSchedule: n.defaultSchedule,
+		spriteKey: n.spriteKey,
+		unlockedByUpgradeKey: n.unlockedByUpgradeKey,
+	})) as GymNpc[]
+
+	const npcs = await computeGymSimState(
+		gym.id,
+		npcData,
+		unlockedKeys,
+		relationships,
+		db,
+	)
+
+	res.json({
+		simTime: new Date().toISOString(),
+		npcs,
+		gymId: gym.id,
+	})
+})
+
+gymRouter.get("/gym/npcs", async (req, res) => {
+	const userId = (req as AuthRequest).user.id
+	const gym = await getOrCreateGym(userId, db)
+
+	const allNpcs = await db.select().from(gymNpcs)
+
+	const relRows = await db
+		.select()
+		.from(userGymNpcRelationships)
+		.where(eq(userGymNpcRelationships.gymId, gym.id))
+
+	const unlockedRows = await db
+		.select()
+		.from(userGymUpgrades)
+		.where(eq(userGymUpgrades.gymId, gym.id))
+
+	const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
+
+	const visibleNpcs = allNpcs.filter(
+		(n) => !n.unlockedByUpgradeKey || unlockedKeys.has(n.unlockedByUpgradeKey),
+	)
+
+	const result = visibleNpcs.map((npc) => {
+		const rel = relRows.find((r) => r.npcKey === npc.key)
+		return {
+			key: npc.key,
+			name: npc.name,
+			role: npc.role,
+			spriteKey: npc.spriteKey,
+			relationshipLevel: rel?.relationshipLevel ?? 0,
+			interactionCount: rel?.interactionCount ?? 0,
+			lastInteractedAt: rel?.lastInteractedAt ?? null,
+		}
+	})
+
+	res.json(result)
 })
