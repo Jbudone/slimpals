@@ -58,21 +58,32 @@ function createGame() {
 $effect(() => {
 	if (!game) return
 	const gymData: GymSceneData = { unlocked, locked }
-	const scene = game.scene.getScene("GymScene") as GymScene | null
-	if (scene) {
-		scene.updateGymData(gymData)
+	if (game.scene.isActive("GymScene")) {
+		const scene = game.scene.getScene("GymScene") as GymScene | null
+		if (scene) scene.updateGymData(gymData)
+	} else {
+		// Scene not yet running — update registry so create() picks it up
+		game.registry.set("gymData", gymData)
 	}
 })
 
 $effect(() => {
-	if (!game || !ceremonyUpgradeKey) return
+	if (!ceremonyUpgradeKey || !game) return
 	const key = ceremonyUpgradeKey
-	if (!game.scene.isActive("GymScene")) return
 	const scene = game.scene.getScene("GymScene") as GymScene | null
 	if (!scene) return
-	scene.startUpgradeCeremony(key, () => {
-		if (onCeremonyComplete) onCeremonyComplete()
-	})
+	// Retry until scene is running (it may be mid-restart from initial data load)
+	let attempts = 0
+	const tryStart = () => {
+		if (!game?.scene.isActive("GymScene")) {
+			if (++attempts < 20) setTimeout(tryStart, 100)
+			return
+		}
+		scene.startUpgradeCeremony(key, () => {
+			if (onCeremonyComplete) onCeremonyComplete()
+		})
+	}
+	tryStart()
 })
 
 onMount(() => {

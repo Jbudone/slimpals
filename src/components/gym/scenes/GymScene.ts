@@ -535,6 +535,21 @@ export class GymScene extends Phaser.Scene {
 			})
 		}
 
+		// Use native DOM click so handler survives Phaser input lifecycle quirks
+		const canvas = this.game.canvas
+		const clickCb = () => {
+			if (revealed) return
+			progress = Math.min(100, progress + 5)
+			barFill.setSize(Math.floor((progress / 100) * 80), 8)
+			this.spawnClickFX(centerX, centerY)
+			this.cheerWorkers(w1, w2)
+			if (progress >= 100) {
+				canvas.removeEventListener("pointerdown", clickCb)
+				doReveal()
+			}
+		}
+		canvas.addEventListener("pointerdown", clickCb)
+
 		// Auto-fill: 100% over 8 seconds (1.25% every 100ms)
 		const autoTimer = this.time.addEvent({
 			delay: 100,
@@ -545,26 +560,11 @@ export class GymScene extends Phaser.Scene {
 				barFill.setSize(Math.floor((progress / 100) * 80), 8)
 				if (progress >= 100) {
 					autoTimer.destroy()
-					this.input.off("pointerdown", clickCb)
+					canvas.removeEventListener("pointerdown", clickCb)
 					doReveal()
 				}
 			},
 		})
-
-		// Click: +5% per click
-		const clickCb = () => {
-			if (revealed) return
-			progress = Math.min(100, progress + 5)
-			barFill.setSize(Math.floor((progress / 100) * 80), 8)
-			this.spawnClickFX(centerX, centerY)
-			this.cheerWorkers(w1, w2)
-			if (progress >= 100) {
-				autoTimer.destroy()
-				this.input.off("pointerdown", clickCb)
-				doReveal()
-			}
-		}
-		this.input.on("pointerdown", clickCb)
 	}
 
 	private spawnCeremonyWorker(tileX: number, tileY: number): CeremonyWorker {
