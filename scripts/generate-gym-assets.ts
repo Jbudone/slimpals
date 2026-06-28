@@ -125,6 +125,19 @@ const NPC_SPRITES: AssetSpec[] = [
 	},
 ]
 
+const WORKER_SPRITES: AssetSpec[] = [
+	{
+		filename: "sprites/worker.png",
+		prompt:
+			"Pixel art, top-down view, Stardew Valley style, single character sprite, construction worker, yellow hard hat, orange overalls, facing down, 32x32 pixels, transparent background, warm color palette",
+	},
+	{
+		filename: "sprites/anim-worker-cheer.png",
+		prompt:
+			"Pixel art sprite sheet, top-down view, Stardew Valley style, construction worker in yellow hard hat celebrating, 2 frames of cheer animation with arms raised, 32x32 per frame, 64x32 total image, transparent background",
+	},
+]
+
 const ANIM_SPRITES: AssetSpec[] = [
 	{
 		filename: "sprites/anim-treadmill-run.png",
@@ -197,6 +210,7 @@ const ALL_ASSETS = [
 	...TILE_ASSETS,
 	...EQUIPMENT_ASSETS,
 	...NPC_SPRITES,
+	...WORKER_SPRITES,
 	...PORTRAIT_ASSETS,
 	...ANIM_SPRITES,
 ]

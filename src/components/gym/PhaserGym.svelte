@@ -8,9 +8,17 @@ type Props = {
 	unlocked: GymSceneData["unlocked"]
 	locked: GymSceneData["locked"]
 	onNpcClick?: (npcKey: string) => void
+	ceremonyUpgradeKey?: string | null
+	onCeremonyComplete?: () => void
 }
 
-let { unlocked, locked, onNpcClick }: Props = $props()
+let {
+	unlocked,
+	locked,
+	onNpcClick,
+	ceremonyUpgradeKey,
+	onCeremonyComplete,
+}: Props = $props()
 
 let container: HTMLDivElement
 let game: Phaser.Game | null = null
@@ -54,6 +62,17 @@ $effect(() => {
 	if (scene) {
 		scene.updateGymData(gymData)
 	}
+})
+
+$effect(() => {
+	if (!game || !ceremonyUpgradeKey) return
+	const key = ceremonyUpgradeKey
+	if (!game.scene.isActive("GymScene")) return
+	const scene = game.scene.getScene("GymScene") as GymScene | null
+	if (!scene) return
+	scene.startUpgradeCeremony(key, () => {
+		if (onCeremonyComplete) onCeremonyComplete()
+	})
 })
 
 onMount(() => {

@@ -6,10 +6,18 @@ type Props = {
 	xpToNextLevel: number
 	pendingCount: number
 	onClaim: () => void
+	ceremonyActive?: boolean
 }
 
-let { gymName, level, xp, xpToNextLevel, pendingCount, onClaim }: Props =
-	$props()
+let {
+	gymName,
+	level,
+	xp,
+	xpToNextLevel,
+	pendingCount,
+	onClaim,
+	ceremonyActive = false,
+}: Props = $props()
 
 const nextLevelXp = $derived(xp + xpToNextLevel)
 const progressPercent = $derived(
@@ -18,25 +26,33 @@ const progressPercent = $derived(
 </script>
 
 <div class="gym-ui">
-	<div class="gym-header">
-		<h2 class="gym-name">{gymName}</h2>
-		<div class="level-badge">Lv. {level}</div>
-	</div>
-
-	<div class="xp-section">
-		<div class="xp-label">
-			<span>{xp} XP</span>
-			<span class="xp-next">{xpToNextLevel} to next level</span>
+	{#if ceremonyActive}
+		<div class="ceremony-hint">
+			<span class="hint-icon">🔨</span>
+			<span>Click anywhere in the gym to help build!</span>
 		</div>
-		<div class="xp-bar-track">
-			<div class="xp-bar-fill" style="width: {progressPercent}%"></div>
+	{:else}
+		<div class="gym-header">
+			<h2 class="gym-name">{gymName}</h2>
+			<div class="level-badge">Lv. {level}</div>
 		</div>
-	</div>
 
-	{#if pendingCount > 0}
-		<button class="claim-btn" onclick={onClaim}>
-			Claim Upgrade ({pendingCount})
-		</button>
+		<div class="xp-section">
+			<div class="xp-label">
+				<span>{xp} XP</span>
+				<span class="xp-next">{xpToNextLevel} to next level</span>
+			</div>
+			<div class="xp-bar-track">
+				<div class="xp-bar-fill" style="width: {progressPercent}%"></div>
+			</div>
+		</div>
+
+		{#if pendingCount > 0}
+			<button class="claim-btn" onclick={onClaim}>
+				Claim Upgrade
+				<span class="badge">{pendingCount}</span>
+			</button>
+		{/if}
 	{/if}
 </div>
 
@@ -104,6 +120,9 @@ const progressPercent = $derived(
 }
 
 .claim-btn {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 	background: var(--color-accent);
 	color: #fff;
 	border: none;
@@ -117,5 +136,34 @@ const progressPercent = $derived(
 
 .claim-btn:hover {
 	opacity: 0.9;
+}
+
+.badge {
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 999px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	padding: 0.1rem 0.4rem;
+	min-width: 1.2rem;
+	text-align: center;
+}
+
+.ceremony-hint {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--color-accent);
+	font-size: 0.875rem;
+	font-weight: 600;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+.hint-icon {
+	font-size: 1.1rem;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
 }
 </style>

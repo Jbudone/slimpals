@@ -62,6 +62,8 @@ export class PreloadScene extends Phaser.Scene {
 		for (const key of NPC_KEYS) {
 			this.load.image(`npc_${key}`, `${base}/sprites/${key}.png`)
 		}
+
+		this.load.image("worker", `${base}/sprites/worker.png`)
 	}
 
 	create() {

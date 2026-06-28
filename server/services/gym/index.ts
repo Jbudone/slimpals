@@ -7,6 +7,7 @@ import {
 	userGymUpgrades,
 	users,
 } from "../../db/schema.js"
+import { UPGRADE_LAYOUT } from "./layout.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -148,12 +149,25 @@ export async function claimUpgrade(
 			),
 		)
 
-	if (existing) return
-
-	await db.insert(userGymUpgrades).values({
-		gymId,
-		upgradeKey,
-	})
+	if (existing) {
+		if (!existing.placementData && UPGRADE_LAYOUT[upgradeKey]) {
+			await db
+				.update(userGymUpgrades)
+				.set({ placementData: UPGRADE_LAYOUT[upgradeKey] })
+				.where(
+					and(
+						eq(userGymUpgrades.gymId, gymId),
+						eq(userGymUpgrades.upgradeKey, upgradeKey),
+					),
+				)
+		}
+	} else {
+		await db.insert(userGymUpgrades).values({
+			gymId,
+			upgradeKey,
+			placementData: UPGRADE_LAYOUT[upgradeKey] ?? null,
+		})
+	}
 
 	const updatedPending = pending.filter((k) => k !== upgradeKey)
 	await db

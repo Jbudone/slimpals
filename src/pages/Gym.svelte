@@ -30,6 +30,9 @@ let loading = $state(true)
 let error = $state<string | null>(null)
 let claiming = $state(false)
 let dialogNpcKey = $state<string | null>(null)
+let ceremonyUpgradeKey = $state<string | null>(null)
+let ceremonyActive = $state(false)
+let upgradeCompleteToast = $state(false)
 
 async function loadGym() {
 	try {
@@ -41,17 +44,35 @@ async function loadGym() {
 	}
 }
 
-async function claimNext() {
-	if (!gymData || gymData.upgrades.pending.length === 0 || claiming) return
+function claimNext() {
+	if (
+		!gymData ||
+		gymData.upgrades.pending.length === 0 ||
+		claiming ||
+		ceremonyActive
+	)
+		return
+	const nextKey = gymData.upgrades.pending[0].key
+	dialogNpcKey = null
+	ceremonyUpgradeKey = nextKey
+	ceremonyActive = true
+}
+
+async function handleCeremonyComplete() {
+	if (!gymData || !ceremonyUpgradeKey) return
+	const key = ceremonyUpgradeKey
 	claiming = true
 	try {
-		const nextKey = gymData.upgrades.pending[0].key
-		gymData = await api.post<GymResponse>("/gym/claim-upgrade", {
-			key: nextKey,
-		})
+		gymData = await api.post<GymResponse>("/gym/claim-upgrade", { key })
+		upgradeCompleteToast = true
+		setTimeout(() => {
+			upgradeCompleteToast = false
+		}, 3000)
 	} catch {
 		error = "Failed to claim upgrade"
 	} finally {
+		ceremonyUpgradeKey = null
+		ceremonyActive = false
 		claiming = false
 	}
 }
@@ -80,15 +101,21 @@ onMount(loadGym)
 			xpToNextLevel={gymData.xpToNextLevel}
 			pendingCount={gymData.upgrades.pending.length}
 			onClaim={claimNext}
+			{ceremonyActive}
 		/>
 		<div class="canvas-area">
 			<PhaserGym
 				unlocked={gymData.upgrades.unlocked}
 				locked={gymData.upgrades.locked}
 				onNpcClick={handleNpcClick}
+				{ceremonyUpgradeKey}
+				onCeremonyComplete={handleCeremonyComplete}
 			/>
 			{#if dialogNpcKey}
 				<NpcDialog npcKey={dialogNpcKey} onClose={closeDialog} />
+			{/if}
+			{#if upgradeCompleteToast}
+				<div class="upgrade-toast">Upgrade Complete! 🎉</div>
 			{/if}
 		</div>
 	{/if}
@@ -125,5 +152,26 @@ onMount(loadGym)
 	padding: 0.625rem 0.875rem;
 	font-size: 0.875rem;
 	margin: 1rem;
+}
+
+.upgrade-toast {
+	position: absolute;
+	bottom: 1.5rem;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--color-accent);
+	color: #fff;
+	border-radius: 0.5rem;
+	padding: 0.625rem 1.25rem;
+	font-size: 0.9375rem;
+	font-weight: 700;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+	animation: slide-up 0.3s ease-out;
+	pointer-events: none;
+}
+
+@keyframes slide-up {
+	from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+	to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 </style>
