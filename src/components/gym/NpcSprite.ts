@@ -48,6 +48,7 @@ export class NpcSprite {
 			.image(px, py, spriteKey)
 			.setDisplaySize(TILE, TILE)
 			.setAlpha(0)
+			.setInteractive({ useHandCursor: true })
 
 		this.nameLabel = scene.add
 			.text(px, py - TILE / 2 - 2, "", {

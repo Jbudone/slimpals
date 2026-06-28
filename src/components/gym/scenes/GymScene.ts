@@ -256,6 +256,14 @@ export class GymScene extends Phaser.Scene {
 				ns.updateDepth()
 				this.npcSprites.set(npc.npcKey, ns)
 
+				const key = npc.npcKey
+				ns.sprite.on("pointerdown", () => {
+					const cb = this.registry.get("onNpcClick") as
+						| ((k: string) => void)
+						| undefined
+					if (cb) cb(key)
+				})
+
 				this.time.delayedCall(700, () => {
 					ns.moveTo(npc.position.x, npc.position.y)
 				})

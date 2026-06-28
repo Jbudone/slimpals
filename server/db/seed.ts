@@ -648,6 +648,7 @@ type NpcRow = {
 	role: "trainer" | "receptionist" | "regular" | "specialist"
 	personalityProfile: object
 	defaultSchedule: object
+	portraitUrl: string
 	spriteKey: string
 	unlockedByUpgradeKey: string | null
 }
@@ -689,6 +690,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/trainer_marcus.png",
 		spriteKey: "npc_trainer_marcus",
 		unlockedByUpgradeKey: null,
 	},
@@ -718,6 +720,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/receptionist_lisa.png",
 		spriteKey: "npc_receptionist_lisa",
 		unlockedByUpgradeKey: null,
 	},
@@ -761,6 +764,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/regular_derek.png",
 		spriteKey: "npc_regular_derek",
 		unlockedByUpgradeKey: null,
 	},
@@ -800,6 +804,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/regular_priya.png",
 		spriteKey: "npc_regular_priya",
 		unlockedByUpgradeKey: null,
 	},
@@ -843,6 +848,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/regular_tom.png",
 		spriteKey: "npc_regular_tom",
 		unlockedByUpgradeKey: null,
 	},
@@ -886,6 +892,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/regular_elena.png",
 		spriteKey: "npc_regular_elena",
 		unlockedByUpgradeKey: null,
 	},
@@ -920,6 +927,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/specialist_coach.png",
 		spriteKey: "npc_specialist_coach",
 		unlockedByUpgradeKey: "staff_trainer",
 	},
@@ -954,6 +962,7 @@ const NPC_CATALOG: NpcRow[] = [
 				},
 			],
 		},
+		portraitUrl: "/assets/gym/portraits/specialist_nutritionist.png",
 		spriteKey: "npc_specialist_nutritionist",
 		unlockedByUpgradeKey: "staff_nutrition",
 	},
@@ -964,5 +973,10 @@ export async function seedNpcs(db: Db) {
 	await db
 		.insert(gymNpcs)
 		.values(NPC_CATALOG)
-		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
+		.onDuplicateKeyUpdate({
+			set: {
+				name: sql`VALUES(name)`,
+				portraitUrl: sql`VALUES(portrait_url)`,
+			},
+		})
 }

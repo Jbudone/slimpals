@@ -36,6 +36,7 @@ const stubAI: AIService = {
 		allInspirationCalls.push({ userName, stats, personality })
 		return `Great week ${userName}! You checked in ${stats.checkins} times.`
 	},
+	generateNpcDialogs: async () => [],
 }
 
 const { createApp } = await import("../../server/app.js")

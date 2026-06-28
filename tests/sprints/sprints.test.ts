@@ -47,6 +47,7 @@ const stubAI: AIService = {
 			{ id: "task_6", title: "Eat a fruit" },
 		],
 	}),
+	generateNpcDialogs: async () => [],
 }
 
 const { createApp } = await import("../../server/app.js")

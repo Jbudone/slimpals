@@ -148,10 +148,56 @@ const ANIM_SPRITES: AssetSpec[] = [
 	},
 ]
 
+const NPC_PORTRAIT_DESCS: { key: string; desc: string }[] = [
+	{
+		key: "trainer_marcus",
+		desc: "muscular male gym trainer, tank top, confident expression",
+	},
+	{
+		key: "receptionist_lisa",
+		desc: "friendly female receptionist, gym polo shirt, warm smile",
+	},
+	{
+		key: "regular_derek",
+		desc: "quiet serious male powerlifter, sleeveless hoodie, stern look",
+	},
+	{
+		key: "regular_priya",
+		desc: "calm female yoga enthusiast, yoga outfit, serene expression",
+	},
+	{
+		key: "regular_tom",
+		desc: "loud enthusiastic male gym bro, muscle shirt, big grin",
+	},
+	{
+		key: "regular_elena",
+		desc: "disciplined female runner, running outfit, focused expression",
+	},
+	{
+		key: "specialist_coach",
+		desc: "authoritative male sports coach, tracksuit with whistle",
+	},
+	{
+		key: "specialist_nutritionist",
+		desc: "caring female nutritionist, lab coat, gentle smile",
+	},
+]
+
+const PORTRAIT_VARIANTS = ["", "_happy", "_determined"]
+
+const PORTRAIT_ASSETS: AssetSpec[] = NPC_PORTRAIT_DESCS.flatMap(
+	({ key, desc }) =>
+		PORTRAIT_VARIANTS.map((variant) => ({
+			filename: `portraits/${key}${variant}.png`,
+			prompt: `Pixel art character portrait, Stardew Valley dialogue box style, ${desc}${variant === "_happy" ? ", very happy joyful expression" : variant === "_determined" ? ", determined intense expression" : ""}, gym setting, 128x128 pixels, warm colors, expressive face`,
+		})),
+)
+
 const ALL_ASSETS = [
 	...TILE_ASSETS,
 	...EQUIPMENT_ASSETS,
 	...NPC_SPRITES,
+	...PORTRAIT_ASSETS,
 	...ANIM_SPRITES,
 ]
 

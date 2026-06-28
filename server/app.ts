@@ -12,7 +12,7 @@ import { badgesRouter } from "./routes/badges.js"
 import { createChallengesRouter } from "./routes/challenges.js"
 import { checkinsRouter } from "./routes/checkins.js"
 import { createFoodRouter } from "./routes/food.js"
-import { gymRouter } from "./routes/gym.js"
+import { createGymRouter } from "./routes/gym.js"
 import { healthRouter } from "./routes/health.js"
 import { createInspirationRouter } from "./routes/inspiration.js"
 import { invitesRouter } from "./routes/invites.js"
@@ -87,7 +87,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
 	app.use("/api", badgesRouter)
-	app.use("/api", gymRouter)
+	app.use("/api", createGymRouter(aiService))
 	app.use("/api", createTournamentsRouter(aiService))
 	app.use("/api", createInspirationRouter(aiService))
 	app.use("/api", createChallengesRouter(aiService))

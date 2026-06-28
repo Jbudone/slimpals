@@ -50,6 +50,7 @@ export async function truncateAll() {
 			"social_posts",
 			"tournament_participants",
 			"tournaments",
+			"gym_npc_dialog_batches",
 			"gym_npc_daily_state",
 			"user_gym_npc_relationships",
 			"user_gym_upgrades",

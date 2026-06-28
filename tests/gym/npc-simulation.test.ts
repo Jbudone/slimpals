@@ -31,6 +31,7 @@ const stubAI: AIService = {
 	generateVictoryMessage: async (userName) =>
 		`Congrats ${userName}, you crushed it!`,
 	generateWeeklyInspiration: async () => "Keep pushing this week!",
+	generateNpcDialogs: async () => [],
 }
 
 const { createApp } = await import("../../server/app.js")

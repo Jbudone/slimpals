@@ -7,9 +7,10 @@ import { PreloadScene } from "./scenes/PreloadScene.js"
 type Props = {
 	unlocked: GymSceneData["unlocked"]
 	locked: GymSceneData["locked"]
+	onNpcClick?: (npcKey: string) => void
 }
 
-let { unlocked, locked }: Props = $props()
+let { unlocked, locked, onNpcClick }: Props = $props()
 
 let container: HTMLDivElement
 let game: Phaser.Game | null = null
@@ -38,6 +39,9 @@ function createGame() {
 		callbacks: {
 			postBoot: (g) => {
 				g.registry.set("gymData", gymData)
+				g.registry.set("onNpcClick", (npcKey: string) => {
+					if (onNpcClick) onNpcClick(npcKey)
+				})
 			},
 		},
 	})

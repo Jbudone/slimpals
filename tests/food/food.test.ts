@@ -21,6 +21,7 @@ const stubAI: AIService = {
 	generateVictoryMessage: async (userName) =>
 		`Congrats ${userName}, you crushed it!`,
 	generateWeeklyInspiration: async () => "Keep pushing this week!",
+	generateNpcDialogs: async () => [],
 }
 
 // Minimal valid 1×1 PNG for upload tests

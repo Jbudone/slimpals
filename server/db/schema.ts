@@ -276,6 +276,18 @@ export const gymNpcDailyState = mysqlTable("gym_npc_daily_state", {
 	moodEvents: json("mood_events").notNull().default([]),
 })
 
+export const gymNpcDialogBatches = mysqlTable("gym_npc_dialog_batches", {
+	id: int("id").autoincrement().primaryKey(),
+	gymId: int("gym_id")
+		.notNull()
+		.references(() => userGyms.id),
+	npcKey: varchar("npc_key", { length: 128 }).notNull(),
+	relationshipStage: int("relationship_stage").notNull().default(0),
+	dialogs: json("dialogs").notNull(),
+	generatedAt: timestamp("generated_at").notNull().defaultNow(),
+	expiresAt: timestamp("expires_at").notNull(),
+})
+
 export const tournaments = mysqlTable("tournaments", {
 	id: int("id").autoincrement().primaryKey(),
 	name: varchar("name", { length: 255 }).notNull(),

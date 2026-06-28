@@ -58,6 +58,14 @@ export interface AIService {
 		userName: string,
 		recentActivity: SprintContext,
 	): Promise<SprintResult>
+	generateNpcDialogs(prompt: string): Promise<NpcDialogEntry[]>
+}
+
+export type NpcDialogEntry = {
+	promptText: string
+	response: string
+	portraitVariant: "happy" | "neutral" | "determined"
+	personalityTagAdded: string | null
 }
 
 export type SprintContext = {
@@ -279,5 +287,18 @@ Generate exactly 6 tasks. Make them specific to their activity level — if they
 		if (!match)
 			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as SprintResult
+	}
+
+	async generateNpcDialogs(prompt: string): Promise<NpcDialogEntry[]> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\[[\s\S]*\]/)
+		if (!match)
+			throw new Error(`No JSON array in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as NpcDialogEntry[]
 	}
 }

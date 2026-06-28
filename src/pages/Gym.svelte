@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import GymUI from "../components/gym/GymUI.svelte"
+import NpcDialog from "../components/gym/NpcDialog.svelte"
 import PhaserGym from "../components/gym/PhaserGym.svelte"
 import { api } from "../lib/api.js"
 
@@ -28,6 +29,7 @@ let gymData = $state<GymResponse | null>(null)
 let loading = $state(true)
 let error = $state<string | null>(null)
 let claiming = $state(false)
+let dialogNpcKey = $state<string | null>(null)
 
 async function loadGym() {
 	try {
@@ -54,6 +56,14 @@ async function claimNext() {
 	}
 }
 
+function handleNpcClick(npcKey: string) {
+	dialogNpcKey = npcKey
+}
+
+function closeDialog() {
+	dialogNpcKey = null
+}
+
 onMount(loadGym)
 </script>
 
@@ -75,7 +85,11 @@ onMount(loadGym)
 			<PhaserGym
 				unlocked={gymData.upgrades.unlocked}
 				locked={gymData.upgrades.locked}
+				onNpcClick={handleNpcClick}
 			/>
+			{#if dialogNpcKey}
+				<NpcDialog npcKey={dialogNpcKey} onClose={closeDialog} />
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -90,6 +104,7 @@ onMount(loadGym)
 .canvas-area {
 	flex: 1;
 	min-height: 0;
+	position: relative;
 }
 
 .muted {
