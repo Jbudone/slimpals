@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
-import { gymNpcDailyState } from "../../db/schema.js"
+import { gymNpcDailyState, userGymNpcRelationships } from "../../db/schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -42,7 +42,10 @@ export type GymNpc = {
 export type NpcRelationship = {
 	npcKey: string
 	relationshipLevel: number
+	gymDaysActive: number
 }
+
+export type MoodVariant = "normal" | "energized" | "tired"
 
 export type MoodEvent = {
 	type: string
@@ -63,8 +66,12 @@ export type NpcSimState = {
 	targetEquipmentKey: string | null
 	facingDirection: "up" | "down" | "left" | "right"
 	mood: number
+	moodVariant: MoodVariant
+	moveSpeedMultiplier: number
+	chatEventWith: string | null
 	currentAnimation: string
 	isInteractable: boolean
+	progressionStage: string | null
 }
 
 type DailyStateRow = {
@@ -77,6 +84,34 @@ type DailyStateRow = {
 	equipmentHistory: unknown
 	moodEvents: unknown
 }
+
+// ── Crowd density windows ────────────────────────────────────────────────────
+
+export const CROWD_WINDOWS: Array<{ start: number; end: number; max: number }> =
+	[
+		{ start: 0, end: 5, max: 0 },
+		{ start: 5, end: 7, max: 1 },
+		{ start: 7, end: 9, max: 5 },
+		{ start: 9, end: 11, max: 3 },
+		{ start: 11, end: 13, max: 4 },
+		{ start: 13, end: 16, max: 2 },
+		{ start: 16, end: 19, max: 6 },
+		{ start: 19, end: 21, max: 3 },
+		{ start: 21, end: 24, max: 0 },
+	]
+
+export function getCrowdMax(hour: number): number {
+	return CROWD_WINDOWS.find((w) => hour >= w.start && hour < w.end)?.max ?? 0
+}
+
+const ROLE_PRIORITY: Record<string, number> = {
+	trainer: 1,
+	specialist: 2,
+	receptionist: 3,
+	regular: 4,
+}
+
+// ── Equipment mapping ────────────────────────────────────────────────────────
 
 const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 	cardio: [
@@ -146,15 +181,58 @@ const EQUIPMENT_POSITIONS: Record<string, { x: number; y: number }> = {
 
 const DOOR_POSITION = { x: 10, y: 14 }
 const IDLE_POSITION = { x: 9, y: 7 }
+const EVENT_STAGE_POSITION = { x: 8, y: 6 }
 
-function isNpcPresent(schedule: NpcSchedule, now: Date): boolean {
-	const dayOfWeek = now.getDay()
-	if (!schedule.daysOfWeek.includes(dayOfWeek)) return false
-	const hour = now.getHours()
-	return hour >= schedule.arrivalHour && hour < schedule.departureHour
+// ── Mood helpers ─────────────────────────────────────────────────────────────
+
+export function getMoodVariant(mood: number): MoodVariant {
+	if (mood > 70) return "energized"
+	if (mood < 20) return "tired"
+	return "normal"
 }
 
-function pickEquipment(
+export function getMoveSpeedMultiplier(mood: number): number {
+	if (mood > 70) return 1.2
+	if (mood < 20) return 0.85
+	if (mood < 40) return 0.9
+	return 1.0
+}
+
+// ── Progression milestones ───────────────────────────────────────────────────
+
+export function getProgressionStage(
+	npcKey: string,
+	gymDaysActive: number,
+): string | null {
+	if (npcKey === "regular_derek" && gymDaysActive >= 30) return "heavy_weights"
+	if (npcKey === "regular_elena" && gymDaysActive >= 20) return "stair_climber"
+	if (npcKey === "regular_tom" && gymDaysActive >= 15) return "group_trainer"
+	if (npcKey === "trainer_marcus" && gymDaysActive >= 1) return "form_corrector"
+	return null
+}
+
+// ── Schedule helpers ─────────────────────────────────────────────────────────
+
+function isNpcPresentAtHour(
+	schedule: NpcSchedule,
+	hour: number,
+	dayOfWeek: number,
+	mood: number,
+): boolean {
+	if (!schedule.daysOfWeek.includes(dayOfWeek)) return false
+	const arrivalOffset = mood < 20 ? 1 : 0
+	const departureOffset = mood < 20 ? -1 : 0
+	const effectiveArrival = schedule.arrivalHour + arrivalOffset
+	const effectiveDeparture = Math.max(
+		schedule.arrivalHour + 1,
+		schedule.departureHour + departureOffset,
+	)
+	return hour >= effectiveArrival && hour < effectiveDeparture
+}
+
+// ── Equipment selection ──────────────────────────────────────────────────────
+
+function pickEquipmentForCategory(
 	npc: GymNpc,
 	category: string,
 	unlockedUpgrades: string[],
@@ -174,42 +252,50 @@ function pickEquipment(
 		(e) => !profile.avoidEquipment.includes(e),
 	)
 
-	if (preferred.length > 0) {
-		return { key: preferred[0], gotPreferred: true }
-	}
-
-	if (nonAvoided.length > 0) {
-		return { key: nonAvoided[0], gotPreferred: false }
-	}
-
+	if (preferred.length > 0) return { key: preferred[0], gotPreferred: true }
+	if (nonAvoided.length > 0) return { key: nonAvoided[0], gotPreferred: false }
 	return { key: available[0], gotPreferred: false }
 }
 
-function computeCurrentActivity(
-	schedule: NpcSchedule,
-	now: Date,
-): { step: ActivityStep | null; elapsedInStep: number } {
-	const arrivalMinute = schedule.arrivalHour * 60
-	const currentMinute = now.getHours() * 60 + now.getMinutes()
-	let elapsed = currentMinute - arrivalMinute
-
-	for (const step of schedule.activitySequence) {
-		if (elapsed < step.durationMin) {
-			return { step, elapsedInStep: elapsed }
+function pickEquipmentWithRivalAvoidance(
+	npc: GymNpc,
+	category: string,
+	unlockedUpgrades: string[],
+	occupiedEquipment: Set<string>,
+	rivalClaimedCategories: Set<string>,
+): { key: string | null; gotPreferred: boolean; category: string } {
+	// If rival is using this category, try to find an alternative category
+	if (rivalClaimedCategories.has(category)) {
+		const profile = npc.personalityProfile
+		// Look for preferred equipment in other categories
+		const allPreferred = profile.equipmentPreferences.filter(
+			(e) => unlockedUpgrades.includes(e) && !occupiedEquipment.has(e),
+		)
+		// Find which category the preferred item belongs to
+		for (const pref of allPreferred) {
+			for (const [cat, items] of Object.entries(EQUIPMENT_BY_CATEGORY)) {
+				if (
+					cat !== category &&
+					items.includes(pref) &&
+					!rivalClaimedCategories.has(cat)
+				) {
+					return { key: pref, gotPreferred: true, category: cat }
+				}
+			}
 		}
-		elapsed -= step.durationMin
+		// No alternative found, still pick from same category
 	}
 
-	return { step: null, elapsedInStep: 0 }
+	const pick = pickEquipmentForCategory(
+		npc,
+		category,
+		unlockedUpgrades,
+		occupiedEquipment,
+	)
+	return { ...pick, category }
 }
 
-function computeMoodFromEvents(baseline: number, events: MoodEvent[]): number {
-	let mood = baseline
-	for (const ev of events) {
-		mood += ev.delta
-	}
-	return Math.max(-100, Math.min(100, mood))
-}
+// ── Mood events ──────────────────────────────────────────────────────────────
 
 function buildMoodEvents(
 	npc: GymNpc,
@@ -223,7 +309,7 @@ function buildMoodEvents(
 	const now = new Date().toISOString()
 
 	for (const step of schedule.activitySequence) {
-		const pick = pickEquipment(
+		const pick = pickEquipmentForCategory(
 			npc,
 			step.equipmentCategory,
 			unlockedUpgrades,
@@ -259,7 +345,6 @@ function buildMoodEvents(
 			})
 		}
 	}
-
 	for (const rivalKey of profile.rivalWith) {
 		if (presentNpcKeys.includes(rivalKey)) {
 			events.push({
@@ -273,17 +358,60 @@ function buildMoodEvents(
 	return events
 }
 
+function computeMoodFromEvents(baseline: number, events: MoodEvent[]): number {
+	let mood = baseline
+	for (const ev of events) mood += ev.delta
+	return Math.max(-100, Math.min(100, mood))
+}
+
+function computeCurrentActivity(
+	schedule: NpcSchedule,
+	now: Date,
+	mood: number,
+): { step: ActivityStep | null; elapsedInStep: number } {
+	const arrivalOffset = mood < 20 ? 1 : 0
+	const arrivalMinute = (schedule.arrivalHour + arrivalOffset) * 60
+	const currentMinute = now.getHours() * 60 + now.getMinutes()
+	let elapsed = currentMinute - arrivalMinute
+
+	if (elapsed < 0) return { step: null, elapsedInStep: 0 }
+
+	// mood < 20: skip one activity (the first main activity)
+	const sequence =
+		mood < 20
+			? schedule.activitySequence
+					.filter((s) => s.type !== "main")
+					.concat(
+						schedule.activitySequence.filter((s) => s.type === "main").slice(1),
+					)
+			: schedule.activitySequence
+
+	for (const step of sequence) {
+		if (elapsed < step.durationMin) return { step, elapsedInStep: elapsed }
+		elapsed -= step.durationMin
+	}
+
+	return { step: null, elapsedInStep: 0 }
+}
+
 function getFacingDirection(
 	targetPos: { x: number; y: number },
 	currentPos: { x: number; y: number },
 ): "up" | "down" | "left" | "right" {
 	const dx = targetPos.x - currentPos.x
 	const dy = targetPos.y - currentPos.y
-	if (Math.abs(dx) > Math.abs(dy)) {
-		return dx > 0 ? "right" : "left"
-	}
+	if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "right" : "left"
 	return dy > 0 ? "down" : "up"
 }
+
+function manhattanDistance(
+	a: { x: number; y: number },
+	b: { x: number; y: number },
+): number {
+	return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
+// ── Daily state ──────────────────────────────────────────────────────────────
 
 async function getOrCreateDailyState(
 	gymId: number,
@@ -327,6 +455,17 @@ async function getOrCreateDailyState(
 		})
 		.$returningId()
 
+	// Increment gymDaysActive on the relationship (only if relationship exists)
+	await db
+		.update(userGymNpcRelationships)
+		.set({ gymDaysActive: sql`${userGymNpcRelationships.gymDaysActive} + 1` })
+		.where(
+			and(
+				eq(userGymNpcRelationships.gymId, gymId),
+				eq(userGymNpcRelationships.npcKey, npc.key),
+			),
+		)
+
 	const [row] = await db
 		.select()
 		.from(gymNpcDailyState)
@@ -335,14 +474,15 @@ async function getOrCreateDailyState(
 	return row
 }
 
+// ── Event type ───────────────────────────────────────────────────────────────
+
 type TodayEvent = {
 	npcKey: string | null
 	activeHours: [number, number]
 	effects?: { allNpcMoodBonus?: number }
 } | null
 
-// Center of the gym floor, used as the event "stage" position
-const EVENT_STAGE_POSITION = { x: 8, y: 6 }
+// ── Main export ──────────────────────────────────────────────────────────────
 
 export async function computeGymSimState(
 	gymId: number,
@@ -354,35 +494,60 @@ export async function computeGymSimState(
 	todayEvent?: TodayEvent,
 ): Promise<NpcSimState[]> {
 	const currentTime = now ?? new Date()
-	const states: NpcSimState[] = []
-	const occupiedEquipment = new Set<string>()
+	const hour = currentTime.getHours()
+	const dayOfWeek = currentTime.getDay()
 
-	const eventHour = currentTime.getHours()
-	const eventActive =
-		todayEvent?.npcKey &&
-		todayEvent.activeHours[0] <= eventHour &&
-		eventHour < todayEvent.activeHours[1]
-	const eventNpcKey = eventActive ? todayEvent!.npcKey : null
-	const eventMoodBonus = eventActive
-		? (todayEvent!.effects?.allNpcMoodBonus ?? 0)
-		: 0
+	// Get stored daily states to check existing mood values
+	const dateStart = new Date(currentTime)
+	dateStart.setHours(0, 0, 0, 0)
+	const storedStates = await db
+		.select()
+		.from(gymNpcDailyState)
+		.where(
+			and(
+				eq(gymNpcDailyState.gymId, gymId),
+				eq(gymNpcDailyState.date, dateStart),
+			),
+		)
 
-	const presentNpcs = npcs.filter((npc) => {
+	const getStoredMood = (npcKey: string): number | null => {
+		const s = storedStates.find((r) => r.npcKey === npcKey)
+		return s != null ? s.mood : null
+	}
+
+	// Phase 1: Filter eligible NPCs (unlocked + scheduled today with mood offset)
+	const crowdMax = getCrowdMax(hour)
+
+	const eligibleNpcs = npcs.filter((npc) => {
 		if (
 			npc.unlockedByUpgradeKey &&
 			!unlockedUpgrades.includes(npc.unlockedByUpgradeKey)
-		) {
+		)
 			return false
-		}
-		return isNpcPresent(npc.defaultSchedule as NpcSchedule, currentTime)
+		const mood =
+			getStoredMood(npc.key) ??
+			(npc.personalityProfile as PersonalityProfile).moodBaseline
+		return isNpcPresentAtHour(
+			npc.defaultSchedule as NpcSchedule,
+			hour,
+			dayOfWeek,
+			mood,
+		)
 	})
 
+	// Phase 2: Apply crowd cap (trainer > specialist > receptionist > regular)
+	const sortedEligible = [...eligibleNpcs].sort(
+		(a, b) => (ROLE_PRIORITY[a.role] ?? 99) - (ROLE_PRIORITY[b.role] ?? 99),
+	)
+	const presentNpcs = sortedEligible.slice(0, Math.max(0, crowdMax))
 	const presentNpcKeys = presentNpcs.map((n) => n.key)
+
+	// Phase 3: Compute mood events and daily states for present NPCs
+	const occupiedEquipment = new Set<string>()
+	const dailyStateMap = new Map<string, DailyStateRow>()
 
 	for (const npc of presentNpcs) {
 		const schedule = npc.defaultSchedule as NpcSchedule
-		const profile = npc.personalityProfile as PersonalityProfile
-
 		const moodEvents = buildMoodEvents(
 			npc,
 			schedule,
@@ -390,7 +555,6 @@ export async function computeGymSimState(
 			occupiedEquipment,
 			presentNpcKeys,
 		)
-
 		const dailyState = await getOrCreateDailyState(
 			gymId,
 			npc,
@@ -399,70 +563,147 @@ export async function computeGymSimState(
 			schedule.activitySequence,
 			db,
 		)
+		dailyStateMap.set(npc.key, dailyState)
+	}
 
-		const { step } = computeCurrentActivity(schedule, currentTime)
+	// Phase 4: Compute equipment choices (with rival avoidance)
+	// Track which categories each NPC's rivals have claimed
+	const rivalClaimedCategories = new Map<string, Set<string>>()
+	const equipmentChoices = new Map<
+		string,
+		{ key: string | null; category: string }
+	>()
+	const positionMap = new Map<string, { x: number; y: number }>()
 
-		let activity: NpcSimState["currentActivity"] = "idle"
-		let targetEquipmentKey: string | null = null
-		let position = IDLE_POSITION
-		let animation = "idle"
+	// First sub-pass: claim equipment in role-priority order
+	occupiedEquipment.clear()
+	for (const npc of presentNpcs) {
+		const profile = npc.personalityProfile as PersonalityProfile
+		const schedule = npc.defaultSchedule as NpcSchedule
+		const dailyState = dailyStateMap.get(npc.key)
+		const mood = dailyState?.mood ?? npc.personalityProfile.moodBaseline
 
-		if (step) {
-			const pick = pickEquipment(
-				npc,
-				step.equipmentCategory,
-				unlockedUpgrades,
-				occupiedEquipment,
-			)
-			if (pick.key) {
-				targetEquipmentKey = pick.key
-				occupiedEquipment.add(pick.key)
-				activity = "using_equipment"
-				position = EQUIPMENT_POSITIONS[pick.key] ?? IDLE_POSITION
-				animation = `use_${pick.key}`
-			} else {
-				activity = "idle"
-				position = IDLE_POSITION
-				animation = "idle"
-			}
+		const { step } = computeCurrentActivity(schedule, currentTime, mood)
+
+		if (!step) {
+			equipmentChoices.set(npc.key, { key: null, category: "none" })
+			positionMap.set(npc.key, IDLE_POSITION)
+			continue
 		}
 
-		const friendPresent = profile.friendlyWith.some((f) =>
-			presentNpcKeys.includes(f),
+		// Gather rival's claimed categories so far
+		const rivalCats = rivalClaimedCategories.get(npc.key) ?? new Set<string>()
+		for (const rivalKey of profile.rivalWith) {
+			const rivalChoice = equipmentChoices.get(rivalKey)
+			if (rivalChoice?.category) rivalCats.add(rivalChoice.category)
+		}
+
+		const pick = pickEquipmentWithRivalAvoidance(
+			npc,
+			step.equipmentCategory,
+			unlockedUpgrades,
+			occupiedEquipment,
+			rivalCats,
 		)
-		if (activity === "idle" && friendPresent) {
+
+		if (pick.key) {
+			occupiedEquipment.add(pick.key)
+			equipmentChoices.set(npc.key, { key: pick.key, category: pick.category })
+			positionMap.set(npc.key, EQUIPMENT_POSITIONS[pick.key] ?? IDLE_POSITION)
+		} else {
+			equipmentChoices.set(npc.key, {
+				key: null,
+				category: step.equipmentCategory,
+			})
+			positionMap.set(npc.key, IDLE_POSITION)
+		}
+	}
+
+	// Phase 5: Determine chat events (friendly pairs within 3 tiles)
+	const chatEventMap = new Map<string, string>()
+	for (const npc of presentNpcs) {
+		if (chatEventMap.has(npc.key)) continue
+		const profile = npc.personalityProfile as PersonalityProfile
+		for (const friendKey of profile.friendlyWith) {
+			if (!presentNpcKeys.includes(friendKey)) continue
+			if (chatEventMap.has(friendKey)) continue
+			const posA = positionMap.get(npc.key)
+			const posB = positionMap.get(friendKey)
+			if (posA && posB && manhattanDistance(posA, posB) <= 3) {
+				chatEventMap.set(npc.key, friendKey)
+				chatEventMap.set(friendKey, npc.key)
+				break
+			}
+		}
+	}
+
+	// Phase 6: Event host override
+	const eventHour = currentTime.getHours()
+	const eventActive =
+		todayEvent?.npcKey &&
+		todayEvent.activeHours[0] <= eventHour &&
+		eventHour < todayEvent.activeHours[1]
+	const eventNpcKey = eventActive && todayEvent ? todayEvent.npcKey : null
+	const eventMoodBonus =
+		eventActive && todayEvent ? (todayEvent.effects?.allNpcMoodBonus ?? 0) : 0
+
+	// Phase 7: Build final states
+	const states: NpcSimState[] = []
+
+	for (const npc of presentNpcs) {
+		const dailyState = dailyStateMap.get(npc.key)
+		const baseMood =
+			(dailyState?.mood ?? npc.personalityProfile.moodBaseline) + eventMoodBonus
+		const finalMood = Math.max(-100, Math.min(100, baseMood))
+		const moodVariant = getMoodVariant(finalMood)
+		const moveSpeedMultiplier = getMoveSpeedMultiplier(finalMood)
+
+		const choice = equipmentChoices.get(npc.key) ?? {
+			key: null,
+			category: "none",
+		}
+		let position = positionMap.get(npc.key) ?? IDLE_POSITION
+		const chatEventWith = chatEventMap.get(npc.key) ?? null
+
+		const isEventHost = npc.key === eventNpcKey
+		if (isEventHost) position = EVENT_STAGE_POSITION
+
+		let activity: NpcSimState["currentActivity"] = "idle"
+		let animation = "idle"
+
+		if (isEventHost) {
+			activity = "idle"
+			animation = "idle"
+		} else if (chatEventWith) {
 			activity = "chatting"
 			animation = "chat"
+		} else if (choice.key) {
+			activity = "using_equipment"
+			animation = `use_${choice.key}`
 		}
 
 		const rel = relationships.find((r) => r.npcKey === npc.key)
-		const isInteractable =
-			activity !== "leaving" && (rel?.relationshipLevel ?? 0) >= 0
-
-		const isEventHost = npc.key === eventNpcKey
-		const finalPosition = isEventHost ? EVENT_STAGE_POSITION : position
-		const finalActivity: NpcSimState["currentActivity"] = isEventHost
-			? "idle"
-			: activity
-		const finalAnimation = isEventHost ? "idle" : animation
-		const finalMood = Math.max(
-			-100,
-			Math.min(100, dailyState.mood + eventMoodBonus),
-		)
+		const gymDaysActive = rel?.gymDaysActive ?? 0
+		const progressionStage = getProgressionStage(npc.key, gymDaysActive)
 
 		states.push({
 			npcKey: npc.key,
 			isPresent: true,
-			position: finalPosition,
-			currentActivity: finalActivity,
-			targetEquipmentKey: isEventHost ? null : targetEquipmentKey,
-			facingDirection: getFacingDirection(finalPosition, DOOR_POSITION),
+			position,
+			currentActivity: activity,
+			targetEquipmentKey: isEventHost ? null : (choice.key ?? null),
+			facingDirection: getFacingDirection(position, DOOR_POSITION),
 			mood: finalMood,
-			currentAnimation: finalAnimation,
-			isInteractable,
+			moodVariant,
+			moveSpeedMultiplier,
+			chatEventWith,
+			currentAnimation: animation,
+			isInteractable: activity !== "leaving",
+			progressionStage,
 		})
 	}
 
+	// Absent NPCs
 	for (const npc of npcs) {
 		if (presentNpcs.includes(npc)) continue
 		if (
@@ -471,6 +712,7 @@ export async function computeGymSimState(
 		)
 			continue
 
+		const profile = npc.personalityProfile as PersonalityProfile
 		states.push({
 			npcKey: npc.key,
 			isPresent: false,
@@ -478,9 +720,13 @@ export async function computeGymSimState(
 			currentActivity: "leaving",
 			targetEquipmentKey: null,
 			facingDirection: "down",
-			mood: (npc.personalityProfile as PersonalityProfile).moodBaseline,
+			mood: profile.moodBaseline,
+			moodVariant: getMoodVariant(profile.moodBaseline),
+			moveSpeedMultiplier: 1.0,
+			chatEventWith: null,
 			currentAnimation: "absent",
 			isInteractable: false,
+			progressionStage: null,
 		})
 	}
 

@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import {
 	badges,
 	dailyCheckins,
+	gymNpcDailyState,
 	gymNpcs,
 	gymUpgradesCatalog,
 	userBadges,
@@ -79,12 +80,96 @@ function getStagePortraitUrl(
 	return stagePath
 }
 
+type MilestoneDialogResult = {
+	key: string
+	promptText: string
+	response: string
+}
+
+const MILESTONE_DIALOGS: Record<
+	string,
+	{
+		npcKey: string
+		condition: (stage: number, gymDaysActive: number) => boolean
+		promptText: string
+		response: string
+	}
+> = {
+	marcus_stage2: {
+		npcKey: "trainer_marcus",
+		condition: (stage) => stage >= 2,
+		promptText:
+			"Hey, I've been watching your progress. Ready to level up your form?",
+		response:
+			"*leans in with a grin* You've earned this. Your squat depth is actually solid now — let's add 20% to your working weight and focus on tempo. Three seconds down, explode up. That's where real gains happen.",
+	},
+	lisa_stage1: {
+		npcKey: "regular_lisa",
+		condition: (stage) => stage >= 1,
+		promptText: "Okay I have to tell you something I overheard yesterday...",
+		response:
+			"*whispers* So apparently the sauna is 'reservation only' after 7pm now? Nobody told me! The front desk has a signup sheet hidden behind the smoothie menu. You didn't hear it from me though.",
+	},
+	elena_15days: {
+		npcKey: "regular_elena",
+		condition: (_stage, gymDaysActive) => gymDaysActive >= 15,
+		promptText:
+			"I keep seeing you here in the mornings. Do you ever run outside?",
+		response:
+			"*beams* I do the river trail every Saturday at 6am — it's magic at that hour, barely anyone out there. You should join sometime! Fair warning: I don't slow down for hills.",
+	},
+	kim_stage2: {
+		npcKey: "specialist_kim",
+		condition: (stage) => stage >= 2,
+		promptText: "Can I ask you something about nutrition timing?",
+		response:
+			"*pulls out a small notebook* Oh, you've unlocked the real conversation. Honestly? The 'post-workout window' is mostly marketing. Total daily protein matters way more than timing. Aim for 1.6g per kg of bodyweight — that's the number the research actually supports.",
+	},
+}
+
+function getMilestoneDialog(
+	npcKey: string,
+	stage: number,
+	gymDaysActive: number,
+	firedMilestones: string[],
+): MilestoneDialogResult | null {
+	for (const [key, def] of Object.entries(MILESTONE_DIALOGS)) {
+		if (def.npcKey !== npcKey) continue
+		if (firedMilestones.includes(key)) continue
+		if (def.condition(stage, gymDaysActive)) {
+			return { key, promptText: def.promptText, response: def.response }
+		}
+	}
+	return null
+}
+
 export function createGymRouter(aiService: AIService) {
 	const router = Router()
 
 	router.get("/gym", async (req, res) => {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
+
+		// Update gym visit streak
+		const today = new Date()
+		today.setHours(0, 0, 0, 0)
+		const yesterday = new Date(today)
+		yesterday.setDate(yesterday.getDate() - 1)
+
+		const lastVisit = gym.lastGymVisitDate
+		const lastDay = lastVisit ? new Date(lastVisit) : null
+		if (lastDay) lastDay.setHours(0, 0, 0, 0)
+
+		const visitedToday = lastDay?.getTime() === today.getTime()
+		if (!visitedToday) {
+			const visitedYesterday = lastDay?.getTime() === yesterday.getTime()
+			const newStreak = visitedYesterday ? gym.gymVisitStreak + 1 : 1
+			await db
+				.update(userGyms)
+				.set({ gymVisitStreak: newStreak, lastGymVisitDate: new Date() })
+				.where(eq(userGyms.id, gym.id))
+			gym.gymVisitStreak = newStreak
+		}
 
 		const catalog = await db
 			.select()
@@ -143,6 +228,7 @@ export function createGymRouter(aiService: AIService) {
 				name: gym.name,
 				level: gym.level,
 				xp: gym.xp,
+				visitStreak: gym.gymVisitStreak,
 			},
 			upgrades: { unlocked, pending, locked },
 			xpToNextLevel,
@@ -273,6 +359,7 @@ export function createGymRouter(aiService: AIService) {
 		const relationships: NpcRelationship[] = relRows.map((r) => ({
 			npcKey: r.npcKey,
 			relationshipLevel: r.relationshipLevel,
+			gymDaysActive: r.gymDaysActive,
 		}))
 
 		const npcData: GymNpc[] = allNpcs.map((n) => ({
@@ -432,6 +519,46 @@ export function createGymRouter(aiService: AIService) {
 		const rel = await getOrCreateRelationship(gym.id, npcKey, db)
 		const oldStage = getRelationshipStage(rel.relationshipLevel)
 
+		// Check milestone dialogs before normal flow
+		const firedMilestones = (rel.milestoneDialogsFired as string[]) ?? []
+		const milestoneDialog = getMilestoneDialog(
+			npcKey,
+			oldStage,
+			rel.gymDaysActive,
+			firedMilestones,
+		)
+		if (milestoneDialog) {
+			await db
+				.update(userGymNpcRelationships)
+				.set({
+					milestoneDialogsFired: [...firedMilestones, milestoneDialog.key],
+					interactionCount: rel.interactionCount + 1,
+					lastInteractedAt: new Date(),
+				})
+				.where(
+					and(
+						eq(userGymNpcRelationships.gymId, gym.id),
+						eq(userGymNpcRelationships.npcKey, npcKey),
+					),
+				)
+			res.json({
+				dialog: {
+					promptText: milestoneDialog.promptText,
+					response: milestoneDialog.response,
+					portraitVariant: "happy",
+				},
+				relationship: {
+					level: rel.relationshipLevel,
+					stage: oldStage,
+					stageLabel: getStageLabel(oldStage),
+					gain: 0,
+				},
+				stageAdvanced: false,
+				milestoneKey: milestoneDialog.key,
+			})
+			return
+		}
+
 		const dialogs = await getCurrentDialogBatch(gym.id, npcKey, oldStage, db)
 		if (!dialogs || promptIndex >= dialogs.length) {
 			res.status(400).json({ error: "No dialog available at that index" })
@@ -530,6 +657,54 @@ export function createGymRouter(aiService: AIService) {
 		const gym = await getOrCreateGym(userId, db)
 		await appendMemoryEvent(gym.id, eventType, metadata, db)
 		res.json({ success: true })
+	})
+
+	router.get("/gym/daily-summary", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+
+		const today = new Date()
+		today.setHours(0, 0, 0, 0)
+
+		// NPC status updates: mood variants for today's daily states
+		const dailyStates = await db
+			.select()
+			.from(gymNpcDailyState)
+			.where(
+				and(
+					eq(gymNpcDailyState.gymId, gym.id),
+					eq(gymNpcDailyState.date, today),
+				),
+			)
+
+		const npcStatusUpdates = dailyStates.map((s) => ({
+			npcKey: s.npcKey,
+			mood: s.mood,
+			moodVariant: s.mood > 70 ? "energized" : s.mood < 20 ? "tired" : "normal",
+		}))
+
+		// Streak bonus
+		const streak = gym.gymVisitStreak
+		const streakBonus = {
+			active: streak >= 3,
+			multiplier: streak >= 3 ? 1.5 : 1.0,
+			currentStreak: streak,
+		}
+
+		// Pending upgrades
+		const catalogRows = await db.select().from(gymUpgradesCatalog)
+		const pendingKeys = (gym.pendingUpgradeKeys as string[]) ?? []
+		const pendingUpgrades = catalogRows
+			.filter((c) => pendingKeys.includes(c.key))
+			.map((c) => ({ key: c.key, name: c.name, category: c.category }))
+
+		res.json({
+			todayEvent: gym.todayEventData ?? null,
+			npcStatusUpdates,
+			streakBonus,
+			unclaimedXp: 0,
+			pendingUpgrades,
+		})
 	})
 
 	router.post("/gym/generate-dialogs", async (req, res) => {

@@ -200,6 +200,8 @@ export const userGyms = mysqlTable("user_gyms", {
 	xp: int("xp").notNull().default(0),
 	pendingUpgradeKeys: json("pending_upgrade_keys").notNull().default([]),
 	todayEventData: json("today_event_data"),
+	gymVisitStreak: int("gym_visit_streak").notNull().default(0),
+	lastGymVisitDate: timestamp("last_gym_visit_date"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
@@ -263,6 +265,10 @@ export const userGymNpcRelationships = mysqlTable(
 		interactionCount: int("interaction_count").notNull().default(0),
 		lastInteractedAt: timestamp("last_interacted_at"),
 		moodHistory: json("mood_history").notNull().default([]),
+		gymDaysActive: int("gym_days_active").notNull().default(0),
+		milestoneDialogsFired: json("milestone_dialogs_fired")
+			.notNull()
+			.default([]),
 	},
 )
 

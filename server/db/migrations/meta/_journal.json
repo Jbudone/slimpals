@@ -64,6 +64,13 @@
       "when": 1782288000000,
       "tag": "0008_gym_content_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1782374400000,
+      "tag": "0009_gym_polish",
+      "breakpoints": true
     }
   ]
 }
