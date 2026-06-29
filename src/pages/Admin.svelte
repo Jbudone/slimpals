@@ -31,7 +31,9 @@ let creating = $state(false)
 let createResult = $state<{ text: string; ok: boolean } | null>(null)
 
 let expandedId = $state<string | null>(null)
-let seedTab = $state<"checkins" | "weight" | "badges" | "food">("checkins")
+let seedTab = $state<"checkins" | "weight" | "badges" | "food" | "gym">(
+	"checkins",
+)
 let seedStatus = $state<{ text: string; ok: boolean } | null>(null)
 
 let checkinDays = $state(7)
@@ -211,7 +213,7 @@ onMount(load)
 								<td colspan="4">
 									<div class="seed-panel">
 										<div class="tab-bar">
-											{#each (["checkins", "weight", "badges", "food"] as const) as tab}
+											{#each (["checkins", "weight", "badges", "food", "gym"] as const) as tab}
 												<button
 													class="tab"
 													class:active={seedTab === tab}
@@ -300,6 +302,20 @@ onMount(load)
 															)}
 													>
 														Seed Food
+													</button>
+												</div>
+											{:else if seedTab === "gym"}
+												<div class="field-row">
+													<button
+														class="btn primary sm"
+														onclick={() =>
+															runSeed(
+																"/gym/generate-content",
+																{ userId: user.id },
+																"Content generated (dialogs + gym event + portraits)",
+															)}
+													>
+														Generate Gym Content
 													</button>
 												</div>
 											{/if}

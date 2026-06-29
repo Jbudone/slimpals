@@ -28,6 +28,7 @@ const OPEN_ROUTES = new Set([
 	"POST:/api/challenges/generate",
 	"POST:/api/sprints/generate",
 	"POST:/api/inspiration/generate",
+	"POST:/api/gym/cron/generate-content",
 ])
 
 const CLIENT_DIR =

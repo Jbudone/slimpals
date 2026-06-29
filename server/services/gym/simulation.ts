@@ -335,6 +335,15 @@ async function getOrCreateDailyState(
 	return row
 }
 
+type TodayEvent = {
+	npcKey: string | null
+	activeHours: [number, number]
+	effects?: { allNpcMoodBonus?: number }
+} | null
+
+// Center of the gym floor, used as the event "stage" position
+const EVENT_STAGE_POSITION = { x: 8, y: 6 }
+
 export async function computeGymSimState(
 	gymId: number,
 	npcs: GymNpc[],
@@ -342,10 +351,21 @@ export async function computeGymSimState(
 	relationships: NpcRelationship[],
 	db: Db,
 	now?: Date,
+	todayEvent?: TodayEvent,
 ): Promise<NpcSimState[]> {
 	const currentTime = now ?? new Date()
 	const states: NpcSimState[] = []
 	const occupiedEquipment = new Set<string>()
+
+	const eventHour = currentTime.getHours()
+	const eventActive =
+		todayEvent?.npcKey &&
+		todayEvent.activeHours[0] <= eventHour &&
+		eventHour < todayEvent.activeHours[1]
+	const eventNpcKey = eventActive ? todayEvent!.npcKey : null
+	const eventMoodBonus = eventActive
+		? (todayEvent!.effects?.allNpcMoodBonus ?? 0)
+		: 0
 
 	const presentNpcs = npcs.filter((npc) => {
 		if (
@@ -419,15 +439,26 @@ export async function computeGymSimState(
 		const isInteractable =
 			activity !== "leaving" && (rel?.relationshipLevel ?? 0) >= 0
 
+		const isEventHost = npc.key === eventNpcKey
+		const finalPosition = isEventHost ? EVENT_STAGE_POSITION : position
+		const finalActivity: NpcSimState["currentActivity"] = isEventHost
+			? "idle"
+			: activity
+		const finalAnimation = isEventHost ? "idle" : animation
+		const finalMood = Math.max(
+			-100,
+			Math.min(100, dailyState.mood + eventMoodBonus),
+		)
+
 		states.push({
 			npcKey: npc.key,
 			isPresent: true,
-			position,
-			currentActivity: activity,
-			targetEquipmentKey,
-			facingDirection: getFacingDirection(position, DOOR_POSITION),
-			mood: dailyState.mood,
-			currentAnimation: animation,
+			position: finalPosition,
+			currentActivity: finalActivity,
+			targetEquipmentKey: isEventHost ? null : targetEquipmentKey,
+			facingDirection: getFacingDirection(finalPosition, DOOR_POSITION),
+			mood: finalMood,
+			currentAnimation: finalAnimation,
 			isInteractable,
 		})
 	}

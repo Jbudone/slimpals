@@ -7,6 +7,7 @@ import {
 	userGymNpcRelationships,
 } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
+import type { MemoryEvent } from "./content.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -120,10 +121,18 @@ export async function generateDialogBatch(
 			? personalityNotes.join(", ")
 			: "Nothing yet — first conversations."
 
+	const memoryEvents = (rel.gymMemoryEvents as MemoryEvent[] | undefined) ?? []
+	const unreferencedEvents = memoryEvents.filter((e) => !e.referenced)
+	const memoryStr =
+		unreferencedEvents.length > 0
+			? `Recent milestones to naturally weave in (each only once): ${unreferencedEvents.map((e) => e.event).join(", ")}.`
+			: ""
+
 	const prompt = `You are ${npc.name}, a ${npc.role} at a gym. Personality: ${JSON.stringify(profile)}.
 Your relationship with this gym member is at stage ${stage} (${stageLabel}).
 Their recent stats: ${statsStr}
 Things you know about them from past conversations: ${notesStr}.
+${memoryStr}
 
 Generate 5 realistic, casual gym conversation exchanges.
 Each must have:
@@ -135,6 +144,21 @@ Each must have:
 Return JSON array only, no markdown.`
 
 	const dialogs = await aiService.generateNpcDialogs(prompt)
+
+	if (unreferencedEvents.length > 0) {
+		const updatedEvents = memoryEvents.map((e) =>
+			!e.referenced ? { ...e, referenced: true } : e,
+		)
+		await db
+			.update(userGymNpcRelationships)
+			.set({ gymMemoryEvents: updatedEvents })
+			.where(
+				and(
+					eq(userGymNpcRelationships.gymId, gymId),
+					eq(userGymNpcRelationships.npcKey, npcKey),
+				),
+			)
+	}
 
 	const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 

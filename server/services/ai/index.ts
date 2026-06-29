@@ -59,6 +59,11 @@ export interface AIService {
 		recentActivity: SprintContext,
 	): Promise<SprintResult>
 	generateNpcDialogs(prompt: string): Promise<NpcDialogEntry[]>
+	generateGymEvent(prompt: string): Promise<GymEventData>
+	generateNpcPortrait(
+		prompt: string,
+		outputPath: string,
+	): Promise<string | null>
 }
 
 export type NpcDialogEntry = {
@@ -66,6 +71,15 @@ export type NpcDialogEntry = {
 	response: string
 	portraitVariant: "happy" | "neutral" | "determined"
 	personalityTagAdded: string | null
+}
+
+export type GymEventData = {
+	type: "competition" | "class" | "delivery" | "special_guest" | "maintenance"
+	title: string
+	description: string
+	npcKey: string | null
+	activeHours: [number, number]
+	effects: { allNpcMoodBonus?: number; xpMultiplier?: number }
 }
 
 export type SprintContext = {
@@ -300,5 +314,54 @@ Generate exactly 6 tasks. Make them specific to their activity level — if they
 		if (!match)
 			throw new Error(`No JSON array in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as NpcDialogEntry[]
+	}
+
+	async generateGymEvent(prompt: string): Promise<GymEventData> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as GymEventData
+	}
+
+	async generateNpcPortrait(
+		prompt: string,
+		outputPath: string,
+	): Promise<string | null> {
+		try {
+			const model = this.client.getGenerativeModel({
+				model: "gemini-2.0-flash-preview-image-generation",
+			})
+
+			const result = await model.generateContent({
+				contents: [{ role: "user", parts: [{ text: prompt }] }],
+				generationConfig: {
+					// @ts-expect-error responseModalities not yet in TS types
+					responseModalities: ["IMAGE"],
+				},
+			})
+
+			const parts = result.response.candidates?.[0]?.content?.parts ?? []
+			const imgPart = parts.find(
+				(p: { inlineData?: { data: string; mimeType: string } }) =>
+					p.inlineData,
+			)
+			if (!imgPart?.inlineData) return null
+
+			const { writeFile, mkdir } = await import("node:fs/promises")
+			const { dirname } = await import("node:path")
+			await mkdir(dirname(outputPath), { recursive: true })
+			const buf = Buffer.from(imgPart.inlineData.data, "base64")
+			await writeFile(outputPath, buf)
+			return outputPath
+		} catch (err) {
+			console.warn("[portrait] generation skipped:", (err as Error).message)
+			return null
+		}
 	}
 }

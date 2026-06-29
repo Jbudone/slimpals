@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm"
+import { and, asc, desc, eq, gte } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
@@ -8,11 +8,18 @@ import {
 	gymUpgradesCatalog,
 	userBadges,
 	userGymNpcRelationships,
+	userGyms,
 	userGymUpgrades,
 	weightEntries,
 } from "../db/schema.js"
+import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
+import {
+	appendMemoryEvent,
+	generateContentForUser,
+	processContentBatch,
+} from "../services/gym/content.js"
 import {
 	computeRelationshipGain,
 	type DialogEntry,
@@ -61,6 +68,15 @@ async function fetchUserStats(userId: string) {
 		latestWeightKg: latestWeight?.weightKg ?? null,
 		recentBadges: recentBadgeRows.map((r) => r.name),
 	}
+}
+
+function getStagePortraitUrl(
+	baseUrl: string | null,
+	stage: number,
+): string | null {
+	if (!baseUrl || stage < 2) return baseUrl
+	const stagePath = baseUrl.replace(".png", `_stage${stage}.png`)
+	return stagePath
 }
 
 export function createGymRouter(aiService: AIService) {
@@ -130,6 +146,7 @@ export function createGymRouter(aiService: AIService) {
 			},
 			upgrades: { unlocked, pending, locked },
 			xpToNextLevel,
+			todayEvent: gym.todayEventData ?? null,
 		})
 	})
 
@@ -268,18 +285,33 @@ export function createGymRouter(aiService: AIService) {
 			unlockedByUpgradeKey: n.unlockedByUpgradeKey,
 		})) as GymNpc[]
 
+		const gymRow = await db
+			.select({ todayEventData: userGyms.todayEventData })
+			.from(userGyms)
+			.where(eq(userGyms.id, gym.id))
+			.then((rows) => rows[0])
+
+		const todayEvent = gymRow?.todayEventData as {
+			npcKey: string | null
+			activeHours: [number, number]
+			effects?: { allNpcMoodBonus?: number }
+		} | null
+
 		const npcs = await computeGymSimState(
 			gym.id,
 			npcData,
 			unlockedKeys,
 			relationships,
 			db,
+			undefined,
+			todayEvent,
 		)
 
 		res.json({
 			simTime: new Date().toISOString(),
 			npcs,
 			gymId: gym.id,
+			todayEvent: gymRow?.todayEventData ?? null,
 		})
 	})
 
@@ -355,12 +387,17 @@ export function createGymRouter(aiService: AIService) {
 			promptText: d.promptText,
 		}))
 
+		const portraitUrl = getStagePortraitUrl(
+			npc.portraitUrl,
+			getRelationshipStage(rel.relationshipLevel),
+		)
+
 		res.json({
 			npc: {
 				key: npc.key,
 				name: npc.name,
 				role: npc.role,
-				portraitUrl: npc.portraitUrl,
+				portraitUrl,
 			},
 			relationship: {
 				level: rel.relationshipLevel,
@@ -445,6 +482,54 @@ export function createGymRouter(aiService: AIService) {
 			stageAdvanced,
 			newStage: stageAdvanced ? newStage : undefined,
 		})
+	})
+
+	// Admin: generate content for a single user
+	router.post("/gym/generate-content", requireAdmin, async (req, res) => {
+		const { userId } = req.body as { userId?: string }
+		if (!userId) {
+			res.status(400).json({ error: "userId is required" })
+			return
+		}
+		const result = await generateContentForUser(userId, aiService, db)
+		res.json(result)
+	})
+
+	// Cron: generate content for all active users (protected by CRON_SECRET header)
+	router.post("/gym/cron/generate-content", async (req, res) => {
+		const cronSecret = process.env.CRON_SECRET
+		if (!cronSecret || req.headers["x-cron-secret"] !== cronSecret) {
+			res.status(401).json({ error: "Unauthorized" })
+			return
+		}
+
+		const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+		const activeGyms = await db
+			.select({ userId: userGyms.userId })
+			.from(userGyms)
+			.where(gte(userGyms.createdAt, sevenDaysAgo))
+
+		const userIds = activeGyms.map((g) => g.userId)
+		const result = await processContentBatch(userIds, aiService, db)
+		res.json({ ...result, total: userIds.length })
+	})
+
+	// Internal: append a memory event for all NPCs with relationship >= 25
+	router.post("/gym/memory-event", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const { eventType, metadata = {} } = req.body as {
+			eventType?: string
+			metadata?: Record<string, unknown>
+		}
+
+		if (!eventType) {
+			res.status(400).json({ error: "eventType is required" })
+			return
+		}
+
+		const gym = await getOrCreateGym(userId, db)
+		await appendMemoryEvent(gym.id, eventType, metadata, db)
+		res.json({ success: true })
 	})
 
 	router.post("/gym/generate-dialogs", async (req, res) => {

@@ -199,6 +199,7 @@ export const userGyms = mysqlTable("user_gyms", {
 	level: int("level").notNull().default(0),
 	xp: int("xp").notNull().default(0),
 	pendingUpgradeKeys: json("pending_upgrade_keys").notNull().default([]),
+	todayEventData: json("today_event_data"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
@@ -245,6 +246,7 @@ export const gymNpcs = mysqlTable("gym_npcs", {
 	portraitUrl: varchar("portrait_url", { length: 500 }),
 	spriteKey: varchar("sprite_key", { length: 128 }).notNull(),
 	unlockedByUpgradeKey: varchar("unlocked_by_upgrade_key", { length: 128 }),
+	portraitGeneratedAt: timestamp("portrait_generated_at"),
 })
 
 export const userGymNpcRelationships = mysqlTable(
@@ -257,6 +259,7 @@ export const userGymNpcRelationships = mysqlTable(
 		npcKey: varchar("npc_key", { length: 128 }).notNull(),
 		relationshipLevel: int("relationship_level").notNull().default(0),
 		personalityNotes: json("personality_notes").notNull().default([]),
+		gymMemoryEvents: json("gym_memory_events").notNull().default([]),
 		interactionCount: int("interaction_count").notNull().default(0),
 		lastInteractedAt: timestamp("last_interacted_at"),
 		moodHistory: json("mood_history").notNull().default([]),

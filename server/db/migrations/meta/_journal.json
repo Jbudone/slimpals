@@ -57,6 +57,13 @@
       "when": 1782201600000,
       "tag": "0007_npc_dialogs",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1782288000000,
+      "tag": "0008_gym_content_pipeline",
+      "breakpoints": true
     }
   ]
 }

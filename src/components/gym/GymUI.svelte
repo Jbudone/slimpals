@@ -1,4 +1,13 @@
 <script lang="ts">
+type GymEvent = {
+	type: string
+	title: string
+	description: string
+	npcKey: string | null
+	activeHours: [number, number]
+	effects: { allNpcMoodBonus?: number; xpMultiplier?: number }
+}
+
 type Props = {
 	gymName: string
 	level: number
@@ -7,6 +16,7 @@ type Props = {
 	pendingCount: number
 	onClaim: () => void
 	ceremonyActive?: boolean
+	todayEvent?: GymEvent | null
 }
 
 let {
@@ -17,7 +27,25 @@ let {
 	pendingCount,
 	onClaim,
 	ceremonyActive = false,
+	todayEvent = null,
 }: Props = $props()
+
+const EVENT_ICONS: Record<string, string> = {
+	competition: "🏆",
+	class: "🧘",
+	delivery: "📦",
+	special_guest: "⭐",
+	maintenance: "🔧",
+}
+
+function isEventActive(event: GymEvent): boolean {
+	const hour = new Date().getHours()
+	return hour >= event.activeHours[0] && hour < event.activeHours[1]
+}
+
+const activeEvent = $derived(
+	todayEvent && isEventActive(todayEvent) ? todayEvent : null,
+)
 
 const nextLevelXp = $derived(xp + xpToNextLevel)
 const progressPercent = $derived(
@@ -26,6 +54,18 @@ const progressPercent = $derived(
 </script>
 
 <div class="gym-ui">
+	{#if activeEvent}
+		<div class="event-banner">
+			<span class="event-icon">{EVENT_ICONS[activeEvent.type] ?? "🎉"}</span>
+			<div class="event-info">
+				<span class="event-title">{activeEvent.title}</span>
+				<span class="event-desc">{activeEvent.description}</span>
+			</div>
+			{#if activeEvent.effects.xpMultiplier && activeEvent.effects.xpMultiplier > 1}
+				<span class="event-bonus">{activeEvent.effects.xpMultiplier}x XP</span>
+			{/if}
+		</div>
+	{/if}
 	{#if ceremonyActive}
 		<div class="ceremony-hint">
 			<span class="hint-icon">🔨</span>
@@ -146,6 +186,49 @@ const progressPercent = $derived(
 	padding: 0.1rem 0.4rem;
 	min-width: 1.2rem;
 	text-align: center;
+}
+
+.event-banner {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+	border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.75rem;
+}
+
+.event-icon {
+	font-size: 1.25rem;
+	flex-shrink: 0;
+}
+
+.event-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+}
+
+.event-title {
+	font-size: 0.8125rem;
+	font-weight: 700;
+	color: var(--color-text);
+}
+
+.event-desc {
+	font-size: 0.75rem;
+	color: var(--color-text-muted);
+}
+
+.event-bonus {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--color-accent);
+	background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+	padding: 0.15rem 0.5rem;
+	border-radius: 999px;
+	white-space: nowrap;
 }
 
 .ceremony-hint {

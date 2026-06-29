@@ -15,6 +15,15 @@ type UpgradeItem = {
 	requiredXp?: number
 }
 
+type GymEvent = {
+	type: string
+	title: string
+	description: string
+	npcKey: string | null
+	activeHours: [number, number]
+	effects: { allNpcMoodBonus?: number; xpMultiplier?: number }
+}
+
 type GymResponse = {
 	gym: { id: number; name: string; level: number; xp: number }
 	upgrades: {
@@ -23,6 +32,7 @@ type GymResponse = {
 		locked: UpgradeItem[]
 	}
 	xpToNextLevel: number
+	todayEvent?: GymEvent | null
 }
 
 let gymData = $state<GymResponse | null>(null)
@@ -102,6 +112,7 @@ onMount(loadGym)
 			pendingCount={gymData.upgrades.pending.length}
 			onClaim={claimNext}
 			{ceremonyActive}
+			todayEvent={gymData.todayEvent ?? null}
 		/>
 		<div class="canvas-area">
 			<PhaserGym
