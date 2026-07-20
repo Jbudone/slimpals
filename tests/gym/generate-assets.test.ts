@@ -73,12 +73,12 @@ describe("loadManifest", () => {
 // ── Behaviors 2–5 ─────────────────────────────────────────────────────────────
 
 describe("validateDimensions", () => {
-	it("passes for a correct 48×48 static sprite", async () => {
+	it("passes for a correct 96×96 static sprite", async () => {
 		const filepath = path.join(tmpDir, "correct_static.png")
 		await sharp({
 			create: {
-				width: 48,
-				height: 48,
+				width: 96,
+				height: 96,
 				channels: 4,
 				background: { r: 0, g: 0, b: 0, alpha: 0 },
 			},
@@ -89,12 +89,12 @@ describe("validateDimensions", () => {
 		expect(result).toEqual({ pass: true })
 	})
 
-	it("passes for a correct 192×48 animated spritesheet (frameCount=4)", async () => {
+	it("passes for a correct 384×96 animated spritesheet (frameCount=4)", async () => {
 		const filepath = path.join(tmpDir, "correct_anim.png")
 		await sharp({
 			create: {
-				width: 192,
-				height: 48,
+				width: 384,
+				height: 96,
 				channels: 4,
 				background: { r: 0, g: 0, b: 0, alpha: 0 },
 			},
@@ -128,7 +128,7 @@ describe("validateDimensions", () => {
 			.toFile(filepath)
 		const result = await validateDimensions(filepath, ENTRY_STATIC)
 		expect(result.pass).toBe(false)
-		expect(result.reason).toMatch(/expected 48×48/)
+		expect(result.reason).toMatch(/expected 96×96/)
 	})
 })
 

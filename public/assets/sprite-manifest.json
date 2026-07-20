@@ -1,6 +1,6 @@
 {
 	"version": "1",
-	"styleReferenceKey": null,
+	"styleReferenceKey": "weights_dumbbells",
 	"sprites": [
 		{
 			"key": "floor_tile",
@@ -110,7 +110,7 @@
 		{
 			"key": "weights_dumbbells",
 			"filename": "weights_dumbbells.png",
-			"prompt": "Pixel art, top-down view, Stardew Valley style, dumbbell rack with rows of dumbbells in ascending sizes, gym equipment, transparent background",
+			"prompt": "Pixel art, Stardew Valley style, dumbbell rack with rows of dumbbells in ascending sizes, iron grey dumbbells with dark rubber grip handles, warm brushed steel rack frame, chunky simple shapes, warm gym color palette, transparent background",
 			"recraftParams": {
 				"style": "digital_illustration",
 				"model": "recraftv3",
@@ -119,7 +119,7 @@
 			},
 			"frameCount": 1,
 			"fps": 0,
-			"status": "pending",
+			"status": "approved",
 			"approvedHash": null
 		},
 		{

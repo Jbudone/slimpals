@@ -7,7 +7,7 @@ import sharp from "sharp"
 // RECRAFT_API_KEY must be set in .env before running this script.
 // Tests inject a fake fetchFn so no real key is needed for npm test.
 
-const FRAME_SIZE = 48
+const FRAME_SIZE = 96
 const RECRAFT_API_URL = "https://external.api.recraft.ai/v1/images/generations"
 
 const MANIFEST_PATH = path.resolve(
@@ -47,6 +47,33 @@ type SpriteManifest = {
 	version: string
 	styleReferenceKey: string | null
 	sprites: SpriteManifestEntry[]
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function removeBackground(img: Buffer, tolerance = 32): Promise<Buffer> {
+	const { data, info } = await sharp(img)
+		.ensureAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true })
+	const d = new Uint8ClampedArray(data.buffer)
+	const bgR = d[0]
+	const bgG = d[1]
+	const bgB = d[2]
+	for (let i = 0; i < d.length; i += 4) {
+		if (
+			Math.abs(d[i] - bgR) <= tolerance &&
+			Math.abs(d[i + 1] - bgG) <= tolerance &&
+			Math.abs(d[i + 2] - bgB) <= tolerance
+		) {
+			d[i + 3] = 0
+		}
+	}
+	return sharp(Buffer.from(d.buffer), {
+		raw: { width: info.width, height: info.height, channels: 4 },
+	})
+		.png()
+		.toBuffer()
 }
 
 // ── Core functions (exported for testing) ─────────────────────────────────────
@@ -132,8 +159,11 @@ export async function generateSprite(
 		.png()
 		.toBuffer()
 
+	// Remove solid background by flood-filling from the top-left corner pixel
+	const final = await removeBackground(resized)
+
 	fs.mkdirSync(outDir, { recursive: true })
-	await fs.promises.writeFile(path.join(outDir, entry.filename), resized)
+	await fs.promises.writeFile(path.join(outDir, entry.filename), final)
 	console.log(`  SAVED  ${entry.filename}  (${targetW}×${FRAME_SIZE})`)
 }
 
