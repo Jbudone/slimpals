@@ -1,0 +1,561 @@
+{
+	"version": "1",
+	"styleReferenceKey": null,
+	"sprites": [
+		{
+			"key": "floor_tile",
+			"filename": "floor-tile.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, gym floor tile, rubber texture with subtle grid lines, warm earthy tones, seamless tileable, no border",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "wall_tile",
+			"filename": "wall-tile.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, gym wall tile, concrete with motivational stripe, warm color palette, seamless tileable",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "cardio_treadmill",
+			"filename": "cardio_treadmill.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, treadmill, black running belt, metal frame, control panel, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "cardio_rowing",
+			"filename": "cardio_rowing.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, rowing machine, metal rail, sliding seat, handle with chain, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "cardio_bikes",
+			"filename": "cardio_bikes.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, stationary bike, large flywheel, padded seat, handlebars, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "cardio_stairs",
+			"filename": "cardio_stairs.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, stair climber machine, two pedals, tall frame, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "cardio_cinema",
+			"filename": "cardio_cinema.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, treadmill with large mounted screen displaying a nature scene, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "weights_dumbbells",
+			"filename": "weights_dumbbells.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, dumbbell rack with rows of dumbbells in ascending sizes, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "weights_barbell",
+			"filename": "weights_barbell.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, barbell bench press station, flat bench, barbell with weight plates, j-hooks, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "weights_cable",
+			"filename": "weights_cable.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, cable crossover machine, tall frame with pulleys, weight stacks on both sides, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "weights_smith",
+			"filename": "weights_smith.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, Smith machine, guided barbell on vertical rails, weight plates, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "weights_olympic",
+			"filename": "weights_olympic.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, Olympic lifting platform, rubber mat with centre markings, barbell, gym equipment, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "amenity_water",
+			"filename": "amenity_water.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, water cooler dispenser, blue water jug on top, drip tray, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "amenity_lockers",
+			"filename": "amenity_lockers.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, row of gym lockers, metal doors with combination locks, bench in front, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "amenity_showers",
+			"filename": "amenity_showers.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, shower room entrance, tiled doorway, showerhead visible, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "amenity_sauna",
+			"filename": "amenity_sauna.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, wooden sauna room entrance, cedar wood panels, small window with steam, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "amenity_juice",
+			"filename": "amenity_juice.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, juice bar counter with blender, bottles of protein shake, fruit on counter, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "decor_posters",
+			"filename": "decor_posters.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, motivational gym poster on wall, bold typography saying STRONGER, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "decor_plants",
+			"filename": "decor_plants.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, large potted plant, leafy green, terracotta pot, gym decor, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "decor_mirrors",
+			"filename": "decor_mirrors.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, large wall mirror with chrome frame, reflective surface, gym decor, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "decor_trophy",
+			"filename": "decor_trophy.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, glass trophy display case with gold trophies and medals inside, gym decor, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "decor_neon",
+			"filename": "decor_neon.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, glowing neon sign on wall saying GYM in orange and red, gym decor, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "staff_reception",
+			"filename": "staff_reception.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, gym reception desk, computer monitor, tidy desk surface, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "staff_trainer",
+			"filename": "staff_trainer.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, personal trainer corner with clipboard board on wall, small desk, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "staff_massage",
+			"filename": "staff_massage.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, massage table with white linen, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "staff_physio",
+			"filename": "staff_physio.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, physical therapy table with resistance bands and foam roller, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "staff_nutrition",
+			"filename": "staff_nutrition.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, nutrition consultation desk with supplement bottles and food charts on wall, gym prop, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 1,
+			"fps": 0,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_trainer_marcus",
+			"filename": "sprites/npc_trainer_marcus.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, muscular male gym trainer, tank top, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_receptionist_lisa",
+			"filename": "sprites/npc_receptionist_lisa.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, friendly female receptionist, gym polo shirt, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_regular_derek",
+			"filename": "sprites/npc_regular_derek.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, serious male powerlifter, sleeveless hoodie, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_regular_priya",
+			"filename": "sprites/npc_regular_priya.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, calm female yoga enthusiast, yoga outfit, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_regular_tom",
+			"filename": "sprites/npc_regular_tom.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, enthusiastic male gym bro, muscle shirt, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_regular_elena",
+			"filename": "sprites/npc_regular_elena.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, disciplined female runner, running outfit, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_specialist_coach",
+			"filename": "sprites/npc_specialist_coach.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, authoritative male sports coach, tracksuit with whistle, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_specialist_nutritionist",
+			"filename": "sprites/npc_specialist_nutritionist.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, caring female nutritionist, lab coat, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "npc_worker",
+			"filename": "sprites/worker.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, construction worker, yellow hard hat, orange overalls, walk cycle animation 4 frames facing down, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 4,
+			"fps": 8,
+			"status": "pending",
+			"approvedHash": null
+		},
+		{
+			"key": "anim_worker_cheer",
+			"filename": "sprites/anim-worker-cheer.png",
+			"prompt": "Pixel art, top-down view, Stardew Valley style, construction worker in yellow hard hat cheering with arms raised, 2 frames of celebration animation, transparent background",
+			"recraftParams": {
+				"style": "digital_illustration",
+				"model": "recraftv3",
+				"size": "1024x1024",
+				"substyle": "pixel_art"
+			},
+			"frameCount": 2,
+			"fps": 4,
+			"status": "pending",
+			"approvedHash": null
+		}
+	]
+}

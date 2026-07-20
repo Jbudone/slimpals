@@ -1,0 +1,9 @@
+# Runtime state — do not commit
+ledger/project_state.json
+issues/
+
+# Python cache
+skills/__pycache__/
+
+# Re-include the ledger directory stub so it's tracked but contents aren't
+!ledger/.gitkeep

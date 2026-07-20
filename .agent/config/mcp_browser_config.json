@@ -1,0 +1,33 @@
+{
+	"_setup_notes": [
+		"To enable MCP browser automation set 'enabled' to true and configure the path below.",
+		"Install the Antigravity MCP server: npm install -g @antigravity/mcp-server-operator",
+		"Then set args to the resolved path: node -e \"console.log(require.resolve('@antigravity/mcp-server-operator'))\"",
+		"Or use npx: set command to 'npx' and args to ['@antigravity/mcp-server-operator'].",
+		"While enabled=false, Tier 2 and Tier 3 fall back to interactive manual confirmation."
+	],
+	"mcp_servers": {
+		"antigravity-browser": {
+			"enabled": false,
+			"command": "node",
+			"args": [
+				"/path/to/node_modules/@antigravity/mcp-server-operator/index.js"
+			]
+		}
+	},
+	"capabilities": [
+		"click",
+		"type",
+		"screenshot",
+		"read_console_logs",
+		"measure_layout_bounding_boxes"
+	],
+	"environment": {
+		"frontend_url": "http://localhost:5173",
+		"api_url": "http://localhost:3000",
+		"boot_command": "npm run dev",
+		"api_port": 3000,
+		"frontend_port": 5173,
+		"headless": true
+	}
+}
