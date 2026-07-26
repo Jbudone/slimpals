@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
 	checkAssets,
 	loadManifest,
+	normalizeAsset,
 	type SpriteManifestEntry,
 	validateDimensions,
 } from "../../scripts/check-assets.js"
@@ -112,6 +113,43 @@ describe("validateDimensions", () => {
 		const result = await validateDimensions(filepath, ENTRY_STATIC)
 		expect(result.pass).toBe(false)
 		expect(result.reason).toMatch(/expected 96×96/)
+	})
+})
+
+// ── Behaviors 7–9 ─────────────────────────────────────────────────────────────
+
+describe("normalizeAsset", () => {
+	it("resizes a wrong-sized-but-present file to the exact expected dimensions", async () => {
+		const filepath = path.join(tmpDir, "wrong_size_fixable.png")
+		await writePng(filepath, 48, 48)
+
+		const result = await normalizeAsset(filepath, ENTRY_STATIC)
+
+		expect(result).toEqual({ resized: true, from: { width: 48, height: 48 } })
+		const meta = await sharp(filepath).metadata()
+		expect(meta.width).toBe(96)
+		expect(meta.height).toBe(96)
+	})
+
+	it("leaves an already-correct-sized file untouched", async () => {
+		const filepath = path.join(tmpDir, "already_correct.png")
+		await writePng(filepath, 96, 96)
+		const before = await fs.promises.readFile(filepath)
+
+		const result = await normalizeAsset(filepath, ENTRY_STATIC)
+
+		expect(result).toEqual({ resized: false })
+		const after = await fs.promises.readFile(filepath)
+		expect(after.equals(before)).toBe(true)
+	})
+
+	it("does nothing when the file does not exist", async () => {
+		const filepath = path.join(tmpDir, "does_not_exist.png")
+
+		const result = await normalizeAsset(filepath, ENTRY_STATIC)
+
+		expect(result).toEqual({ resized: false })
+		expect(fs.existsSync(filepath)).toBe(false)
 	})
 })
 

@@ -57,6 +57,16 @@ export async function loadManifest(
 	return manifest.sprites
 }
 
+function expectedDimensions(entry: SpriteManifestEntry): {
+	width: number
+	height: number
+} {
+	return {
+		width: entry.frameWidth * entry.frameCount,
+		height: entry.frameHeight,
+	}
+}
+
 export async function validateDimensions(
 	filepath: string,
 	entry: SpriteManifestEntry,
@@ -65,8 +75,7 @@ export async function validateDimensions(
 		return { pass: false, reason: `file not found: ${filepath}` }
 	}
 	const meta = await sharp(filepath).metadata()
-	const expectedW = entry.frameWidth * entry.frameCount
-	const expectedH = entry.frameHeight
+	const { width: expectedW, height: expectedH } = expectedDimensions(entry)
 	if (meta.width !== expectedW || meta.height !== expectedH) {
 		return {
 			pass: false,
@@ -74,6 +83,30 @@ export async function validateDimensions(
 		}
 	}
 	return { pass: true }
+}
+
+export async function normalizeAsset(
+	filepath: string,
+	entry: SpriteManifestEntry,
+): Promise<{ resized: boolean; from?: { width: number; height: number } }> {
+	if (!fs.existsSync(filepath)) {
+		return { resized: false }
+	}
+
+	const { width: expectedW, height: expectedH } = expectedDimensions(entry)
+	const meta = await sharp(filepath).metadata()
+	if (meta.width === expectedW && meta.height === expectedH) {
+		return { resized: false }
+	}
+
+	const from = { width: meta.width ?? 0, height: meta.height ?? 0 }
+	const resized = await sharp(filepath)
+		.resize(expectedW, expectedH, { kernel: "nearest" })
+		.png()
+		.toBuffer()
+	await fs.promises.writeFile(filepath, resized)
+
+	return { resized: true, from }
 }
 
 export async function checkAssets(
@@ -134,6 +167,7 @@ async function main() {
 		options: {
 			category: { type: "string" },
 			missing: { type: "boolean", default: false },
+			fix: { type: "boolean", default: false },
 		},
 	})
 
@@ -141,6 +175,20 @@ async function main() {
 	const filtered = values.category
 		? entries.filter((e) => e.category === values.category)
 		: entries
+
+	if (values.fix) {
+		for (const entry of filtered) {
+			const filepath = path.join(OUT_DIR, entry.filename)
+			const result = await normalizeAsset(filepath, entry)
+			if (result.resized && result.from) {
+				const { width: expectedW, height: expectedH } =
+					expectedDimensions(entry)
+				console.log(
+					`  RESIZED  ${entry.key}  ${result.from.width}×${result.from.height} → ${expectedW}×${expectedH}`,
+				)
+			}
+		}
+	}
 
 	const results = await checkAssets(filtered, OUT_DIR)
 	const toPrint = values.missing ? results.filter((r) => !r.pass) : results
