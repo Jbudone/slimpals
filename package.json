@@ -16,8 +16,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"seed": "tsx --env-file=.env scripts/seed-dev.ts",
-		"generate-gym-assets": "tsx --env-file=.env scripts/generate-gym-assets.ts",
-		"generate-assets": "tsx --env-file=.env scripts/generate-assets.ts"
+		"check-assets": "tsx scripts/check-assets.ts"
 	},
 	"dependencies": {
 		"@google/generative-ai": "^0.24.1",

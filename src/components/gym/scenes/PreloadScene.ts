@@ -1,72 +1,54 @@
 import Phaser from "phaser"
+import manifest from "shared/gym-sprite-manifest.json"
+import { createPlaceholderTexture } from "../placeholderTexture.js"
 
-const EQUIPMENT_KEYS = [
-	"cardio_treadmill",
-	"cardio_rowing",
-	"cardio_bikes",
-	"cardio_stairs",
-	"cardio_cinema",
-	"weights_dumbbells",
-	"weights_barbell",
-	"weights_cable",
-	"weights_smith",
-	"weights_olympic",
-	"amenity_water",
-	"amenity_lockers",
-	"amenity_showers",
-	"amenity_sauna",
-	"amenity_juice",
-	"decor_posters",
-	"decor_plants",
-	"decor_mirrors",
-	"decor_trophy",
-	"decor_neon",
-	"staff_reception",
-	"staff_trainer",
-	"staff_massage",
-	"staff_physio",
-	"staff_nutrition",
-]
+const BASE = "/assets/gym"
 
-export const NPC_KEYS = [
-	"trainer_marcus",
-	"receptionist_lisa",
-	"regular_derek",
-	"regular_priya",
-	"regular_tom",
-	"regular_elena",
-	"specialist_coach",
-	"specialist_nutritionist",
-]
+// Portraits are DOM <img> assets used by NpcDialog.svelte, not Phaser textures.
+const CANVAS_SPRITES = manifest.sprites.filter((s) => s.category !== "portrait")
 
 export class PreloadScene extends Phaser.Scene {
+	private missingKeys: string[] = []
+
 	constructor() {
 		super({ key: "PreloadScene" })
 	}
 
 	preload() {
-		const base = "/assets/gym"
+		this.missingKeys = []
+		this.load.on("loaderror", (file: Phaser.Loader.File) => {
+			this.missingKeys.push(file.key)
+		})
 
-		this.load.image("floor-tile", `${base}/floor-tile.png`)
-		this.load.image("wall-tile", `${base}/wall-tile.png`)
-		this.load.image("wall-horizontal", `${base}/wall-horizontal.png`)
-		this.load.image("wall-vertical", `${base}/wall-vertical.png`)
-		this.load.image("wall-corner", `${base}/wall-corner.png`)
-		this.load.image("gym-door", `${base}/gym-door.png`)
-		this.load.image("equipment-locked", `${base}/equipment-locked.png`)
-
-		for (const key of EQUIPMENT_KEYS) {
-			this.load.image(key, `${base}/${key}.png`)
+		for (const entry of CANVAS_SPRITES) {
+			this.load.spritesheet(entry.key, `${BASE}/${entry.filename}`, {
+				frameWidth: entry.frameWidth,
+				frameHeight: entry.frameHeight,
+			})
 		}
-
-		for (const key of NPC_KEYS) {
-			this.load.image(`npc_${key}`, `${base}/sprites/${key}.png`)
-		}
-
-		this.load.image("worker", `${base}/sprites/worker.png`)
 	}
 
 	create() {
+		if (this.missingKeys.length > 0) {
+			this.reportMissingSprites()
+		}
+		this.registry.set("missingSprites", this.missingKeys)
 		this.scene.start("GymScene")
+	}
+
+	private reportMissingSprites() {
+		const byKey = new Map(CANVAS_SPRITES.map((entry) => [entry.key, entry]))
+		console.error(
+			`[gym] ${this.missingKeys.length} sprite(s) missing — showing placeholders. Add these files and reload:`,
+		)
+		for (const key of this.missingKeys) {
+			const entry = byKey.get(key)
+			if (!entry) continue
+			createPlaceholderTexture(this, key, entry.frameWidth, entry.frameHeight)
+			console.error(
+				`  ${key} → public/assets/gym/${entry.filename} (${entry.frameWidth * entry.frameCount}×${entry.frameHeight})`,
+			)
+		}
+		console.error("Run `npm run check-assets` for the full requirements list.")
 	}
 }

@@ -1,4 +1,5 @@
 import Phaser from "phaser"
+import { deriveEquipmentAnimConfigs } from "../equipmentAnimations.js"
 import { NpcSprite, type NpcState } from "../NpcSprite.js"
 
 const TILE = 32
@@ -123,6 +124,8 @@ export class GymScene extends Phaser.Scene {
 	private dragStart: { x: number; y: number } | null = null
 	private categoryCounters: Record<string, number> = {}
 	private npcSprites: Map<string, NpcSprite> = new Map()
+	private equipmentSprites: Map<string, Phaser.GameObjects.Sprite> = new Map()
+	private missingSpriteKeys: Set<string> = new Set()
 	private pollTimer: Phaser.Time.TimerEvent | null = null
 	private ceremonyActive = false
 
@@ -132,7 +135,11 @@ export class GymScene extends Phaser.Scene {
 
 	create() {
 		const data = this.registry.get("gymData") as GymSceneData | undefined
+		this.missingSpriteKeys = new Set(
+			(this.registry.get("missingSprites") as string[] | undefined) ?? [],
+		)
 
+		this.setupEquipmentAnimations()
 		this.renderFloor()
 		this.renderWalls()
 		this.renderDoor()
@@ -144,6 +151,38 @@ export class GymScene extends Phaser.Scene {
 
 		this.setupCamera()
 		this.startSimPolling()
+		this.renderMissingSpritesBanner()
+	}
+
+	private setupEquipmentAnimations() {
+		for (const config of deriveEquipmentAnimConfigs()) {
+			if (this.missingSpriteKeys.has(config.key)) continue
+			if (this.anims.exists(config.animKey)) continue
+			this.anims.create({
+				key: config.animKey,
+				frames: this.anims.generateFrameNumbers(config.key, {
+					start: 0,
+					end: config.frameCount - 1,
+				}),
+				frameRate: config.fps,
+				repeat: -1,
+			})
+		}
+	}
+
+	private renderMissingSpritesBanner() {
+		const missing = this.registry.get("missingSprites") as string[] | undefined
+		if (!missing || missing.length === 0) return
+		this.add
+			.text(4, 4, `⚠ ${missing.length} sprite(s) missing — see console`, {
+				fontSize: "10px",
+				fontFamily: "monospace",
+				color: "#fbbf24",
+				backgroundColor: "#1e1b2ecc",
+				padding: { x: 4, y: 2 },
+			})
+			.setScrollFactor(0)
+			.setDepth(10_000)
 	}
 
 	private renderFloor() {
@@ -225,10 +264,11 @@ export class GymScene extends Phaser.Scene {
 			const py = placement.y * TILE + TILE
 			const equipDepth = py + EQUIP_SIZE / 2
 
-			this.add
-				.image(px, py, upgrade.key)
+			const equipSprite = this.add
+				.sprite(px, py, upgrade.key)
 				.setDisplaySize(EQUIP_SIZE, EQUIP_SIZE)
 				.setDepth(equipDepth)
+			this.equipmentSprites.set(upgrade.key, equipSprite)
 
 			this.add
 				.text(px, py + EQUIP_SIZE / 2 + 4, upgrade.name, {
@@ -293,6 +333,17 @@ export class GymScene extends Phaser.Scene {
 
 	private applySimState(npcs: NpcState[]) {
 		const currentKeys = new Set<string>()
+		const activeEquipment = new Set<string>()
+
+		for (const npc of npcs) {
+			if (
+				npc.isPresent &&
+				npc.currentActivity === "using_equipment" &&
+				npc.targetEquipmentKey
+			) {
+				activeEquipment.add(npc.targetEquipmentKey)
+			}
+		}
 
 		for (const npc of npcs) {
 			currentKeys.add(npc.npcKey)
@@ -357,6 +408,28 @@ export class GymScene extends Phaser.Scene {
 					sprite.destroy()
 					this.npcSprites.delete(key)
 				})
+			}
+		}
+
+		this.updateEquipmentAnimations(activeEquipment)
+	}
+
+	private updateEquipmentAnimations(activeKeys: Set<string>) {
+		for (const [key, sprite] of this.equipmentSprites) {
+			const animKey = `${key}_anim`
+			const canAnimate =
+				!this.missingSpriteKeys.has(key) && this.anims.exists(animKey)
+
+			if (activeKeys.has(key) && canAnimate) {
+				if (
+					sprite.anims.currentAnim?.key !== animKey ||
+					!sprite.anims.isPlaying
+				) {
+					sprite.play(animKey)
+				}
+			} else if (sprite.anims.isPlaying) {
+				sprite.anims.stop()
+				sprite.setFrame(0)
 			}
 		}
 	}

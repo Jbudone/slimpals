@@ -92,6 +92,7 @@ let portraitSrc = $derived(
 		result?.dialog.portraitVariant,
 	),
 )
+let portraitFailedSrc = $state<string | null>(null)
 
 $effect(() => {
 	npcKey
@@ -111,11 +112,14 @@ $effect(() => {
 			<button class="close-btn" onclick={onClose}>Close</button>
 		{:else if detail}
 			<div class="npc-header">
-				{#if portraitSrc}
+				{#if portraitSrc && portraitFailedSrc !== portraitSrc}
 					<img
 						class="portrait"
 						src={portraitSrc}
 						alt={detail.npc.name}
+						onerror={() => {
+							portraitFailedSrc = portraitSrc
+						}}
 					/>
 				{:else}
 					<div class="portrait-placeholder">{detail.npc.name[0]}</div>

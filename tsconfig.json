@@ -10,6 +10,7 @@
 		"noEmit": true,
 		"lib": ["ESNext", "DOM", "DOM.Iterable"],
 		"skipLibCheck": true,
+		"resolveJsonModule": true,
 		"paths": {
 			"shared/*": ["./shared/*"]
 		}

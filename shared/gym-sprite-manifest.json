@@ -1,0 +1,666 @@
+{
+	"version": "2",
+	"styleReferenceKey": "weights_dumbbells",
+	"sprites": [
+		{
+			"key": "floor-tile",
+			"filename": "floor-tile.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Rubber gym floor tile with subtle grid lines, warm earthy tones, seamless tileable"
+		},
+		{
+			"key": "wall-tile",
+			"filename": "wall-tile.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Gym wall panel, concrete with motivational stripe, warm color palette, seamless tileable"
+		},
+		{
+			"key": "wall-horizontal",
+			"filename": "wall-horizontal.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Horizontal wall segment, matches wall-tile style, tileable left-right"
+		},
+		{
+			"key": "wall-vertical",
+			"filename": "wall-vertical.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Vertical wall segment, matches wall-tile style, tileable top-bottom"
+		},
+		{
+			"key": "wall-corner",
+			"filename": "wall-corner.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Wall corner piece joining a horizontal and vertical wall segment"
+		},
+		{
+			"key": "gym-door",
+			"filename": "gym-door.png",
+			"category": "structure",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Gym entrance door, matches wall style, clearly readable as an entrance"
+		},
+		{
+			"key": "equipment-locked",
+			"filename": "equipment-locked.png",
+			"category": "ui",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Overlay icon shown on equipment that hasn't been unlocked yet \u2014 e.g. a padlock silhouette"
+		},
+		{
+			"key": "cardio_treadmill",
+			"filename": "cardio_treadmill.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 4,
+			"fps": 8,
+			"description": "treadmill, black running belt, metal frame, control panel, gym equipment"
+		},
+		{
+			"key": "cardio_rowing",
+			"filename": "cardio_rowing.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 4,
+			"fps": 8,
+			"description": "rowing machine, metal rail, sliding seat, handle with chain, gym equipment"
+		},
+		{
+			"key": "cardio_bikes",
+			"filename": "cardio_bikes.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 4,
+			"fps": 8,
+			"description": "stationary bike, large flywheel, padded seat, handlebars, gym equipment"
+		},
+		{
+			"key": "cardio_stairs",
+			"filename": "cardio_stairs.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 4,
+			"fps": 8,
+			"description": "stair climber machine, two pedals, tall frame, gym equipment"
+		},
+		{
+			"key": "cardio_cinema",
+			"filename": "cardio_cinema.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 4,
+			"fps": 8,
+			"description": "treadmill with large mounted screen displaying a nature scene, gym equipment"
+		},
+		{
+			"key": "weights_dumbbells",
+			"filename": "weights_dumbbells.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "dumbbell rack with rows of dumbbells in ascending sizes, iron grey dumbbells with dark rubber grip handles, warm brushed steel rack frame, chunky simple shapes"
+		},
+		{
+			"key": "weights_barbell",
+			"filename": "weights_barbell.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "barbell bench press station, flat bench, barbell with weight plates, j-hooks, gym equipment"
+		},
+		{
+			"key": "weights_cable",
+			"filename": "weights_cable.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "cable crossover machine, tall frame with pulleys, weight stacks on both sides, gym equipment"
+		},
+		{
+			"key": "weights_smith",
+			"filename": "weights_smith.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Smith machine, guided barbell on vertical rails, weight plates, gym equipment"
+		},
+		{
+			"key": "weights_olympic",
+			"filename": "weights_olympic.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Olympic lifting platform, rubber mat with centre markings, barbell, gym equipment"
+		},
+		{
+			"key": "amenity_water",
+			"filename": "amenity_water.png",
+			"category": "amenity",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "water cooler dispenser, blue water jug on top, drip tray, gym prop"
+		},
+		{
+			"key": "amenity_lockers",
+			"filename": "amenity_lockers.png",
+			"category": "amenity",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "row of gym lockers, metal doors with combination locks, bench in front, gym prop"
+		},
+		{
+			"key": "amenity_showers",
+			"filename": "amenity_showers.png",
+			"category": "amenity",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "shower room entrance, tiled doorway, showerhead visible, gym prop"
+		},
+		{
+			"key": "amenity_sauna",
+			"filename": "amenity_sauna.png",
+			"category": "amenity",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "wooden sauna room entrance, cedar wood panels, small window with steam, gym prop"
+		},
+		{
+			"key": "amenity_juice",
+			"filename": "amenity_juice.png",
+			"category": "amenity",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "juice bar counter with blender, bottles of protein shake, fruit on counter, gym prop"
+		},
+		{
+			"key": "decor_posters",
+			"filename": "decor_posters.png",
+			"category": "decor",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "motivational gym poster on wall, bold typography saying STRONGER, gym prop"
+		},
+		{
+			"key": "decor_plants",
+			"filename": "decor_plants.png",
+			"category": "decor",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "large potted plant, leafy green, terracotta pot, gym decor"
+		},
+		{
+			"key": "decor_mirrors",
+			"filename": "decor_mirrors.png",
+			"category": "decor",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "large wall mirror with chrome frame, reflective surface, gym decor"
+		},
+		{
+			"key": "decor_trophy",
+			"filename": "decor_trophy.png",
+			"category": "decor",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "glass trophy display case with gold trophies and medals inside, gym decor"
+		},
+		{
+			"key": "decor_neon",
+			"filename": "decor_neon.png",
+			"category": "decor",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "glowing neon sign on wall saying GYM in orange and red, gym decor"
+		},
+		{
+			"key": "staff_reception",
+			"filename": "staff_reception.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "gym reception desk, computer monitor, tidy desk surface, gym prop"
+		},
+		{
+			"key": "staff_trainer",
+			"filename": "staff_trainer.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "personal trainer corner with clipboard board on wall, small desk, gym prop"
+		},
+		{
+			"key": "staff_massage",
+			"filename": "staff_massage.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "massage table with white linen, gym prop"
+		},
+		{
+			"key": "staff_physio",
+			"filename": "staff_physio.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "physical therapy table with resistance bands and foam roller, gym prop"
+		},
+		{
+			"key": "staff_nutrition",
+			"filename": "staff_nutrition.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "nutrition consultation desk with supplement bottles and food charts on wall, gym prop"
+		},
+		{
+			"key": "npc_trainer_marcus",
+			"filename": "sprites/npc_trainer_marcus.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "muscular male gym trainer in red tank top"
+		},
+		{
+			"key": "npc_receptionist_lisa",
+			"filename": "sprites/npc_receptionist_lisa.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "friendly female receptionist in blue gym polo shirt, full body standing pose from head to toe showing complete figure with head torso legs and feet"
+		},
+		{
+			"key": "npc_regular_derek",
+			"filename": "sprites/npc_regular_derek.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "serious male powerlifter in grey sleeveless hoodie"
+		},
+		{
+			"key": "npc_regular_priya",
+			"filename": "sprites/npc_regular_priya.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "calm female yoga enthusiast in teal yoga outfit"
+		},
+		{
+			"key": "npc_regular_tom",
+			"filename": "sprites/npc_regular_tom.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "enthusiastic male gym bro in yellow muscle shirt"
+		},
+		{
+			"key": "npc_regular_elena",
+			"filename": "sprites/npc_regular_elena.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "slim female gym member in purple tank top and purple leggings"
+		},
+		{
+			"key": "npc_specialist_coach",
+			"filename": "sprites/npc_specialist_coach.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "authoritative male sports coach in navy tracksuit with clipboard"
+		},
+		{
+			"key": "npc_specialist_nutritionist",
+			"filename": "sprites/npc_specialist_nutritionist.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "caring female nutritionist in light blue coat holding a clipboard"
+		},
+		{
+			"key": "worker",
+			"filename": "sprites/worker.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "construction worker in yellow hard hat and orange overalls"
+		},
+		{
+			"key": "worker_cheer",
+			"filename": "sprites/worker-cheer.png",
+			"category": "npc",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Construction worker celebrating with arms raised \u2014 used during upgrade ceremonies"
+		},
+		{
+			"key": "portrait_trainer_marcus",
+			"filename": "portraits/trainer_marcus.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Marcus, muscular male gym trainer, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_trainer_marcus_happy",
+			"filename": "portraits/trainer_marcus_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Marcus, muscular male gym trainer, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_trainer_marcus_determined",
+			"filename": "portraits/trainer_marcus_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Marcus, muscular male gym trainer, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_receptionist_lisa",
+			"filename": "portraits/receptionist_lisa.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Lisa, friendly female receptionist, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_receptionist_lisa_happy",
+			"filename": "portraits/receptionist_lisa_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Lisa, friendly female receptionist, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_receptionist_lisa_determined",
+			"filename": "portraits/receptionist_lisa_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Lisa, friendly female receptionist, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_derek",
+			"filename": "portraits/regular_derek.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Derek, serious male powerlifter, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_derek_happy",
+			"filename": "portraits/regular_derek_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Derek, serious male powerlifter, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_derek_determined",
+			"filename": "portraits/regular_derek_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Derek, serious male powerlifter, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_priya",
+			"filename": "portraits/regular_priya.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Priya, calm female yoga enthusiast, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_priya_happy",
+			"filename": "portraits/regular_priya_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Priya, calm female yoga enthusiast, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_priya_determined",
+			"filename": "portraits/regular_priya_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Priya, calm female yoga enthusiast, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_tom",
+			"filename": "portraits/regular_tom.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Tom, enthusiastic male gym bro, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_tom_happy",
+			"filename": "portraits/regular_tom_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Tom, enthusiastic male gym bro, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_tom_determined",
+			"filename": "portraits/regular_tom_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Tom, enthusiastic male gym bro, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_elena",
+			"filename": "portraits/regular_elena.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Elena, gym regular, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_elena_happy",
+			"filename": "portraits/regular_elena_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Elena, gym regular, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_regular_elena_determined",
+			"filename": "portraits/regular_elena_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of Elena, gym regular, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_coach",
+			"filename": "portraits/specialist_coach.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the sports coach, authoritative male, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_coach_happy",
+			"filename": "portraits/specialist_coach_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the sports coach, authoritative male, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_coach_determined",
+			"filename": "portraits/specialist_coach_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the sports coach, authoritative male, determined, focused expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_nutritionist",
+			"filename": "portraits/specialist_nutritionist.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the nutritionist, caring female, neutral expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_nutritionist_happy",
+			"filename": "portraits/specialist_nutritionist_happy.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the nutritionist, caring female, happy, smiling expression, head-and-shoulders, square crop"
+		},
+		{
+			"key": "portrait_specialist_nutritionist_determined",
+			"filename": "portraits/specialist_nutritionist_determined.png",
+			"category": "portrait",
+			"frameWidth": 128,
+			"frameHeight": 128,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "Dialog portrait of the nutritionist, caring female, determined, focused expression, head-and-shoulders, square crop"
+		}
+	]
+}

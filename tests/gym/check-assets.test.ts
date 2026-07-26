@@ -4,32 +4,28 @@ import path from "node:path"
 import sharp from "sharp"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
-	generateSprite,
+	checkAssets,
 	loadManifest,
 	type SpriteManifestEntry,
 	validateDimensions,
-} from "../../scripts/generate-assets.js"
+} from "../../scripts/check-assets.js"
 
 const ENTRY_STATIC: SpriteManifestEntry = {
 	key: "test_static",
 	filename: "test_static.png",
-	prompt: "a test sprite",
-	recraftParams: {
-		style: "digital_illustration",
-		substyle: "pixel_art",
-		model: "recraftv3",
-		size: "1024x1024",
-	},
+	category: "decor",
+	frameWidth: 96,
+	frameHeight: 96,
 	frameCount: 1,
 	fps: 0,
-	status: "pending",
-	approvedHash: null,
+	description: "a test sprite",
 }
 
 const ENTRY_ANIM: SpriteManifestEntry = {
 	...ENTRY_STATIC,
 	key: "test_anim",
 	filename: "test_anim.png",
+	category: "equipment",
 	frameCount: 4,
 	fps: 8,
 }
@@ -39,11 +35,11 @@ let manifestPath: string
 
 beforeAll(async () => {
 	tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "gym-assets-test-"))
-	manifestPath = path.join(tmpDir, "sprite-manifest.json")
+	manifestPath = path.join(tmpDir, "gym-sprite-manifest.json")
 	await fs.promises.writeFile(
 		manifestPath,
 		JSON.stringify({
-			version: "1",
+			version: "2",
 			styleReferenceKey: null,
 			sprites: [ENTRY_STATIC, ENTRY_ANIM],
 		}),
@@ -54,6 +50,19 @@ afterAll(async () => {
 	await fs.promises.rm(tmpDir, { recursive: true, force: true })
 })
 
+async function writePng(filepath: string, width: number, height: number) {
+	await sharp({
+		create: {
+			width,
+			height,
+			channels: 4,
+			background: { r: 0, g: 0, b: 0, alpha: 0 },
+		},
+	})
+		.png()
+		.toFile(filepath)
+}
+
 // ── Behavior 1 ────────────────────────────────────────────────────────────────
 
 describe("loadManifest", () => {
@@ -63,9 +72,10 @@ describe("loadManifest", () => {
 		expect(entries[0]).toMatchObject({
 			key: "test_static",
 			filename: "test_static.png",
+			category: "decor",
+			frameWidth: 96,
+			frameHeight: 96,
 			frameCount: 1,
-			status: "pending",
-			approvedHash: null,
 		})
 	})
 })
@@ -75,32 +85,14 @@ describe("loadManifest", () => {
 describe("validateDimensions", () => {
 	it("passes for a correct 96×96 static sprite", async () => {
 		const filepath = path.join(tmpDir, "correct_static.png")
-		await sharp({
-			create: {
-				width: 96,
-				height: 96,
-				channels: 4,
-				background: { r: 0, g: 0, b: 0, alpha: 0 },
-			},
-		})
-			.png()
-			.toFile(filepath)
+		await writePng(filepath, 96, 96)
 		const result = await validateDimensions(filepath, ENTRY_STATIC)
 		expect(result).toEqual({ pass: true })
 	})
 
 	it("passes for a correct 384×96 animated spritesheet (frameCount=4)", async () => {
 		const filepath = path.join(tmpDir, "correct_anim.png")
-		await sharp({
-			create: {
-				width: 384,
-				height: 96,
-				channels: 4,
-				background: { r: 0, g: 0, b: 0, alpha: 0 },
-			},
-		})
-			.png()
-			.toFile(filepath)
+		await writePng(filepath, 384, 96)
 		const result = await validateDimensions(filepath, ENTRY_ANIM)
 		expect(result).toEqual({ pass: true })
 	})
@@ -116,16 +108,7 @@ describe("validateDimensions", () => {
 
 	it("fails when the PNG has wrong dimensions", async () => {
 		const filepath = path.join(tmpDir, "wrong_size.png")
-		await sharp({
-			create: {
-				width: 100,
-				height: 100,
-				channels: 4,
-				background: { r: 0, g: 0, b: 0, alpha: 0 },
-			},
-		})
-			.png()
-			.toFile(filepath)
+		await writePng(filepath, 100, 100)
 		const result = await validateDimensions(filepath, ENTRY_STATIC)
 		expect(result.pass).toBe(false)
 		expect(result.reason).toMatch(/expected 96×96/)
@@ -134,47 +117,28 @@ describe("validateDimensions", () => {
 
 // ── Behavior 6 ────────────────────────────────────────────────────────────────
 
-describe("generateSprite", () => {
-	it("writes Recraft response bytes to the correct output path", async () => {
-		const fakePng = await sharp({
-			create: {
-				width: 48,
-				height: 48,
-				channels: 4,
-				background: { r: 255, g: 0, b: 0, alpha: 255 },
-			},
-		})
-			.png()
-			.toBuffer()
-
-		const fakeFetch = async (
-			url: string,
-			_opts?: RequestInit,
-		): Promise<Response> => {
-			if (url.includes("recraft")) {
-				return new Response(
-					JSON.stringify({ data: [{ b64_json: fakePng.toString("base64") }] }),
-					{ status: 200, headers: { "Content-Type": "application/json" } },
-				)
-			}
-			throw new Error(`unexpected fetch: ${url}`)
-		}
-
-		const prevKey = process.env.RECRAFT_API_KEY
-		process.env.RECRAFT_API_KEY = "test-key"
+describe("checkAssets", () => {
+	it("reports one result per manifest entry, grouped by category", async () => {
+		const dir = await fs.promises.mkdtemp(
+			path.join(os.tmpdir(), "gym-assets-check-"),
+		)
 		try {
-			await generateSprite(
-				ENTRY_STATIC,
-				tmpDir,
-				fakeFetch as typeof globalThis.fetch,
-			)
-		} finally {
-			process.env.RECRAFT_API_KEY = prevKey
-		}
+			await writePng(path.join(dir, ENTRY_STATIC.filename), 96, 96)
+			// ENTRY_ANIM's file is intentionally left missing.
 
-		const outPath = path.join(tmpDir, ENTRY_STATIC.filename)
-		expect(fs.existsSync(outPath)).toBe(true)
-		const written = await fs.promises.readFile(outPath)
-		expect(written.length).toBeGreaterThan(0)
+			const results = await checkAssets([ENTRY_STATIC, ENTRY_ANIM], dir)
+
+			expect(results).toHaveLength(2)
+			expect(results.find((r) => r.key === "test_static")).toMatchObject({
+				category: "decor",
+				pass: true,
+			})
+			expect(results.find((r) => r.key === "test_anim")).toMatchObject({
+				category: "equipment",
+				pass: false,
+			})
+		} finally {
+			await fs.promises.rm(dir, { recursive: true, force: true })
+		}
 	})
 })
