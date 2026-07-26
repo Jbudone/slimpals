@@ -1,10 +1,7 @@
 import Phaser from "phaser"
 import manifest from "shared/gym-sprite-manifest.json"
-import { createPlaceholderTexture } from "../placeholderTexture.js"
+import { applyPlaceholders, queueManifestLoads } from "../spriteLoader.js"
 
-const BASE = "/assets/gym"
-
-// Portraits are DOM <img> assets used by NpcDialog.svelte, not Phaser textures.
 const CANVAS_SPRITES = manifest.sprites.filter((s) => s.category !== "portrait")
 
 export class PreloadScene extends Phaser.Scene {
@@ -16,16 +13,9 @@ export class PreloadScene extends Phaser.Scene {
 
 	preload() {
 		this.missingKeys = []
-		this.load.on("loaderror", (file: Phaser.Loader.File) => {
-			this.missingKeys.push(file.key)
+		queueManifestLoads(this, CANVAS_SPRITES, (key) => {
+			this.missingKeys.push(key)
 		})
-
-		for (const entry of CANVAS_SPRITES) {
-			this.load.spritesheet(entry.key, `${BASE}/${entry.filename}`, {
-				frameWidth: entry.frameWidth,
-				frameHeight: entry.frameHeight,
-			})
-		}
 	}
 
 	create() {
@@ -37,14 +27,14 @@ export class PreloadScene extends Phaser.Scene {
 	}
 
 	private reportMissingSprites() {
-		const byKey = new Map(CANVAS_SPRITES.map((entry) => [entry.key, entry]))
 		console.error(
 			`[gym] ${this.missingKeys.length} sprite(s) missing — showing placeholders. Add these files and reload:`,
 		)
+		applyPlaceholders(this, this.missingKeys, CANVAS_SPRITES)
+		const byKey = new Map(CANVAS_SPRITES.map((entry) => [entry.key, entry]))
 		for (const key of this.missingKeys) {
 			const entry = byKey.get(key)
 			if (!entry) continue
-			createPlaceholderTexture(this, key, entry.frameWidth, entry.frameHeight)
 			console.error(
 				`  ${key} → public/assets/gym/${entry.filename} (${entry.frameWidth * entry.frameCount}×${entry.frameHeight})`,
 			)

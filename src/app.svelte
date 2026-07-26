@@ -92,6 +92,10 @@ async function handleLogout() {
 		<Settings />
 	{:else if currentPath === "/admin"}
 		<Admin />
+	{:else if import.meta.env.DEV && currentPath === "/gym-sprites"}
+		{#await import("./pages/GymSprites.svelte") then { default: GymSprites }}
+			<GymSprites />
+		{/await}
 	{/if}
 	<Toast />
 {/if}

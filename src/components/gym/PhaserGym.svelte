@@ -53,6 +53,7 @@ function createGame() {
 			},
 		},
 	})
+	window.game = game
 }
 
 $effect(() => {
@@ -93,6 +94,7 @@ onMount(() => {
 			game.destroy(true)
 			game = null
 		}
+		window.game = undefined
 	}
 })
 </script>

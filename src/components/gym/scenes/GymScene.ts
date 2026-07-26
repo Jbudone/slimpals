@@ -158,6 +158,8 @@ export class GymScene extends Phaser.Scene {
 		for (const config of deriveEquipmentAnimConfigs()) {
 			if (this.missingSpriteKeys.has(config.key)) continue
 			if (this.anims.exists(config.animKey)) continue
+			const texture = this.textures.get(config.key)
+			if (!texture.has(String(config.frameCount - 1))) continue
 			this.anims.create({
 				key: config.animKey,
 				frames: this.anims.generateFrameNumbers(config.key, {

@@ -13,6 +13,7 @@ export type RoutePath =
 	| "/badges"
 	| "/settings"
 	| "/admin"
+	| "/gym-sprites"
 
 export const nav = $state<{ path: RoutePath; params: Record<string, string> }>({
 	path: "/",
@@ -36,6 +37,9 @@ export function initRouter() {
 	page("/badges", go("/badges"))
 	page("/settings", go("/settings"))
 	page("/admin", go("/admin"))
+	if (import.meta.env.DEV) {
+		page("/gym-sprites", go("/gym-sprites"))
+	}
 	page("/", go("/"))
 	page()
 }
