@@ -442,7 +442,7 @@ export function createGymRouter(aiService: AIService) {
 	})
 
 	router.get("/gym/npc/:key", async (req, res) => {
-		const userId = (req as AuthRequest).user.id
+		const userId = (req as unknown as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		const npcKey = req.params.key
 

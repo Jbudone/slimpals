@@ -18,6 +18,9 @@ export type Gym = {
 	level: number
 	xp: number
 	pendingUpgradeKeys: string[]
+	todayEventData: unknown
+	gymVisitStreak: number
+	lastGymVisitDate: Date | null
 	createdAt: Date
 }
 

@@ -698,7 +698,7 @@ export async function computeGymSimState(
 			moveSpeedMultiplier,
 			chatEventWith,
 			currentAnimation: animation,
-			isInteractable: activity !== "leaving",
+			isInteractable: true,
 			progressionStage,
 		})
 	}
