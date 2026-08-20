@@ -670,7 +670,7 @@ const NPC_CATALOG: NpcRow[] = [
 		},
 		defaultSchedule: {
 			arrivalHour: 6,
-			departureHour: 20,
+			departureHour: 23,
 			daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
 			activitySequence: [
 				{
@@ -828,8 +828,8 @@ const NPC_CATALOG: NpcRow[] = [
 		},
 		defaultSchedule: {
 			arrivalHour: 17,
-			departureHour: 19,
-			daysOfWeek: [1, 2, 3, 4, 5],
+			departureHour: 22,
+			daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
 			activitySequence: [
 				{
 					type: "warmup",
@@ -977,6 +977,8 @@ export async function seedNpcs(db: Db) {
 			set: {
 				name: sql`VALUES(name)`,
 				portraitUrl: sql`VALUES(portrait_url)`,
+				defaultSchedule: sql`VALUES(default_schedule)`,
+				spriteKey: sql`VALUES(sprite_key)`,
 			},
 		})
 }
