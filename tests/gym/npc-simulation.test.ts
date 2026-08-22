@@ -348,6 +348,117 @@ describe("computeGymSimState — equipment conflicts", () => {
 	})
 })
 
+describe("computeGymSimState — equipment routing constraint", () => {
+	it("hard-constrains equipment choice to allowedEquipmentKeys, ignoring preference", async () => {
+		const db = await getTestDb()
+		await db.insert(users).values({
+			id: "user-allowed-keys",
+			email: "allowedkeys@test.com",
+			name: "Allowed Keys User",
+		})
+		const gym = await getOrCreateGym("user-allowed-keys", db)
+
+		const npc: GymNpc = {
+			key: "npc_constrained",
+			name: "Constrained NPC",
+			role: "regular",
+			personalityProfile: {
+				traits: [],
+				goals: [],
+				quirks: [],
+				equipmentPreferences: ["weights_barbell"],
+				avoidEquipment: [],
+				friendlyWith: [],
+				rivalWith: [],
+				moodBaseline: 60,
+				allowedEquipmentKeys: ["weights_dumbbells"],
+			},
+			defaultSchedule: {
+				arrivalHour: 6,
+				departureHour: 20,
+				daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+				activitySequence: [
+					{ type: "main", durationMin: 60, equipmentCategory: "weights" },
+				],
+			},
+			spriteKey: "npc_constrained",
+			unlockedByUpgradeKey: null,
+		}
+
+		// 30min after the 6am arrival, inside the 60min "main" activity step —
+		// noon would be past the single step's window and always resolve to no
+		// equipment regardless of the routing constraint, which isn't what
+		// this test is verifying.
+		const activeTime = new Date("2026-06-17T06:30:00")
+		const states = await computeGymSimState(
+			gym.id,
+			[npc],
+			["weights_barbell", "weights_dumbbells", "weights_cable"],
+			[],
+			db,
+			activeTime,
+		)
+
+		expect(states).toHaveLength(1)
+		expect(states[0].isPresent).toBe(true)
+		expect(states[0].targetEquipmentKey).toBe("weights_dumbbells")
+	})
+
+	it("goes idle rather than falling back outside allowedEquipmentKeys", async () => {
+		const db = await getTestDb()
+		await db.insert(users).values({
+			id: "user-allowed-keys-idle",
+			email: "allowedkeysidle@test.com",
+			name: "Allowed Keys Idle User",
+		})
+		const gym = await getOrCreateGym("user-allowed-keys-idle", db)
+
+		const npc: GymNpc = {
+			key: "npc_constrained_idle",
+			name: "Constrained Idle NPC",
+			role: "regular",
+			personalityProfile: {
+				traits: [],
+				goals: [],
+				quirks: [],
+				equipmentPreferences: [],
+				avoidEquipment: [],
+				friendlyWith: [],
+				rivalWith: [],
+				moodBaseline: 60,
+				// weights_smith is unlocked below but not in the allow-list, and
+				// the allow-list's own item isn't unlocked — the picker must not
+				// fall back to weights_barbell even though it's free and unlocked.
+				allowedEquipmentKeys: ["weights_smith"],
+			},
+			defaultSchedule: {
+				arrivalHour: 6,
+				departureHour: 20,
+				daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+				activitySequence: [
+					{ type: "main", durationMin: 60, equipmentCategory: "weights" },
+				],
+			},
+			spriteKey: "npc_constrained_idle",
+			unlockedByUpgradeKey: null,
+		}
+
+		const activeTime = new Date("2026-06-17T06:30:00")
+		const states = await computeGymSimState(
+			gym.id,
+			[npc],
+			["weights_barbell", "weights_dumbbells"],
+			[],
+			db,
+			activeTime,
+		)
+
+		expect(states).toHaveLength(1)
+		expect(states[0].isPresent).toBe(true)
+		expect(states[0].targetEquipmentKey).toBeNull()
+	})
+})
+
 describe("computeGymSimState — mood computation", () => {
 	it("computes mood from baseline + events", async () => {
 		const db = await getTestDb()

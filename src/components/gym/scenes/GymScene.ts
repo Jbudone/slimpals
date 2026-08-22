@@ -1,6 +1,11 @@
 import Phaser from "phaser"
+import manifest from "shared/gym-sprite-manifest.json"
 import { deriveEquipmentAnimConfigs } from "../equipmentAnimations.js"
 import { NpcSprite, type NpcState } from "../NpcSprite.js"
+
+const ALL_CANVAS_SPRITE_KEYS = manifest.sprites
+	.filter((s) => s.category !== "portrait")
+	.map((s) => s.key)
 
 const TILE = 32
 const GRID_W = 20
@@ -126,6 +131,7 @@ export class GymScene extends Phaser.Scene {
 	private npcSprites: Map<string, NpcSprite> = new Map()
 	private equipmentSprites: Map<string, Phaser.GameObjects.Sprite> = new Map()
 	private missingSpriteKeys: Set<string> = new Set()
+	private availableSpriteKeys: Set<string> = new Set()
 	private pollTimer: Phaser.Time.TimerEvent | null = null
 	private ceremonyActive = false
 
@@ -137,6 +143,9 @@ export class GymScene extends Phaser.Scene {
 		const data = this.registry.get("gymData") as GymSceneData | undefined
 		this.missingSpriteKeys = new Set(
 			(this.registry.get("missingSprites") as string[] | undefined) ?? [],
+		)
+		this.availableSpriteKeys = new Set(
+			ALL_CANVAS_SPRITE_KEYS.filter((k) => !this.missingSpriteKeys.has(k)),
 		)
 
 		this.setupEquipmentAnimations()
@@ -363,7 +372,13 @@ export class GymScene extends Phaser.Scene {
 			}
 
 			if (!existing) {
-				const ns = new NpcSprite(this, npc.npcKey, DOOR_TILE.x, DOOR_TILE.y)
+				const ns = new NpcSprite(
+					this,
+					npc.npcKey,
+					DOOR_TILE.x,
+					DOOR_TILE.y,
+					this.availableSpriteKeys,
+				)
 				ns.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
 				ns.fadeIn()
 				ns.updateDepth()
@@ -391,7 +406,7 @@ export class GymScene extends Phaser.Scene {
 
 			if (npc.currentActivity === "using_equipment") {
 				sprite.stopActivity()
-				sprite.playActivity()
+				sprite.playActivity(npc.targetEquipmentKey ?? undefined)
 				sprite.hideChatBubble()
 			} else if (npc.currentActivity === "chatting") {
 				sprite.stopActivity()

@@ -14,6 +14,13 @@ export type PersonalityProfile = {
 	friendlyWith: string[]
 	rivalWith: string[]
 	moodBaseline: number
+	/**
+	 * When set (non-empty), hard-constrains this NPC's equipment choice within
+	 * its scheduled category to this list — never falls back to another
+	 * unlocked/free item in the category the way the default picker does.
+	 * Unset/empty = unconstrained, unchanged default behavior.
+	 */
+	allowedEquipmentKeys?: string[]
 }
 
 export type ActivityStep = {
@@ -232,14 +239,31 @@ function isNpcPresentAtHour(
 
 // ── Equipment selection ──────────────────────────────────────────────────────
 
+function applyAllowedEquipmentConstraint(
+	keys: string[],
+	profile: PersonalityProfile,
+): string[] {
+	if (
+		!profile.allowedEquipmentKeys ||
+		profile.allowedEquipmentKeys.length === 0
+	) {
+		return keys
+	}
+	const allowed = profile.allowedEquipmentKeys
+	return keys.filter((e) => allowed.includes(e))
+}
+
 function pickEquipmentForCategory(
 	npc: GymNpc,
 	category: string,
 	unlockedUpgrades: string[],
 	occupiedEquipment: Set<string>,
 ): { key: string | null; gotPreferred: boolean } {
-	const available = (EQUIPMENT_BY_CATEGORY[category] ?? []).filter(
-		(e) => unlockedUpgrades.includes(e) && !occupiedEquipment.has(e),
+	const available = applyAllowedEquipmentConstraint(
+		(EQUIPMENT_BY_CATEGORY[category] ?? []).filter(
+			(e) => unlockedUpgrades.includes(e) && !occupiedEquipment.has(e),
+		),
+		npc.personalityProfile,
 	)
 
 	if (available.length === 0) return { key: null, gotPreferred: false }
@@ -268,8 +292,11 @@ function pickEquipmentWithRivalAvoidance(
 	if (rivalClaimedCategories.has(category)) {
 		const profile = npc.personalityProfile
 		// Look for preferred equipment in other categories
-		const allPreferred = profile.equipmentPreferences.filter(
-			(e) => unlockedUpgrades.includes(e) && !occupiedEquipment.has(e),
+		const allPreferred = applyAllowedEquipmentConstraint(
+			profile.equipmentPreferences.filter(
+				(e) => unlockedUpgrades.includes(e) && !occupiedEquipment.has(e),
+			),
+			profile,
 		)
 		// Find which category the preferred item belongs to
 		for (const pref of allPreferred) {
