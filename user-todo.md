@@ -1,12 +1,25 @@
-# Gym Pixel Art — Asset TODO
+# User TODO
+
+Personal todo list for maybejosh. Sections below are grouped by topic — currently just Art.
+
+## Art — Gym Pixel Art
 
 Hand-drawn pixel art needed for the gym redesign. Style reference: `public/assets/gym/weights_dumbbells.png` (approved — match its palette/style).
 
 **Status: 9/66 done.** Draw at whatever native size is comfortable — run `npm run check-assets -- --fix` after dropping files in and it'll nearest-neighbor resize them to spec. Run `npm run check-assets` any time to see live progress.
 
-All static sprites are **96×96**. Animated sprites are a horizontal strip: **(96 × frame count)×96**, listed below. Portraits are **128×128**.
+### Spec (applies to everything below)
 
-## Structure (6)
+- **Resolution:** the game renders tiles at 32px, but source art is drawn at **3×** (96×96) so `check-assets --fix`'s nearest-neighbor downscale stays crisp. Keep shapes chunky and blocky — detail that only reads at 96px will turn to mush at 32px.
+- **Aspect ratio:** static props and tiles are square (96×96, 1:1). Animated equipment is a horizontal strip of square frames — e.g. 4 frames = 384×96 (4:1 overall), each frame still 1:1. Portraits are square (128×128, 1:1).
+- **Colour palette** (sampled from the approved reference, `weights_dumbbells.png`):
+  - Base/neutrals: cream `#f0f0e0`, warm white `#f0f0f0`, warm tan `#e0d0b0`, sand `#f0d0a0`
+  - Metal/grey (frames, racks, machinery): warm grey `#a0a090`, `#b0b0a0`
+  - Accent — rust/orange (upholstery, logos, highlights, neon sign, motivational typography): `#c06020`, `#a03000`, `#f09040`
+  - Keep it warm and desaturated overall. Cooler or saturated colors (blue water jug, juice-bar fruit) are fine as small functional accents, not dominant fields.
+- **Style:** chunky simple shapes, flat cel-shaded fills (1–2 shade steps), dark outline, no gradients/anti-aliasing/blur.
+
+### Structure (6)
 - [ ] `floor-tile.png` — rubber gym floor, subtle grid lines, warm earthy tones, seamless tileable
 - [ ] `wall-tile.png` — concrete wall panel with motivational stripe, warm palette, seamless tileable
 - [ ] `wall-horizontal.png` — horizontal wall segment, matches wall-tile, tileable left-right
@@ -14,10 +27,10 @@ All static sprites are **96×96**. Animated sprites are a horizontal strip: **(9
 - [ ] `wall-corner.png` — wall corner piece joining horizontal + vertical segments
 - [ ] `gym-door.png` — entrance door, matches wall style, clearly readable as an entrance
 
-## UI (1)
+### UI (1)
 - [ ] `equipment-locked.png` — padlock-style overlay icon for locked equipment
 
-## Equipment (9)
+### Equipment (9)
 - [ ] `cardio_treadmill.png` — **4 frames, 8fps (384×96)** — treadmill, black belt, metal frame, control panel
 - [ ] `cardio_rowing.png` — **4 frames, 8fps (384×96)** — rowing machine, metal rail, sliding seat, chain handle
 - [ ] `cardio_bikes.png` — **4 frames, 8fps (384×96)** — stationary bike, flywheel, padded seat, handlebars
@@ -28,32 +41,40 @@ All static sprites are **96×96**. Animated sprites are a horizontal strip: **(9
 - [ ] `weights_smith.png` — Smith machine, guided barbell on vertical rails, plates
 - [ ] `weights_olympic.png` — Olympic lifting platform, rubber mat with centre markings, barbell
 
-## Amenity (5)
+### Amenity (5)
 - [ ] `amenity_water.png` — water cooler, blue jug on top, drip tray
 - [ ] `amenity_lockers.png` — row of lockers, combination locks, bench in front
 - [ ] `amenity_showers.png` — shower room entrance, tiled doorway, showerhead visible
 - [ ] `amenity_sauna.png` — wooden sauna entrance, cedar panels, small window with steam
 - [ ] `amenity_juice.png` — juice bar counter, blender, protein shake bottles, fruit
 
-## Decor (5)
+### Decor (5)
 - [ ] `decor_posters.png` — motivational poster, bold "STRONGER" typography
 - [ ] `decor_plants.png` — large potted plant, leafy green, terracotta pot
 - [ ] `decor_mirrors.png` — large wall mirror, chrome frame, reflective surface
 - [ ] `decor_trophy.png` — glass trophy case, gold trophies + medals inside
 - [ ] `decor_neon.png` — glowing neon "GYM" sign, orange/red
 
-## Staff areas (5)
+### Staff areas (5)
 - [ ] `staff_reception.png` — reception desk, computer monitor, tidy surface
 - [ ] `staff_trainer.png` — trainer corner, clipboard board on wall, small desk
 - [ ] `staff_massage.png` — massage table, white linen
 - [ ] `staff_physio.png` — physio table, resistance bands, foam roller
 - [ ] `staff_nutrition.png` — nutrition desk, supplement bottles, food charts on wall
 
-## NPC sprites (2)
+### NPC sprites (2)
 - [ ] `sprites/worker.png` — construction worker, yellow hard hat, orange overalls
 - [ ] `sprites/worker-cheer.png` — same worker celebrating, arms raised (upgrade ceremonies)
 
-## Portraits — 128×128 (24)
+**Animation & direction spec for NPCs** — `NpcSprite.ts` renders NPCs as a single static 96×96 image, so each character needs exactly **one base pose**, drawn facing the camera (front / three-quarter view, matching the 8 already-completed named NPCs). Everything else is handled in code, not art:
+- **Left/right facing:** the base pose is horizontally flipped in code (`setFlipX`). No separate left- or right-facing art.
+- **Up/down facing:** not visually distinguished — the front-facing base pose is reused as-is. No back-view art.
+- **Walking:** faked with a subtle rocking tween on the base pose (`NpcSprite.startWalkBob`), not a walk-cycle sprite sheet.
+- **Using equipment:** faked with a bob/tilt tween on the base pose; the equipment itself carries the mechanical animation (spinning wheels, moving belts, etc. — see Equipment above). NPCs don't need a distinct pose per activity — that's the permutation explosion (10 NPCs × 9 machines) we're deliberately avoiding.
+- **Triggered full-pose swaps:** the one place a genuinely distinct pose is drawn is `worker` → `worker-cheer`, swapped by code for a specific triggered event (upgrade ceremony). If a future NPC gets its own triggered event (e.g. a trainer demonstrating a lift), follow this same pattern — one extra full alternate pose, not a frame strip.
+- **Stretch/optional — walk-cycle animation:** would make roaming NPCs (the "regulars" + worker, who wander a lot, vs. deskbound staff) feel more alive than the current rock-tween. If picked up: a 4-frame horizontal strip per character (384×96, ~6fps), single direction only (code already flips for left-facing and reuses the pose for up/down, so no extra direction art). This needs a small code change first (`NpcSprite` currently draws a static `Image`, not an animated `Sprite`) — don't start on the art until that's confirmed, since it'd sit unused otherwise.
+
+### Portraits — 128×128 (24)
 Each NPC needs 3 expressions: neutral, happy (smiling), determined (focused). Head-and-shoulders, square crop.
 
 - [ ] `portraits/trainer_marcus.png` / `_happy` / `_determined` — Marcus, muscular male trainer
