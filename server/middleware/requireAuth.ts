@@ -1,6 +1,7 @@
 import { fromNodeHeaders } from "better-auth/node"
 import type { NextFunction, Request, Response } from "express"
 import { auth } from "../auth.js"
+import { getDevAutologinUser } from "./devAutologin.js"
 
 export type AuthRequest = Request & {
 	user: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>["user"]
@@ -14,6 +15,17 @@ export async function requireAuth(
 	res: Response,
 	next: NextFunction,
 ) {
+	const devUser = await getDevAutologinUser()
+	if (devUser) {
+		;(req as AuthRequest).user = devUser as AuthRequest["user"]
+		;(req as AuthRequest).session = {
+			id: "dev-autologin",
+			userId: devUser.id,
+		} as AuthRequest["session"]
+		next()
+		return
+	}
+
 	const session = await auth.api.getSession({
 		headers: fromNodeHeaders(req.headers),
 	})

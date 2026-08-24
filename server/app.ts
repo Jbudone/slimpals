@@ -5,6 +5,7 @@ import express from "express"
 import { auth } from "./auth.js"
 import { db } from "./db/index.js"
 import { seedBadges, seedGymUpgrades, seedNpcs } from "./db/seed.js"
+import { getDevAutologinUser } from "./middleware/devAutologin.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { adminRouter } from "./routes/admin.js"
 import { appleHealthRouter } from "./routes/appleHealth.js"
@@ -46,6 +47,15 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	)
 	seedNpcs(db).catch((err) => console.error("NPC seed failed:", err))
 
+	if (
+		process.env.NODE_ENV !== "production" &&
+		process.env.DEV_AUTOLOGIN_EMAIL
+	) {
+		console.log(
+			`[dev-autologin] enabled — every request auto-authenticates as ${process.env.DEV_AUTOLOGIN_EMAIL}`,
+		)
+	}
+
 	app.use(
 		cors({
 			credentials: true,
@@ -63,6 +73,25 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 
 	// Registration: validate invite code first, then hand off to Better Auth
 	app.post("/api/auth/sign-up/email", validateInvite, toNodeHandler(auth))
+
+	// Dev-only: make the frontend's session check see the autologin user
+	// (DEV_AUTOLOGIN_EMAIL) so the login screen is skipped entirely.
+	app.get("/api/auth/get-session", async (_req, res, next) => {
+		const devUser = await getDevAutologinUser()
+		if (!devUser) {
+			next()
+			return
+		}
+		res.json({
+			session: { id: "dev-autologin", userId: devUser.id },
+			user: {
+				id: devUser.id,
+				email: devUser.email,
+				name: devUser.name,
+				emailVerified: devUser.emailVerified,
+			},
+		})
+	})
 
 	// All other Better Auth routes (sign-in, sign-out, session, etc.)
 	app.use("/api/auth", toNodeHandler(auth))
