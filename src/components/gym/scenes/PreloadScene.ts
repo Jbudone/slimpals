@@ -1,8 +1,15 @@
 import Phaser from "phaser"
 import manifest from "shared/gym-sprite-manifest.json"
+import {
+	flattenNpcManifest,
+	type NpcManifest,
+} from "shared/npc-sprite-manifest.js"
 import { applyPlaceholders, queueManifestLoads } from "../spriteLoader.js"
 
-const CANVAS_SPRITES = manifest.sprites.filter((s) => s.category !== "portrait")
+const CANVAS_SPRITES = [
+	...manifest.sprites.filter((s) => s.category !== "portrait"),
+	...flattenNpcManifest(manifest.npcs as NpcManifest),
+]
 
 export class PreloadScene extends Phaser.Scene {
 	private missingKeys: string[] = []

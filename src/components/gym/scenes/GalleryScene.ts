@@ -1,10 +1,20 @@
 import Phaser from "phaser"
 import manifest from "shared/gym-sprite-manifest.json"
-import { deriveEquipmentAnimConfigs } from "../equipmentAnimations.js"
+import {
+	flattenNpcManifest,
+	type NpcManifest,
+} from "shared/npc-sprite-manifest.js"
+import {
+	deriveEquipmentAnimConfigs,
+	deriveNpcAnimConfigs,
+} from "../equipmentAnimations.js"
 import { computeGalleryLayout } from "../galleryLayout.js"
 import { applyPlaceholders, queueManifestLoads } from "../spriteLoader.js"
 
-const ALL_SPRITES = manifest.sprites
+const ALL_SPRITES = [
+	...manifest.sprites,
+	...flattenNpcManifest(manifest.npcs as NpcManifest),
+]
 const COLUMNS = 8
 const CELL_SIZE = 112
 const DISPLAY_SIZE = 88
@@ -28,7 +38,10 @@ export class GalleryScene extends Phaser.Scene {
 			applyPlaceholders(this, this.missingKeys, ALL_SPRITES)
 		}
 
-		const animConfigs = deriveEquipmentAnimConfigs(ALL_SPRITES)
+		const animConfigs = [
+			...deriveEquipmentAnimConfigs(),
+			...deriveNpcAnimConfigs(),
+		]
 		for (const config of animConfigs) {
 			if (this.anims.exists(config.animKey)) continue
 			const texture = this.textures.get(config.key)

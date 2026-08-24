@@ -1,11 +1,25 @@
 import Phaser from "phaser"
 import manifest from "shared/gym-sprite-manifest.json"
-import { deriveEquipmentAnimConfigs } from "../equipmentAnimations.js"
+import {
+	deriveNpcTextureKey,
+	flattenNpcManifest,
+	type NpcManifest,
+} from "shared/npc-sprite-manifest.js"
+import {
+	deriveEquipmentAnimConfigs,
+	deriveNpcAnimConfigs,
+} from "../equipmentAnimations.js"
 import { NpcSprite, type NpcState } from "../NpcSprite.js"
 
-const ALL_CANVAS_SPRITE_KEYS = manifest.sprites
-	.filter((s) => s.category !== "portrait")
-	.map((s) => s.key)
+const ALL_CANVAS_SPRITE_KEYS = [
+	...manifest.sprites
+		.filter((s) => s.category !== "portrait")
+		.map((s) => s.key),
+	...flattenNpcManifest(manifest.npcs as NpcManifest).map((s) => s.key),
+]
+
+const WORKER_IDLE_KEY = deriveNpcTextureKey("worker", "idle", "default")
+const WORKER_CHEER_KEY = deriveNpcTextureKey("worker", "cheer", "default")
 
 const TILE = 32
 const GRID_W = 20
@@ -148,7 +162,7 @@ export class GymScene extends Phaser.Scene {
 			ALL_CANVAS_SPRITE_KEYS.filter((k) => !this.missingSpriteKeys.has(k)),
 		)
 
-		this.setupEquipmentAnimations()
+		this.setupAnimations()
 		this.renderFloor()
 		this.renderWalls()
 		this.renderDoor()
@@ -163,8 +177,11 @@ export class GymScene extends Phaser.Scene {
 		this.renderMissingSpritesBanner()
 	}
 
-	private setupEquipmentAnimations() {
-		for (const config of deriveEquipmentAnimConfigs()) {
+	private setupAnimations() {
+		for (const config of [
+			...deriveEquipmentAnimConfigs(),
+			...deriveNpcAnimConfigs(),
+		]) {
 			if (this.missingSpriteKeys.has(config.key)) continue
 			if (this.anims.exists(config.animKey)) continue
 			const texture = this.textures.get(config.key)
@@ -661,9 +678,9 @@ export class GymScene extends Phaser.Scene {
 		const px = tileX * TILE + TILE / 2
 		const py = tileY * TILE + TILE / 2
 
-		if (this.textures.exists("worker")) {
+		if (this.textures.exists(WORKER_IDLE_KEY)) {
 			const img = this.add
-				.image(px, py, "worker")
+				.image(px, py, WORKER_IDLE_KEY)
 				.setDisplaySize(TILE, TILE)
 				.setAlpha(0)
 				.setDepth(py + 50)
@@ -679,14 +696,24 @@ export class GymScene extends Phaser.Scene {
 		return rect
 	}
 
+	/** Bounces the workers, swapping to their "cheer" pose art if it's drawn. */
 	private cheerWorkers(w1: CeremonyWorker, w2: CeremonyWorker) {
+		const canCheer = this.textures.exists(WORKER_CHEER_KEY)
 		for (const w of [w1, w2]) {
+			if (canCheer && w instanceof Phaser.GameObjects.Image) {
+				w.setTexture(WORKER_CHEER_KEY)
+			}
 			this.tweens.add({
 				targets: w,
 				y: (w as { y: number }).y - 6,
 				duration: 100,
 				yoyo: true,
 				ease: "Quad.easeOut",
+				onComplete: () => {
+					if (canCheer && w instanceof Phaser.GameObjects.Image) {
+						w.setTexture(WORKER_IDLE_KEY)
+					}
+				},
 			})
 		}
 	}

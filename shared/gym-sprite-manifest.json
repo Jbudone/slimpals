@@ -1,5 +1,5 @@
 {
-	"version": "2",
+	"version": "3",
 	"styleReferenceKey": "weights_dumbbells",
 	"sprites": [
 		{
@@ -323,106 +323,6 @@
 			"description": "nutrition consultation desk with supplement bottles and food charts on wall, gym prop"
 		},
 		{
-			"key": "npc_trainer_marcus",
-			"filename": "sprites/npc_trainer_marcus.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "muscular male gym trainer in red tank top"
-		},
-		{
-			"key": "npc_receptionist_lisa",
-			"filename": "sprites/npc_receptionist_lisa.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "friendly female receptionist in blue gym polo shirt, full body standing pose from head to toe showing complete figure with head torso legs and feet"
-		},
-		{
-			"key": "npc_regular_derek",
-			"filename": "sprites/npc_regular_derek.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "serious male powerlifter in grey sleeveless hoodie"
-		},
-		{
-			"key": "npc_regular_priya",
-			"filename": "sprites/npc_regular_priya.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "calm female yoga enthusiast in teal yoga outfit"
-		},
-		{
-			"key": "npc_regular_tom",
-			"filename": "sprites/npc_regular_tom.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "enthusiastic male gym bro in yellow muscle shirt"
-		},
-		{
-			"key": "npc_regular_elena",
-			"filename": "sprites/npc_regular_elena.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "slim female gym member in purple tank top and purple leggings"
-		},
-		{
-			"key": "npc_specialist_coach",
-			"filename": "sprites/npc_specialist_coach.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "authoritative male sports coach in navy tracksuit with clipboard"
-		},
-		{
-			"key": "npc_specialist_nutritionist",
-			"filename": "sprites/npc_specialist_nutritionist.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "caring female nutritionist in light blue coat holding a clipboard"
-		},
-		{
-			"key": "worker",
-			"filename": "sprites/worker.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "construction worker in yellow hard hat and orange overalls"
-		},
-		{
-			"key": "worker_cheer",
-			"filename": "sprites/worker-cheer.png",
-			"category": "npc",
-			"frameWidth": 96,
-			"frameHeight": 96,
-			"frameCount": 1,
-			"fps": 0,
-			"description": "Construction worker celebrating with arms raised \u2014 used during upgrade ceremonies"
-		},
-		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
@@ -662,5 +562,222 @@
 			"fps": 0,
 			"description": "Dialog portrait of the nutritionist, caring female, determined, focused expression, head-and-shoulders, square crop"
 		}
-	]
+	],
+	"npcs": {
+		"trainer_marcus": {
+			"description": "muscular male gym trainer in red tank top",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_trainer_marcus.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_trainer_marcus_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"receptionist_lisa": {
+			"description": "friendly female receptionist in blue gym polo shirt, full body standing pose from head to toe showing complete figure with head torso legs and feet",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_receptionist_lisa.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_receptionist_lisa_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"regular_derek": {
+			"description": "serious male powerlifter in grey sleeveless hoodie",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_regular_derek.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_regular_derek_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"regular_priya": {
+			"description": "calm female yoga enthusiast in teal yoga outfit",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_regular_priya.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_regular_priya_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"regular_tom": {
+			"description": "enthusiastic male gym bro in yellow muscle shirt",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_regular_tom.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_regular_tom_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"regular_elena": {
+			"description": "slim female gym member in purple tank top and purple leggings",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_regular_elena.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_regular_elena_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"specialist_coach": {
+			"description": "authoritative male sports coach in navy tracksuit with clipboard",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_specialist_coach.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_specialist_coach_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"specialist_nutritionist": {
+			"description": "caring female nutritionist in light blue coat holding a clipboard",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_specialist_nutritionist.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_specialist_nutritionist_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"worker": {
+			"description": "construction worker in yellow hard hat and orange overalls — a one-off ceremonial prop for upgrade installs, not part of the simulated NPC roster",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": { "type": "static", "file": "sprites/worker.png" }
+					}
+				},
+				"cheer": {
+					"directions": {
+						"default": { "type": "static", "file": "sprites/worker-cheer.gif" }
+					}
+				}
+			}
+		}
+	}
 }

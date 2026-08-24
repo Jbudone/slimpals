@@ -1,8 +1,8 @@
 import type Phaser from "phaser"
+import { deriveNpcTextureKey } from "shared/npc-sprite-manifest.js"
 import {
 	resolveAnimationAvailability,
-	resolvePoseKey,
-	resolveWalkKey,
+	resolveAnimationKey,
 } from "./npcAnimation.js"
 
 const TILE = 32
@@ -51,7 +51,7 @@ export class NpcSprite {
 		this.scene = scene
 		this.npcKey = npcKey
 		this.availableSpriteKeys = availableSpriteKeys
-		const spriteKey = `npc_${npcKey}`
+		const spriteKey = deriveNpcTextureKey(npcKey, "idle", "default")
 		this.baseSpriteKey = spriteKey
 
 		const px = x * TILE + TILE / 2
@@ -160,7 +160,7 @@ export class NpcSprite {
 
 	/** Walk-cycle art if drawn, else the tween-based rocking fallback. */
 	private startWalking() {
-		const walkAnimKey = this.animKeyFor(resolveWalkKey(this.npcKey))
+		const walkAnimKey = this.animKeyFor("walk")
 		if (walkAnimKey) {
 			this.stopWalkBob()
 			this.sprite.play(walkAnimKey)
@@ -171,7 +171,7 @@ export class NpcSprite {
 
 	private stopWalking() {
 		this.stopWalkBob()
-		const walkAnimKey = this.animKeyFor(resolveWalkKey(this.npcKey))
+		const walkAnimKey = this.animKeyFor("walk")
 		if (walkAnimKey && this.sprite.anims.currentAnim?.key === walkAnimKey) {
 			this.sprite.anims.stop()
 			this.sprite.setTexture(this.baseSpriteKey)
@@ -200,16 +200,22 @@ export class NpcSprite {
 
 	/**
 	 * Returns the `<key>_anim` Phaser animation key when real animated art is
-	 * loaded and registered for `candidateKey`, else null (use tween fallback).
+	 * loaded and registered for this npc's `animation`, else null (use tween
+	 * fallback).
 	 */
-	private animKeyFor(candidateKey: string): string | null {
+	private animKeyFor(animation: string): string | null {
 		if (
-			resolveAnimationAvailability(candidateKey, this.availableSpriteKeys) ===
-			"fallback"
+			resolveAnimationAvailability(
+				this.npcKey,
+				animation,
+				this.availableSpriteKeys,
+			) === "fallback"
 		) {
 			return null
 		}
-		const animKey = `${candidateKey}_anim`
+		const textureKey = resolveAnimationKey(this.npcKey, animation)
+		if (!textureKey) return null
+		const animKey = `${textureKey}_anim`
 		return this.scene.anims.exists(animKey) ? animKey : null
 	}
 
@@ -218,13 +224,15 @@ export class NpcSprite {
 		this.stopWalkBob()
 		if (this.usingPoseArt || this.activityTween) return
 
-		const poseKey = equipmentKey
-			? resolvePoseKey(this.npcKey, equipmentKey)
-			: null
 		if (
-			poseKey &&
-			resolveAnimationAvailability(poseKey, this.availableSpriteKeys) === "art"
+			equipmentKey &&
+			resolveAnimationAvailability(
+				this.npcKey,
+				equipmentKey,
+				this.availableSpriteKeys,
+			) === "art"
 		) {
+			const poseKey = resolveAnimationKey(this.npcKey, equipmentKey) as string
 			this.usingPoseArt = true
 			const poseAnimKey = `${poseKey}_anim`
 			if (this.scene.anims.exists(poseAnimKey)) {

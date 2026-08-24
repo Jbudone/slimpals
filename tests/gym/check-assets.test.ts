@@ -5,6 +5,8 @@ import sharp from "sharp"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
 	checkAssets,
+	convertAnimatedSource,
+	findAnimatedSource,
 	loadManifest,
 	normalizeAsset,
 	type SpriteManifestEntry,
@@ -62,6 +64,61 @@ async function writePng(filepath: string, width: number, height: number) {
 	})
 		.png()
 		.toFile(filepath)
+}
+
+/** Writes a real animated GIF with one solid-color frame per entry in `colors`. */
+async function writeAnimatedGif(
+	filepath: string,
+	colors: { r: number; g: number; b: number }[],
+	frameSize = 32,
+) {
+	const rawFrames = await Promise.all(
+		colors.map((bg) =>
+			sharp({
+				create: {
+					width: frameSize,
+					height: frameSize,
+					channels: 4,
+					background: { ...bg, alpha: 1 },
+				},
+			})
+				.raw()
+				.toBuffer(),
+		),
+	)
+	const stacked = Buffer.concat(rawFrames)
+	const gifBuf = await sharp(stacked, {
+		raw: {
+			width: frameSize,
+			height: frameSize * colors.length,
+			channels: 4,
+			pageHeight: frameSize,
+		},
+	})
+		.gif({ loop: 0, delay: colors.map(() => 100) })
+		.toBuffer()
+	await fs.promises.writeFile(filepath, gifBuf)
+}
+
+async function dominantColorOfFrame(
+	pngSheetPath: string,
+	frameIndex: number,
+	frameWidth: number,
+	frameHeight: number,
+) {
+	// sharp's .stats() doesn't apply a preceding .extract() until the crop is
+	// materialized via .toBuffer() first — call stats on that, not the chain.
+	const cropped = await sharp(pngSheetPath)
+		.extract({
+			left: frameIndex * frameWidth,
+			top: 0,
+			width: frameWidth,
+			height: frameHeight,
+		})
+		.png()
+		.toBuffer()
+	const stats = await sharp(cropped).stats()
+	return stats.dominant
 }
 
 // ── Behavior 1 ────────────────────────────────────────────────────────────────
@@ -154,6 +211,86 @@ describe("normalizeAsset", () => {
 })
 
 // ── Behavior 6 ────────────────────────────────────────────────────────────────
+
+// ── Behavior 10 ───────────────────────────────────────────────────────────────
+
+describe("findAnimatedSource / convertAnimatedSource", () => {
+	it("finds a sibling .gif next to the expected .png and converts it to a spritesheet", async () => {
+		const targetPath = path.join(tmpDir, "gif_sibling_walk.png")
+		const gifPath = path.join(tmpDir, "gif_sibling_walk.gif")
+		await writeAnimatedGif(gifPath, [
+			{ r: 255, g: 0, b: 0 },
+			{ r: 0, g: 255, b: 0 },
+			{ r: 0, g: 0, b: 255 },
+			{ r: 255, g: 255, b: 0 },
+		])
+
+		const source = await findAnimatedSource(targetPath)
+		expect(source).toBe(gifPath)
+
+		const { sourceFrames, sampledIndices } = await convertAnimatedSource(
+			gifPath,
+			targetPath,
+			ENTRY_ANIM,
+		)
+		expect(sourceFrames).toBe(4)
+		expect(sampledIndices).toEqual([0, 1, 2, 3])
+
+		const meta = await sharp(targetPath).metadata()
+		expect(meta.width).toBe(384)
+		expect(meta.height).toBe(96)
+
+		const frame0 = await dominantColorOfFrame(targetPath, 0, 96, 96)
+		expect(frame0).toMatchObject({ r: expect.any(Number) })
+		expect(frame0.r).toBeGreaterThan(200)
+		expect(frame0.g).toBeLessThan(50)
+		const frame2 = await dominantColorOfFrame(targetPath, 2, 96, 96)
+		expect(frame2.b).toBeGreaterThan(200)
+	})
+
+	it("detects an animated file saved directly under the expected .png filename", async () => {
+		const targetPath = path.join(tmpDir, "saved_as_png_walk.png")
+		await writeAnimatedGif(targetPath, [
+			{ r: 255, g: 0, b: 0 },
+			{ r: 0, g: 255, b: 0 },
+		])
+
+		const source = await findAnimatedSource(targetPath)
+		expect(source).toBe(targetPath)
+	})
+
+	it("returns null when there is no animated source", async () => {
+		const targetPath = path.join(tmpDir, "no_animated_source.png")
+		await writePng(targetPath, 96, 96)
+
+		const source = await findAnimatedSource(targetPath)
+		expect(source).toBeNull()
+	})
+
+	it("resamples when the source has a different frame count than the manifest expects", async () => {
+		const targetPath = path.join(tmpDir, "resample_walk.png")
+		const gifPath = path.join(tmpDir, "resample_walk.gif")
+		// 8 source frames, manifest wants 4 — should evenly sample down.
+		await writeAnimatedGif(
+			gifPath,
+			Array.from({ length: 8 }, (_, i) => ({ r: i * 30, g: 0, b: 0 })),
+		)
+
+		const { sourceFrames, sampledIndices } = await convertAnimatedSource(
+			gifPath,
+			targetPath,
+			ENTRY_ANIM,
+		)
+		expect(sourceFrames).toBe(8)
+		expect(sampledIndices).toHaveLength(4)
+		expect(sampledIndices[0]).toBe(0)
+		expect(sampledIndices[3]).toBe(7)
+
+		const meta = await sharp(targetPath).metadata()
+		expect(meta.width).toBe(384)
+		expect(meta.height).toBe(96)
+	})
+})
 
 describe("checkAssets", () => {
 	it("reports one result per manifest entry, grouped by category", async () => {

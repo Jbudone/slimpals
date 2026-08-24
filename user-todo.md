@@ -6,7 +6,7 @@ Personal todo list for maybejosh. Sections below are grouped by topic — curren
 
 Hand-drawn pixel art needed for the gym redesign. Style reference: `public/assets/gym/weights_dumbbells.png` (approved — match its palette/style).
 
-**Status: 9/66 done.** Draw at whatever native size is comfortable — run `npm run check-assets -- --fix` after dropping files in and it'll nearest-neighbor resize them to spec. Run `npm run check-assets` any time to see live progress.
+**Status: 10/74 done.** Draw at whatever native size is comfortable — run `npm run check-assets -- --fix` after dropping files in and it'll nearest-neighbor resize them to spec. Run `npm run check-assets` any time to see live progress.
 
 ### Spec (applies to everything below)
 
@@ -62,19 +62,33 @@ Hand-drawn pixel art needed for the gym redesign. Style reference: `public/asset
 - [ ] `staff_physio.png` — physio table, resistance bands, foam roller
 - [ ] `staff_nutrition.png` — nutrition desk, supplement bottles, food charts on wall
 
-### NPC sprites (2)
-- [ ] `sprites/worker.png` — construction worker, yellow hard hat, orange overalls
-- [ ] `sprites/worker-cheer.png` — same worker celebrating, arms raised (upgrade ceremonies)
+### NPC sprites — 9 characters, one entry per animation
+Each character in `shared/gym-sprite-manifest.json`'s `npcs` map is a set of named animations (`idle`, `walk`, `cheer`, and later per-equipment exercise poses), each with a `directions` map (only ever `"default"` today — no 4-directional art, see the spec below). `NpcSprite.ts` prefers real art per-animation the moment it's drawn; the rock/bob tween stays as the automatic fallback for anything not yet drawn, so nothing is ever blocked and nothing regresses.
 
-**Animation & direction spec for NPCs.** The goal is **real drawn animation** wherever it's worth the frames — walking should actually walk, not just rock. Today `NpcSprite.ts` renders NPCs as a single static 96×96 image and fakes motion with tweens (a rocking angle while moving, a bob while active); that tween approach isn't going away — it becomes the **fallback** the game uses automatically for any character/action that doesn't have real animation frames yet, so nothing is ever blocked on art and nothing regresses. Once art exists for a given key, the code should prefer it over the tween fallback.
+- [ ] `sprites/worker.png` — construction worker, yellow hard hat, orange overalls (`worker`'s `idle` animation)
+- [x] `sprites/worker-cheer.gif` — same worker celebrating, arms raised — `worker`'s `cheer` animation, swapped in by code during the upgrade-ceremony bounce (done — a single-frame gif works fine here, no conversion needed)
 
-- **Base pose (required, static):** every character still needs exactly one 96×96 base pose, facing the camera (front / three-quarter view, matching the 8 already-completed named NPCs). This is the idle frame and the fallback frame the rocking/bob tweens animate when no walk-cycle art exists yet.
-- **Walk-cycle (the priority — real animation, not a tween):** a short horizontal-strip spritesheet, **same storage convention as the animated equipment above** — N square frames of 96×96 laid side-by-side into one PNG. Recommended spec: **4 frames, 8fps (384×96)**, matching the cardio-equipment convention already in the manifest. Single facing direction only (whichever way the base pose already faces) — reused via the existing code-side horizontal flip for leftward movement, and reused as-is for up/down travel, same as the base pose today. This deliberately does *not* add 4-directional art (still out of scope per `docs/prd-gym-pixel-art-redesign.md` — that's about facing sets, a separate concern from having a walk cycle at all).
-- **Using equipment:** still a bob/tilt tween by default; the equipment itself carries the mechanical animation (spinning wheels, moving belts — see Equipment above). Per-NPC-per-machine exercise poses are a separate, already-scoped follow-up (below) — not part of the walk-cycle work.
-- **Triggered full-pose swaps:** unchanged — `worker` → `worker-cheer` is a full alternate pose swapped by code for a specific event (upgrade ceremony), not an animation strip. Follow this pattern for any new one-off triggered pose.
-- **Where this gets specified in `shared/gym-sprite-manifest.json`:** a walk-cycle is its **own manifest entry**, alongside the character's existing base-pose entry (it doesn't replace it). Key = base key + `_walk` suffix (e.g. base `npc_trainer_marcus` → walk `npc_trainer_marcus_walk`), `filename` under `sprites/`, `category: "npc"`, `frameWidth: 96`, `frameHeight: 96`, `frameCount: 4`, `fps: 8`, and a `description` of the walk cycle. This follows the exact same pattern as any multi-frame equipment entry — no new manifest fields or schema changes needed, `check-assets`/`PreloadScene`/animation-derivation all already work generically off `frameCount > 1`.
-- **Not added to the manifest yet** — these entries get created (and this checklist updated with real filenames) once the code side lands: `NpcSprite.sprite` needs to become a `Sprite` (from `Image`) so it can actually play a spritesheet animation, plus a small check at load time — if the `_walk` texture key wasn't loaded (missing/placeholder), keep using the tween fallback instead of playing a broken/placeholder animation. That code work is queued as follow-up, not blocking this doc update.
-- **Exercise pose art (separate, already scoped):** the PRD's per-(NPC, equipment) pose system — manifest entries keyed `npc_<npcKey>_<equipmentKey>` (e.g. `npc_trainer_marcus_cardio_treadmill`) — follows the same "real art preferred, tween fallback otherwise" principle, and can itself use `frameCount > 1` if a specific exercise pose is animated rather than static. Still don't draw these speculatively — added once a specific NPC/equipment pairing is chosen.
+**Animation spec:**
+- **`idle` (required, static):** exactly one 96×96 base pose per character, facing the camera. Also the frame the fallback tweens animate when no walk-cycle exists yet.
+- **`walk` (priority — real animation, not a tween):** 4 frames, 8fps, 384×96 horizontal strip (or a plain animated GIF — see File format below). Single facing direction only, reused via code-side flip for leftward movement and as-is for up/down travel — this deliberately does *not* add 4-directional art (still out of scope per `docs/prd-gym-pixel-art-redesign.md`).
+- **`cheer` / other triggered poses:** a full alternate static pose, swapped in by code for a specific event. `worker`'s `cheer` above is the pattern for any future one-off triggered pose.
+- **Exercise poses (separate, already scoped):** per-(NPC, equipment) poses, named by the equipment key as the animation name (e.g. an animation called `cardio_treadmill` under `trainer_marcus`) — same "real art preferred, tween fallback otherwise" rule, can itself be a multi-frame animation. Don't draw these speculatively — add an entry once a specific NPC/equipment pairing is chosen.
+- **File format — pick whichever's easier per animation:**
+  - **Spritesheet PNG** — `"type": "spritesheet"`, declare `frameWidth`/`frameHeight`/`frameCount`/`fps` (and `offsetX`/`offsetY` if the sheet isn't cropped tight to frame 0).
+  - **Animated GIF** — `"type": "gif"`, same frame fields as a target spec. Just drop the gif in and run `npm run check-assets -- --fix` — it converts to the spritesheet PNG automatically (resampling frames if the gif's frame count doesn't match what you declared).
+  - **Single static image** — `"type": "static"`, just a `file` (png or gif both fine, e.g. `worker-cheer.gif` above).
+
+### NPC walk-cycles (8) — add a `walk` animation with one of these files
+- [ ] `sprites/npc_trainer_marcus_walk.png` — **4 frames, 8fps (384×96)** — Marcus walk cycle, matches his idle pose
+- [ ] `sprites/npc_receptionist_lisa_walk.png` — **4 frames, 8fps (384×96)** — Lisa walk cycle, matches her idle pose
+- [ ] `sprites/npc_regular_derek_walk.png` — **4 frames, 8fps (384×96)** — Derek walk cycle, matches his idle pose
+- [ ] `sprites/npc_regular_priya_walk.png` — **4 frames, 8fps (384×96)** — Priya walk cycle, matches her idle pose
+- [ ] `sprites/npc_regular_tom_walk.png` — **4 frames, 8fps (384×96)** — Tom walk cycle, matches his idle pose
+- [ ] `sprites/npc_regular_elena_walk.png` — **4 frames, 8fps (384×96)** — Elena walk cycle, matches her idle pose
+- [ ] `sprites/npc_specialist_coach_walk.png` — **4 frames, 8fps (384×96)** — Coach walk cycle, matches his idle pose
+- [ ] `sprites/npc_specialist_nutritionist_walk.png` — **4 frames, 8fps (384×96)** — Nutritionist walk cycle, matches her idle pose
+
+`worker`'s walk-cycle isn't listed yet since its `idle` base pose isn't drawn — add a `walk` animation entry for it once `worker.png` exists.
 
 ### Portraits — 128×128 (24)
 Each NPC needs 3 expressions: neutral, happy (smiling), determined (focused). Head-and-shoulders, square crop.
@@ -89,4 +103,4 @@ Each NPC needs 3 expressions: neutral, happy (smiling), determined (focused). He
 - [ ] `portraits/specialist_nutritionist.png` / `_happy` / `_determined` — nutritionist, caring female
 
 ---
-All paths are relative to `public/assets/gym/`. Full spec (exact key names, categories) lives in `shared/gym-sprite-manifest.json` — this doc is a drawing checklist, not the source of truth.
+All paths are relative to `public/assets/gym/`. Full spec lives in `shared/gym-sprite-manifest.json` — the flat `sprites[]` list for props/tiles/equipment, and the nested `npcs{}` map (character → animation → direction → file) for characters — this doc is a drawing checklist, not the source of truth.
