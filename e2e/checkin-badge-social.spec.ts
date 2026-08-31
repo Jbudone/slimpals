@@ -20,9 +20,11 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	// ── Setup (API + direct DB — the real UI action under test is the final checkin) ──
 	const inviteCode = await mintInviteCode(request)
 
-	const uniqueEmail = `e2e-checkin-${Date.now()}@slimpals.test`
+	const runId = Date.now()
+	const uniqueEmail = `e2e-checkin-${runId}@slimpals.test`
+	const uniqueName = `Checkin Badge Tester ${runId}`
 	await registerUser(request, {
-		name: "Checkin Badge Tester",
+		name: uniqueName,
 		email: uniqueEmail,
 		password: "E2ePassword1!",
 		inviteCode,
@@ -67,10 +69,12 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	await expect(badgeCard).toBeVisible()
 
 	await page.goto("/social")
-	const milestonePost = page.locator(".milestone-text", {
-		hasText: "3-Day Streak",
-	})
-	await expect(milestonePost).toBeVisible()
+	// Scoped by author name too — the feed is shared across all users, so
+	// repeated e2e runs otherwise accumulate multiple matching posts.
+	const myPost = page
+		.locator(".post-card", { hasText: uniqueName })
+		.filter({ hasText: "3-Day Streak" })
+	await expect(myPost).toBeVisible()
 
 	await context.close()
 })
