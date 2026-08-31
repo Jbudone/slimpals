@@ -4,7 +4,11 @@ import {
 	flattenNpcManifest,
 	type NpcManifest,
 } from "shared/npc-sprite-manifest.js"
-import { applyPlaceholders, queueManifestLoads } from "../spriteLoader.js"
+import {
+	applyPlaceholders,
+	findMissingKeys,
+	queueManifestLoads,
+} from "../spriteLoader.js"
 
 const CANVAS_SPRITES = [
 	...manifest.sprites.filter((s) => s.category !== "portrait"),
@@ -19,13 +23,11 @@ export class PreloadScene extends Phaser.Scene {
 	}
 
 	preload() {
-		this.missingKeys = []
-		queueManifestLoads(this, CANVAS_SPRITES, (key) => {
-			this.missingKeys.push(key)
-		})
+		queueManifestLoads(this, CANVAS_SPRITES)
 	}
 
 	create() {
+		this.missingKeys = findMissingKeys(this, CANVAS_SPRITES)
 		if (this.missingKeys.length > 0) {
 			this.reportMissingSprites()
 		}

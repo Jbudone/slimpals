@@ -9,7 +9,11 @@ import {
 	deriveNpcAnimConfigs,
 } from "../equipmentAnimations.js"
 import { computeGalleryLayout } from "../galleryLayout.js"
-import { applyPlaceholders, queueManifestLoads } from "../spriteLoader.js"
+import {
+	applyPlaceholders,
+	findMissingKeys,
+	queueManifestLoads,
+} from "../spriteLoader.js"
 
 const ALL_SPRITES = [
 	...manifest.sprites,
@@ -27,13 +31,11 @@ export class GalleryScene extends Phaser.Scene {
 	}
 
 	preload() {
-		this.missingKeys = []
-		queueManifestLoads(this, ALL_SPRITES, (key) => {
-			this.missingKeys.push(key)
-		})
+		queueManifestLoads(this, ALL_SPRITES)
 	}
 
 	create() {
+		this.missingKeys = findMissingKeys(this, ALL_SPRITES)
 		if (this.missingKeys.length > 0) {
 			applyPlaceholders(this, this.missingKeys, ALL_SPRITES)
 		}
