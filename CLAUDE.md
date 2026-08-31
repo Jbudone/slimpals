@@ -33,6 +33,16 @@ npm run db:migrate   # apply migrations
 pkill -f "concurrently" ; pkill -f "tsx.*server" ; pkill -f "node.*vite"
 ```
 
+## E2E / bot tests (Playwright)
+```bash
+npm run seed      # needed first — e2e tests use the dev@slimpals.test account
+npm run test:e2e  # runs against a fresh spawned server, not your running npm run dev
+```
+Heavier than the Vitest unit suite — run periodically/on-demand, not on every PR (not part of CI).
+Always spawns its own dev server with `DEV_AUTOLOGIN_EMAIL` disabled regardless of `.env`, since
+autologin would make the login/register/logout flow untestable. That means ports 3000/5173 must be
+free — stop any manually-running `npm run dev` first.
+
 ## Canvas / Phaser notes
 The gym feature uses Phaser 3 rendered into a `<canvas>`. Standard DOM tools don't apply inside the canvas. For canvas testing:
 - Use screenshot comparison (before/after) as the primary verification method

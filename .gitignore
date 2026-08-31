@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# Playwright test artifacts
+test-results/
+playwright-report/
+
 # Environment — copy .env.example and fill in values
 .env
 *.env.local

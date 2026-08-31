@@ -15,6 +15,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"test:e2e": "playwright test",
 		"seed": "tsx --env-file=.env scripts/seed-dev.ts",
 		"check-assets": "tsx scripts/check-assets.ts"
 	},
@@ -33,6 +34,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.16",
+		"@playwright/test": "^1.62.1",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/cors": "^2.8.19",
