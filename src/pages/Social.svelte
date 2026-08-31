@@ -151,7 +151,13 @@ onMount(loadFeed)
 								{/if}
 							</p>
 						{:else if post.type === "milestone"}
-							<p class="content-line milestone-text">🏆 {post.content.text}</p>
+							<p class="content-line milestone-text">
+								{#if post.content.badgeName}
+									🏆 Earned badge: <strong>{post.content.badgeName}</strong>
+								{:else}
+									🏆 {post.content.text}
+								{/if}
+							</p>
 						{:else if post.type === "ai_message"}
 							<p class="content-line ai-text">"{post.content.message}"</p>
 						{:else if post.type === "challenge_completion"}

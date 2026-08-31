@@ -1,34 +1,15 @@
 import { expect, test } from "@playwright/test"
+import { mintInviteCode } from "./helpers.js"
 
 // Requires `npm run seed` to have been run at least once (needs the
 // dev@slimpals.test account it creates) against the same DATABASE_URL the
 // e2e-spawned server will use.
-const SEEDED_EMAIL = "dev@slimpals.test"
-const SEEDED_PASSWORD = "DevPass1!"
-
-async function createInviteCode(
-	request: import("@playwright/test").APIRequestContext,
-): Promise<string> {
-	const signIn = await request.post("/api/auth/sign-in/email", {
-		data: { email: SEEDED_EMAIL, password: SEEDED_PASSWORD },
-	})
-	if (!signIn.ok()) {
-		throw new Error(
-			`Could not sign in as ${SEEDED_EMAIL} to mint an invite code — run \`npm run seed\` first. Status: ${signIn.status()}`,
-		)
-	}
-
-	const invite = await request.post("/api/invites")
-	expect(invite.ok()).toBeTruthy()
-	const body = await invite.json()
-	return body.code as string
-}
 
 test("register with invite code, logout, and log back in", async ({
 	request,
 	browser,
 }) => {
-	const inviteCode = await createInviteCode(request)
+	const inviteCode = await mintInviteCode(request)
 
 	// A fresh, cookie-less context so the invite-minting session above
 	// doesn't leak into the actual UI-driven flow being tested.
