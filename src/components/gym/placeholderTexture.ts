@@ -55,8 +55,18 @@ function drawNpcFigure(
 	ctx.fill()
 
 	ctx.fillStyle = ink
-	ctx.fillRect(cx - width * 0.12, groundY - height * 0.28, width * 0.09, height * 0.24)
-	ctx.fillRect(cx + width * 0.03, groundY - height * 0.28, width * 0.09, height * 0.24)
+	ctx.fillRect(
+		cx - width * 0.12,
+		groundY - height * 0.28,
+		width * 0.09,
+		height * 0.24,
+	)
+	ctx.fillRect(
+		cx + width * 0.03,
+		groundY - height * 0.28,
+		width * 0.09,
+		height * 0.24,
+	)
 
 	const torsoTop = groundY - height * 0.58
 	const torsoH = height * 0.32
@@ -64,8 +74,18 @@ function drawNpcFigure(
 	ctx.fillRect(cx - width * 0.16, torsoTop, width * 0.32, torsoH)
 
 	ctx.fillStyle = skin
-	ctx.fillRect(cx - width * 0.24, torsoTop + height * 0.02, width * 0.08, torsoH * 0.8)
-	ctx.fillRect(cx + width * 0.16, torsoTop + height * 0.02, width * 0.08, torsoH * 0.8)
+	ctx.fillRect(
+		cx - width * 0.24,
+		torsoTop + height * 0.02,
+		width * 0.08,
+		torsoH * 0.8,
+	)
+	ctx.fillRect(
+		cx + width * 0.16,
+		torsoTop + height * 0.02,
+		width * 0.08,
+		torsoH * 0.8,
+	)
 
 	const headR = width * 0.16
 	const headCy = torsoTop - headR * 0.9
@@ -86,7 +106,13 @@ function drawNpcFigure(
 	ctx.strokeStyle = ink
 	ctx.lineWidth = Math.max(1, headR * 0.12)
 	ctx.beginPath()
-	ctx.arc(cx, headCy + headR * 0.1, headR * 0.45, 0.15 * Math.PI, 0.85 * Math.PI)
+	ctx.arc(
+		cx,
+		headCy + headR * 0.1,
+		headR * 0.45,
+		0.15 * Math.PI,
+		0.85 * Math.PI,
+	)
 	ctx.stroke()
 }
 
@@ -130,7 +156,12 @@ function drawEquipmentIcon(
 	ctx.font = `${Math.max(6, Math.floor(width * 0.09))}px monospace`
 	ctx.textAlign = "center"
 	ctx.textBaseline = "bottom"
-	ctx.fillText(shortLabel(label, 16), width / 2, height - pad - 1, width - pad * 2)
+	ctx.fillText(
+		shortLabel(label, 16),
+		width / 2,
+		height - pad - 1,
+		width - pad * 2,
+	)
 }
 
 /** Flat neutral fill for structure/UI placeholders — background elements

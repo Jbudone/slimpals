@@ -17,7 +17,8 @@ const EQUIPMENT_CATEGORIES = new Set(["equipment", "amenity", "decor", "staff"])
 
 function classifyPlaceholder(entry: ManifestEntry): PlaceholderKind {
 	if (entry.npcKey || entry.key.startsWith("npc_")) return "npc"
-	if (entry.category && EQUIPMENT_CATEGORIES.has(entry.category)) return "equipment"
+	if (entry.category && EQUIPMENT_CATEGORIES.has(entry.category))
+		return "equipment"
 	return "other"
 }
 
