@@ -1,10 +1,12 @@
-import { ne } from "drizzle-orm"
+import { eq, ne } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
 	dailyCheckins,
 	foodLogs,
 	invites,
+	stepRecords,
+	tournamentParticipants,
 	users,
 	weightEntries,
 } from "../../server/db/schema.js"
@@ -434,5 +436,119 @@ describe("GET /api/tournaments/:id/leaderboard", () => {
 
 		expect(lbRes.status).toBe(200)
 		expect(lbRes.body.leaderboard[0].score).toBe(7)
+	})
+
+	it("step_count scoring returns total steps in window", async () => {
+		const db = await getTestDb()
+		const cookies = await registerAndLogin("sc@test.com", "SC User")
+
+		const start = new Date(Date.now() - 86_400_000 * 14)
+		const end = new Date(Date.now() + 86_400_000 * 7)
+
+		const createRes = await request(app)
+			.post("/api/tournaments")
+			.set("Cookie", cookies)
+			.send({
+				name: "Step Battle",
+				startDate: start.toISOString(),
+				endDate: end.toISOString(),
+				type: "step_count",
+			})
+		const tournamentId = createRes.body.id
+
+		const [user] = await db
+			.select()
+			.from(users)
+			.where(ne(users.id, "admin-001"))
+
+		await db.insert(stepRecords).values([
+			{
+				userId: user.id,
+				steps: 5000,
+				recordedAt: new Date(Date.now() - 86_400_000 * 5),
+			},
+			{
+				userId: user.id,
+				steps: 7500,
+				recordedAt: new Date(Date.now() - 86_400_000 * 3),
+			},
+			// Outside the tournament window — must not count
+			{
+				userId: user.id,
+				steps: 10_000,
+				recordedAt: new Date(Date.now() - 86_400_000 * 20),
+			},
+		])
+
+		const lbRes = await request(app)
+			.get(`/api/tournaments/${tournamentId}/leaderboard`)
+			.set("Cookie", cookies)
+
+		expect(lbRes.status).toBe(200)
+		expect(lbRes.body.leaderboard[0].score).toBe(12_500)
+	})
+
+	it("resolves a tied score to whoever joined earliest, not arbitrary DB order", async () => {
+		const db = await getTestDb()
+
+		const cookies1 = await registerAndLogin("tie1@test.com", "Tie One")
+		const createRes = await request(app)
+			.post("/api/tournaments")
+			.set("Cookie", cookies1)
+			.send({
+				name: "Tie Battle",
+				startDate: new Date(Date.now() - 86_400_000 * 14).toISOString(),
+				endDate: new Date(Date.now() - 86_400_000 * 1).toISOString(),
+				type: "streak",
+			})
+		const tournamentId = createRes.body.id
+
+		await createInvite("TIE-INVITE-2")
+		const cookies2 = await registerAndLogin(
+			"tie2@test.com",
+			"Tie Two",
+			"TIE-INVITE-2",
+		)
+		await request(app)
+			.post(`/api/tournaments/${tournamentId}/join`)
+			.set("Cookie", cookies2)
+
+		const [user1] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "tie1@test.com"))
+		const [user2] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "tie2@test.com"))
+
+		// Identical scores for both participants.
+		await db.insert(dailyCheckins).values([
+			{
+				userId: user1.id,
+				date: new Date(Date.now() - 86_400_000 * 7),
+				streakCount: 8,
+			},
+			{
+				userId: user2.id,
+				date: new Date(Date.now() - 86_400_000 * 7),
+				streakCount: 8,
+			},
+		])
+
+		// user1 joined at tournament creation (earlier); user2 joined after.
+		// Force user2's joinedAt artificially later to make the tie
+		// unambiguous regardless of how fast the test runs.
+		await db
+			.update(tournamentParticipants)
+			.set({ joinedAt: new Date(Date.now() + 60_000) })
+			.where(eq(tournamentParticipants.userId, user2.id))
+
+		const lbRes = await request(app)
+			.get(`/api/tournaments/${tournamentId}/leaderboard`)
+			.set("Cookie", cookies1)
+
+		expect(lbRes.status).toBe(200)
+		expect(lbRes.body.tournament.winnerId).toBe(user1.id)
 	})
 })

@@ -1,9 +1,21 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, max } from "drizzle-orm"
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	gte,
+	isNull,
+	lt,
+	max,
+	sum,
+} from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
 	dailyCheckins,
 	foodLogs,
+	stepRecords,
 	tournamentParticipants,
 	tournaments,
 	users,
@@ -100,8 +112,20 @@ async function computeScore(
 			return Math.round((totalRating / ratedCount) * 100) / 100
 		}
 
-		case "step_count":
-			return 0
+		case "step_count": {
+			const [result] = await db
+				.select({ totalSteps: sum(stepRecords.steps) })
+				.from(stepRecords)
+				.where(
+					and(
+						eq(stepRecords.userId, userId),
+						gte(stepRecords.recordedAt, startDate),
+						lt(stepRecords.recordedAt, endDate),
+					),
+				)
+
+			return Number(result?.totalSteps ?? 0)
+		}
 	}
 }
 
@@ -125,13 +149,16 @@ async function resolveTournament(
 		.where(eq(tournaments.id, tournamentId))
 
 	const participants = await db
-		.select({ userId: tournamentParticipants.userId })
+		.select({
+			userId: tournamentParticipants.userId,
+			joinedAt: tournamentParticipants.joinedAt,
+		})
 		.from(tournamentParticipants)
 		.where(eq(tournamentParticipants.tournamentId, tournamentId))
 
 	if (participants.length === 0) return
 
-	const scores: { userId: string; score: number }[] = []
+	const scores: { userId: string; score: number; joinedAt: Date }[] = []
 	for (const p of participants) {
 		const score = await computeScore(
 			p.userId,
@@ -139,10 +166,15 @@ async function resolveTournament(
 			tournament.startDate,
 			tournament.endDate,
 		)
-		scores.push({ userId: p.userId, score })
+		scores.push({ userId: p.userId, score, joinedAt: p.joinedAt })
 	}
 
-	scores.sort((a, b) => b.score - a.score)
+	// Tie-break: highest score wins; ties go to whoever joined the
+	// tournament earliest, rather than an arbitrary DB-order pick.
+	scores.sort((a, b) => {
+		if (b.score !== a.score) return b.score - a.score
+		return a.joinedAt.getTime() - b.joinedAt.getTime()
+	})
 	const winner = scores[0]
 
 	if (!winner || winner.score === 0) return
