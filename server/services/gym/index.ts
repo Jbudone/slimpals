@@ -48,15 +48,38 @@ export async function getOrCreateGym(userId: string, db: Db): Promise<Gym> {
 
 	const gymName = `${user?.name ?? "My"}'s Gym`
 
-	const [inserted] = await db
-		.insert(userGyms)
-		.values({ userId, name: gymName })
-		.$returningId()
+	let gymId: number
+	try {
+		const [inserted] = await db
+			.insert(userGyms)
+			.values({ userId, name: gymName })
+			.$returningId()
+		gymId = inserted.id
+	} catch (err) {
+		// Concurrent requests for a brand-new user (e.g. two tabs, or a
+		// double-fetch on first page load) can both see no existing row and
+		// race to insert one — userId is unique, so the loser hits a
+		// duplicate-key error. Treat that as "someone else just created it"
+		// rather than a failure.
+		const cause = err instanceof Error ? err.cause : undefined
+		const isDuplicateKey =
+			cause instanceof Error &&
+			(cause as NodeJS.ErrnoException).code === "ER_DUP_ENTRY"
+		if (!isDuplicateKey) {
+			throw err
+		}
+		const [raceWinner] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, userId))
+		if (!raceWinner) throw err
+		return {
+			...raceWinner,
+			pendingUpgradeKeys: raceWinner.pendingUpgradeKeys as string[],
+		}
+	}
 
-	const [row] = await db
-		.select()
-		.from(userGyms)
-		.where(eq(userGyms.id, inserted.id))
+	const [row] = await db.select().from(userGyms).where(eq(userGyms.id, gymId))
 
 	return {
 		...row,
