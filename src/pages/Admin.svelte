@@ -212,6 +212,25 @@ async function seedChallenge(userId: string) {
 	}
 }
 
+async function forceGenerateChallenge(userId: string) {
+	seedStatus = null
+	try {
+		const generated = await api.post<{ title: string }>(
+			"/admin/challenges/generate",
+		)
+		seedStatus = {
+			text: `Generated this month's challenge: "${generated.title}"`,
+			ok: true,
+		}
+		await loadChallengeState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 function toggleKey(key: string) {
 	const next = new Set(selectedKeys)
 	if (next.has(key)) next.delete(key)
@@ -408,6 +427,19 @@ onMount(load)
 													</button>
 												</div>
 											{:else if seedTab === "challenges"}
+												<div class="field-row">
+													<button
+														class="btn outline sm"
+														onclick={() => forceGenerateChallenge(user.id)}
+													>
+														Force-generate this month's challenge
+													</button>
+												</div>
+												<p class="muted challenge-generate-note">
+													Global action — creates the current month's AI challenge
+													for all users, not just this one.
+												</p>
+
 												<div class="field-row">
 													<label>
 														Month
@@ -752,6 +784,11 @@ onMount(load)
 
 .error-text {
 	color: #ef4444;
+}
+
+.challenge-generate-note {
+	margin: 0.25rem 0 0.75rem;
+	font-size: 0.75rem;
 }
 
 .challenge-view {

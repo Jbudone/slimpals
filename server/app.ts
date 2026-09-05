@@ -7,7 +7,7 @@ import { db } from "./db/index.js"
 import { seedBadges, seedGymUpgrades, seedNpcs } from "./db/seed.js"
 import { getDevAutologinUser } from "./middleware/devAutologin.js"
 import { requireAuth } from "./middleware/requireAuth.js"
-import { adminRouter } from "./routes/admin.js"
+import { createAdminRouter } from "./routes/admin.js"
 import { appleHealthRouter } from "./routes/appleHealth.js"
 import { badgesRouter } from "./routes/badges.js"
 import { createChallengesRouter } from "./routes/challenges.js"
@@ -123,7 +123,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", createChallengesRouter(aiService))
 	app.use("/api", createSprintsRouter(aiService))
 	app.use("/api", appleHealthRouter)
-	app.use("/api", adminRouter)
+	app.use("/api", createAdminRouter(aiService))
 
 	if (CLIENT_DIR) {
 		app.get("/{*path}", (_req, res) => {

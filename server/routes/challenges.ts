@@ -5,6 +5,7 @@ import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { generateChallengeForMonth } from "../services/challenges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
 
 type GoalProgress = Record<string, number>
@@ -232,37 +233,14 @@ export function createChallengesRouter(aiService: AIService) {
 		const month = now.getUTCMonth() + 1
 		const year = now.getUTCFullYear()
 
-		const [existing] = await db
-			.select({ id: challenges.id })
-			.from(challenges)
-			.where(and(eq(challenges.month, month), eq(challenges.year, year)))
-			.limit(1)
+		const result = await generateChallengeForMonth(aiService, month, year, db)
 
-		if (existing) {
+		if (result.status === "conflict") {
 			res.status(409).json({ error: "Challenge already exists for this month" })
 			return
 		}
 
-		const generated = await aiService.generateMonthlyChallenge(month, year)
-
-		const [inserted] = await db
-			.insert(challenges)
-			.values({
-				title: generated.title,
-				description: generated.description,
-				month,
-				year,
-				theme: generated.theme,
-				aiGenerated: true,
-				tasks: generated.goals,
-			})
-			.$returningId()
-
-		const [challenge] = await db
-			.select()
-			.from(challenges)
-			.where(eq(challenges.id, inserted.id))
-
+		const { challenge } = result
 		res.status(201).json({
 			id: challenge.id,
 			title: challenge.title,
