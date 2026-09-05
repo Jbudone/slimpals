@@ -231,6 +231,28 @@ async function forceGenerateChallenge(userId: string) {
 	}
 }
 
+async function resetChallengeProgress(userId: string) {
+	seedStatus = null
+	try {
+		const result = await api.del<{ deleted: number }>(
+			`/admin/users/${userId}/challenge`,
+		)
+		seedStatus = {
+			text:
+				result.deleted > 0
+					? `Cleared challenge progress (${result.deleted} record${result.deleted === 1 ? "" : "s"})`
+					: "No challenge progress to clear",
+			ok: true,
+		}
+		await loadChallengeState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 function toggleKey(key: string) {
 	const next = new Set(selectedKeys)
 	if (next.has(key)) next.delete(key)
@@ -463,6 +485,12 @@ onMount(load)
 														onclick={() => seedChallenge(user.id)}
 													>
 														Seed Challenge
+													</button>
+													<button
+														class="btn outline sm"
+														onclick={() => resetChallengeProgress(user.id)}
+													>
+														Reset all challenge progress
 													</button>
 												</div>
 

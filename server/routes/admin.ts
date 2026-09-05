@@ -269,6 +269,14 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	adminRouter.delete("/admin/users/:id/challenge", async (req, res) => {
+		const { id } = req.params
+		const [result] = await db
+			.delete(userChallenges)
+			.where(eq(userChallenges.userId, id))
+		res.json({ deleted: result.affectedRows })
+	})
+
 	const DEFAULT_SEED_GOALS: ChallengeGoal[] = [
 		{
 			id: "goal_1",
