@@ -19,6 +19,31 @@ type Badge = {
 	tier: string
 }
 
+type ChallengeGoal = {
+	id: string
+	title: string
+	description: string
+	target: number
+	unit: string
+}
+
+type UserChallengeState = {
+	challenge: {
+		id: number
+		title: string
+		description: string | null
+		theme: string | null
+		month: number
+		year: number
+		goals: ChallengeGoal[]
+	} | null
+	joined: boolean
+	completedTasks: Record<string, number> | null
+	completedAt: string | null
+	goalsCompleted: number
+	totalGoals: number
+}
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
@@ -31,10 +56,14 @@ let creating = $state(false)
 let createResult = $state<{ text: string; ok: boolean } | null>(null)
 
 let expandedId = $state<string | null>(null)
-let seedTab = $state<"checkins" | "weight" | "badges" | "food" | "gym">(
-	"checkins",
-)
+let seedTab = $state<
+	"checkins" | "weight" | "badges" | "food" | "gym" | "challenges"
+>("checkins")
 let seedStatus = $state<{ text: string; ok: boolean } | null>(null)
+
+let challengeState = $state<UserChallengeState | null>(null)
+let challengeLoading = $state(false)
+let challengeError = $state<string | null>(null)
 
 let checkinDays = $state(7)
 let weightCount = $state(5)
@@ -120,6 +149,29 @@ function toggleExpand(userId: string) {
 		seedTab = "checkins"
 		seedStatus = null
 		selectedKeys = new Set()
+		challengeState = null
+		challengeError = null
+	}
+}
+
+async function selectTab(
+	userId: string,
+	tab: "checkins" | "weight" | "badges" | "food" | "gym" | "challenges",
+) {
+	seedTab = tab
+	seedStatus = null
+	if (tab === "challenges") {
+		challengeLoading = true
+		challengeError = null
+		try {
+			challengeState = await api.get<UserChallengeState>(
+				`/admin/users/${userId}/challenge`,
+			)
+		} catch (e) {
+			challengeError = e instanceof Error ? e.message : "Failed to load"
+		} finally {
+			challengeLoading = false
+		}
 	}
 }
 
@@ -213,11 +265,11 @@ onMount(load)
 								<td colspan="4">
 									<div class="seed-panel">
 										<div class="tab-bar">
-											{#each (["checkins", "weight", "badges", "food", "gym"] as const) as tab}
+											{#each (["checkins", "weight", "badges", "food", "gym", "challenges"] as const) as tab}
 												<button
 													class="tab"
 													class:active={seedTab === tab}
-													onclick={() => { seedTab = tab; seedStatus = null }}
+													onclick={() => selectTab(user.id, tab)}
 												>
 													{tab}
 												</button>
@@ -317,6 +369,40 @@ onMount(load)
 													>
 														Generate Gym Content
 													</button>
+												</div>
+											{:else if seedTab === "challenges"}
+												<div class="challenge-view">
+													{#if challengeLoading}
+														<p class="muted">Loading…</p>
+													{:else if challengeError}
+														<p class="error-text">{challengeError}</p>
+													{:else if !challengeState?.challenge}
+														<p class="muted">No challenge exists for the current month.</p>
+													{:else}
+														<h3 class="challenge-title">{challengeState.challenge.title}</h3>
+														{#if !challengeState.joined}
+															<p class="muted">This user has not joined the current challenge.</p>
+														{:else}
+															<p class="challenge-meta">
+																{challengeState.goalsCompleted} / {challengeState.totalGoals} goals complete
+																{#if challengeState.completedAt}
+																	— completed {new Date(challengeState.completedAt).toLocaleString()}
+																{:else}
+																	— not yet completed
+																{/if}
+															</p>
+															<ul class="goal-list">
+																{#each challengeState.challenge.goals as goal (goal.id)}
+																	<li>
+																		<span class="goal-name">{goal.title}</span>
+																		<span class="goal-progress">
+																			{challengeState.completedTasks?.[goal.id] ?? 0} / {goal.target} {goal.unit}
+																		</span>
+																	</li>
+																{/each}
+															</ul>
+														{/if}
+													{/if}
 												</div>
 											{/if}
 
@@ -603,5 +689,45 @@ onMount(load)
 
 .error-text {
 	color: #ef4444;
+}
+
+.challenge-view {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.challenge-title {
+	margin: 0;
+	font-size: 0.95rem;
+}
+
+.challenge-meta {
+	margin: 0;
+	font-size: 0.8rem;
+	color: var(--color-text-muted);
+}
+
+.goal-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.goal-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	font-size: 0.85rem;
+	padding: 0.25rem 0;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.goal-progress {
+	color: var(--color-text-muted);
+	white-space: nowrap;
 }
 </style>

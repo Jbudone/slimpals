@@ -1,19 +1,22 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
 	accounts,
 	badges,
+	challenges,
 	dailyCheckins,
 	foodLogs,
 	sessions,
 	userBadges,
+	userChallenges,
 	users,
 	weightEntries,
 } from "../db/schema.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
+import type { ChallengeGoal } from "../services/ai/index.js"
 
 export const adminRouter = Router()
 adminRouter.use(requireAdmin)
@@ -199,4 +202,65 @@ adminRouter.post("/admin/seed/:id/food", async (req, res) => {
 	}
 	await db.insert(foodLogs).values(inserts)
 	res.json({ seeded: count })
+})
+
+adminRouter.get("/admin/users/:id/challenge", async (req, res) => {
+	const { id } = req.params
+	const now = new Date()
+	const month = now.getUTCMonth() + 1
+	const year = now.getUTCFullYear()
+
+	const [challenge] = await db
+		.select()
+		.from(challenges)
+		.where(and(eq(challenges.month, month), eq(challenges.year, year)))
+		.limit(1)
+
+	if (!challenge) {
+		res.json({
+			challenge: null,
+			joined: false,
+			completedTasks: null,
+			completedAt: null,
+			goalsCompleted: 0,
+			totalGoals: 0,
+		})
+		return
+	}
+
+	const [userChallenge] = await db
+		.select()
+		.from(userChallenges)
+		.where(
+			and(
+				eq(userChallenges.userId, id),
+				eq(userChallenges.challengeId, challenge.id),
+			),
+		)
+		.limit(1)
+
+	const goals = challenge.tasks as ChallengeGoal[]
+	const completedTasks = userChallenge
+		? (userChallenge.completedTasks as Record<string, number>)
+		: null
+	const goalsCompleted = completedTasks
+		? goals.filter((g) => (completedTasks[g.id] ?? 0) >= g.target).length
+		: 0
+
+	res.json({
+		challenge: {
+			id: challenge.id,
+			title: challenge.title,
+			description: challenge.description,
+			theme: challenge.theme,
+			month: challenge.month,
+			year: challenge.year,
+			goals,
+		},
+		joined: !!userChallenge,
+		completedTasks,
+		completedAt: userChallenge?.completedAt ?? null,
+		goalsCompleted,
+		totalGoals: goals.length,
+	})
 })
