@@ -264,3 +264,125 @@ adminRouter.get("/admin/users/:id/challenge", async (req, res) => {
 		totalGoals: goals.length,
 	})
 })
+
+const DEFAULT_SEED_GOALS: ChallengeGoal[] = [
+	{
+		id: "goal_1",
+		title: "60 Glasses of Water",
+		description: "Stay hydrated.",
+		target: 60,
+		unit: "glasses",
+		dailyAmount: 6,
+		dailyPrompt: "Did you drink 6 glasses today?",
+	},
+	{
+		id: "goal_2",
+		title: "200 Minutes of Movement",
+		description: "Get moving.",
+		target: 200,
+		unit: "minutes",
+		dailyAmount: 20,
+		dailyPrompt: "Did you move for 20 minutes today?",
+	},
+]
+
+type SeedCompletion = "none" | "partial" | "near_complete" | "complete"
+
+adminRouter.post("/admin/seed/:id/challenge", async (req, res) => {
+	const { id } = req.params
+	const now = new Date()
+	const {
+		month = now.getUTCMonth() + 1,
+		year = now.getUTCFullYear(),
+		completion = "complete",
+		goals,
+	} = req.body as {
+		month?: number
+		year?: number
+		completion?: SeedCompletion
+		goals?: ChallengeGoal[]
+	}
+
+	let [challenge] = await db
+		.select()
+		.from(challenges)
+		.where(and(eq(challenges.month, month), eq(challenges.year, year)))
+		.limit(1)
+
+	if (!challenge) {
+		const [inserted] = await db
+			.insert(challenges)
+			.values({
+				title: `Seeded Challenge ${month}/${year}`,
+				description: "Seeded via admin panel for testing",
+				month,
+				year,
+				theme: "seeded",
+				aiGenerated: false,
+				tasks: goals ?? DEFAULT_SEED_GOALS,
+			})
+			.$returningId()
+		;[challenge] = await db
+			.select()
+			.from(challenges)
+			.where(eq(challenges.id, inserted.id))
+	}
+
+	const challengeGoals = challenge.tasks as ChallengeGoal[]
+
+	await db
+		.delete(userChallenges)
+		.where(
+			and(
+				eq(userChallenges.userId, id),
+				eq(userChallenges.challengeId, challenge.id),
+			),
+		)
+
+	if (completion !== "none") {
+		const completedTasks: Record<string, number> = {}
+		challengeGoals.forEach((g, i) => {
+			if (completion === "complete") {
+				completedTasks[g.id] = g.target
+			} else if (completion === "near_complete") {
+				const isLast = i === challengeGoals.length - 1
+				completedTasks[g.id] = isLast ? Math.max(0, g.target - 1) : g.target
+			} else {
+				completedTasks[g.id] = Math.max(0, Math.floor(g.target / 2))
+			}
+		})
+
+		await db.insert(userChallenges).values({
+			userId: id,
+			challengeId: challenge.id,
+			completedTasks,
+			completedAt: completion === "complete" ? new Date() : null,
+		})
+	}
+
+	const [userChallenge] = await db
+		.select()
+		.from(userChallenges)
+		.where(
+			and(
+				eq(userChallenges.userId, id),
+				eq(userChallenges.challengeId, challenge.id),
+			),
+		)
+		.limit(1)
+
+	res.status(201).json({
+		challenge: {
+			id: challenge.id,
+			title: challenge.title,
+			month: challenge.month,
+			year: challenge.year,
+			goals: challengeGoals,
+		},
+		joined: !!userChallenge,
+		completedTasks: userChallenge
+			? (userChallenge.completedTasks as Record<string, number>)
+			: null,
+		completedAt: userChallenge?.completedAt ?? null,
+	})
+})

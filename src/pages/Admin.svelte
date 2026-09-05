@@ -65,6 +65,13 @@ let challengeState = $state<UserChallengeState | null>(null)
 let challengeLoading = $state(false)
 let challengeError = $state<string | null>(null)
 
+const now = new Date()
+let seedChallengeMonth = $state(now.getUTCMonth() + 1)
+let seedChallengeYear = $state(now.getUTCFullYear())
+let seedChallengeCompletion = $state<
+	"none" | "partial" | "near_complete" | "complete"
+>("complete")
+
 let checkinDays = $state(7)
 let weightCount = $state(5)
 let weightStartKg = $state(90)
@@ -154,6 +161,20 @@ function toggleExpand(userId: string) {
 	}
 }
 
+async function loadChallengeState(userId: string) {
+	challengeLoading = true
+	challengeError = null
+	try {
+		challengeState = await api.get<UserChallengeState>(
+			`/admin/users/${userId}/challenge`,
+		)
+	} catch (e) {
+		challengeError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		challengeLoading = false
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab: "checkins" | "weight" | "badges" | "food" | "gym" | "challenges",
@@ -161,16 +182,32 @@ async function selectTab(
 	seedTab = tab
 	seedStatus = null
 	if (tab === "challenges") {
-		challengeLoading = true
-		challengeError = null
-		try {
-			challengeState = await api.get<UserChallengeState>(
-				`/admin/users/${userId}/challenge`,
-			)
-		} catch (e) {
-			challengeError = e instanceof Error ? e.message : "Failed to load"
-		} finally {
-			challengeLoading = false
+		await loadChallengeState(userId)
+	}
+}
+
+async function seedChallenge(userId: string) {
+	seedStatus = null
+	try {
+		await api.post(`/admin/seed/${userId}/challenge`, {
+			month: seedChallengeMonth,
+			year: seedChallengeYear,
+			completion: seedChallengeCompletion,
+		})
+		seedStatus = {
+			text: `Seeded ${seedChallengeMonth}/${seedChallengeYear} at "${seedChallengeCompletion}"`,
+			ok: true,
+		}
+		const isCurrentMonth =
+			seedChallengeMonth === now.getUTCMonth() + 1 &&
+			seedChallengeYear === now.getUTCFullYear()
+		if (isCurrentMonth) {
+			await loadChallengeState(userId)
+		}
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
 		}
 	}
 }
@@ -371,6 +408,32 @@ onMount(load)
 													</button>
 												</div>
 											{:else if seedTab === "challenges"}
+												<div class="field-row">
+													<label>
+														Month
+														<input type="number" class="inp inp-sm" bind:value={seedChallengeMonth} min="1" max="12" />
+													</label>
+													<label>
+														Year
+														<input type="number" class="inp inp-sm" bind:value={seedChallengeYear} min="2000" />
+													</label>
+													<label>
+														Completion
+														<select class="inp inp-sm" bind:value={seedChallengeCompletion}>
+															<option value="none">Not joined</option>
+															<option value="partial">Partial</option>
+															<option value="near_complete">Near-complete</option>
+															<option value="complete">Complete</option>
+														</select>
+													</label>
+													<button
+														class="btn primary sm"
+														onclick={() => seedChallenge(user.id)}
+													>
+														Seed Challenge
+													</button>
+												</div>
+
 												<div class="challenge-view">
 													{#if challengeLoading}
 														<p class="muted">Loading…</p>
