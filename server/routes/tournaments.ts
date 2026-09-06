@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull } from "drizzle-orm"
+import { and, count, desc, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import { tournamentParticipants, tournaments, users } from "../db/schema.js"
@@ -7,95 +7,9 @@ import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
 import {
 	computeScore,
+	resolveTournament,
 	type TournamentType,
 } from "../services/tournaments/index.js"
-
-async function resolveTournament(
-	tournamentId: number,
-	aiService: AIService,
-): Promise<void> {
-	const [tournament] = await db
-		.select()
-		.from(tournaments)
-		.where(
-			and(eq(tournaments.id, tournamentId), isNull(tournaments.resolvedAt)),
-		)
-
-	if (!tournament) return
-
-	// Mark as resolving immediately to prevent race conditions
-	await db
-		.update(tournaments)
-		.set({ resolvedAt: new Date() })
-		.where(eq(tournaments.id, tournamentId))
-
-	const participants = await db
-		.select({
-			userId: tournamentParticipants.userId,
-			joinedAt: tournamentParticipants.joinedAt,
-		})
-		.from(tournamentParticipants)
-		.where(eq(tournamentParticipants.tournamentId, tournamentId))
-
-	if (participants.length === 0) return
-
-	const scores: { userId: string; score: number; joinedAt: Date }[] = []
-	for (const p of participants) {
-		const score = await computeScore(
-			p.userId,
-			tournament.type as TournamentType,
-			tournament.startDate,
-			tournament.endDate,
-		)
-		scores.push({ userId: p.userId, score, joinedAt: p.joinedAt })
-	}
-
-	// Tie-break: highest score wins; ties go to whoever joined the
-	// tournament earliest, rather than an arbitrary DB-order pick.
-	scores.sort((a, b) => {
-		if (b.score !== a.score) return b.score - a.score
-		return a.joinedAt.getTime() - b.joinedAt.getTime()
-	})
-	const winner = scores[0]
-
-	if (!winner || winner.score === 0) return
-
-	const [winnerUser] = await db
-		.select({ name: users.name, coachPersonality: users.coachPersonality })
-		.from(users)
-		.where(eq(users.id, winner.userId))
-
-	let victoryMessage = `${winnerUser?.name ?? "Unknown"} won the tournament!`
-	try {
-		victoryMessage = await aiService.generateVictoryMessage(
-			winnerUser?.name ?? "Unknown",
-			tournament.name,
-			tournament.type,
-			winnerUser?.coachPersonality ?? "friendly",
-		)
-	} catch {}
-
-	await db
-		.update(tournaments)
-		.set({ winnerId: winner.userId, victoryMessage })
-		.where(eq(tournaments.id, tournamentId))
-
-	// Award badges
-	const [{ value: totalWins }] = await db
-		.select({ value: count() })
-		.from(tournaments)
-		.where(eq(tournaments.winnerId, winner.userId))
-
-	await checkAndAward(
-		winner.userId,
-		{
-			type: "tournament_win",
-			totalWins,
-			tournamentType: tournament.type,
-		},
-		db,
-	)
-}
 
 export function createTournamentsRouter(aiService: AIService) {
 	const router = Router()

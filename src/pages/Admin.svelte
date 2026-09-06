@@ -228,6 +228,19 @@ async function seedTournament() {
 	}
 }
 
+async function forceResolveTournament(id: number) {
+	tournamentDetailError = null
+	try {
+		await api.post(`/admin/tournaments/${id}/resolve`)
+		await load()
+		tournamentDetail = await api.get<AdminTournamentDetail>(
+			`/admin/tournaments/${id}`,
+		)
+	} catch (e) {
+		tournamentDetailError = e instanceof Error ? e.message : "Failed"
+	}
+}
+
 async function createUser() {
 	creating = true
 	createResult = null
@@ -962,6 +975,16 @@ onMount(load)
 											{:else if tournamentDetailError}
 												<p class="error-text">{tournamentDetailError}</p>
 											{:else if tournamentDetail}
+												{#if !tournamentDetail.tournament.resolvedAt}
+													<div class="field-row">
+														<button
+															class="btn outline sm"
+															onclick={() => forceResolveTournament(tournamentDetail.tournament.id)}
+														>
+															Force-resolve now
+														</button>
+													</div>
+												{/if}
 												{#if tournamentDetail.tournament.winnerId}
 													<p class="challenge-meta">
 														Winner: {tournamentDetail.participants.find(

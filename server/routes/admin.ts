@@ -31,6 +31,7 @@ import {
 } from "../services/sprints/index.js"
 import {
 	computeScore,
+	resolveTournament,
 	type TournamentType,
 } from "../services/tournaments/index.js"
 
@@ -542,6 +543,52 @@ export function createAdminRouter(aiService: AIService) {
 				resolvedAt: tournament.resolvedAt,
 			},
 			participantIds: uniqueParticipantIds,
+		})
+	})
+
+	adminRouter.post("/admin/tournaments/:id/resolve", async (req, res) => {
+		const tournamentId = Number(req.params.id)
+		if (Number.isNaN(tournamentId)) {
+			res.status(400).json({ error: "Invalid tournament ID" })
+			return
+		}
+
+		const [tournament] = await db
+			.select()
+			.from(tournaments)
+			.where(eq(tournaments.id, tournamentId))
+
+		if (!tournament) {
+			res.status(404).json({ error: "Tournament not found" })
+			return
+		}
+
+		if (tournament.resolvedAt) {
+			res.status(409).json({ error: "Tournament is already resolved" })
+			return
+		}
+
+		await resolveTournament(tournamentId, aiService)
+
+		const [updated] = await db
+			.select()
+			.from(tournaments)
+			.where(eq(tournaments.id, tournamentId))
+
+		res.json({
+			tournament: {
+				id: updated.id,
+				name: updated.name,
+				creatorId: updated.creatorId,
+				startDate: updated.startDate,
+				endDate: updated.endDate,
+				type: updated.type,
+				goalValue: updated.goalValue,
+				rewardDescription: updated.rewardDescription,
+				winnerId: updated.winnerId,
+				victoryMessage: updated.victoryMessage,
+				resolvedAt: updated.resolvedAt,
+			},
 		})
 	})
 
