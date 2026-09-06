@@ -99,6 +99,14 @@ let tournamentDetail = $state<AdminTournamentDetail | null>(null)
 let tournamentDetailLoading = $state(false)
 let tournamentDetailError = $state<string | null>(null)
 
+let seedTournamentCreatorId = $state("")
+let seedTournamentType = $state<
+	"weight_loss" | "step_count" | "streak" | "food_challenge"
+>("streak")
+let seedTournamentName = $state("")
+let seedTournamentParticipantIds = $state<string[]>([])
+let seedTournamentStatus = $state<{ text: string; ok: boolean } | null>(null)
+
 let newName = $state("")
 let newEmail = $state("")
 let newPassword = $state("TestPass1!")
@@ -186,6 +194,37 @@ async function viewTournament(id: number) {
 		tournamentDetailError = e instanceof Error ? e.message : "Failed to load"
 	} finally {
 		tournamentDetailLoading = false
+	}
+}
+
+async function seedTournament() {
+	seedTournamentStatus = null
+	if (!seedTournamentCreatorId) {
+		seedTournamentStatus = { text: "Pick a creator first", ok: false }
+		return
+	}
+	try {
+		const result = await api.post<{ tournament: { name: string } }>(
+			"/admin/tournaments/seed",
+			{
+				creatorId: seedTournamentCreatorId,
+				type: seedTournamentType,
+				name: seedTournamentName || undefined,
+				participantIds: seedTournamentParticipantIds,
+			},
+		)
+		seedTournamentStatus = {
+			text: `Seeded tournament: "${result.tournament.name}"`,
+			ok: true,
+		}
+		seedTournamentName = ""
+		seedTournamentParticipantIds = []
+		await load()
+	} catch (e) {
+		seedTournamentStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
 	}
 }
 
@@ -829,6 +868,61 @@ onMount(load)
 		</section>
 		<section class="card">
 			<h2>Tournaments ({tournaments.length})</h2>
+			<div class="field-row">
+				<label>
+					Creator
+					<select class="inp inp-sm" bind:value={seedTournamentCreatorId}>
+						<option value="">Select a user…</option>
+						{#each users as u (u.id)}
+							<option value={u.id}>{u.name}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					Type
+					<select class="inp inp-sm" bind:value={seedTournamentType}>
+						<option value="streak">Streak</option>
+						<option value="step_count">Step count</option>
+						<option value="weight_loss">Weight loss</option>
+						<option value="food_challenge">Food challenge</option>
+					</select>
+				</label>
+				<label>
+					Name (optional)
+					<input class="inp inp-sm" bind:value={seedTournamentName} />
+				</label>
+				<button class="btn primary sm" onclick={seedTournament}>
+					Seed Tournament
+				</button>
+			</div>
+			<p class="muted challenge-generate-note">
+				Defaults to a "one day from auto-resolving" window (started 7 days ago,
+				ends tomorrow) unless overridden via the API. Creator auto-joins; add more
+				participants below.
+			</p>
+			<div class="field-row">
+				<label>
+					Additional participants
+					<select
+						class="inp inp-sm"
+						multiple
+						bind:value={seedTournamentParticipantIds}
+					>
+						{#each users as u (u.id)}
+							<option value={u.id}>{u.name}</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+			{#if seedTournamentStatus}
+				<p
+					class="status-msg"
+					class:ok={seedTournamentStatus.ok}
+					class:fail={!seedTournamentStatus.ok}
+				>
+					{seedTournamentStatus.text}
+				</p>
+			{/if}
 			{#if tournaments.length === 0}
 				<p class="muted">No tournaments yet.</p>
 			{:else}

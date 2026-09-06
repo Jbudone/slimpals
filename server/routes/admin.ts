@@ -441,6 +441,110 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	const VALID_TOURNAMENT_TYPES: TournamentType[] = [
+		"weight_loss",
+		"step_count",
+		"streak",
+		"food_challenge",
+	]
+
+	adminRouter.post("/admin/tournaments/seed", async (req, res) => {
+		const {
+			creatorId,
+			name,
+			type,
+			startDate,
+			endDate,
+			participantIds = [],
+			goalValue,
+			rewardDescription,
+		} = req.body as {
+			creatorId?: string
+			name?: string
+			type?: string
+			startDate?: string
+			endDate?: string
+			participantIds?: string[]
+			goalValue?: number
+			rewardDescription?: string
+		}
+
+		if (!creatorId || !type) {
+			res.status(400).json({ error: "creatorId and type are required" })
+			return
+		}
+
+		if (!VALID_TOURNAMENT_TYPES.includes(type as TournamentType)) {
+			res.status(400).json({
+				error: `type must be one of: ${VALID_TOURNAMENT_TYPES.join(", ")}`,
+			})
+			return
+		}
+
+		const [creator] = await db
+			.select({ id: users.id })
+			.from(users)
+			.where(eq(users.id, creatorId))
+			.limit(1)
+
+		if (!creator) {
+			res.status(404).json({ error: "creatorId not found" })
+			return
+		}
+
+		const start = startDate
+			? new Date(startDate)
+			: new Date(Date.now() - 7 * 86_400_000)
+		const end = endDate
+			? new Date(endDate)
+			: new Date(Date.now() + 1 * 86_400_000)
+
+		const [inserted] = await db
+			.insert(tournaments)
+			.values({
+				name: name ?? `Seeded ${type} Tournament`,
+				creatorId,
+				startDate: start,
+				endDate: end,
+				type: type as TournamentType,
+				goalValue: goalValue ?? null,
+				rewardDescription: rewardDescription ?? null,
+			})
+			.$returningId()
+
+		const uniqueParticipantIds = Array.from(
+			new Set([creatorId, ...participantIds]),
+		)
+		await db.insert(tournamentParticipants).values(
+			uniqueParticipantIds.map((userId) => ({
+				tournamentId: inserted.id,
+				userId,
+			})),
+		)
+
+		const [tournament] = await db
+			.select()
+			.from(tournaments)
+			.where(eq(tournaments.id, inserted.id))
+
+		res.status(201).json({
+			tournament: {
+				id: tournament.id,
+				name: tournament.name,
+				creatorId: tournament.creatorId,
+				startDate: tournament.startDate,
+				endDate: tournament.endDate,
+				type: tournament.type,
+				goalValue: tournament.goalValue,
+				rewardDescription: tournament.rewardDescription,
+				winnerId: tournament.winnerId,
+				victoryMessage: tournament.victoryMessage,
+				resolvedAt: tournament.resolvedAt,
+			},
+			participantIds: uniqueParticipantIds,
+		})
+	})
+
 	const DEFAULT_SEED_TASKS: SprintTask[] = [
 		{ id: "task_1", title: "Log 3 meals" },
 		{ id: "task_2", title: "Log a weight entry" },
