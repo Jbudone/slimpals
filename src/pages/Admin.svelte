@@ -316,6 +316,48 @@ async function seedSprint(userId: string) {
 	}
 }
 
+async function forceGenerateSprint(userId: string) {
+	seedStatus = null
+	try {
+		const result = await api.post<{ sprint: { title: string } }>(
+			"/admin/sprints/generate",
+			{ userId },
+		)
+		seedStatus = {
+			text: `Generated sprint: "${result.sprint.title}"`,
+			ok: true,
+		}
+		await loadSprintState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+async function forceGenerateAllSprints() {
+	seedStatus = null
+	try {
+		const result = await api.post<{ generated: number }>(
+			"/admin/sprints/generate",
+			{},
+		)
+		seedStatus = {
+			text: `Generated sprints for ${result.generated} user${result.generated === 1 ? "" : "s"}`,
+			ok: true,
+		}
+		if (expandedId) {
+			await loadSprintState(expandedId)
+		}
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 async function resetChallengeProgress(userId: string) {
 	seedStatus = null
 	try {
@@ -613,6 +655,25 @@ onMount(load)
 													{/if}
 												</div>
 											{:else if seedTab === "sprints"}
+												<div class="field-row">
+													<button
+														class="btn outline sm"
+														onclick={() => forceGenerateSprint(user.id)}
+													>
+														Force-generate this user's sprint
+													</button>
+													<button
+														class="btn outline sm"
+														onclick={() => forceGenerateAllSprints()}
+													>
+														Force-generate for all users
+													</button>
+												</div>
+												<p class="muted challenge-generate-note">
+													"For all users" is a global action — generates this week's
+													sprint for every user who doesn't already have one.
+												</p>
+
 												<div class="field-row">
 													<label>
 														Week of

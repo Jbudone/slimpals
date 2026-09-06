@@ -1,33 +1,14 @@
-import { and, count, eq, gte, lt } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import {
-	dailyCheckins,
-	foodLogs,
-	sprints,
-	userChallenges,
-	users,
-	weightEntries,
-} from "../db/schema.js"
+import { sprints } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService, SprintTask } from "../services/ai/index.js"
 import { awardGymXp } from "../services/gym/index.js"
-
-function getMondayOfWeek(d: Date = new Date()): Date {
-	const date = new Date(d)
-	date.setUTCHours(0, 0, 0, 0)
-	const day = date.getUTCDay()
-	const diff = day === 0 ? 6 : day - 1
-	date.setUTCDate(date.getUTCDate() - diff)
-	return date
-}
-
-function getPreviousWeekRange(): { start: Date; end: Date } {
-	const thisMonday = getMondayOfWeek()
-	const lastMonday = new Date(thisMonday)
-	lastMonday.setUTCDate(lastMonday.getUTCDate() - 7)
-	return { start: lastMonday, end: thisMonday }
-}
+import {
+	generateSprintsForAllUsers,
+	getMondayOfWeek,
+} from "../services/sprints/index.js"
 
 export function createSprintsRouter(aiService: AIService) {
 	const router = Router()
@@ -126,81 +107,11 @@ export function createSprintsRouter(aiService: AIService) {
 	})
 
 	router.post("/sprints/generate", async (_req, res) => {
-		const monday = getMondayOfWeek()
-		const { start, end } = getPreviousWeekRange()
-
-		const allUsers = await db
-			.select({ id: users.id, name: users.name })
-			.from(users)
-
-		let generated = 0
-
-		for (const user of allUsers) {
-			const [existing] = await db
-				.select({ id: sprints.id })
-				.from(sprints)
-				.where(and(eq(sprints.userId, user.id), eq(sprints.weekStart, monday)))
-				.limit(1)
-
-			if (existing) continue
-
-			const [{ value: checkins }] = await db
-				.select({ value: count() })
-				.from(dailyCheckins)
-				.where(
-					and(
-						eq(dailyCheckins.userId, user.id),
-						gte(dailyCheckins.date, start),
-						lt(dailyCheckins.date, end),
-					),
-				)
-
-			const [{ value: foodLogCount }] = await db
-				.select({ value: count() })
-				.from(foodLogs)
-				.where(
-					and(
-						eq(foodLogs.userId, user.id),
-						gte(foodLogs.loggedAt, start),
-						lt(foodLogs.loggedAt, end),
-					),
-				)
-
-			const [{ value: weightCount }] = await db
-				.select({ value: count() })
-				.from(weightEntries)
-				.where(
-					and(
-						eq(weightEntries.userId, user.id),
-						gte(weightEntries.recordedAt, start),
-						lt(weightEntries.recordedAt, end),
-					),
-				)
-
-			const [activeChallenge] = await db
-				.select({ id: userChallenges.id })
-				.from(userChallenges)
-				.where(eq(userChallenges.userId, user.id))
-				.limit(1)
-
-			const result = await aiService.generateWeeklySprint(user.name, {
-				checkins,
-				foodLogs: foodLogCount,
-				weightEntries: weightCount,
-				hasChallenge: !!activeChallenge,
-			})
-
-			await db.insert(sprints).values({
-				userId: user.id,
-				weekStart: monday,
-				title: result.title,
-				tasks: result.tasks,
-			})
-
-			generated++
-		}
-
-		res.json({ generated, weekStart: monday.toISOString() })
+		const { generated, weekStart } = await generateSprintsForAllUsers(
+			aiService,
+			db,
+		)
+		res.json({ generated, weekStart: weekStart.toISOString() })
 	})
 
 	return router

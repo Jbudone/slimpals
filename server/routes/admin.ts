@@ -23,6 +23,10 @@ import type {
 	SprintTask,
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
+import {
+	generateSprintForUser,
+	generateSprintsForAllUsers,
+} from "../services/sprints/index.js"
 
 function getMondayOfWeek(d: Date = new Date()): Date {
 	const date = new Date(d)
@@ -410,6 +414,40 @@ export function createAdminRouter(aiService: AIService) {
 					? Math.round((completedTasks.length / tasks.length) * 100)
 					: 0,
 		})
+	})
+
+	adminRouter.post("/admin/sprints/generate", async (req, res) => {
+		const { userId } = req.body as { userId?: string }
+
+		if (userId) {
+			const [user] = await db
+				.select({ id: users.id, name: users.name })
+				.from(users)
+				.where(eq(users.id, userId))
+				.limit(1)
+
+			if (!user) {
+				res.status(404).json({ error: "User not found" })
+				return
+			}
+
+			const result = await generateSprintForUser(aiService, user, db)
+			if (result.status === "exists") {
+				res
+					.status(409)
+					.json({ error: "Sprint already exists for this user this week" })
+				return
+			}
+
+			res.status(201).json({ generated: 1, sprint: result.sprint })
+			return
+		}
+
+		const { generated, weekStart } = await generateSprintsForAllUsers(
+			aiService,
+			db,
+		)
+		res.status(201).json({ generated, weekStart: weekStart.toISOString() })
 	})
 
 	const DEFAULT_SEED_GOALS: ChallengeGoal[] = [
