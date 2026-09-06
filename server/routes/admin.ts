@@ -592,6 +592,31 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	adminRouter.delete("/admin/tournaments/:id", async (req, res) => {
+		const tournamentId = Number(req.params.id)
+		if (Number.isNaN(tournamentId)) {
+			res.status(400).json({ error: "Invalid tournament ID" })
+			return
+		}
+
+		const [tournament] = await db
+			.select({ id: tournaments.id })
+			.from(tournaments)
+			.where(eq(tournaments.id, tournamentId))
+
+		if (!tournament) {
+			res.status(404).json({ error: "Tournament not found" })
+			return
+		}
+
+		await db
+			.delete(tournamentParticipants)
+			.where(eq(tournamentParticipants.tournamentId, tournamentId))
+		await db.delete(tournaments).where(eq(tournaments.id, tournamentId))
+
+		res.json({ success: true })
+	})
+
 	const DEFAULT_SEED_TASKS: SprintTask[] = [
 		{ id: "task_1", title: "Log 3 meals" },
 		{ id: "task_2", title: "Log a weight entry" },

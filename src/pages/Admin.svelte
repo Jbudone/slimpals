@@ -241,6 +241,20 @@ async function forceResolveTournament(id: number) {
 	}
 }
 
+async function deleteTournament(id: number, name: string) {
+	if (!confirm(`Delete tournament "${name}"? This cannot be undone.`)) return
+	try {
+		await api.del(`/admin/tournaments/${id}`)
+		if (expandedTournamentId === id) {
+			expandedTournamentId = null
+			tournamentDetail = null
+		}
+		await load()
+	} catch (e) {
+		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
 async function createUser() {
 	creating = true
 	createResult = null
@@ -963,6 +977,12 @@ onMount(load)
 								<td>
 									<button class="btn outline sm" onclick={() => viewTournament(t.id)}>
 										{expandedTournamentId === t.id ? "Hide" : "View"}
+									</button>
+									<button
+										class="btn danger sm"
+										onclick={() => deleteTournament(t.id, t.name)}
+									>
+										Delete
 									</button>
 								</td>
 							</tr>
