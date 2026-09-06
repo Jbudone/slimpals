@@ -88,6 +88,23 @@ type AdminTournamentDetail = {
 	}[]
 }
 
+type AdminWeightEntry = {
+	id: number
+	weightKg: number
+	note: string | null
+	recordedAt: string
+	source: string
+}
+
+type AdminFoodEntry = {
+	id: number
+	photoUrl: string
+	aiAnalysis: Record<string, unknown> | null
+	mealType: string
+	loggedAt: string
+	isShared: boolean
+}
+
 type AdminSocialPost = {
 	id: number
 	userId: string
@@ -149,6 +166,22 @@ let challengeError = $state<string | null>(null)
 let sprintState = $state<UserSprintState | null>(null)
 let sprintLoading = $state(false)
 let sprintError = $state<string | null>(null)
+
+let weightEntriesForUser = $state<AdminWeightEntry[]>([])
+let weightEntriesLoading = $state(false)
+let weightEntriesError = $state<string | null>(null)
+let editingWeightId = $state<number | null>(null)
+let editWeightKg = $state(0)
+let editWeightNote = $state("")
+
+let foodEntriesForUser = $state<AdminFoodEntry[]>([])
+let foodEntriesLoading = $state(false)
+let foodEntriesError = $state<string | null>(null)
+let editingFoodId = $state<number | null>(null)
+let editFoodMealType = $state<"breakfast" | "lunch" | "dinner" | "snack">(
+	"breakfast",
+)
+let editFoodLoggedAt = $state("")
 
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
@@ -429,6 +462,100 @@ async function loadSprintState(userId: string) {
 	}
 }
 
+async function loadWeightEntries(userId: string) {
+	weightEntriesLoading = true
+	weightEntriesError = null
+	try {
+		weightEntriesForUser = await api.get<AdminWeightEntry[]>(
+			`/admin/users/${userId}/weight`,
+		)
+	} catch (e) {
+		weightEntriesError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		weightEntriesLoading = false
+	}
+}
+
+function startEditWeight(entry: AdminWeightEntry) {
+	editingWeightId = entry.id
+	editWeightKg = entry.weightKg
+	editWeightNote = entry.note ?? ""
+}
+
+function cancelEditWeight() {
+	editingWeightId = null
+}
+
+async function saveEditWeight(userId: string, id: number) {
+	try {
+		await api.patch(`/admin/weight/${id}`, {
+			weightKg: editWeightKg,
+			note: editWeightNote || null,
+		})
+		editingWeightId = null
+		await loadWeightEntries(userId)
+	} catch (e) {
+		alert(`Update failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
+async function deleteWeightEntry(userId: string, id: number) {
+	if (!confirm("Delete this weight entry? This cannot be undone.")) return
+	try {
+		await api.del(`/admin/weight/${id}`)
+		await loadWeightEntries(userId)
+	} catch (e) {
+		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
+async function loadFoodEntries(userId: string) {
+	foodEntriesLoading = true
+	foodEntriesError = null
+	try {
+		foodEntriesForUser = await api.get<AdminFoodEntry[]>(
+			`/admin/users/${userId}/food`,
+		)
+	} catch (e) {
+		foodEntriesError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		foodEntriesLoading = false
+	}
+}
+
+function startEditFood(entry: AdminFoodEntry) {
+	editingFoodId = entry.id
+	editFoodMealType = entry.mealType as typeof editFoodMealType
+	editFoodLoggedAt = new Date(entry.loggedAt).toISOString().slice(0, 10)
+}
+
+function cancelEditFood() {
+	editingFoodId = null
+}
+
+async function saveEditFood(userId: string, id: number) {
+	try {
+		await api.patch(`/admin/food/${id}`, {
+			mealType: editFoodMealType,
+			loggedAt: new Date(editFoodLoggedAt).toISOString(),
+		})
+		editingFoodId = null
+		await loadFoodEntries(userId)
+	} catch (e) {
+		alert(`Update failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
+async function deleteFoodEntry(userId: string, id: number) {
+	if (!confirm("Delete this food entry? This cannot be undone.")) return
+	try {
+		await api.del(`/admin/food/${id}`)
+		await loadFoodEntries(userId)
+	} catch (e) {
+		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab:
@@ -446,6 +573,10 @@ async function selectTab(
 		await loadChallengeState(userId)
 	} else if (tab === "sprints") {
 		await loadSprintState(userId)
+	} else if (tab === "weight") {
+		await loadWeightEntries(userId)
+	} else if (tab === "food") {
+		await loadFoodEntries(userId)
 	}
 }
 
@@ -731,15 +862,50 @@ onMount(load)
 													<label>End kg <input type="number" class="inp inp-sm" bind:value={weightEndKg} min="1" /></label>
 													<button
 														class="btn primary sm"
-														onclick={() =>
-															runSeed(
+														onclick={async () => {
+															await runSeed(
 																`/admin/seed/${user.id}/weight`,
 																{ count: weightCount, startKg: weightStartKg, endKg: weightEndKg },
 																`Seeded ${weightCount} weight entries (${weightStartKg}→${weightEndKg} kg)`,
-															)}
+															)
+															await loadWeightEntries(user.id)
+														}}
 													>
 														Seed Weight
 													</button>
+												</div>
+												<div class="challenge-view">
+													{#if weightEntriesLoading}
+														<p class="muted">Loading…</p>
+													{:else if weightEntriesError}
+														<p class="error-text">{weightEntriesError}</p>
+													{:else if weightEntriesForUser.length === 0}
+														<p class="muted">No weight entries yet.</p>
+													{:else}
+														<ul class="goal-list">
+															{#each weightEntriesForUser as entry (entry.id)}
+																<li>
+																	{#if editingWeightId === entry.id}
+																		<input type="number" class="inp inp-sm" bind:value={editWeightKg} step="0.1" min="1" />
+																		<input class="inp inp-sm" placeholder="Note" bind:value={editWeightNote} />
+																		<button class="btn primary sm" onclick={() => saveEditWeight(user.id, entry.id)}>Save</button>
+																		<button class="btn outline sm" onclick={cancelEditWeight}>Cancel</button>
+																	{:else}
+																		<span class="goal-name">
+																			{new Date(entry.recordedAt).toLocaleDateString()}
+																		</span>
+																		<span class="goal-progress">
+																			{entry.weightKg} kg
+																			{#if entry.note}· {entry.note}{/if}
+																			· {entry.source}
+																		</span>
+																		<button class="btn outline sm" onclick={() => startEditWeight(entry)}>Edit</button>
+																		<button class="btn danger sm" onclick={() => deleteWeightEntry(user.id, entry.id)}>Delete</button>
+																	{/if}
+																</li>
+															{/each}
+														</ul>
+													{/if}
 												</div>
 											{:else if seedTab === "badges"}
 												<div class="badge-grid">
@@ -775,15 +941,54 @@ onMount(load)
 													</label>
 													<button
 														class="btn primary sm"
-														onclick={() =>
-															runSeed(
+														onclick={async () => {
+															await runSeed(
 																`/admin/seed/${user.id}/food`,
 																{ count: foodCount },
 																`Seeded ${foodCount} food log entries`,
-															)}
+															)
+															await loadFoodEntries(user.id)
+														}}
 													>
 														Seed Food
 													</button>
+												</div>
+												<div class="challenge-view">
+													{#if foodEntriesLoading}
+														<p class="muted">Loading…</p>
+													{:else if foodEntriesError}
+														<p class="error-text">{foodEntriesError}</p>
+													{:else if foodEntriesForUser.length === 0}
+														<p class="muted">No food entries yet.</p>
+													{:else}
+														<ul class="goal-list">
+															{#each foodEntriesForUser as entry (entry.id)}
+																<li>
+																	{#if editingFoodId === entry.id}
+																		<select class="inp inp-sm" bind:value={editFoodMealType}>
+																			<option value="breakfast">Breakfast</option>
+																			<option value="lunch">Lunch</option>
+																			<option value="dinner">Dinner</option>
+																			<option value="snack">Snack</option>
+																		</select>
+																		<input type="date" class="inp inp-sm" bind:value={editFoodLoggedAt} />
+																		<button class="btn primary sm" onclick={() => saveEditFood(user.id, entry.id)}>Save</button>
+																		<button class="btn outline sm" onclick={cancelEditFood}>Cancel</button>
+																	{:else}
+																		<span class="goal-name">
+																			{new Date(entry.loggedAt).toLocaleDateString()}
+																		</span>
+																		<span class="goal-progress">
+																			{entry.mealType}
+																			{#if entry.isShared}· shared{/if}
+																		</span>
+																		<button class="btn outline sm" onclick={() => startEditFood(entry)}>Edit</button>
+																		<button class="btn danger sm" onclick={() => deleteFoodEntry(user.id, entry.id)}>Delete</button>
+																	{/if}
+																</li>
+															{/each}
+														</ul>
+													{/if}
 												</div>
 											{:else if seedTab === "gym"}
 												<div class="field-row">

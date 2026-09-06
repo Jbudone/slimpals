@@ -349,6 +349,212 @@ export function createAdminRouter(aiService: AIService) {
 		res.json({ deleted: result.affectedRows })
 	})
 
+	adminRouter.get("/admin/users/:id/weight", async (req, res) => {
+		const { id } = req.params
+		const rows = await db
+			.select()
+			.from(weightEntries)
+			.where(eq(weightEntries.userId, id))
+			.orderBy(desc(weightEntries.recordedAt))
+
+		res.json(
+			rows.map((row) => ({
+				id: row.id,
+				weightKg: row.weightKg / 10,
+				note: row.note,
+				recordedAt: row.recordedAt,
+				source: row.source,
+			})),
+		)
+	})
+
+	adminRouter.get("/admin/users/:id/food", async (req, res) => {
+		const { id } = req.params
+		const rows = await db
+			.select()
+			.from(foodLogs)
+			.where(eq(foodLogs.userId, id))
+			.orderBy(desc(foodLogs.loggedAt))
+
+		res.json(
+			rows.map((row) => ({
+				id: row.id,
+				photoUrl: row.photoUrl,
+				aiAnalysis: row.aiAnalysis,
+				mealType: row.mealType,
+				loggedAt: row.loggedAt,
+				isShared: row.isShared,
+			})),
+		)
+	})
+
+	adminRouter.patch("/admin/weight/:id", async (req, res) => {
+		const entryId = Number(req.params.id)
+		if (Number.isNaN(entryId)) {
+			res.status(400).json({ error: "Invalid entry ID" })
+			return
+		}
+
+		const { weightKg, note, recordedAt } = req.body as {
+			weightKg?: number
+			note?: string | null
+			recordedAt?: string
+		}
+
+		if (
+			weightKg !== undefined &&
+			(typeof weightKg !== "number" || weightKg <= 0)
+		) {
+			res.status(400).json({ error: "weightKg must be a positive number" })
+			return
+		}
+
+		const [existing] = await db
+			.select({ id: weightEntries.id })
+			.from(weightEntries)
+			.where(eq(weightEntries.id, entryId))
+
+		if (!existing) {
+			res.status(404).json({ error: "Weight entry not found" })
+			return
+		}
+
+		const updates: Partial<typeof weightEntries.$inferInsert> = {}
+		if (weightKg !== undefined) updates.weightKg = Math.round(weightKg * 10)
+		if (note !== undefined) updates.note = note
+		if (recordedAt !== undefined) updates.recordedAt = new Date(recordedAt)
+
+		if (Object.keys(updates).length > 0) {
+			await db
+				.update(weightEntries)
+				.set(updates)
+				.where(eq(weightEntries.id, entryId))
+		}
+
+		const [row] = await db
+			.select()
+			.from(weightEntries)
+			.where(eq(weightEntries.id, entryId))
+
+		res.json({
+			id: row.id,
+			weightKg: row.weightKg / 10,
+			note: row.note,
+			recordedAt: row.recordedAt,
+			source: row.source,
+		})
+	})
+
+	adminRouter.delete("/admin/weight/:id", async (req, res) => {
+		const entryId = Number(req.params.id)
+		if (Number.isNaN(entryId)) {
+			res.status(400).json({ error: "Invalid entry ID" })
+			return
+		}
+
+		const [existing] = await db
+			.select({ id: weightEntries.id })
+			.from(weightEntries)
+			.where(eq(weightEntries.id, entryId))
+
+		if (!existing) {
+			res.status(404).json({ error: "Weight entry not found" })
+			return
+		}
+
+		await db.delete(weightEntries).where(eq(weightEntries.id, entryId))
+
+		res.json({ success: true })
+	})
+
+	const VALID_MEAL_TYPES: (typeof foodLogs.$inferInsert)["mealType"][] = [
+		"breakfast",
+		"lunch",
+		"dinner",
+		"snack",
+	]
+
+	adminRouter.patch("/admin/food/:id", async (req, res) => {
+		const entryId = Number(req.params.id)
+		if (Number.isNaN(entryId)) {
+			res.status(400).json({ error: "Invalid entry ID" })
+			return
+		}
+
+		const { mealType, loggedAt } = req.body as {
+			mealType?: string
+			loggedAt?: string
+		}
+
+		if (
+			mealType !== undefined &&
+			!VALID_MEAL_TYPES.includes(
+				mealType as (typeof foodLogs.$inferInsert)["mealType"],
+			)
+		) {
+			res.status(400).json({
+				error: `mealType must be one of: ${VALID_MEAL_TYPES.join(", ")}`,
+			})
+			return
+		}
+
+		const [existing] = await db
+			.select({ id: foodLogs.id })
+			.from(foodLogs)
+			.where(eq(foodLogs.id, entryId))
+
+		if (!existing) {
+			res.status(404).json({ error: "Food log not found" })
+			return
+		}
+
+		const updates: Partial<typeof foodLogs.$inferInsert> = {}
+		if (mealType !== undefined) {
+			updates.mealType = mealType as (typeof foodLogs.$inferInsert)["mealType"]
+		}
+		if (loggedAt !== undefined) updates.loggedAt = new Date(loggedAt)
+
+		if (Object.keys(updates).length > 0) {
+			await db.update(foodLogs).set(updates).where(eq(foodLogs.id, entryId))
+		}
+
+		const [row] = await db
+			.select()
+			.from(foodLogs)
+			.where(eq(foodLogs.id, entryId))
+
+		res.json({
+			id: row.id,
+			photoUrl: row.photoUrl,
+			aiAnalysis: row.aiAnalysis,
+			mealType: row.mealType,
+			loggedAt: row.loggedAt,
+			isShared: row.isShared,
+		})
+	})
+
+	adminRouter.delete("/admin/food/:id", async (req, res) => {
+		const entryId = Number(req.params.id)
+		if (Number.isNaN(entryId)) {
+			res.status(400).json({ error: "Invalid entry ID" })
+			return
+		}
+
+		const [existing] = await db
+			.select({ id: foodLogs.id })
+			.from(foodLogs)
+			.where(eq(foodLogs.id, entryId))
+
+		if (!existing) {
+			res.status(404).json({ error: "Food log not found" })
+			return
+		}
+
+		await db.delete(foodLogs).where(eq(foodLogs.id, entryId))
+
+		res.json({ success: true })
+	})
+
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db
 			.select()
