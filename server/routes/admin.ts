@@ -653,6 +653,82 @@ export function createAdminRouter(aiService: AIService) {
 		)
 	})
 
+	const VALID_SOCIAL_POST_TYPES: (typeof socialPosts.$inferInsert)["type"][] = [
+		"food_photo",
+		"ai_message",
+		"milestone",
+		"weight_update",
+		"challenge_completion",
+	]
+
+	adminRouter.post("/admin/social/posts", async (req, res) => {
+		const { userId, type, content } = req.body as {
+			userId?: string
+			type?: string
+			content?: unknown
+		}
+
+		if (!userId || !type) {
+			res.status(400).json({ error: "userId and type are required" })
+			return
+		}
+
+		if (
+			!VALID_SOCIAL_POST_TYPES.includes(
+				type as (typeof socialPosts.$inferInsert)["type"],
+			)
+		) {
+			res.status(400).json({
+				error: `type must be one of: ${VALID_SOCIAL_POST_TYPES.join(", ")}`,
+			})
+			return
+		}
+
+		if (
+			typeof content !== "object" ||
+			content === null ||
+			Array.isArray(content)
+		) {
+			res.status(400).json({ error: "content must be an object" })
+			return
+		}
+
+		const [user] = await db
+			.select({ id: users.id })
+			.from(users)
+			.where(eq(users.id, userId))
+			.limit(1)
+
+		if (!user) {
+			res.status(404).json({ error: "userId not found" })
+			return
+		}
+
+		const [inserted] = await db
+			.insert(socialPosts)
+			.values({
+				userId,
+				type: type as (typeof socialPosts.$inferInsert)["type"],
+				content,
+			})
+			.$returningId()
+
+		const [post] = await db
+			.select({
+				id: socialPosts.id,
+				userId: socialPosts.userId,
+				userName: users.name,
+				type: socialPosts.type,
+				content: socialPosts.content,
+				createdAt: socialPosts.createdAt,
+			})
+			.from(socialPosts)
+			.innerJoin(users, eq(socialPosts.userId, users.id))
+			.where(eq(socialPosts.id, inserted.id))
+
+		res.status(201).json(post)
+	})
+
 	adminRouter.delete("/admin/social/posts/:id", async (req, res) => {
 		const postId = Number(req.params.id)
 		if (Number.isNaN(postId)) {

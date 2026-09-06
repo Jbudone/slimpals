@@ -119,6 +119,17 @@ let seedTournamentStatus = $state<{ text: string; ok: boolean } | null>(null)
 
 let socialPosts = $state<AdminSocialPost[]>([])
 
+let injectPostUserId = $state("")
+let injectPostType = $state<
+	| "food_photo"
+	| "ai_message"
+	| "milestone"
+	| "weight_update"
+	| "challenge_completion"
+>("milestone")
+let injectPostContent = $state("")
+let injectPostStatus = $state<{ text: string; ok: boolean } | null>(null)
+
 let newName = $state("")
 let newEmail = $state("")
 let newPassword = $state("TestPass1!")
@@ -293,6 +304,36 @@ async function deleteSocialPost(id: number) {
 		await load()
 	} catch (e) {
 		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
+async function injectSocialPost() {
+	injectPostStatus = null
+	if (!injectPostUserId) {
+		injectPostStatus = { text: "Pick a user first", ok: false }
+		return
+	}
+	let content: unknown
+	try {
+		content = injectPostContent.trim() ? JSON.parse(injectPostContent) : {}
+	} catch {
+		injectPostStatus = { text: "Content must be valid JSON", ok: false }
+		return
+	}
+	try {
+		await api.post("/admin/social/posts", {
+			userId: injectPostUserId,
+			type: injectPostType,
+			content,
+		})
+		injectPostStatus = { text: "Post injected", ok: true }
+		injectPostContent = ""
+		await load()
+	} catch (e) {
+		injectPostStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
 	}
 }
 
@@ -1079,6 +1120,47 @@ onMount(load)
 		</section>
 		<section class="card">
 			<h2>Social Feed ({socialPosts.length})</h2>
+			<div class="field-row">
+				<label>
+					User
+					<select class="inp inp-sm" bind:value={injectPostUserId}>
+						<option value="">Select a user…</option>
+						{#each users as u (u.id)}
+							<option value={u.id}>{u.name}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					Type
+					<select class="inp inp-sm" bind:value={injectPostType}>
+						<option value="milestone">Milestone</option>
+						<option value="food_photo">Food photo</option>
+						<option value="weight_update">Weight update</option>
+						<option value="ai_message">AI message</option>
+						<option value="challenge_completion">Challenge completion</option>
+					</select>
+				</label>
+				<label>
+					Content (JSON)
+					<input
+						class="inp inp-sm"
+						placeholder={'{"text": "Lost 5kg!"}'}
+						bind:value={injectPostContent}
+					/>
+				</label>
+				<button class="btn primary sm" onclick={injectSocialPost}>
+					Inject Post
+				</button>
+			</div>
+			{#if injectPostStatus}
+				<p
+					class="status-msg"
+					class:ok={injectPostStatus.ok}
+					class:fail={!injectPostStatus.ok}
+				>
+					{injectPostStatus.text}
+				</p>
+			{/if}
 			{#if socialPosts.length === 0}
 				<p class="muted">No posts yet.</p>
 			{:else}
