@@ -334,6 +334,12 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	adminRouter.delete("/admin/users/:id/sprint", async (req, res) => {
+		const { id } = req.params
+		const [result] = await db.delete(sprints).where(eq(sprints.userId, id))
+		res.json({ deleted: result.affectedRows })
+	})
+
 	const DEFAULT_SEED_TASKS: SprintTask[] = [
 		{ id: "task_1", title: "Log 3 meals" },
 		{ id: "task_2", title: "Log a weight entry" },

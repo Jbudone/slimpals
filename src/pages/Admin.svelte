@@ -358,6 +358,28 @@ async function forceGenerateAllSprints() {
 	}
 }
 
+async function resetSprintProgress(userId: string) {
+	seedStatus = null
+	try {
+		const result = await api.del<{ deleted: number }>(
+			`/admin/users/${userId}/sprint`,
+		)
+		seedStatus = {
+			text:
+				result.deleted > 0
+					? `Cleared sprint progress (${result.deleted} record${result.deleted === 1 ? "" : "s"})`
+					: "No sprint progress to clear",
+			ok: true,
+		}
+		await loadSprintState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 async function resetChallengeProgress(userId: string) {
 	seedStatus = null
 	try {
@@ -693,6 +715,12 @@ onMount(load)
 														onclick={() => seedSprint(user.id)}
 													>
 														Seed Sprint
+													</button>
+													<button
+														class="btn outline sm"
+														onclick={() => resetSprintProgress(user.id)}
+													>
+														Reset all sprint progress
 													</button>
 												</div>
 
