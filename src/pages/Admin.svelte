@@ -88,6 +88,16 @@ type AdminTournamentDetail = {
 	}[]
 }
 
+type AdminSocialPost = {
+	id: number
+	userId: string
+	userName: string
+	type: string
+	content: Record<string, unknown>
+	createdAt: string
+	reactionCount: number
+}
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
@@ -106,6 +116,8 @@ let seedTournamentType = $state<
 let seedTournamentName = $state("")
 let seedTournamentParticipantIds = $state<string[]>([])
 let seedTournamentStatus = $state<{ text: string; ok: boolean } | null>(null)
+
+let socialPosts = $state<AdminSocialPost[]>([])
 
 let newName = $state("")
 let newEmail = $state("")
@@ -164,10 +176,11 @@ const badgesByTier = $derived(
 async function load() {
 	loading = true
 	try {
-		;[users, allBadges, tournaments] = await Promise.all([
+		;[users, allBadges, tournaments, socialPosts] = await Promise.all([
 			api.get<AdminUser[]>("/admin/users"),
 			api.get<Badge[]>("/badges"),
 			api.get<AdminTournamentSummary[]>("/admin/tournaments"),
+			api.get<AdminSocialPost[]>("/admin/social/posts"),
 		])
 	} catch (e) {
 		loadError = e instanceof Error ? e.message : "Failed to load"
@@ -249,6 +262,34 @@ async function deleteTournament(id: number, name: string) {
 			expandedTournamentId = null
 			tournamentDetail = null
 		}
+		await load()
+	} catch (e) {
+		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
+	}
+}
+
+function socialPostSummary(post: AdminSocialPost): string {
+	const c = post.content
+	switch (post.type) {
+		case "food_photo":
+			return String(c.foodName ?? "Food")
+		case "weight_update":
+			return String(c.text ?? `${c.currentWeightKg ?? "?"} kg`)
+		case "milestone":
+			return String(c.badgeName ?? c.text ?? "Milestone")
+		case "ai_message":
+			return String(c.message ?? "")
+		case "challenge_completion":
+			return String(c.challengeName ?? "Challenge completed")
+		default:
+			return ""
+	}
+}
+
+async function deleteSocialPost(id: number) {
+	if (!confirm("Delete this post? This cannot be undone.")) return
+	try {
+		await api.del(`/admin/social/posts/${id}`)
 		await load()
 	} catch (e) {
 		alert(`Delete failed: ${e instanceof Error ? e.message : "Unknown error"}`)
@@ -1031,6 +1072,44 @@ onMount(load)
 									</td>
 								</tr>
 							{/if}
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</section>
+		<section class="card">
+			<h2>Social Feed ({socialPosts.length})</h2>
+			{#if socialPosts.length === 0}
+				<p class="muted">No posts yet.</p>
+			{:else}
+				<table class="user-table">
+					<thead>
+						<tr>
+							<th>Author</th>
+							<th>Type</th>
+							<th>Content</th>
+							<th>Created</th>
+							<th>Reactions</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each socialPosts as p (p.id)}
+							<tr>
+								<td>{p.userName}</td>
+								<td>{p.type}</td>
+								<td>{socialPostSummary(p)}</td>
+								<td>{new Date(p.createdAt).toLocaleString()}</td>
+								<td>{p.reactionCount}</td>
+								<td>
+									<button
+										class="btn danger sm"
+										onclick={() => deleteSocialPost(p.id)}
+									>
+										Delete
+									</button>
+								</td>
+							</tr>
 						{/each}
 					</tbody>
 				</table>

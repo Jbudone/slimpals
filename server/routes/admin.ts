@@ -9,7 +9,9 @@ import {
 	challenges,
 	dailyCheckins,
 	foodLogs,
+	reactions,
 	sessions,
+	socialPosts,
 	sprints,
 	tournamentParticipants,
 	tournaments,
@@ -613,6 +615,63 @@ export function createAdminRouter(aiService: AIService) {
 			.delete(tournamentParticipants)
 			.where(eq(tournamentParticipants.tournamentId, tournamentId))
 		await db.delete(tournaments).where(eq(tournaments.id, tournamentId))
+
+		res.json({ success: true })
+	})
+
+	adminRouter.get("/admin/social/posts", async (_req, res) => {
+		const posts = await db
+			.select({
+				id: socialPosts.id,
+				userId: socialPosts.userId,
+				userName: users.name,
+				type: socialPosts.type,
+				content: socialPosts.content,
+				createdAt: socialPosts.createdAt,
+			})
+			.from(socialPosts)
+			.innerJoin(users, eq(socialPosts.userId, users.id))
+			.orderBy(desc(socialPosts.createdAt))
+
+		if (posts.length === 0) {
+			res.json([])
+			return
+		}
+
+		const reactionCounts = await db
+			.select({ postId: reactions.postId, count: count() })
+			.from(reactions)
+			.groupBy(reactions.postId)
+
+		const countMap = new Map(reactionCounts.map((r) => [r.postId, r.count]))
+
+		res.json(
+			posts.map((p) => ({
+				...p,
+				reactionCount: countMap.get(p.id) ?? 0,
+			})),
+		)
+	})
+
+	adminRouter.delete("/admin/social/posts/:id", async (req, res) => {
+		const postId = Number(req.params.id)
+		if (Number.isNaN(postId)) {
+			res.status(400).json({ error: "Invalid post ID" })
+			return
+		}
+
+		const [post] = await db
+			.select({ id: socialPosts.id })
+			.from(socialPosts)
+			.where(eq(socialPosts.id, postId))
+
+		if (!post) {
+			res.status(404).json({ error: "Post not found" })
+			return
+		}
+
+		await db.delete(reactions).where(eq(reactions.postId, postId))
+		await db.delete(socialPosts).where(eq(socialPosts.id, postId))
 
 		res.json({ success: true })
 	})
