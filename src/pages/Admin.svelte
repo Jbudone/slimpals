@@ -94,6 +94,20 @@ let seedChallengeCompletion = $state<
 	"none" | "partial" | "near_complete" | "complete"
 >("complete")
 
+function mondayOfWeek(d: Date): Date {
+	const date = new Date(d)
+	date.setUTCHours(0, 0, 0, 0)
+	const day = date.getUTCDay()
+	const diff = day === 0 ? 6 : day - 1
+	date.setUTCDate(date.getUTCDate() - diff)
+	return date
+}
+
+let seedSprintWeekStart = $state(mondayOfWeek(now).toISOString().slice(0, 10))
+let seedSprintCompletion = $state<
+	"none" | "partial" | "near_complete" | "complete"
+>("complete")
+
 let checkinDays = $state(7)
 let weightCount = $state(5)
 let weightStartKg = $state(90)
@@ -270,6 +284,30 @@ async function forceGenerateChallenge(userId: string) {
 			ok: true,
 		}
 		await loadChallengeState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+async function seedSprint(userId: string) {
+	seedStatus = null
+	try {
+		await api.post(`/admin/seed/${userId}/sprint`, {
+			weekStart: new Date(seedSprintWeekStart).toISOString(),
+			completion: seedSprintCompletion,
+		})
+		seedStatus = {
+			text: `Seeded sprint for week of ${seedSprintWeekStart} at "${seedSprintCompletion}"`,
+			ok: true,
+		}
+		const isCurrentWeek =
+			seedSprintWeekStart === mondayOfWeek(now).toISOString().slice(0, 10)
+		if (isCurrentWeek) {
+			await loadSprintState(userId)
+		}
 	} catch (e) {
 		seedStatus = {
 			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
@@ -575,6 +613,28 @@ onMount(load)
 													{/if}
 												</div>
 											{:else if seedTab === "sprints"}
+												<div class="field-row">
+													<label>
+														Week of
+														<input type="date" class="inp inp-sm" bind:value={seedSprintWeekStart} />
+													</label>
+													<label>
+														Completion
+														<select class="inp inp-sm" bind:value={seedSprintCompletion}>
+															<option value="none">Not started</option>
+															<option value="partial">Partial</option>
+															<option value="near_complete">Near-complete</option>
+															<option value="complete">Complete</option>
+														</select>
+													</label>
+													<button
+														class="btn primary sm"
+														onclick={() => seedSprint(user.id)}
+													>
+														Seed Sprint
+													</button>
+												</div>
+
 												<div class="challenge-view">
 													{#if sprintLoading}
 														<p class="muted">Loading…</p>

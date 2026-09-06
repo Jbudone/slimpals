@@ -330,6 +330,88 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	const DEFAULT_SEED_TASKS: SprintTask[] = [
+		{ id: "task_1", title: "Log 3 meals" },
+		{ id: "task_2", title: "Log a weight entry" },
+		{ id: "task_3", title: "Complete a daily check-in" },
+	]
+
+	function computeSeedCompletion(
+		taskIds: string[],
+		completion: "none" | "partial" | "near_complete" | "complete",
+	): string[] {
+		if (completion === "none") return []
+		if (completion === "complete") return taskIds
+		if (completion === "near_complete") return taskIds.slice(0, -1)
+		return taskIds.slice(0, Math.floor(taskIds.length / 2))
+	}
+
+	adminRouter.post("/admin/seed/:id/sprint", async (req, res) => {
+		const { id } = req.params
+		const {
+			weekStart,
+			completion = "complete",
+			tasks: providedTasks,
+		} = req.body as {
+			weekStart?: string
+			completion?: "none" | "partial" | "near_complete" | "complete"
+			tasks?: SprintTask[]
+		}
+
+		const monday = getMondayOfWeek(weekStart ? new Date(weekStart) : undefined)
+
+		let [sprint] = await db
+			.select()
+			.from(sprints)
+			.where(and(eq(sprints.userId, id), eq(sprints.weekStart, monday)))
+			.limit(1)
+
+		if (!sprint) {
+			const [inserted] = await db
+				.insert(sprints)
+				.values({
+					userId: id,
+					weekStart: monday,
+					title: `Seeded Sprint ${monday.toISOString().slice(0, 10)}`,
+					tasks: providedTasks ?? DEFAULT_SEED_TASKS,
+				})
+				.$returningId()
+			;[sprint] = await db
+				.select()
+				.from(sprints)
+				.where(eq(sprints.id, inserted.id))
+		}
+
+		const tasks = sprint.tasks as SprintTask[]
+		const completedTasks = computeSeedCompletion(
+			tasks.map((t) => t.id),
+			completion,
+		)
+
+		await db
+			.update(sprints)
+			.set({
+				completedTasks,
+				completedAt: completion === "complete" ? new Date() : null,
+			})
+			.where(eq(sprints.id, sprint.id))
+
+		res.status(201).json({
+			sprint: {
+				id: sprint.id,
+				title: sprint.title,
+				weekStart: sprint.weekStart,
+				tasks,
+			},
+			completedTasks,
+			completedAt: completion === "complete" ? new Date() : null,
+			progress:
+				tasks.length > 0
+					? Math.round((completedTasks.length / tasks.length) * 100)
+					: 0,
+		})
+	})
+
 	const DEFAULT_SEED_GOALS: ChallengeGoal[] = [
 		{
 			id: "goal_1",
