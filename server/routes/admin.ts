@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
-import { and, asc, eq } from "drizzle-orm"
+import { and, asc, count, desc, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
@@ -11,6 +11,8 @@ import {
 	foodLogs,
 	sessions,
 	sprints,
+	tournamentParticipants,
+	tournaments,
 	userBadges,
 	userChallenges,
 	users,
@@ -27,6 +29,10 @@ import {
 	generateSprintForUser,
 	generateSprintsForAllUsers,
 } from "../services/sprints/index.js"
+import {
+	computeScore,
+	type TournamentType,
+} from "../services/tournaments/index.js"
 
 function getMondayOfWeek(d: Date = new Date()): Date {
 	const date = new Date(d)
@@ -338,6 +344,101 @@ export function createAdminRouter(aiService: AIService) {
 		const { id } = req.params
 		const [result] = await db.delete(sprints).where(eq(sprints.userId, id))
 		res.json({ deleted: result.affectedRows })
+	})
+
+	adminRouter.get("/admin/tournaments", async (_req, res) => {
+		const rows = await db
+			.select()
+			.from(tournaments)
+			.orderBy(desc(tournaments.startDate))
+
+		const participantCounts = await db
+			.select({
+				tournamentId: tournamentParticipants.tournamentId,
+				count: count(),
+			})
+			.from(tournamentParticipants)
+			.groupBy(tournamentParticipants.tournamentId)
+
+		const countMap = new Map(
+			participantCounts.map((p) => [p.tournamentId, p.count]),
+		)
+
+		res.json(
+			rows.map((t) => ({
+				id: t.id,
+				name: t.name,
+				creatorId: t.creatorId,
+				startDate: t.startDate,
+				endDate: t.endDate,
+				type: t.type,
+				goalValue: t.goalValue,
+				rewardDescription: t.rewardDescription,
+				winnerId: t.winnerId,
+				victoryMessage: t.victoryMessage,
+				resolvedAt: t.resolvedAt,
+				participantCount: countMap.get(t.id) ?? 0,
+			})),
+		)
+	})
+
+	adminRouter.get("/admin/tournaments/:id", async (req, res) => {
+		const tournamentId = Number(req.params.id)
+		if (Number.isNaN(tournamentId)) {
+			res.status(400).json({ error: "Invalid tournament ID" })
+			return
+		}
+
+		const [tournament] = await db
+			.select()
+			.from(tournaments)
+			.where(eq(tournaments.id, tournamentId))
+
+		if (!tournament) {
+			res.status(404).json({ error: "Tournament not found" })
+			return
+		}
+
+		const participants = await db
+			.select({
+				userId: tournamentParticipants.userId,
+				userName: users.name,
+				joinedAt: tournamentParticipants.joinedAt,
+				completed: tournamentParticipants.completed,
+			})
+			.from(tournamentParticipants)
+			.innerJoin(users, eq(tournamentParticipants.userId, users.id))
+			.where(eq(tournamentParticipants.tournamentId, tournamentId))
+
+		const withScores = await Promise.all(
+			participants.map(async (p) => ({
+				...p,
+				score: await computeScore(
+					p.userId,
+					tournament.type as TournamentType,
+					tournament.startDate,
+					tournament.endDate,
+				),
+			})),
+		)
+		withScores.sort((a, b) => b.score - a.score)
+
+		res.json({
+			tournament: {
+				id: tournament.id,
+				name: tournament.name,
+				creatorId: tournament.creatorId,
+				startDate: tournament.startDate,
+				endDate: tournament.endDate,
+				type: tournament.type,
+				goalValue: tournament.goalValue,
+				rewardDescription: tournament.rewardDescription,
+				winnerId: tournament.winnerId,
+				victoryMessage: tournament.victoryMessage,
+				resolvedAt: tournament.resolvedAt,
+			},
+			participants: withScores,
+		})
 	})
 
 	const DEFAULT_SEED_TASKS: SprintTask[] = [

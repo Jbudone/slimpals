@@ -62,10 +62,42 @@ type UserSprintState = {
 	progress: number
 }
 
+type AdminTournamentSummary = {
+	id: number
+	name: string
+	type: string
+	startDate: string
+	endDate: string
+	winnerId: string | null
+	resolvedAt: string | null
+	participantCount: number
+}
+
+type AdminTournamentDetail = {
+	tournament: AdminTournamentSummary & {
+		goalValue: number | null
+		rewardDescription: string | null
+		victoryMessage: string | null
+	}
+	participants: {
+		userId: string
+		userName: string
+		joinedAt: string
+		completed: boolean
+		score: number
+	}[]
+}
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
 let loadError = $state<string | null>(null)
+
+let tournaments = $state<AdminTournamentSummary[]>([])
+let expandedTournamentId = $state<number | null>(null)
+let tournamentDetail = $state<AdminTournamentDetail | null>(null)
+let tournamentDetailLoading = $state(false)
+let tournamentDetailError = $state<string | null>(null)
 
 let newName = $state("")
 let newEmail = $state("")
@@ -124,14 +156,36 @@ const badgesByTier = $derived(
 async function load() {
 	loading = true
 	try {
-		;[users, allBadges] = await Promise.all([
+		;[users, allBadges, tournaments] = await Promise.all([
 			api.get<AdminUser[]>("/admin/users"),
 			api.get<Badge[]>("/badges"),
+			api.get<AdminTournamentSummary[]>("/admin/tournaments"),
 		])
 	} catch (e) {
 		loadError = e instanceof Error ? e.message : "Failed to load"
 	} finally {
 		loading = false
+	}
+}
+
+async function viewTournament(id: number) {
+	if (expandedTournamentId === id) {
+		expandedTournamentId = null
+		tournamentDetail = null
+		return
+	}
+	expandedTournamentId = id
+	tournamentDetail = null
+	tournamentDetailError = null
+	tournamentDetailLoading = true
+	try {
+		tournamentDetail = await api.get<AdminTournamentDetail>(
+			`/admin/tournaments/${id}`,
+		)
+	} catch (e) {
+		tournamentDetailError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		tournamentDetailLoading = false
 	}
 }
 
@@ -772,6 +826,78 @@ onMount(load)
 					{/each}
 				</tbody>
 			</table>
+		</section>
+		<section class="card">
+			<h2>Tournaments ({tournaments.length})</h2>
+			{#if tournaments.length === 0}
+				<p class="muted">No tournaments yet.</p>
+			{:else}
+				<table class="user-table">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Type</th>
+							<th>Start</th>
+							<th>End</th>
+							<th>Participants</th>
+							<th>Resolved</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each tournaments as t (t.id)}
+							<tr>
+								<td>{t.name}</td>
+								<td>{t.type}</td>
+								<td>{new Date(t.startDate).toLocaleDateString()}</td>
+								<td>{new Date(t.endDate).toLocaleDateString()}</td>
+								<td>{t.participantCount}</td>
+								<td>{t.resolvedAt ? "Yes" : "No"}</td>
+								<td>
+									<button class="btn outline sm" onclick={() => viewTournament(t.id)}>
+										{expandedTournamentId === t.id ? "Hide" : "View"}
+									</button>
+								</td>
+							</tr>
+							{#if expandedTournamentId === t.id}
+								<tr>
+									<td colspan="7">
+										<div class="challenge-view">
+											{#if tournamentDetailLoading}
+												<p class="muted">Loading…</p>
+											{:else if tournamentDetailError}
+												<p class="error-text">{tournamentDetailError}</p>
+											{:else if tournamentDetail}
+												{#if tournamentDetail.tournament.winnerId}
+													<p class="challenge-meta">
+														Winner: {tournamentDetail.participants.find(
+															(p) => p.userId === tournamentDetail?.tournament.winnerId,
+														)?.userName ?? tournamentDetail.tournament.winnerId}
+														{#if tournamentDetail.tournament.victoryMessage}
+															— {tournamentDetail.tournament.victoryMessage}
+														{/if}
+													</p>
+												{/if}
+												<ul class="goal-list">
+													{#each tournamentDetail.participants as p (p.userId)}
+														<li>
+															<span class="goal-name">{p.userName}</span>
+															<span class="goal-progress">
+																score {p.score}
+																{p.completed ? "· completed" : ""}
+															</span>
+														</li>
+													{/each}
+												</ul>
+											{/if}
+										</div>
+									</td>
+								</tr>
+							{/if}
+						{/each}
+					</tbody>
+				</table>
+			{/if}
 		</section>
 	{/if}
 </div>
