@@ -44,6 +44,24 @@ type UserChallengeState = {
 	totalGoals: number
 }
 
+type SprintTask = {
+	id: string
+	title: string
+	description: string
+}
+
+type UserSprintState = {
+	sprint: {
+		id: number
+		title: string
+		weekStart: string
+		tasks: SprintTask[]
+	} | null
+	completedTasks: string[] | null
+	completedAt: string | null
+	progress: number
+}
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
@@ -57,13 +75,17 @@ let createResult = $state<{ text: string; ok: boolean } | null>(null)
 
 let expandedId = $state<string | null>(null)
 let seedTab = $state<
-	"checkins" | "weight" | "badges" | "food" | "gym" | "challenges"
+	"checkins" | "weight" | "badges" | "food" | "gym" | "challenges" | "sprints"
 >("checkins")
 let seedStatus = $state<{ text: string; ok: boolean } | null>(null)
 
 let challengeState = $state<UserChallengeState | null>(null)
 let challengeLoading = $state(false)
 let challengeError = $state<string | null>(null)
+
+let sprintState = $state<UserSprintState | null>(null)
+let sprintLoading = $state(false)
+let sprintError = $state<string | null>(null)
 
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
@@ -158,6 +180,8 @@ function toggleExpand(userId: string) {
 		selectedKeys = new Set()
 		challengeState = null
 		challengeError = null
+		sprintState = null
+		sprintError = null
 	}
 }
 
@@ -175,14 +199,37 @@ async function loadChallengeState(userId: string) {
 	}
 }
 
+async function loadSprintState(userId: string) {
+	sprintLoading = true
+	sprintError = null
+	try {
+		sprintState = await api.get<UserSprintState>(
+			`/admin/users/${userId}/sprint`,
+		)
+	} catch (e) {
+		sprintError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		sprintLoading = false
+	}
+}
+
 async function selectTab(
 	userId: string,
-	tab: "checkins" | "weight" | "badges" | "food" | "gym" | "challenges",
+	tab:
+		| "checkins"
+		| "weight"
+		| "badges"
+		| "food"
+		| "gym"
+		| "challenges"
+		| "sprints",
 ) {
 	seedTab = tab
 	seedStatus = null
 	if (tab === "challenges") {
 		await loadChallengeState(userId)
+	} else if (tab === "sprints") {
+		await loadSprintState(userId)
 	}
 }
 
@@ -343,7 +390,7 @@ onMount(load)
 								<td colspan="4">
 									<div class="seed-panel">
 										<div class="tab-bar">
-											{#each (["checkins", "weight", "badges", "food", "gym", "challenges"] as const) as tab}
+											{#each (["checkins", "weight", "badges", "food", "gym", "challenges", "sprints"] as const) as tab}
 												<button
 													class="tab"
 													class:active={seedTab === tab}
@@ -525,6 +572,36 @@ onMount(load)
 																{/each}
 															</ul>
 														{/if}
+													{/if}
+												</div>
+											{:else if seedTab === "sprints"}
+												<div class="challenge-view">
+													{#if sprintLoading}
+														<p class="muted">Loading…</p>
+													{:else if sprintError}
+														<p class="error-text">{sprintError}</p>
+													{:else if !sprintState?.sprint}
+														<p class="muted">No sprint exists for the current week.</p>
+													{:else}
+														<h3 class="challenge-title">{sprintState.sprint.title}</h3>
+														<p class="challenge-meta">
+															{sprintState.progress}% complete
+															{#if sprintState.completedAt}
+																— completed {new Date(sprintState.completedAt).toLocaleString()}
+															{:else}
+																— not yet completed
+															{/if}
+														</p>
+														<ul class="goal-list">
+															{#each sprintState.sprint.tasks as task (task.id)}
+																<li>
+																	<span class="goal-name">{task.title}</span>
+																	<span class="goal-progress">
+																		{sprintState.completedTasks?.includes(task.id) ? "Done" : "Not done"}
+																	</span>
+																</li>
+															{/each}
+														</ul>
 													{/if}
 												</div>
 											{/if}

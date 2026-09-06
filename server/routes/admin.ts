@@ -10,14 +10,28 @@ import {
 	dailyCheckins,
 	foodLogs,
 	sessions,
+	sprints,
 	userBadges,
 	userChallenges,
 	users,
 	weightEntries,
 } from "../db/schema.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
-import type { AIService, ChallengeGoal } from "../services/ai/index.js"
+import type {
+	AIService,
+	ChallengeGoal,
+	SprintTask,
+} from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
+
+function getMondayOfWeek(d: Date = new Date()): Date {
+	const date = new Date(d)
+	date.setUTCHours(0, 0, 0, 0)
+	const day = date.getUTCDay()
+	const diff = day === 0 ? 6 : day - 1
+	date.setUTCDate(date.getUTCDate() - diff)
+	return date
+}
 
 export function createAdminRouter(aiService: AIService) {
 	const adminRouter = Router()
@@ -275,6 +289,45 @@ export function createAdminRouter(aiService: AIService) {
 			.delete(userChallenges)
 			.where(eq(userChallenges.userId, id))
 		res.json({ deleted: result.affectedRows })
+	})
+
+	adminRouter.get("/admin/users/:id/sprint", async (req, res) => {
+		const { id } = req.params
+		const monday = getMondayOfWeek()
+
+		const [sprint] = await db
+			.select()
+			.from(sprints)
+			.where(and(eq(sprints.userId, id), eq(sprints.weekStart, monday)))
+			.limit(1)
+
+		if (!sprint) {
+			res.json({
+				sprint: null,
+				completedTasks: null,
+				completedAt: null,
+				progress: 0,
+			})
+			return
+		}
+
+		const tasks = sprint.tasks as SprintTask[]
+		const completedTasks = (sprint.completedTasks ?? []) as string[]
+
+		res.json({
+			sprint: {
+				id: sprint.id,
+				title: sprint.title,
+				weekStart: sprint.weekStart,
+				tasks,
+			},
+			completedTasks,
+			completedAt: sprint.completedAt,
+			progress:
+				tasks.length > 0
+					? Math.round((completedTasks.length / tasks.length) * 100)
+					: 0,
+		})
 	})
 
 	const DEFAULT_SEED_GOALS: ChallengeGoal[] = [
