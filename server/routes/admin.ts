@@ -597,31 +597,29 @@ export function createAdminRouter(aiService: AIService) {
 			.from(userGyms)
 			.where(eq(userGyms.userId, id))
 
-		if (!gym) {
-			res.json({ hasGym: false, npcs: [] })
-			return
-		}
+		const catalog = await db.select().from(gymNpcs)
 
-		const [catalog, relRows, unlockedRows, dailyRows] = await Promise.all([
-			db.select().from(gymNpcs),
-			db
-				.select()
-				.from(userGymNpcRelationships)
-				.where(eq(userGymNpcRelationships.gymId, gym.id)),
-			db
-				.select()
-				.from(userGymUpgrades)
-				.where(eq(userGymUpgrades.gymId, gym.id)),
-			db
-				.select()
-				.from(gymNpcDailyState)
-				.where(
-					and(
-						eq(gymNpcDailyState.gymId, gym.id),
-						eq(gymNpcDailyState.date, startOfToday()),
-					),
-				),
-		])
+		const [relRows, unlockedRows, dailyRows] = gym
+			? await Promise.all([
+					db
+						.select()
+						.from(userGymNpcRelationships)
+						.where(eq(userGymNpcRelationships.gymId, gym.id)),
+					db
+						.select()
+						.from(userGymUpgrades)
+						.where(eq(userGymUpgrades.gymId, gym.id)),
+					db
+						.select()
+						.from(gymNpcDailyState)
+						.where(
+							and(
+								eq(gymNpcDailyState.gymId, gym.id),
+								eq(gymNpcDailyState.date, startOfToday()),
+							),
+						),
+				])
+			: [[], [], []]
 
 		const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
 
@@ -646,7 +644,7 @@ export function createAdminRouter(aiService: AIService) {
 			}
 		})
 
-		res.json({ hasGym: true, npcs })
+		res.json({ hasGym: !!gym, npcs })
 	})
 
 	adminRouter.patch("/admin/users/:id/gym/npcs/:npcKey", async (req, res) => {

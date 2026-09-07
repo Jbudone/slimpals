@@ -136,13 +136,28 @@ describe("GET /api/admin/users/:id/gym/npcs", () => {
 		expect(res.status).toBe(403)
 	})
 
-	it("returns hasGym: false for a user with no gym", async () => {
+	it("returns hasGym: false but still lists the catalog for a user with no gym", async () => {
 		const { adminCookie, memberId } = await adminAndMember()
 		const res = await request(app)
 			.get(`/api/admin/users/${memberId}/gym/npcs`)
 			.set("Cookie", adminCookie)
 		expect(res.status).toBe(200)
-		expect(res.body).toEqual({ hasGym: false, npcs: [] })
+		expect(res.body.hasGym).toBe(false)
+		expect(res.body.npcs.length).toBeGreaterThanOrEqual(2)
+
+		const trainer = res.body.npcs.find(
+			(n: { key: string }) => n.key === "trainer_test",
+		)
+		expect(trainer).toMatchObject({
+			unlocked: true,
+			relationshipLevel: 0,
+			relationshipStage: 0,
+			stageLabel: "Stranger",
+			interactionCount: 0,
+			gymDaysActive: 0,
+			mood: null,
+			goalSequence: null,
+		})
 	})
 
 	it("lists catalog NPCs with defaults when no relationship/daily-state exists", async () => {
