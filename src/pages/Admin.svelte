@@ -105,6 +105,20 @@ type AdminFoodEntry = {
 	isShared: boolean
 }
 
+type AdminGymNpc = {
+	key: string
+	name: string
+	role: string
+	unlocked: boolean
+	relationshipLevel: number
+	relationshipStage: number
+	stageLabel: string
+	interactionCount: number
+	gymDaysActive: number
+	mood: number | null
+	goalSequence: unknown[] | null
+}
+
 type AdminSocialPost = {
 	id: number
 	userId: string
@@ -182,6 +196,16 @@ let editFoodMealType = $state<"breakfast" | "lunch" | "dinner" | "snack">(
 	"breakfast",
 )
 let editFoodLoggedAt = $state("")
+
+let gymNpcsForUser = $state<AdminGymNpc[]>([])
+let gymNpcsHasGym = $state(true)
+let gymNpcsLoading = $state(false)
+let gymNpcsError = $state<string | null>(null)
+let editingGymNpcKey = $state<string | null>(null)
+let editRelationshipLevel = $state(0)
+let editMood = $state(0)
+let editGoalSequenceText = $state("[]")
+let editGymNpcError = $state<string | null>(null)
 
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
@@ -556,6 +580,57 @@ async function deleteFoodEntry(userId: string, id: number) {
 	}
 }
 
+async function loadGymNpcs(userId: string) {
+	gymNpcsLoading = true
+	gymNpcsError = null
+	try {
+		const result = await api.get<{ hasGym: boolean; npcs: AdminGymNpc[] }>(
+			`/admin/users/${userId}/gym/npcs`,
+		)
+		gymNpcsHasGym = result.hasGym
+		gymNpcsForUser = result.npcs
+	} catch (e) {
+		gymNpcsError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		gymNpcsLoading = false
+	}
+}
+
+function startEditGymNpc(npc: AdminGymNpc) {
+	editingGymNpcKey = npc.key
+	editRelationshipLevel = npc.relationshipLevel
+	editMood = npc.mood ?? 0
+	editGoalSequenceText = JSON.stringify(npc.goalSequence ?? [], null, 2)
+	editGymNpcError = null
+}
+
+function cancelEditGymNpc() {
+	editingGymNpcKey = null
+	editGymNpcError = null
+}
+
+async function saveEditGymNpc(userId: string, npcKey: string) {
+	editGymNpcError = null
+	let goalSequence: unknown
+	try {
+		goalSequence = JSON.parse(editGoalSequenceText)
+	} catch {
+		editGymNpcError = "goalSequence must be valid JSON"
+		return
+	}
+	try {
+		await api.patch(`/admin/users/${userId}/gym/npcs/${npcKey}`, {
+			relationshipLevel: editRelationshipLevel,
+			mood: editMood,
+			goalSequence,
+		})
+		editingGymNpcKey = null
+		await loadGymNpcs(userId)
+	} catch (e) {
+		editGymNpcError = e instanceof Error ? e.message : "Update failed"
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab:
@@ -577,6 +652,8 @@ async function selectTab(
 		await loadWeightEntries(userId)
 	} else if (tab === "food") {
 		await loadFoodEntries(userId)
+	} else if (tab === "gym") {
+		await loadGymNpcs(userId)
 	}
 }
 
@@ -1003,6 +1080,58 @@ onMount(load)
 													>
 														Generate Gym Content
 													</button>
+												</div>
+												<div class="challenge-view">
+													{#if gymNpcsLoading}
+														<p class="muted">Loading…</p>
+													{:else if gymNpcsError}
+														<p class="error-text">{gymNpcsError}</p>
+													{:else if !gymNpcsHasGym}
+														<p class="muted">This user has no gym yet — editing an NPC below will create one.</p>
+													{/if}
+													{#if !gymNpcsLoading && !gymNpcsError}
+														<ul class="goal-list">
+															{#each gymNpcsForUser as npc (npc.key)}
+																<li class:gym-npc-row={editingGymNpcKey === npc.key}>
+																	{#if editingGymNpcKey === npc.key}
+																		<div class="gym-npc-edit">
+																			<div class="field-row">
+																				<label>
+																					Relationship level
+																					<input type="number" class="inp inp-sm" bind:value={editRelationshipLevel} min="0" max="100" />
+																				</label>
+																				<label>
+																					Mood
+																					<input type="number" class="inp inp-sm" bind:value={editMood} min="-100" max="100" />
+																				</label>
+																			</div>
+																			<label class="gym-npc-goal-label">
+																				Goal sequence (JSON array)
+																				<textarea class="inp gym-npc-textarea" bind:value={editGoalSequenceText}></textarea>
+																			</label>
+																			{#if editGymNpcError}
+																				<p class="error-text">{editGymNpcError}</p>
+																			{/if}
+																			<div class="field-row">
+																				<button class="btn primary sm" onclick={() => saveEditGymNpc(user.id, npc.key)}>Save</button>
+																				<button class="btn outline sm" onclick={cancelEditGymNpc}>Cancel</button>
+																			</div>
+																		</div>
+																	{:else}
+																		<span class="goal-name">
+																			{npc.name} <span class="muted">({npc.role})</span>
+																			{#if !npc.unlocked}· <span class="muted">locked</span>{/if}
+																		</span>
+																		<span class="goal-progress">
+																			Level {npc.relationshipLevel} · {npc.stageLabel}
+																			· mood {npc.mood ?? "—"}
+																		</span>
+																		<button class="btn outline sm" onclick={() => startEditGymNpc(npc)}>Edit</button>
+																	{/if}
+																</li>
+															{/each}
+														</ul>
+													{/if}
 												</div>
 											{:else if seedTab === "challenges"}
 												<div class="field-row">
@@ -1712,5 +1841,31 @@ onMount(load)
 .goal-progress {
 	color: var(--color-text-muted);
 	white-space: nowrap;
+}
+
+.gym-npc-row {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.gym-npc-edit {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: 100%;
+}
+
+.gym-npc-goal-label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: 0.8rem;
+}
+
+.gym-npc-textarea {
+	min-height: 5rem;
+	font-family: monospace;
+	font-size: 0.8rem;
+	resize: vertical;
 }
 </style>

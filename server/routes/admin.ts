@@ -9,6 +9,8 @@ import {
 	challenges,
 	dailyCheckins,
 	foodLogs,
+	gymNpcDailyState,
+	gymNpcs,
 	reactions,
 	sessions,
 	socialPosts,
@@ -17,6 +19,9 @@ import {
 	tournaments,
 	userBadges,
 	userChallenges,
+	userGymNpcRelationships,
+	userGyms,
+	userGymUpgrades,
 	users,
 	weightEntries,
 } from "../db/schema.js"
@@ -28,6 +33,13 @@ import type {
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
 import {
+	getOrCreateRelationship,
+	getRelationshipStage,
+	getStageLabel,
+} from "../services/gym/dialog.js"
+import { getOrCreateGym } from "../services/gym/index.js"
+import type { ActivityStep } from "../services/gym/simulation.js"
+import {
 	generateSprintForUser,
 	generateSprintsForAllUsers,
 } from "../services/sprints/index.js"
@@ -36,6 +48,28 @@ import {
 	resolveTournament,
 	type TournamentType,
 } from "../services/tournaments/index.js"
+
+function startOfToday(): Date {
+	const d = new Date()
+	d.setHours(0, 0, 0, 0)
+	return d
+}
+
+function isValidGoalSequence(value: unknown): value is ActivityStep[] {
+	if (!Array.isArray(value)) return false
+	return value.every(
+		(step) =>
+			typeof step === "object" &&
+			step !== null &&
+			["warmup", "main", "cooldown"].includes(
+				(step as { type?: unknown }).type as string,
+			) &&
+			typeof (step as { durationMin?: unknown }).durationMin === "number" &&
+			(step as { durationMin: number }).durationMin > 0 &&
+			typeof (step as { equipmentCategory?: unknown }).equipmentCategory ===
+				"string",
+	)
+}
 
 function getMondayOfWeek(d: Date = new Date()): Date {
 	const date = new Date(d)
@@ -553,6 +587,191 @@ export function createAdminRouter(aiService: AIService) {
 		await db.delete(foodLogs).where(eq(foodLogs.id, entryId))
 
 		res.json({ success: true })
+	})
+
+	adminRouter.get("/admin/users/:id/gym/npcs", async (req, res) => {
+		const { id } = req.params
+
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, id))
+
+		if (!gym) {
+			res.json({ hasGym: false, npcs: [] })
+			return
+		}
+
+		const [catalog, relRows, unlockedRows, dailyRows] = await Promise.all([
+			db.select().from(gymNpcs),
+			db
+				.select()
+				.from(userGymNpcRelationships)
+				.where(eq(userGymNpcRelationships.gymId, gym.id)),
+			db
+				.select()
+				.from(userGymUpgrades)
+				.where(eq(userGymUpgrades.gymId, gym.id)),
+			db
+				.select()
+				.from(gymNpcDailyState)
+				.where(
+					and(
+						eq(gymNpcDailyState.gymId, gym.id),
+						eq(gymNpcDailyState.date, startOfToday()),
+					),
+				),
+		])
+
+		const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
+
+		const npcs = catalog.map((npc) => {
+			const rel = relRows.find((r) => r.npcKey === npc.key)
+			const daily = dailyRows.find((r) => r.npcKey === npc.key)
+			const level = rel?.relationshipLevel ?? 0
+			return {
+				key: npc.key,
+				name: npc.name,
+				role: npc.role,
+				unlocked:
+					!npc.unlockedByUpgradeKey ||
+					unlockedKeys.has(npc.unlockedByUpgradeKey),
+				relationshipLevel: level,
+				relationshipStage: getRelationshipStage(level),
+				stageLabel: getStageLabel(getRelationshipStage(level)),
+				interactionCount: rel?.interactionCount ?? 0,
+				gymDaysActive: rel?.gymDaysActive ?? 0,
+				mood: daily?.mood ?? null,
+				goalSequence: daily?.goalSequence ?? null,
+			}
+		})
+
+		res.json({ hasGym: true, npcs })
+	})
+
+	adminRouter.patch("/admin/users/:id/gym/npcs/:npcKey", async (req, res) => {
+		const { id, npcKey } = req.params
+		const { relationshipLevel, mood, goalSequence } = req.body as {
+			relationshipLevel?: number
+			mood?: number
+			goalSequence?: unknown
+		}
+
+		const [npc] = await db.select().from(gymNpcs).where(eq(gymNpcs.key, npcKey))
+
+		if (!npc) {
+			res.status(404).json({ error: "NPC not found" })
+			return
+		}
+
+		if (
+			relationshipLevel !== undefined &&
+			(!Number.isInteger(relationshipLevel) ||
+				relationshipLevel < 0 ||
+				relationshipLevel > 100)
+		) {
+			res
+				.status(400)
+				.json({ error: "relationshipLevel must be an integer 0-100" })
+			return
+		}
+
+		if (
+			mood !== undefined &&
+			(!Number.isInteger(mood) || mood < -100 || mood > 100)
+		) {
+			res.status(400).json({ error: "mood must be an integer -100 to 100" })
+			return
+		}
+
+		if (goalSequence !== undefined && !isValidGoalSequence(goalSequence)) {
+			res.status(400).json({
+				error:
+					"goalSequence must be an array of { type, durationMin, equipmentCategory }",
+			})
+			return
+		}
+
+		const gym = await getOrCreateGym(id, db)
+		const rel = await getOrCreateRelationship(gym.id, npcKey, db)
+
+		if (relationshipLevel !== undefined) {
+			await db
+				.update(userGymNpcRelationships)
+				.set({ relationshipLevel })
+				.where(eq(userGymNpcRelationships.id, rel.id))
+		}
+
+		if (mood !== undefined || goalSequence !== undefined) {
+			const dateStart = startOfToday()
+			const [existingDaily] = await db
+				.select()
+				.from(gymNpcDailyState)
+				.where(
+					and(
+						eq(gymNpcDailyState.gymId, gym.id),
+						eq(gymNpcDailyState.npcKey, npcKey),
+						eq(gymNpcDailyState.date, dateStart),
+					),
+				)
+
+			if (existingDaily) {
+				const updates: Partial<typeof gymNpcDailyState.$inferInsert> = {}
+				if (mood !== undefined) updates.mood = mood
+				if (goalSequence !== undefined)
+					updates.goalSequence = goalSequence as ActivityStep[]
+				await db
+					.update(gymNpcDailyState)
+					.set(updates)
+					.where(eq(gymNpcDailyState.id, existingDaily.id))
+			} else {
+				const profile = npc.personalityProfile as { moodBaseline?: number }
+				await db.insert(gymNpcDailyState).values({
+					gymId: gym.id,
+					npcKey,
+					date: dateStart,
+					mood: mood ?? profile.moodBaseline ?? 0,
+					goalSequence: (goalSequence as ActivityStep[]) ?? [],
+				})
+			}
+		}
+
+		const [updatedRel] = await db
+			.select()
+			.from(userGymNpcRelationships)
+			.where(eq(userGymNpcRelationships.id, rel.id))
+		const [updatedDaily] = await db
+			.select()
+			.from(gymNpcDailyState)
+			.where(
+				and(
+					eq(gymNpcDailyState.gymId, gym.id),
+					eq(gymNpcDailyState.npcKey, npcKey),
+					eq(gymNpcDailyState.date, startOfToday()),
+				),
+			)
+		const unlockedRows2 = await db
+			.select()
+			.from(userGymUpgrades)
+			.where(eq(userGymUpgrades.gymId, gym.id))
+		const unlockedKeys = new Set(unlockedRows2.map((r) => r.upgradeKey))
+
+		res.json({
+			key: npc.key,
+			name: npc.name,
+			role: npc.role,
+			unlocked:
+				!npc.unlockedByUpgradeKey || unlockedKeys.has(npc.unlockedByUpgradeKey),
+			relationshipLevel: updatedRel.relationshipLevel,
+			relationshipStage: getRelationshipStage(updatedRel.relationshipLevel),
+			stageLabel: getStageLabel(
+				getRelationshipStage(updatedRel.relationshipLevel),
+			),
+			interactionCount: updatedRel.interactionCount,
+			gymDaysActive: updatedRel.gymDaysActive,
+			mood: updatedDaily?.mood ?? null,
+			goalSequence: updatedDaily?.goalSequence ?? null,
+		})
 	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
