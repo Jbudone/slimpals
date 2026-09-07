@@ -2,7 +2,11 @@
 import { onMount } from "svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
-import { fetchUserProfile, userProfile } from "./lib/user.svelte.js"
+import {
+	fetchUserProfile,
+	stopImpersonating,
+	userProfile,
+} from "./lib/user.svelte.js"
 import Admin from "./pages/Admin.svelte"
 import Badges from "./pages/Badges.svelte"
 import Challenges from "./pages/Challenges.svelte"
@@ -21,6 +25,7 @@ let currentPath = $derived(nav.path)
 let isLoggedIn = $derived(authState.user !== null)
 let isLoading = $derived(authState.loading)
 let isAdmin = $derived(userProfile.data?.isAdmin ?? false)
+let impersonatedBy = $derived(userProfile.data?.impersonatedBy ?? null)
 
 onMount(async () => {
 	await fetchSession()
@@ -44,6 +49,13 @@ async function handleLogout() {
 	await logout()
 	page("/login")
 }
+
+async function handleStopImpersonating() {
+	await stopImpersonating()
+	await fetchSession()
+	await fetchUserProfile()
+	page("/admin")
+}
 </script>
 
 {#if isLoading}
@@ -55,6 +67,14 @@ async function handleLogout() {
 {:else if !isLoggedIn}
 	<Login />
 {:else}
+	{#if impersonatedBy}
+		<div class="impersonation-banner">
+			👤 Impersonating <strong>{userProfile.data?.name}</strong> (as {impersonatedBy.name})
+			<button class="stop-impersonating-btn" onclick={handleStopImpersonating}>
+				Return to {impersonatedBy.name}
+			</button>
+		</div>
+	{/if}
 	<nav class="top-nav">
 		<span class="brand">SlimPals</span>
 		<a class="nav-link" href="/" onclick={(e) => { e.preventDefault(); page("/") }}>Dashboard</a>
@@ -108,6 +128,33 @@ async function handleLogout() {
 	min-height: 100vh;
 	background: var(--color-bg);
 	color: var(--color-text-muted);
+}
+
+.impersonation-banner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	padding: 0.5rem 1rem;
+	background: #7c2d12;
+	color: #fed7aa;
+	font-size: 0.85rem;
+	text-align: center;
+}
+
+.stop-impersonating-btn {
+	background: #fed7aa;
+	color: #7c2d12;
+	border: none;
+	border-radius: 0.375rem;
+	padding: 0.25rem 0.75rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.stop-impersonating-btn:hover {
+	background: #fff;
 }
 
 .top-nav {

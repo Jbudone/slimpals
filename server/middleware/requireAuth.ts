@@ -15,6 +15,31 @@ export async function requireAuth(
 	res: Response,
 	next: NextFunction,
 ) {
+	// A real session (including one set up by admin impersonation) always
+	// wins over dev-autologin — otherwise autologin makes it impossible to
+	// ever be anyone but the autologin user, impersonation included.
+	// Dev-autologin only kicks in as a fallback when the browser has no
+	// session at all, so the login screen can still be skipped.
+	const session = await auth.api.getSession({
+		headers: fromNodeHeaders(req.headers),
+	})
+	if (session) {
+		;(
+			req as Request & {
+				user: typeof session.user
+				session: typeof session.session
+			}
+		).user = session.user
+		;(
+			req as Request & {
+				user: typeof session.user
+				session: typeof session.session
+			}
+		).session = session.session
+		next()
+		return
+	}
+
 	const devUser = await getDevAutologinUser()
 	if (devUser) {
 		;(req as AuthRequest).user = devUser as AuthRequest["user"]
@@ -26,25 +51,5 @@ export async function requireAuth(
 		return
 	}
 
-	const session = await auth.api.getSession({
-		headers: fromNodeHeaders(req.headers),
-	})
-	if (!session) {
-		res.status(401).json({ error: "Unauthorized" })
-		return
-	}
-	// Attach session data for downstream handlers
-	;(
-		req as Request & {
-			user: typeof session.user
-			session: typeof session.session
-		}
-	).user = session.user
-	;(
-		req as Request & {
-			user: typeof session.user
-			session: typeof session.session
-		}
-	).session = session.session
-	next()
+	res.status(401).json({ error: "Unauthorized" })
 }

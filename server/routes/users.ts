@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm"
-import { Router } from "express"
+import { type Request, Router } from "express"
 import type { CoachPersonality, ViewMode } from "../../shared/types.js"
 import { db } from "../db/index.js"
 import { users } from "../db/schema.js"
+import { IMPERSONATOR_COOKIE, parseCookies } from "../lib/cookies.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 
 export const usersRouter = Router()
@@ -42,6 +43,18 @@ function userPayload(user: typeof users.$inferSelect) {
 	}
 }
 
+async function getImpersonatedBy(
+	req: Request,
+): Promise<{ id: string; name: string } | null> {
+	const adminId = parseCookies(req.headers.cookie)[IMPERSONATOR_COOKIE]
+	if (!adminId) return null
+	const [admin] = await db
+		.select({ id: users.id, name: users.name })
+		.from(users)
+		.where(eq(users.id, adminId))
+	return admin ?? null
+}
+
 usersRouter.get("/users/me", async (req, res) => {
 	const userId = (req as AuthRequest).user.id
 	const [user] = await db.select().from(users).where(eq(users.id, userId))
@@ -49,7 +62,10 @@ usersRouter.get("/users/me", async (req, res) => {
 		res.status(404).json({ error: "User not found" })
 		return
 	}
-	res.json(userPayload(user))
+	res.json({
+		...userPayload(user),
+		impersonatedBy: await getImpersonatedBy(req),
+	})
 })
 
 usersRouter.patch("/users/me", async (req, res) => {
@@ -143,5 +159,8 @@ usersRouter.patch("/users/me", async (req, res) => {
 	await db.update(users).set(updates).where(eq(users.id, userId))
 
 	const [updated] = await db.select().from(users).where(eq(users.id, userId))
-	res.json(userPayload(updated))
+	res.json({
+		...userPayload(updated),
+		impersonatedBy: await getImpersonatedBy(req),
+	})
 })

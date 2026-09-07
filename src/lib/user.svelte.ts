@@ -14,6 +14,7 @@ export type UserProfile = {
 	autoShareFoodLogs: boolean
 	autoShareBadges: boolean
 	autoShareWeightMilestones: boolean
+	impersonatedBy: { id: string; name: string } | null
 }
 
 export const userProfile = $state<{ data: UserProfile | null }>({ data: null })
@@ -48,6 +49,13 @@ export async function updateTheme(theme: Theme) {
 		userProfile.data = data
 		applyTheme(data.theme)
 	}
+}
+
+export async function stopImpersonating() {
+	await fetch("/api/admin/stop-impersonating", {
+		method: "POST",
+		credentials: "include",
+	})
 }
 
 export async function updateCoachPersonality(

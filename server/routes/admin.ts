@@ -25,7 +25,9 @@ import {
 	users,
 	weightEntries,
 } from "../db/schema.js"
+import { IMPERSONATOR_COOKIE, parseCookies } from "../lib/cookies.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
+import type { AuthRequest } from "../middleware/requireAuth.js"
 import type {
 	AIService,
 	ChallengeGoal,
@@ -69,6 +71,22 @@ function isValidGoalSequence(value: unknown): value is ActivityStep[] {
 			typeof (step as { equipmentCategory?: unknown }).equipmentCategory ===
 				"string",
 	)
+}
+
+async function createSessionCookie(userId: string): Promise<string> {
+	const token = randomBytes(32).toString("hex")
+	const secret = process.env.BETTER_AUTH_SECRET ?? "dev-secret-please-change"
+
+	await db.insert(sessions).values({
+		id: randomUUID(),
+		token,
+		userId,
+		expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+	})
+
+	const signature = createHmac("sha256", secret).update(token).digest("base64")
+	const cookieValue = encodeURIComponent(`${token}.${signature}`)
+	return `better-auth.session_token=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`
 }
 
 function getMondayOfWeek(d: Date = new Date()): Date {
@@ -145,25 +163,13 @@ export function createAdminRouter(aiService: AIService) {
 			return
 		}
 
-		const token = randomBytes(32).toString("hex")
-		const secret = process.env.BETTER_AUTH_SECRET ?? "dev-secret-please-change"
+		const adminId = (req as unknown as AuthRequest).user.id
+		const sessionCookie = await createSessionCookie(id)
 
-		await db.insert(sessions).values({
-			id: randomUUID(),
-			token,
-			userId: id,
-			expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-		})
-
-		const signature = createHmac("sha256", secret)
-			.update(token)
-			.digest("base64")
-		const cookieValue = encodeURIComponent(`${token}.${signature}`)
-
-		res.setHeader(
-			"Set-Cookie",
-			`better-auth.session_token=${cookieValue}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`,
-		)
+		res.setHeader("Set-Cookie", [
+			sessionCookie,
+			`${IMPERSONATOR_COOKIE}=${adminId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`,
+		])
 		res.json({ success: true })
 	})
 
@@ -1438,4 +1444,40 @@ export function createAdminRouter(aiService: AIService) {
 	})
 
 	return adminRouter
+}
+
+/**
+ * Separate from createAdminRouter (which requires isAdmin) because the
+ * caller here is whoever is currently impersonated — often a non-admin
+ * user — trying to get back to their own admin account.
+ */
+export function createImpersonationRouter() {
+	const router = Router()
+
+	router.post("/admin/stop-impersonating", async (req, res) => {
+		const cookies = parseCookies(req.headers.cookie)
+		const adminId = cookies[IMPERSONATOR_COOKIE]
+		if (!adminId) {
+			res.status(400).json({ error: "Not currently impersonating" })
+			return
+		}
+
+		const [admin] = await db
+			.select({ id: users.id, isAdmin: users.isAdmin })
+			.from(users)
+			.where(eq(users.id, adminId))
+		if (!admin?.isAdmin) {
+			res.status(400).json({ error: "Original admin account not found" })
+			return
+		}
+
+		const sessionCookie = await createSessionCookie(admin.id)
+		res.setHeader("Set-Cookie", [
+			sessionCookie,
+			`${IMPERSONATOR_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+		])
+		res.json({ success: true })
+	})
+
+	return router
 }
