@@ -24,7 +24,12 @@ import { initRouter, nav, page } from "./router.svelte.js"
 let currentPath = $derived(nav.path)
 let isLoggedIn = $derived(authState.user !== null)
 let isLoading = $derived(authState.loading)
-let isAdmin = $derived(userProfile.data?.isAdmin ?? false)
+// An admin who is impersonating someone is still the admin underneath —
+// keep the Admin nav reachable so they aren't locked out of their own panel.
+let isAdmin = $derived(
+	(userProfile.data?.isAdmin ?? false) ||
+		userProfile.data?.impersonatedBy != null,
+)
 let impersonatedBy = $derived(userProfile.data?.impersonatedBy ?? null)
 
 onMount(async () => {
@@ -34,14 +39,21 @@ onMount(async () => {
 	if (authState.user) {
 		await fetchUserProfile()
 	}
+})
 
-	// Redirect to /login if unauthenticated and on a protected route
-	if (
-		!authState.user &&
-		currentPath !== "/login" &&
-		currentPath !== "/register"
-	) {
+// Keep the URL and auth state in sync on every navigation, not just at
+// mount: unauthenticated users get sent to /login, and already-authenticated
+// users (including via dev-autologin) get bounced off /login and /register
+// straight to the dashboard instead of seeing the login form.
+$effect(() => {
+	if (isLoading) return
+	if (!isLoggedIn && currentPath !== "/login" && currentPath !== "/register") {
 		page("/login")
+	} else if (
+		isLoggedIn &&
+		(currentPath === "/login" || currentPath === "/register")
+	) {
+		page("/")
 	}
 })
 
@@ -69,7 +81,7 @@ async function handleStopImpersonating() {
 {:else}
 	{#if impersonatedBy}
 		<div class="impersonation-banner">
-			👤 Impersonating <strong>{userProfile.data?.name}</strong> (as {impersonatedBy.name})
+			👤 Viewing as <strong>{userProfile.data?.name}</strong> — impersonated by {impersonatedBy.name}
 			<button class="stop-impersonating-btn" onclick={handleStopImpersonating}>
 				Return to {impersonatedBy.name}
 			</button>
