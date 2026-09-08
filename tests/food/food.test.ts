@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { invites, users } from "../../server/db/schema.js"
+import { invites, socialPosts, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	closeTestDb,
@@ -62,6 +63,11 @@ async function registerAndLogin(
 	})
 	const cookies = res.headers["set-cookie"] as string[]
 	return Array.isArray(cookies) ? cookies.join("; ") : cookies
+}
+
+async function getUserId(cookie: string) {
+	const res = await request(app).get("/api/users/me").set("Cookie", cookie)
+	return res.body.id as string
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -199,5 +205,100 @@ describe("GET /api/food/logs", () => {
 
 		expect(res.status).toBe(200)
 		expect(res.body).toEqual([])
+	})
+})
+
+// ── Behavior: auto-share-to-feed on food logging ──────────────────────────────
+
+describe("POST /api/food/analyze — auto-share to social feed", () => {
+	it("posts a food_photo entry when autoShareFoodLogs is enabled", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+		await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ autoShareFoodLogs: true })
+
+		const res = await request(app)
+			.post("/api/food/analyze")
+			.set("Cookie", cookie)
+			.attach("photo", TINY_PNG, "meal.png")
+			.field("mealType", "dinner")
+
+		const db = await getTestDb()
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, userId))
+		const foodPosts = posts.filter((p) => p.type === "food_photo")
+
+		expect(foodPosts).toHaveLength(1)
+		expect(foodPosts[0].content).toMatchObject({
+			foodLogId: res.body.id,
+			photoUrl: res.body.photoUrl,
+			foodName: "Caesar Salad",
+			mealType: "dinner",
+		})
+	})
+
+	it("does not post to the feed when autoShareFoodLogs is disabled (the default)", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+
+		await request(app)
+			.post("/api/food/analyze")
+			.set("Cookie", cookie)
+			.attach("photo", TINY_PNG, "meal.png")
+
+		const db = await getTestDb()
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, userId))
+		expect(posts.filter((p) => p.type === "food_photo")).toHaveLength(0)
+	})
+
+	it("auto-shares the first-log badge as a milestone post (autoShareBadges defaults to true)", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+
+		const res = await request(app)
+			.post("/api/food/analyze")
+			.set("Cookie", cookie)
+			.attach("photo", TINY_PNG, "meal.png")
+
+		expect(res.body.newBadges.map((b: { key: string }) => b.key)).toContain(
+			"food_first",
+		)
+
+		const db = await getTestDb()
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, userId))
+		const milestonePosts = posts.filter((p) => p.type === "milestone")
+		expect(milestonePosts).toHaveLength(1)
+		expect(milestonePosts[0].content).toMatchObject({ badgeKey: "food_first" })
+	})
+
+	it("does not auto-share the badge when autoShareBadges is disabled", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+		await request(app)
+			.patch("/api/users/me")
+			.set("Cookie", cookie)
+			.send({ autoShareBadges: false })
+
+		await request(app)
+			.post("/api/food/analyze")
+			.set("Cookie", cookie)
+			.attach("photo", TINY_PNG, "meal.png")
+
+		const db = await getTestDb()
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, userId))
+		expect(posts.filter((p) => p.type === "milestone")).toHaveLength(0)
 	})
 })
