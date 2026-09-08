@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { NpcManifest } from "../../shared/npc-sprite-manifest.js"
 import {
+	listNpcAnimationOptions,
 	resolveAnimationAvailability,
 	resolveAnimationKey,
 } from "../../src/components/gym/npcAnimation.js"
@@ -92,5 +93,41 @@ describe("resolveAnimationAvailability", () => {
 		expect(
 			resolveAnimationAvailability("trainer_marcus", "walk", available, NPCS),
 		).toBe("fallback")
+	})
+})
+
+describe("listNpcAnimationOptions", () => {
+	it("flattens every (npc, animation) pair with derived texture keys", () => {
+		expect(listNpcAnimationOptions(NPCS)).toEqual([
+			{
+				npcKey: "trainer_marcus",
+				animation: "cardio_treadmill",
+				textureKey: "npc_trainer_marcus__cardio_treadmill__default",
+			},
+			{
+				npcKey: "trainer_marcus",
+				animation: "idle",
+				textureKey: "npc_trainer_marcus__idle__default",
+			},
+			{
+				npcKey: "trainer_marcus",
+				animation: "walk",
+				textureKey: "npc_trainer_marcus__walk__default",
+			},
+		])
+	})
+
+	it("sorts by npcKey then animation for a stable order", () => {
+		const multi: NpcManifest = {
+			regular_zed: NPCS.trainer_marcus,
+			trainer_marcus: NPCS.trainer_marcus,
+		}
+		const options = listNpcAnimationOptions(multi)
+		expect(options[0].npcKey).toBe("regular_zed")
+		expect(options.at(-1)?.npcKey).toBe("trainer_marcus")
+	})
+
+	it("returns an empty array for an empty manifest", () => {
+		expect(listNpcAnimationOptions({})).toEqual([])
 	})
 })

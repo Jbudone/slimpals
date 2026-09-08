@@ -3,6 +3,7 @@ import { onMount } from "svelte"
 import { api } from "../lib/api.js"
 import { fetchSession } from "../lib/auth.svelte.js"
 import { fetchUserProfile } from "../lib/user.svelte.js"
+import { page } from "../router.svelte.js"
 
 type AdminUser = {
 	id: string
@@ -1186,6 +1187,14 @@ onMount(load)
 													>
 														Generate Gym Content
 													</button>
+													{#if import.meta.env.DEV}
+														<button
+															class="btn outline sm"
+															onclick={() => page("/gym-sprites")}
+														>
+															Open Sprite/Animation Inspector
+														</button>
+													{/if}
 												</div>
 												<div class="field-row">
 													{#if gymHourLoading}

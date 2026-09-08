@@ -35,6 +35,35 @@ export function resolveAnimationKey(
  * placeholder) textures. "fallback" means the caller should use its
  * tween-based fake animation.
  */
+export type NpcAnimationOption = {
+	npcKey: string
+	animation: string
+	textureKey: string
+}
+
+/**
+ * Flattens the manifest into every (npc, animation) pair that has default-
+ * direction art, for admin tooling that lets a tester jump to and inspect
+ * any specific pose (see gh-103). Sorted by npcKey then animation for a
+ * stable, predictable dropdown order.
+ */
+export function listNpcAnimationOptions(
+	npcs: NpcManifest = manifest.npcs as NpcManifest,
+): NpcAnimationOption[] {
+	const options: NpcAnimationOption[] = []
+	for (const [npcKey, npc] of Object.entries(npcs)) {
+		for (const animation of Object.keys(npc.animations)) {
+			const textureKey = resolveAnimationKey(npcKey, animation, npcs)
+			if (textureKey) options.push({ npcKey, animation, textureKey })
+		}
+	}
+	return options.sort(
+		(a, b) =>
+			a.npcKey.localeCompare(b.npcKey) ||
+			a.animation.localeCompare(b.animation),
+	)
+}
+
 export function resolveAnimationAvailability(
 	npcKey: string,
 	animation: string,

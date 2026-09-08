@@ -25,6 +25,8 @@ const DISPLAY_SIZE = 88
 
 export class GalleryScene extends Phaser.Scene {
 	private missingKeys: string[] = []
+	private layout: ReturnType<typeof computeGalleryLayout> = []
+	private highlight: Phaser.GameObjects.Graphics | null = null
 
 	constructor() {
 		super({ key: "GalleryScene" })
@@ -65,6 +67,7 @@ export class GalleryScene extends Phaser.Scene {
 		)
 
 		const layout = computeGalleryLayout(ALL_SPRITES, COLUMNS)
+		this.layout = layout
 		for (const cell of layout) {
 			const px = cell.col * CELL_SIZE + CELL_SIZE / 2
 			const py = cell.row * CELL_SIZE + CELL_SIZE / 2
@@ -93,5 +96,42 @@ export class GalleryScene extends Phaser.Scene {
 			COLUMNS * CELL_SIZE,
 			Math.ceil(ALL_SPRITES.length / COLUMNS) * CELL_SIZE,
 		)
+	}
+
+	/** Pans/zooms to a specific sprite's cell and outlines it, for admin
+	 * tooling that jumps straight to one (npc, animation) pose (gh-103). */
+	focusOn(key: string): boolean {
+		const cell = this.layout.find((c) => c.key === key)
+		if (!cell) return false
+
+		const px = cell.col * CELL_SIZE + CELL_SIZE / 2
+		const py = cell.row * CELL_SIZE + CELL_SIZE / 2
+
+		this.cameras.main.pan(px, py, 300, "Sine.easeInOut")
+		this.cameras.main.zoomTo(2.5, 300)
+
+		if (!this.highlight) {
+			this.highlight = this.add.graphics().setDepth(9_000)
+		}
+		this.highlight.clear()
+		this.highlight.lineStyle(3, 0xfbbf24, 1)
+		this.highlight.strokeRect(
+			cell.col * CELL_SIZE + 2,
+			cell.row * CELL_SIZE + 2,
+			CELL_SIZE - 4,
+			CELL_SIZE - 4,
+		)
+		return true
+	}
+
+	resetView(): void {
+		this.highlight?.clear()
+		this.cameras.main.pan(
+			(COLUMNS * CELL_SIZE) / 2,
+			(Math.ceil(ALL_SPRITES.length / COLUMNS) * CELL_SIZE) / 2,
+			300,
+			"Sine.easeInOut",
+		)
+		this.cameras.main.zoomTo(1, 300)
 	}
 }
