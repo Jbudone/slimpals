@@ -1,6 +1,12 @@
+import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { dailyCheckins, invites, users } from "../../server/db/schema.js"
+import {
+	dailyCheckins,
+	invites,
+	userGyms,
+	users,
+} from "../../server/db/schema.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -52,6 +58,15 @@ function startOfDayUtc(daysAgo = 0): Date {
 	d.setUTCHours(0, 0, 0, 0)
 	d.setUTCDate(d.getUTCDate() - daysAgo)
 	return d
+}
+
+async function getGymXp(userId: string): Promise<number | null> {
+	const db = await getTestDb()
+	const [gym] = await db
+		.select({ xp: userGyms.xp })
+		.from(userGyms)
+		.where(eq(userGyms.userId, userId))
+	return gym?.xp ?? null
 }
 
 async function seedCheckin(
@@ -247,5 +262,53 @@ describe("Auth enforcement", () => {
 	it("POST /api/checkins returns 401 without session", async () => {
 		const res = await request(app).post("/api/checkins").send({})
 		expect(res.status).toBe(401)
+	})
+})
+
+// ── Behavior 9: Gym XP awarded on checkin ────────────────────────────────────
+
+describe("Gym XP on checkin", () => {
+	it("awards the base 15 XP for a checkin that earns no badge", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+
+		const res = await request(app)
+			.post("/api/checkins")
+			.set("Cookie", cookie)
+			.send({})
+
+		expect(res.status).toBe(201)
+		expect(res.body.newBadges).toHaveLength(0)
+		expect(await getGymXp(userId)).toBe(15)
+	})
+
+	it("awards an extra 10 XP per badge earned from the checkin", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+		// Two prior consecutive-day checkins bring the streak to 3 on this
+		// checkin, crossing the streak_3 badge threshold.
+		await seedCheckin(userId, 2, 1)
+		await seedCheckin(userId, 1, 2)
+
+		const res = await request(app)
+			.post("/api/checkins")
+			.set("Cookie", cookie)
+			.send({})
+
+		expect(res.status).toBe(201)
+		expect(res.body.streakCount).toBe(3)
+		expect(res.body.newBadges).toHaveLength(1)
+		expect(res.body.newBadges[0].key).toBe("streak_3")
+		expect(await getGymXp(userId)).toBe(25)
+	})
+
+	it("does not award gym XP again for an idempotent same-day repeat checkin", async () => {
+		const cookie = await registerAndLogin()
+		const userId = await getUserId(cookie)
+		await request(app).post("/api/checkins").set("Cookie", cookie).send({})
+
+		await request(app).post("/api/checkins").set("Cookie", cookie).send({})
+
+		expect(await getGymXp(userId)).toBe(15)
 	})
 })
