@@ -42,7 +42,7 @@ import {
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
 
-async function fetchUserStats(userId: string) {
+export async function fetchUserStats(userId: string) {
 	const checkins = await db
 		.select()
 		.from(dailyCheckins)

@@ -35,9 +35,12 @@ import type {
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
 import {
+	generateDialogBatch,
+	getCurrentDialogBatch,
 	getOrCreateRelationship,
 	getRelationshipStage,
 	getStageLabel,
+	type RelationshipStage,
 } from "../services/gym/dialog.js"
 import { getOrCreateGym } from "../services/gym/index.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
@@ -50,6 +53,7 @@ import {
 	resolveTournament,
 	type TournamentType,
 } from "../services/tournaments/index.js"
+import { fetchUserStats } from "./gym.js"
 
 function startOfToday(): Date {
 	const d = new Date()
@@ -818,6 +822,55 @@ export function createAdminRouter(aiService: AIService) {
 
 		res.json({ hourOverride: hour ?? null })
 	})
+
+	adminRouter.get(
+		"/admin/users/:id/gym/npcs/:npcKey/dialogs",
+		async (req, res) => {
+			const { id, npcKey } = req.params
+			const stageRaw = Number(req.query.stage)
+			const regenerate = req.query.regenerate === "true"
+
+			if (![0, 1, 2, 3].includes(stageRaw)) {
+				res.status(400).json({ error: "stage must be an integer 0-3" })
+				return
+			}
+			const stage = stageRaw as RelationshipStage
+
+			const [npc] = await db
+				.select()
+				.from(gymNpcs)
+				.where(eq(gymNpcs.key, npcKey))
+			if (!npc) {
+				res.status(404).json({ error: "NPC not found" })
+				return
+			}
+
+			const gym = await getOrCreateGym(id, db)
+
+			let dialogs = regenerate
+				? null
+				: await getCurrentDialogBatch(gym.id, npcKey, stage, db)
+
+			if (!dialogs) {
+				const userStats = await fetchUserStats(id)
+				dialogs = await generateDialogBatch(
+					gym.id,
+					npcKey,
+					stage,
+					aiService,
+					db,
+					userStats,
+				)
+			}
+
+			res.json({
+				npcKey,
+				stage,
+				stageLabel: getStageLabel(stage),
+				dialogs,
+			})
+		},
+	)
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db

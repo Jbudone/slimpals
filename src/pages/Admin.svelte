@@ -119,6 +119,13 @@ type AdminGymNpc = {
 	goalSequence: unknown[] | null
 }
 
+type AdminDialogEntry = {
+	promptText: string
+	response: string
+	portraitVariant: string
+	personalityTagAdded: string | null
+}
+
 type AdminSocialPost = {
 	id: number
 	userId: string
@@ -213,6 +220,12 @@ let gymHourInput = $state(0)
 let gymHourLoading = $state(false)
 let gymHourError = $state<string | null>(null)
 let gymHourStatus = $state<{ text: string; ok: boolean } | null>(null)
+
+let dialogPreviewNpcKey = $state<string | null>(null)
+let dialogPreviewStage = $state(0)
+let dialogPreviewEntries = $state<AdminDialogEntry[]>([])
+let dialogPreviewLoading = $state(false)
+let dialogPreviewError = $state<string | null>(null)
 
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
@@ -689,6 +702,38 @@ async function clearGymHourOverride(userId: string) {
 			ok: false,
 		}
 	}
+}
+
+async function loadDialogPreview(
+	userId: string,
+	npcKey: string,
+	stage: number,
+	regenerate = false,
+) {
+	dialogPreviewLoading = true
+	dialogPreviewError = null
+	try {
+		const query = `stage=${stage}${regenerate ? "&regenerate=true" : ""}`
+		const result = await api.get<{ dialogs: AdminDialogEntry[] }>(
+			`/admin/users/${userId}/gym/npcs/${npcKey}/dialogs?${query}`,
+		)
+		dialogPreviewEntries = result.dialogs
+	} catch (e) {
+		dialogPreviewError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		dialogPreviewLoading = false
+	}
+}
+
+function openDialogPreview(userId: string, npc: AdminGymNpc) {
+	dialogPreviewNpcKey = npc.key
+	dialogPreviewStage = npc.relationshipStage
+	dialogPreviewEntries = []
+	loadDialogPreview(userId, npc.key, npc.relationshipStage)
+}
+
+function closeDialogPreview() {
+	dialogPreviewNpcKey = null
 }
 
 async function selectTab(
@@ -1221,8 +1266,55 @@ onMount(load)
 																			· mood {npc.mood ?? "—"}
 																		</span>
 																		<button class="btn outline sm" onclick={() => startEditGymNpc(npc)}>Edit</button>
+																	<button class="btn outline sm" onclick={() => openDialogPreview(user.id, npc)}>Dialogs</button>
 																	{/if}
 																</li>
+																{#if dialogPreviewNpcKey === npc.key}
+																	<li class="gym-npc-row">
+																		<div class="gym-npc-edit">
+																			<div class="field-row">
+																				<label>
+																					Relationship stage
+																					<select
+																						class="inp inp-sm"
+																						bind:value={dialogPreviewStage}
+																						onchange={() => loadDialogPreview(user.id, npc.key, dialogPreviewStage)}
+																					>
+																						<option value={0}>0 — Stranger</option>
+																						<option value={1}>1 — Acquaintance</option>
+																						<option value={2}>2 — Gym Buddy</option>
+																						<option value={3}>3 — Friend</option>
+																					</select>
+																				</label>
+																				<button
+																					class="btn outline sm"
+																					onclick={() => loadDialogPreview(user.id, npc.key, dialogPreviewStage, true)}
+																				>
+																					Regenerate
+																				</button>
+																				<button class="btn outline sm" onclick={closeDialogPreview}>Close</button>
+																			</div>
+																			{#if dialogPreviewLoading}
+																				<p class="muted">Loading…</p>
+																			{:else if dialogPreviewError}
+																				<p class="error-text">{dialogPreviewError}</p>
+																			{:else}
+																				<ul class="dialog-preview-list">
+																					{#each dialogPreviewEntries as entry, i (i)}
+																						<li>
+																							<p class="dialog-prompt">🗨 {entry.promptText}</p>
+																							<p class="dialog-response">{npc.name}: {entry.response}</p>
+																							<p class="muted dialog-meta">
+																								{entry.portraitVariant}
+																								{#if entry.personalityTagAdded}· learned: {entry.personalityTagAdded}{/if}
+																							</p>
+																						</li>
+																					{/each}
+																				</ul>
+																			{/if}
+																		</div>
+																	</li>
+																{/if}
 															{/each}
 														</ul>
 													{/if}
@@ -1961,5 +2053,35 @@ onMount(load)
 	font-family: monospace;
 	font-size: 0.8rem;
 	resize: vertical;
+}
+
+.dialog-preview-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.dialog-preview-list li {
+	border-bottom: 1px solid var(--color-border);
+	padding-bottom: 0.5rem;
+}
+
+.dialog-prompt {
+	margin: 0 0 0.15rem;
+	font-size: 0.85rem;
+	color: var(--color-text-muted);
+}
+
+.dialog-response {
+	margin: 0 0 0.15rem;
+	font-size: 0.85rem;
+}
+
+.dialog-meta {
+	margin: 0;
+	font-size: 0.75rem;
 }
 </style>
