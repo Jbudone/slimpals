@@ -11,6 +11,7 @@ import {
 	foodLogs,
 	gymNpcDailyState,
 	gymNpcs,
+	gymUpgradesCatalog,
 	reactions,
 	sessions,
 	socialPosts,
@@ -871,6 +872,74 @@ export function createAdminRouter(aiService: AIService) {
 			})
 		},
 	)
+
+	adminRouter.get("/admin/users/:id/gym/upgrades", async (req, res) => {
+		const { id } = req.params
+
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, id))
+
+		const catalog = await db
+			.select()
+			.from(gymUpgradesCatalog)
+			.orderBy(asc(gymUpgradesCatalog.sortOrder))
+
+		if (!gym) {
+			res.json({
+				hasGym: false,
+				gym: null,
+				upgrades: catalog.map((entry) => ({
+					key: entry.key,
+					name: entry.name,
+					category: entry.category,
+					requiredXp: entry.requiredXp,
+					unlocksNpcKey: entry.unlocksNpcKey,
+					status: "locked" as const,
+					unlockedAt: null,
+					placementData: null,
+				})),
+			})
+			return
+		}
+
+		const claimedRows = await db
+			.select()
+			.from(userGymUpgrades)
+			.where(eq(userGymUpgrades.gymId, gym.id))
+		const claimedByKey = new Map(claimedRows.map((r) => [r.upgradeKey, r]))
+		const pendingKeys = new Set(gym.pendingUpgradeKeys as string[])
+
+		const upgrades = catalog.map((entry) => {
+			const claimed = claimedByKey.get(entry.key)
+			const status = claimed
+				? ("claimed" as const)
+				: pendingKeys.has(entry.key)
+					? ("pending" as const)
+					: ("locked" as const)
+			return {
+				key: entry.key,
+				name: entry.name,
+				category: entry.category,
+				requiredXp: entry.requiredXp,
+				unlocksNpcKey: entry.unlocksNpcKey,
+				status,
+				unlockedAt: claimed?.unlockedAt ?? null,
+				placementData: claimed?.placementData ?? null,
+			}
+		})
+
+		res.json({
+			hasGym: true,
+			gym: {
+				level: gym.level,
+				xp: gym.xp,
+				pendingUpgradeKeys: gym.pendingUpgradeKeys,
+			},
+			upgrades,
+		})
+	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db

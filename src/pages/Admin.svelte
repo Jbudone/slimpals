@@ -127,6 +127,17 @@ type AdminDialogEntry = {
 	personalityTagAdded: string | null
 }
 
+type AdminGymUpgrade = {
+	key: string
+	name: string
+	category: string
+	requiredXp: number
+	unlocksNpcKey: string | null
+	status: "claimed" | "pending" | "locked"
+	unlockedAt: string | null
+	placementData: unknown | null
+}
+
 type AdminSocialPost = {
 	id: number
 	userId: string
@@ -227,6 +238,15 @@ let dialogPreviewStage = $state(0)
 let dialogPreviewEntries = $state<AdminDialogEntry[]>([])
 let dialogPreviewLoading = $state(false)
 let dialogPreviewError = $state<string | null>(null)
+
+let gymUpgradesForUser = $state<AdminGymUpgrade[]>([])
+let gymUpgradesGym = $state<{
+	level: number
+	xp: number
+	pendingUpgradeKeys: string[]
+} | null>(null)
+let gymUpgradesLoading = $state(false)
+let gymUpgradesError = $state<string | null>(null)
 
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
@@ -737,6 +757,24 @@ function closeDialogPreview() {
 	dialogPreviewNpcKey = null
 }
 
+async function loadGymUpgrades(userId: string) {
+	gymUpgradesLoading = true
+	gymUpgradesError = null
+	try {
+		const result = await api.get<{
+			hasGym: boolean
+			gym: { level: number; xp: number; pendingUpgradeKeys: string[] } | null
+			upgrades: AdminGymUpgrade[]
+		}>(`/admin/users/${userId}/gym/upgrades`)
+		gymUpgradesGym = result.gym
+		gymUpgradesForUser = result.upgrades
+	} catch (e) {
+		gymUpgradesError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		gymUpgradesLoading = false
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab:
@@ -761,6 +799,7 @@ async function selectTab(
 	} else if (tab === "gym") {
 		await loadGymNpcs(userId)
 		await loadGymHourOverride(userId)
+		await loadGymUpgrades(userId)
 	}
 }
 
@@ -1326,6 +1365,53 @@ onMount(load)
 																{/if}
 															{/each}
 														</ul>
+													{/if}
+												</div>
+												<div class="challenge-view">
+													<h3 class="challenge-title">Equipment / Upgrades</h3>
+													{#if gymUpgradesLoading}
+														<p class="muted">Loading…</p>
+													{:else if gymUpgradesError}
+														<p class="error-text">{gymUpgradesError}</p>
+													{:else}
+														{#if gymUpgradesGym}
+															<p class="challenge-meta">
+																Level {gymUpgradesGym.level} · {gymUpgradesGym.xp} XP
+															</p>
+														{/if}
+														<table class="upgrades-table">
+															<thead>
+																<tr>
+																	<th>Name</th>
+																	<th>Category</th>
+																	<th>Status</th>
+																	<th>Req. XP</th>
+																	<th>Unlocked</th>
+																	<th>Placement</th>
+																</tr>
+															</thead>
+															<tbody>
+																{#each gymUpgradesForUser as upgrade (upgrade.key)}
+																	<tr>
+																		<td>
+																			{upgrade.name}
+																			{#if upgrade.unlocksNpcKey}<span class="muted">· unlocks {upgrade.unlocksNpcKey}</span>{/if}
+																		</td>
+																		<td>{upgrade.category}</td>
+																		<td>
+																			<span class="upgrade-status status-{upgrade.status}">{upgrade.status}</span>
+																		</td>
+																		<td>{upgrade.requiredXp}</td>
+																		<td>
+																			{upgrade.unlockedAt ? new Date(upgrade.unlockedAt).toLocaleDateString() : "—"}
+																		</td>
+																		<td class="upgrade-placement">
+																			{upgrade.placementData ? JSON.stringify(upgrade.placementData) : "—"}
+																		</td>
+																	</tr>
+																{/each}
+															</tbody>
+														</table>
 													{/if}
 												</div>
 											{:else if seedTab === "challenges"}
@@ -2092,5 +2178,52 @@ onMount(load)
 .dialog-meta {
 	margin: 0;
 	font-size: 0.75rem;
+}
+
+.upgrades-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.8rem;
+}
+
+.upgrades-table th {
+	text-align: left;
+	color: var(--color-text-muted);
+	font-weight: 600;
+	padding: 0.3rem 0.5rem;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.upgrades-table td {
+	padding: 0.3rem 0.5rem;
+	border-bottom: 1px solid var(--color-border);
+}
+
+.upgrade-placement {
+	font-family: monospace;
+	font-size: 0.7rem;
+	color: var(--color-text-muted);
+}
+
+.upgrade-status {
+	padding: 0.1rem 0.4rem;
+	border-radius: 0.25rem;
+	font-size: 0.7rem;
+	text-transform: uppercase;
+}
+
+.upgrade-status.status-claimed {
+	background: #14532d;
+	color: #bbf7d0;
+}
+
+.upgrade-status.status-pending {
+	background: #78350f;
+	color: #fde68a;
+}
+
+.upgrade-status.status-locked {
+	background: var(--color-surface-2);
+	color: var(--color-text-muted);
 }
 </style>
