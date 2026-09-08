@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { invites, socialPosts, users } from "../../server/db/schema.js"
@@ -298,5 +299,145 @@ describe("Auth enforcement", () => {
 					.send({ postId: 1, emoji: "❤️" })
 			).status,
 		).toBe(401)
+	})
+})
+
+// ── Behavior 9: badge-triggered auto-share on reaction ────────────────────────
+
+describe("POST /api/social/react — badge-triggered auto-share", () => {
+	it("auto-shares the reactor's first-reaction-given badge as a milestone post", async () => {
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		const reactorCookie = await registerAndLogin("b@sp.test", "Bob", "INVITE-B")
+		const db = await getTestDb()
+		const [alice] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "a@sp.test"))
+		const [bob] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "b@sp.test"))
+
+		const postId = await seedPost(alice.id, "weight_update", { weightKg: 80 })
+
+		const res = await request(app)
+			.post("/api/social/react")
+			.set("Cookie", reactorCookie)
+			.send({ postId, emoji: "❤️" })
+
+		expect(res.status).toBe(200)
+		expect(res.body.newBadges).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ key: "social_first_react" }),
+			]),
+		)
+
+		const bobPosts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, bob.id))
+		const milestonePosts = bobPosts.filter((p) => p.type === "milestone")
+		expect(milestonePosts).toHaveLength(1)
+		expect(milestonePosts[0].content).toMatchObject({
+			badgeKey: "social_first_react",
+		})
+	})
+
+	it("auto-shares the post owner's first-reaction-received badge separately from the reactor's response", async () => {
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		const reactorCookie = await registerAndLogin("b@sp.test", "Bob", "INVITE-B")
+		const db = await getTestDb()
+		const [alice] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "a@sp.test"))
+
+		const postId = await seedPost(alice.id, "weight_update", { weightKg: 80 })
+
+		const res = await request(app)
+			.post("/api/social/react")
+			.set("Cookie", reactorCookie)
+			.send({ postId, emoji: "🔥" })
+
+		expect(res.status).toBe(200)
+		// The post owner's badge isn't part of the reactor's own response...
+		expect(res.body.newBadges).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ key: "social_first_reaction_received" }),
+			]),
+		)
+
+		// ...but it should still have been earned and auto-shared for Alice.
+		const alicePosts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, alice.id))
+		const milestonePosts = alicePosts.filter((p) => p.type === "milestone")
+		expect(milestonePosts).toHaveLength(1)
+		expect(milestonePosts[0].content).toMatchObject({
+			badgeKey: "social_first_reaction_received",
+		})
+	})
+
+	it("does not auto-share when the reacting user has autoShareBadges disabled", async () => {
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		const reactorCookie = await registerAndLogin("b@sp.test", "Bob", "INVITE-B")
+		const db = await getTestDb()
+		const [alice] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "a@sp.test"))
+		const [bob] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "b@sp.test"))
+		await db
+			.update(users)
+			.set({ autoShareBadges: false })
+			.where(eq(users.id, bob.id))
+
+		const postId = await seedPost(alice.id, "weight_update", { weightKg: 80 })
+
+		const res = await request(app)
+			.post("/api/social/react")
+			.set("Cookie", reactorCookie)
+			.send({ postId, emoji: "❤️" })
+
+		expect(res.status).toBe(200)
+		expect(res.body.newBadges.length).toBeGreaterThan(0)
+
+		const bobPosts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, bob.id))
+		expect(bobPosts.filter((p) => p.type === "milestone")).toHaveLength(0)
+	})
+
+	it("does not auto-share for a self-reaction on the reactor's own post twice", async () => {
+		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		const db = await getTestDb()
+		const [alice] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "a@sp.test"))
+
+		const postId = await seedPost(alice.id, "weight_update", { weightKg: 80 })
+
+		await request(app)
+			.post("/api/social/react")
+			.set("Cookie", cookie)
+			.send({ postId, emoji: "❤️" })
+
+		const alicePosts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, alice.id))
+		const milestonePosts = alicePosts.filter((p) => p.type === "milestone")
+		// Reacting on your own post only earns the reactor badge once (the
+		// "reaction received" branch is skipped when postOwnerId === userId).
+		expect(milestonePosts).toHaveLength(1)
+		expect(milestonePosts[0].content).toMatchObject({
+			badgeKey: "social_first_react",
+		})
 	})
 })

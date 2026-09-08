@@ -10,9 +10,37 @@ import {
 	users,
 } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
-import { checkAndAward } from "../services/badges/index.js"
+import { checkAndAward, type NewBadge } from "../services/badges/index.js"
 
 export const socialRouter = Router()
+
+/** Mirrors the auto-share-on-badge pattern in checkins.ts/weight.ts/food.ts,
+ * for badges earned through a reaction (either side of it). */
+async function autoShareBadges(
+	userId: string,
+	newBadges: NewBadge[],
+): Promise<void> {
+	if (newBadges.length === 0) return
+
+	const [user] = await db
+		.select({ autoShareBadges: users.autoShareBadges })
+		.from(users)
+		.where(eq(users.id, userId))
+
+	if (!user?.autoShareBadges) return
+
+	for (const badge of newBadges) {
+		await db.insert(socialPosts).values({
+			userId,
+			type: "milestone",
+			content: {
+				badgeKey: badge.key,
+				badgeName: badge.name,
+				badgeTier: badge.tier,
+			},
+		})
+	}
+}
 
 const VALID_EMOJIS = ["❤️", "😂", "💪", "🔥", "😭"] as const
 type Emoji = (typeof VALID_EMOJIS)[number]
@@ -135,23 +163,24 @@ socialRouter.post("/social/react", async (req, res) => {
 			.select({ value: count() })
 			.from(reactions)
 			.where(eq(reactions.userId, userId))
-		newBadges.push(
-			...(await checkAndAward(
-				userId,
-				{ type: "social_react_given", totalGiven },
-				db,
-			)),
+		const reactorBadges = await checkAndAward(
+			userId,
+			{ type: "social_react_given", totalGiven },
+			db,
 		)
+		newBadges.push(...reactorBadges)
+		await autoShareBadges(userId, reactorBadges)
 
 		// Post owner earns a "reaction received" badge
 		const postOwnerId = post.userId
 		if (postOwnerId !== userId) {
 			const reactionsOnPost = postReactions.length
-			await checkAndAward(
+			const ownerBadges = await checkAndAward(
 				postOwnerId,
 				{ type: "social_reaction_received", reactionsOnPost },
 				db,
 			)
+			await autoShareBadges(postOwnerId, ownerBadges)
 		}
 	}
 
