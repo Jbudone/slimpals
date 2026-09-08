@@ -38,6 +38,35 @@ export function getStageLabel(stage: RelationshipStage): string {
 	return STAGE_LABELS[stage]
 }
 
+/** Days to reach full (100) relationship level under the synthetic
+ * progression ramp (gh-110) — matches the "Established" 90-day checkpoint
+ * named in docs/prd-gym-progression-testing.md. Uniform across NPCs for
+ * v1; refinable into per-NPC curves later without changing the interface. */
+const RELATIONSHIP_RAMP_DAYS = 90
+
+export type RelationshipSnapshot = {
+	relationshipLevel: number
+	gymDaysActive: number
+}
+
+/**
+ * Derives a deterministic, monotonic per-NPC relationship snapshot for
+ * "what would this relationship look like after N days" (gh-110), via a
+ * simple linear ramp to 100 by day 90. gymDaysActive is set to daysElapsed
+ * directly, matching that counter's real meaning (one increment per day
+ * the gym was visited).
+ */
+export function deriveRelationshipFromDays(
+	daysElapsed: number,
+): RelationshipSnapshot {
+	const clampedDays = Math.max(0, Math.floor(daysElapsed))
+	const relationshipLevel = Math.min(
+		100,
+		Math.round((clampedDays / RELATIONSHIP_RAMP_DAYS) * 100),
+	)
+	return { relationshipLevel, gymDaysActive: clampedDays }
+}
+
 export async function getOrCreateRelationship(
 	gymId: number,
 	npcKey: string,

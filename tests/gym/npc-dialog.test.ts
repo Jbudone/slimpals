@@ -10,6 +10,7 @@ import {
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	computeRelationshipGain,
+	deriveRelationshipFromDays,
 	getRelationshipStage,
 	getStageLabel,
 } from "../../server/services/gym/dialog.js"
@@ -138,6 +139,46 @@ describe("computeRelationshipGain", () => {
 			expect(gain).toBeGreaterThanOrEqual(5)
 			expect(gain).toBeLessThanOrEqual(8)
 		}
+	})
+})
+
+describe("deriveRelationshipFromDays", () => {
+	it("is 0 at day 0", () => {
+		expect(deriveRelationshipFromDays(0).relationshipLevel).toBe(0)
+	})
+
+	it("reaches 100 by day 90 (the 'Established' checkpoint)", () => {
+		expect(deriveRelationshipFromDays(90).relationshipLevel).toBe(100)
+	})
+
+	it("is deterministic — same daysElapsed always produces the same output", () => {
+		expect(deriveRelationshipFromDays(30)).toEqual(
+			deriveRelationshipFromDays(30),
+		)
+	})
+
+	it("is monotonic — relationshipLevel never decreases as daysElapsed increases", () => {
+		let previous = -1
+		for (let day = 0; day <= 120; day += 5) {
+			const { relationshipLevel } = deriveRelationshipFromDays(day)
+			expect(relationshipLevel).toBeGreaterThanOrEqual(previous)
+			previous = relationshipLevel
+		}
+	})
+
+	it("clamps at 100 beyond the ramp window rather than exceeding it", () => {
+		expect(deriveRelationshipFromDays(365).relationshipLevel).toBe(100)
+	})
+
+	it("sets gymDaysActive to daysElapsed directly", () => {
+		expect(deriveRelationshipFromDays(42).gymDaysActive).toBe(42)
+	})
+
+	it("clamps negative daysElapsed to 0 instead of producing invalid output", () => {
+		expect(deriveRelationshipFromDays(-5)).toEqual({
+			relationshipLevel: 0,
+			gymDaysActive: 0,
+		})
 	})
 })
 
