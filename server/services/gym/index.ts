@@ -22,6 +22,20 @@ export type Gym = {
 	gymVisitStreak: number
 	lastGymVisitDate: Date | null
 	createdAt: Date
+	simulatedHourOverride: number | null
+}
+
+/** The gym's effective "now" for schedule-dependent logic, honoring an
+ * admin-forced hour-of-day override (keeps today's real date/day-of-week,
+ * only the hour is substituted). */
+export function effectiveGymTime(
+	gym: Pick<Gym, "simulatedHourOverride">,
+	now: Date = new Date(),
+): Date {
+	if (gym.simulatedHourOverride == null) return now
+	const effective = new Date(now)
+	effective.setHours(gym.simulatedHourOverride, 0, 0, 0)
+	return effective
 }
 
 export function computeLevel(xp: number): number {

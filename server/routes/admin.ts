@@ -783,6 +783,42 @@ export function createAdminRouter(aiService: AIService) {
 		})
 	})
 
+	adminRouter.get("/admin/users/:id/gym/hour-override", async (req, res) => {
+		const { id } = req.params
+		const [gym] = await db
+			.select({ simulatedHourOverride: userGyms.simulatedHourOverride })
+			.from(userGyms)
+			.where(eq(userGyms.userId, id))
+
+		res.json({
+			hasGym: !!gym,
+			hourOverride: gym?.simulatedHourOverride ?? null,
+			currentHour: new Date().getHours(),
+		})
+	})
+
+	adminRouter.patch("/admin/users/:id/gym/hour-override", async (req, res) => {
+		const { id } = req.params
+		const { hour } = req.body as { hour?: number | null }
+
+		if (
+			hour !== null &&
+			hour !== undefined &&
+			(!Number.isInteger(hour) || hour < 0 || hour > 23)
+		) {
+			res.status(400).json({ error: "hour must be an integer 0-23, or null" })
+			return
+		}
+
+		const gym = await getOrCreateGym(id, db)
+		await db
+			.update(userGyms)
+			.set({ simulatedHourOverride: hour ?? null })
+			.where(eq(userGyms.id, gym.id))
+
+		res.json({ hourOverride: hour ?? null })
+	})
+
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db
 			.select()

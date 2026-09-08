@@ -33,6 +33,7 @@ import {
 import {
 	claimUpgrade,
 	computeLevel,
+	effectiveGymTime,
 	getOrCreateGym,
 } from "../services/gym/index.js"
 import {
@@ -384,21 +385,24 @@ export function createGymRouter(aiService: AIService) {
 			effects?: { allNpcMoodBonus?: number }
 		} | null
 
+		const simTime = effectiveGymTime(gym)
+
 		const npcs = await computeGymSimState(
 			gym.id,
 			npcData,
 			unlockedKeys,
 			relationships,
 			db,
-			undefined,
+			simTime,
 			todayEvent,
 		)
 
 		res.json({
-			simTime: new Date().toISOString(),
+			simTime: simTime.toISOString(),
 			npcs,
 			gymId: gym.id,
 			todayEvent: gymRow?.todayEventData ?? null,
+			hourOverride: gym.simulatedHourOverride,
 		})
 	})
 

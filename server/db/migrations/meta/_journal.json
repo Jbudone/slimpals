@@ -72,5 +72,12 @@
       "tag": "0009_gym_polish",
       "breakpoints": true
     },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1782460800000,
+      "tag": "0010_gym_hour_override",
+      "breakpoints": true
+    }
   ]
 }

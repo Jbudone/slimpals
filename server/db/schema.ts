@@ -203,6 +203,7 @@ export const userGyms = mysqlTable("user_gyms", {
 	gymVisitStreak: int("gym_visit_streak").notNull().default(0),
 	lastGymVisitDate: timestamp("last_gym_visit_date"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
+	simulatedHourOverride: int("simulated_hour_override"),
 })
 
 export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {

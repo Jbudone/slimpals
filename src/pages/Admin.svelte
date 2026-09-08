@@ -207,6 +207,13 @@ let editMood = $state(0)
 let editGoalSequenceText = $state("[]")
 let editGymNpcError = $state<string | null>(null)
 
+let gymHourOverride = $state<number | null>(null)
+let gymCurrentHour = $state(0)
+let gymHourInput = $state(0)
+let gymHourLoading = $state(false)
+let gymHourError = $state<string | null>(null)
+let gymHourStatus = $state<{ text: string; ok: boolean } | null>(null)
+
 const now = new Date()
 let seedChallengeMonth = $state(now.getUTCMonth() + 1)
 let seedChallengeYear = $state(now.getUTCFullYear())
@@ -631,6 +638,59 @@ async function saveEditGymNpc(userId: string, npcKey: string) {
 	}
 }
 
+async function loadGymHourOverride(userId: string) {
+	gymHourLoading = true
+	gymHourError = null
+	try {
+		const result = await api.get<{
+			hasGym: boolean
+			hourOverride: number | null
+			currentHour: number
+		}>(`/admin/users/${userId}/gym/hour-override`)
+		gymHourOverride = result.hourOverride
+		gymCurrentHour = result.currentHour
+		gymHourInput = result.hourOverride ?? result.currentHour
+	} catch (e) {
+		gymHourError = e instanceof Error ? e.message : "Failed to load"
+	} finally {
+		gymHourLoading = false
+	}
+}
+
+async function saveGymHourOverride(userId: string) {
+	gymHourStatus = null
+	try {
+		const result = await api.patch<{ hourOverride: number | null }>(
+			`/admin/users/${userId}/gym/hour-override`,
+			{ hour: gymHourInput },
+		)
+		gymHourOverride = result.hourOverride
+		gymHourStatus = { text: `Gym clock forced to ${gymHourInput}:00`, ok: true }
+	} catch (e) {
+		gymHourStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+async function clearGymHourOverride(userId: string) {
+	gymHourStatus = null
+	try {
+		const result = await api.patch<{ hourOverride: number | null }>(
+			`/admin/users/${userId}/gym/hour-override`,
+			{ hour: null },
+		)
+		gymHourOverride = result.hourOverride
+		gymHourStatus = { text: "Gym clock returned to real time", ok: true }
+	} catch (e) {
+		gymHourStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab:
@@ -654,6 +714,7 @@ async function selectTab(
 		await loadFoodEntries(userId)
 	} else if (tab === "gym") {
 		await loadGymNpcs(userId)
+		await loadGymHourOverride(userId)
 	}
 }
 
@@ -1081,6 +1142,39 @@ onMount(load)
 														Generate Gym Content
 													</button>
 												</div>
+												<div class="field-row">
+													{#if gymHourLoading}
+														<p class="muted">Loading…</p>
+													{:else}
+														<label>
+															Force hour of day
+															<input type="number" class="inp inp-sm" bind:value={gymHourInput} min="0" max="23" />
+														</label>
+														<button class="btn primary sm" onclick={() => saveGymHourOverride(user.id)}>
+															Set Gym Clock
+														</button>
+														{#if gymHourOverride !== null}
+															<button class="btn outline sm" onclick={() => clearGymHourOverride(user.id)}>
+																Clear (back to real time — {gymCurrentHour}:00)
+															</button>
+														{/if}
+													{/if}
+												</div>
+												{#if gymHourError}
+													<p class="error-text">{gymHourError}</p>
+												{/if}
+												{#if gymHourStatus}
+													<p
+														class="status-msg"
+														class:ok={gymHourStatus.ok}
+														class:fail={!gymHourStatus.ok}
+													>
+														{gymHourStatus.text}
+													</p>
+												{/if}
+												{#if gymHourOverride !== null}
+													<p class="muted">Gym clock forced to {gymHourOverride}:00 (real time is {gymCurrentHour}:00).</p>
+												{/if}
 												<div class="challenge-view">
 													{#if gymNpcsLoading}
 														<p class="muted">Loading…</p>
