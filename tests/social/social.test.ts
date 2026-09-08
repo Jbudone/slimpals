@@ -235,11 +235,17 @@ describe("POST /api/social/react — multi-user counts", () => {
 			.set("Cookie", cookieB)
 			.send({ postId, emoji: "🔥" })
 
+		// Reacting also earns badges that get auto-shared as their own feed
+		// posts (see "badge-triggered auto-share" below), so the reacted-upon
+		// post is no longer reliably body[0] — find it by id instead.
+		type FeedPost = { id: number; reactions: Record<string, unknown> }
+
 		// Alice: reacted → userReacted true, count 2
 		const resA = await request(app)
 			.get("/api/social/feed")
 			.set("Cookie", cookieA)
-		expect(resA.body[0].reactions["🔥"]).toMatchObject({
+		const alicePost = (resA.body as FeedPost[]).find((p) => p.id === postId)
+		expect(alicePost?.reactions["🔥"]).toMatchObject({
 			count: 2,
 			userReacted: true,
 		})
@@ -248,7 +254,8 @@ describe("POST /api/social/react — multi-user counts", () => {
 		const resB = await request(app)
 			.get("/api/social/feed")
 			.set("Cookie", cookieB)
-		expect(resB.body[0].reactions["🔥"]).toMatchObject({
+		const bobPost = (resB.body as FeedPost[]).find((p) => p.id === postId)
+		expect(bobPost?.reactions["🔥"]).toMatchObject({
 			count: 2,
 			userReacted: true,
 		})
