@@ -81,6 +81,15 @@ export class NpcSprite {
 			.setAlpha(0)
 	}
 
+	/** Places the sprite fully visible immediately, with no fade — for
+	 * restoring an NPC that was already present before a scene restart
+	 * (gh-60), where a fade-in would misleadingly read as an arrival. */
+	placeInstantly() {
+		this.sprite.setAlpha(1)
+		this.nameLabel.setAlpha(1)
+		this.shadow.setAlpha(0.3)
+	}
+
 	fadeIn() {
 		this.scene.tweens.add({
 			targets: [this.sprite, this.nameLabel, this.shadow],
@@ -180,13 +189,17 @@ export class NpcSprite {
 
 	private startWalkBob() {
 		this.stopWalkBob()
+		const duration = 150
 		this.bobTween = this.scene.tweens.add({
 			targets: this.sprite,
 			angle: { from: -4, to: 4 },
-			duration: 150,
+			duration,
 			yoyo: true,
 			repeat: -1,
 			ease: "Sine.easeInOut",
+			// Random start-phase offset so a room of NPCs doesn't visibly
+			// bob in lockstep (gh-60).
+			delay: Math.random() * duration,
 		})
 	}
 
@@ -243,14 +256,17 @@ export class NpcSprite {
 			return
 		}
 
+		const duration = 500
 		this.activityTween = this.scene.tweens.add({
 			targets: this.sprite,
 			y: this.baseY - 3,
 			angle: { from: -2, to: 2 },
-			duration: 500,
+			duration,
 			yoyo: true,
 			repeat: -1,
 			ease: "Sine.easeInOut",
+			// Random start-phase offset — same reasoning as startWalkBob (gh-60).
+			delay: Math.random() * duration,
 		})
 	}
 

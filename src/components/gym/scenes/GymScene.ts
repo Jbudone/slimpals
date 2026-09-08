@@ -173,6 +173,7 @@ export class GymScene extends Phaser.Scene {
 		}
 
 		this.setupCamera()
+		this.restorePriorNpcs()
 		this.startSimPolling()
 		this.renderMissingSpritesBanner()
 	}
@@ -337,6 +338,60 @@ export class GymScene extends Phaser.Scene {
 		}
 	}
 
+	/**
+	 * Re-places NPCs that were already present just before this scene was
+	 * (re)created — e.g. a scene.restart() from updateGymData() — directly at
+	 * their last-known position and activity, with no door-walk-in. Without
+	 * this, a restart looks identical to a genuine cold open because
+	 * npcSprites starts empty either way and applySimState can't tell "was
+	 * already here" from "just arrived" on its own (gh-60).
+	 */
+	private restorePriorNpcs() {
+		const prior = this.registry.get("lastAppliedNpcState") as
+			| NpcState[]
+			| undefined
+		if (!prior) return
+
+		for (const npc of prior) {
+			if (!npc.isPresent) continue
+			const ns = this.spawnNpcSprite(npc, npc.position.x, npc.position.y)
+			ns.placeInstantly()
+			if (npc.currentActivity === "using_equipment") {
+				ns.playActivity(npc.targetEquipmentKey ?? undefined)
+			} else if (npc.currentActivity === "chatting") {
+				ns.showChatBubble()
+			}
+		}
+	}
+
+	private spawnNpcSprite(npc: NpcState, x: number, y: number): NpcSprite {
+		const ns = new NpcSprite(this, npc.npcKey, x, y, this.availableSpriteKeys)
+		ns.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
+		ns.faceDirection(npc.facingDirection)
+		ns.updateDepth()
+		this.npcSprites.set(npc.npcKey, ns)
+
+		const key = npc.npcKey
+		ns.sprite.on("pointerdown", () => {
+			if (this.ceremonyActive) return
+			const cb = this.registry.get("onNpcClick") as
+				| ((k: string) => void)
+				| undefined
+			if (cb) cb(key)
+		})
+
+		return ns
+	}
+
+	/** A genuine new arrival: spawns at the door, fades in, walks to position. */
+	private spawnArrivingNpc(npc: NpcState) {
+		const ns = this.spawnNpcSprite(npc, DOOR_TILE.x, DOOR_TILE.y)
+		ns.fadeIn()
+		this.time.delayedCall(700, () => {
+			ns.moveTo(npc.position.x, npc.position.y)
+		})
+	}
+
 	private startSimPolling() {
 		this.fetchSimState()
 		this.pollTimer = this.time.addEvent({
@@ -389,30 +444,7 @@ export class GymScene extends Phaser.Scene {
 			}
 
 			if (!existing) {
-				const ns = new NpcSprite(
-					this,
-					npc.npcKey,
-					DOOR_TILE.x,
-					DOOR_TILE.y,
-					this.availableSpriteKeys,
-				)
-				ns.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
-				ns.fadeIn()
-				ns.updateDepth()
-				this.npcSprites.set(npc.npcKey, ns)
-
-				const key = npc.npcKey
-				ns.sprite.on("pointerdown", () => {
-					if (this.ceremonyActive) return
-					const cb = this.registry.get("onNpcClick") as
-						| ((k: string) => void)
-						| undefined
-					if (cb) cb(key)
-				})
-
-				this.time.delayedCall(700, () => {
-					ns.moveTo(npc.position.x, npc.position.y)
-				})
+				this.spawnArrivingNpc(npc)
 			} else {
 				existing.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
 				existing.moveTo(npc.position.x, npc.position.y)
@@ -435,6 +467,8 @@ export class GymScene extends Phaser.Scene {
 
 			sprite.faceDirection(npc.facingDirection)
 		}
+
+		this.registry.set("lastAppliedNpcState", npcs)
 
 		for (const [key, sprite] of this.npcSprites) {
 			if (!currentKeys.has(key)) {
