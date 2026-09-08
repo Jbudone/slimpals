@@ -36,6 +36,7 @@ import type {
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
 import {
+	deriveRelationshipFromDays,
 	generateDialogBatch,
 	getCurrentDialogBatch,
 	getOrCreateRelationship,
@@ -43,7 +44,11 @@ import {
 	getStageLabel,
 	type RelationshipStage,
 } from "../services/gym/dialog.js"
-import { getOrCreateGym } from "../services/gym/index.js"
+import {
+	deriveProgressionFromDays,
+	getOrCreateGym,
+} from "../services/gym/index.js"
+import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
 import {
 	generateSprintForUser,
@@ -938,6 +943,84 @@ export function createAdminRouter(aiService: AIService) {
 				pendingUpgradeKeys: gym.pendingUpgradeKeys,
 			},
 			upgrades,
+		})
+	})
+
+	adminRouter.post("/admin/users/:id/gym/progression", async (req, res) => {
+		const { id } = req.params
+		const { daysElapsed } = req.body as { daysElapsed?: number }
+
+		if (
+			daysElapsed === undefined ||
+			!Number.isInteger(daysElapsed) ||
+			daysElapsed < 0
+		) {
+			res
+				.status(400)
+				.json({ error: "daysElapsed must be a non-negative integer" })
+			return
+		}
+
+		const gym = await getOrCreateGym(id, db)
+		const catalog = await db
+			.select({
+				key: gymUpgradesCatalog.key,
+				requiredXp: gymUpgradesCatalog.requiredXp,
+			})
+			.from(gymUpgradesCatalog)
+
+		const progression = deriveProgressionFromDays(daysElapsed, catalog)
+		const relationship = deriveRelationshipFromDays(daysElapsed)
+
+		// Replace (not accumulate) gym-level state: every unlocked upgrade is
+		// auto-claimed so the scrubbed gym reads as already populated, rather
+		// than sitting behind an unclaimed-pending queue.
+		await db
+			.update(userGyms)
+			.set({
+				xp: progression.xp,
+				level: progression.level,
+				pendingUpgradeKeys: [],
+			})
+			.where(eq(userGyms.id, gym.id))
+
+		await db.delete(userGymUpgrades).where(eq(userGymUpgrades.gymId, gym.id))
+		if (progression.unlockedUpgradeKeys.length > 0) {
+			await db.insert(userGymUpgrades).values(
+				progression.unlockedUpgradeKeys.map((upgradeKey) => ({
+					gymId: gym.id,
+					upgradeKey,
+					placementData: UPGRADE_LAYOUT[upgradeKey] ?? null,
+				})),
+			)
+		}
+
+		// Replace every NPC's relationshipLevel/gymDaysActive uniformly —
+		// v1 ramp is the same for all NPCs (gh-110).
+		const npcs = await db.select({ key: gymNpcs.key }).from(gymNpcs)
+		for (const npc of npcs) {
+			await getOrCreateRelationship(gym.id, npc.key, db)
+			await db
+				.update(userGymNpcRelationships)
+				.set({
+					relationshipLevel: relationship.relationshipLevel,
+					gymDaysActive: relationship.gymDaysActive,
+				})
+				.where(
+					and(
+						eq(userGymNpcRelationships.gymId, gym.id),
+						eq(userGymNpcRelationships.npcKey, npc.key),
+					),
+				)
+		}
+
+		res.json({
+			daysElapsed: progression.daysElapsed,
+			xp: progression.xp,
+			level: progression.level,
+			unlockedUpgradeKeys: progression.unlockedUpgradeKeys,
+			relationshipLevel: relationship.relationshipLevel,
+			gymDaysActive: relationship.gymDaysActive,
 		})
 	})
 
