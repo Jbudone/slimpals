@@ -174,4 +174,68 @@ describe("impersonation", () => {
 			.set("Cookie", cookie)
 		expect(res.status).toBe(400)
 	})
+
+	it("keeps the admin panel reachable while impersonating a non-admin user", async () => {
+		const { cookie: adminCookie, userId: adminId } = await registerAndLogin(
+			"admin4@slimpals.test",
+			"Admin Four",
+		)
+		await makeAdmin(adminId)
+		const { userId: memberId } = await registerAndLogin(
+			"member3@slimpals.test",
+			"Member Three",
+		)
+
+		const impersonateRes = await request(app)
+			.post(`/api/admin/impersonate/${memberId}`)
+			.set("Cookie", adminCookie)
+		const impersonatedCookie = extractCookies(impersonateRes)
+
+		const usersRes = await request(app)
+			.get("/api/admin/users")
+			.set("Cookie", impersonatedCookie)
+		expect(usersRes.status).toBe(200)
+	})
+
+	it("switching impersonation target mid-impersonation still chains back to the original admin", async () => {
+		const { cookie: adminCookie, userId: adminId } = await registerAndLogin(
+			"admin5@slimpals.test",
+			"Admin Five",
+		)
+		await makeAdmin(adminId)
+		const { userId: memberAId } = await registerAndLogin(
+			"membera@slimpals.test",
+			"Member A",
+		)
+		const { userId: memberBId } = await registerAndLogin(
+			"memberb@slimpals.test",
+			"Member B",
+		)
+
+		const firstImpersonate = await request(app)
+			.post(`/api/admin/impersonate/${memberAId}`)
+			.set("Cookie", adminCookie)
+		const cookieAsMemberA = extractCookies(firstImpersonate)
+
+		const secondImpersonate = await request(app)
+			.post(`/api/admin/impersonate/${memberBId}`)
+			.set("Cookie", cookieAsMemberA)
+		const cookieAsMemberB = extractCookies(secondImpersonate)
+
+		const meRes = await request(app)
+			.get("/api/users/me")
+			.set("Cookie", cookieAsMemberB)
+		expect(meRes.body.id).toBe(memberBId)
+		expect(meRes.body.impersonatedBy.id).toBe(adminId)
+
+		const stopRes = await request(app)
+			.post("/api/admin/stop-impersonating")
+			.set("Cookie", cookieAsMemberB)
+		const restoredCookie = extractCookies(stopRes)
+
+		const restoredMeRes = await request(app)
+			.get("/api/users/me")
+			.set("Cookie", restoredCookie)
+		expect(restoredMeRes.body.id).toBe(adminId)
+	})
 })

@@ -163,7 +163,12 @@ export function createAdminRouter(aiService: AIService) {
 			return
 		}
 
-		const adminId = (req as unknown as AuthRequest).user.id
+		// If already impersonating (e.g. switching target from inside the
+		// impersonated session), keep chaining back to the original admin
+		// rather than the currently-impersonated user.
+		const adminId =
+			parseCookies(req.headers.cookie)[IMPERSONATOR_COOKIE] ??
+			(req as unknown as AuthRequest).user.id
 		const sessionCookie = await createSessionCookie(id)
 
 		res.setHeader("Set-Cookie", [
