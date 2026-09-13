@@ -233,6 +233,17 @@ let gymHourLoading = $state(false)
 let gymHourError = $state<string | null>(null)
 let gymHourStatus = $state<{ text: string; ok: boolean } | null>(null)
 
+const GYM_PROGRESSION_CHECKPOINTS = [
+	{ days: 1, id: "grand_opening", label: "Grand Opening" },
+	{ days: 7, id: "first_week", label: "First Week" },
+	{ days: 30, id: "one_month_in", label: "One Month In" },
+	{ days: 90, id: "established", label: "Established" },
+] as const
+
+let gymProgressionDays = $state(0)
+let gymProgressionApplying = $state(false)
+let gymProgressionStatus = $state<{ text: string; ok: boolean } | null>(null)
+
 let dialogPreviewNpcKey = $state<string | null>(null)
 let dialogPreviewStage = $state(0)
 let dialogPreviewEntries = $state<AdminDialogEntry[]>([])
@@ -775,6 +786,35 @@ async function loadGymUpgrades(userId: string) {
 	}
 }
 
+async function applyGymProgression(userId: string, days: number) {
+	gymProgressionApplying = true
+	gymProgressionStatus = null
+	try {
+		const result = await api.post<{
+			daysElapsed: number
+			xp: number
+			level: number
+			unlockedUpgradeKeys: string[]
+			relationshipLevel: number
+			gymDaysActive: number
+		}>(`/admin/users/${userId}/gym/progression`, { daysElapsed: days })
+		gymProgressionDays = result.daysElapsed
+		gymProgressionStatus = {
+			text: `Applied day ${result.daysElapsed}: Lv ${result.level} (${result.xp} XP), ${result.unlockedUpgradeKeys.length} upgrades unlocked, relationship ${result.relationshipLevel}/100`,
+			ok: true,
+		}
+		await loadGymNpcs(userId)
+		await loadGymUpgrades(userId)
+	} catch (e) {
+		gymProgressionStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	} finally {
+		gymProgressionApplying = false
+	}
+}
+
 async function selectTab(
 	userId: string,
 	tab:
@@ -1235,6 +1275,51 @@ onMount(load)
 														</button>
 													{/if}
 												</div>
+												<div class="progression-slider-row">
+													<label class="progression-slider-label">
+														Gym progression — day {gymProgressionDays}
+														<input
+															type="range"
+															min="0"
+															max="180"
+															list="gym-progression-checkpoints"
+															bind:value={gymProgressionDays}
+															disabled={gymProgressionApplying}
+														/>
+													</label>
+													<datalist id="gym-progression-checkpoints">
+														{#each GYM_PROGRESSION_CHECKPOINTS as cp (cp.id)}
+															<option value={cp.days}></option>
+														{/each}
+													</datalist>
+													<button
+														class="btn primary sm"
+														disabled={gymProgressionApplying}
+														onclick={() => applyGymProgression(user.id, gymProgressionDays)}
+													>
+														{gymProgressionApplying ? "Applying…" : `Apply Day ${gymProgressionDays}`}
+													</button>
+												</div>
+												<div class="field-row">
+													{#each GYM_PROGRESSION_CHECKPOINTS as cp (cp.id)}
+														<button
+															class="btn outline sm"
+															disabled={gymProgressionApplying}
+															onclick={() => applyGymProgression(user.id, cp.days)}
+														>
+															Day {cp.days} — {cp.label}
+														</button>
+													{/each}
+												</div>
+												{#if gymProgressionStatus}
+													<p
+														class="status-msg"
+														class:ok={gymProgressionStatus.ok}
+														class:fail={!gymProgressionStatus.ok}
+													>
+														{gymProgressionStatus.text}
+													</p>
+												{/if}
 												<div class="field-row">
 													{#if gymHourLoading}
 														<p class="muted">Loading…</p>
@@ -2225,5 +2310,24 @@ onMount(load)
 .upgrade-status.status-locked {
 	background: var(--color-surface-2);
 	color: var(--color-text-muted);
+}
+
+.progression-slider-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 0.5rem 0;
+}
+
+.progression-slider-label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 1;
+	font-size: 0.85rem;
+}
+
+.progression-slider-label input[type="range"] {
+	flex: 1;
 }
 </style>
