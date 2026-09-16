@@ -87,6 +87,51 @@
 	--color-danger: #ff0055;
 }
 
+/* ── Type, space, shape tokens ───────────────────────────────
+   Theme-agnostic (not under [data-theme]) so all 6 palettes inherit
+   these automatically. Not consumed by any component yet — see
+   gh-72 (UI kit) for the first consumers. --font-display is a
+   system-serif fallback until gh-71 swaps in the real display font. */
+
+:root {
+	--font-sans: system-ui, -apple-system, sans-serif;
+	--font-display: Georgia, "Times New Roman", serif;
+
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-base: 1rem;
+	--font-size-lg: 1.125rem;
+	--font-size-xl: 1.5rem;
+	--font-size-2xl: 2rem;
+	--font-size-3xl: 2.5rem;
+
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	--line-height-tight: 1.2;
+	--line-height-normal: 1.5;
+
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.25rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-10: 2.5rem;
+
+	--radius-sm: 0.5rem;
+	--radius-md: 1rem;
+	--radius-lg: 1.5rem;
+	--radius-full: 9999px;
+
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+	--shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
 /* ── Base styles ───────────────────────────────────────────── */
 
 body {
