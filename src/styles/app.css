@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource-variable/fraunces/wght.css";
 
 /* ── Theme tokens ─────────────────────────────────────────── */
 
@@ -90,12 +91,13 @@
 /* ── Type, space, shape tokens ───────────────────────────────
    Theme-agnostic (not under [data-theme]) so all 6 palettes inherit
    these automatically. Not consumed by any component yet — see
-   gh-72 (UI kit) for the first consumers. --font-display is a
-   system-serif fallback until gh-71 swaps in the real display font. */
+   gh-72 (UI kit) for the first consumers. --font-display is the
+   self-hosted Fraunces variable font (weight axis only), loaded via
+   @fontsource-variable/fraunces with font-display: swap. */
 
 :root {
 	--font-sans: system-ui, -apple-system, sans-serif;
-	--font-display: Georgia, "Times New Roman", serif;
+	--font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
 
 	--font-size-xs: 0.75rem;
 	--font-size-sm: 0.875rem;
