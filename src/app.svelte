@@ -1,8 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import BottomTabBar from "./components/BottomTabBar.svelte"
+import Header from "./components/Header.svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
+import { loadCheckinStatus } from "./lib/checkin.svelte.js"
 import {
 	fetchUserProfile,
 	stopImpersonating,
@@ -33,6 +35,7 @@ onMount(async () => {
 
 	if (authState.user) {
 		await fetchUserProfile()
+		loadCheckinStatus()
 	}
 })
 
@@ -78,6 +81,7 @@ async function handleStopImpersonating() {
 		</div>
 	{/if}
 	<div class="app-shell">
+		<Header />
 		<main class="app-content">
 			{#if currentPath === "/"}
 				<Dashboard />

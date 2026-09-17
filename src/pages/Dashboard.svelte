@@ -6,14 +6,12 @@ import Card from "../components/ui/Card.svelte"
 import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
+import {
+	checkinState,
+	loadCheckinStatus,
+	submitCheckin,
+} from "../lib/checkin.svelte.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
-
-type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
-
-type CheckinStatus = {
-	checkedInToday: boolean
-	streakCount: number
-}
 
 type GymDailySummary = {
 	todayEvent: { npcKey: string | null; activeHours: [number, number] } | null
@@ -39,7 +37,6 @@ const COACH_NAMES: Record<CoachPersonality, string> = {
 	bro: "Bro",
 }
 
-let status = $state<CheckinStatus | null>(null)
 let loading = $state(true)
 let checkingIn = $state(false)
 let checkinDone = $state(false)
@@ -47,16 +44,6 @@ let inspiration = $state<WeeklyInspiration>(null)
 let gymSummary = $state<GymDailySummary | null>(null)
 
 const MILESTONES = [7, 30, 100]
-
-async function loadStatus() {
-	try {
-		status = await api.get<CheckinStatus>("/checkins/today")
-	} catch {
-		// ignore — widget stays hidden
-	} finally {
-		loading = false
-	}
-}
 
 async function loadInspiration() {
 	try {
@@ -77,10 +64,7 @@ async function loadGymSummary() {
 async function handleCheckin() {
 	checkingIn = true
 	try {
-		const res = await api.post<
-			CheckinStatus & { streakCount: number; newBadges?: NewBadge[] }
-		>("/checkins", {})
-		status = { checkedInToday: true, streakCount: res.streakCount }
+		const res = await submitCheckin()
 		checkinDone = true
 		if (res.newBadges?.length) {
 			for (const b of res.newBadges) showBadgeToast(b)
@@ -99,7 +83,9 @@ function ringMax(streak: number): number {
 }
 
 onMount(() => {
-	loadStatus()
+	loadCheckinStatus().finally(() => {
+		loading = false
+	})
 	loadInspiration()
 	loadGymSummary()
 })
@@ -118,7 +104,8 @@ onMount(() => {
 		</section>
 	{/if}
 
-	{#if !loading && status}
+	{#if !loading && checkinState.data}
+		{@const status = checkinState.data}
 		<Card>
 			<div class="streak-body">
 				<ProgressBar
