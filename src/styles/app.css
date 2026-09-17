@@ -5,17 +5,31 @@
 
 :root,
 [data-theme="midnight"] {
-	--color-bg: #0d1117;
-	--color-surface: #161b22;
-	--color-surface-2: #21262d;
-	--color-border: #30363d;
-	--color-text: #e6edf3;
-	--color-text-muted: #8b949e;
-	--color-accent: #7c3aed;
-	--color-accent-hover: #6d28d9;
-	--color-success: #3fb950;
-	--color-warning: #d29922;
-	--color-danger: #f85149;
+	--color-bg: #0f2016;
+	--color-surface: #17331f;
+	--color-surface-2: #1e3f27;
+	--color-border: #234230;
+	--color-text: #f2f7f0;
+	--color-text-muted: #8fae95;
+	--color-accent: #34c973;
+	--color-accent-hover: #22a85e;
+	--color-success: #34c973;
+	--color-warning: #fbbf24;
+	--color-danger: #f87171;
+}
+
+[data-theme="cream"] {
+	--color-bg: #f1e4cf;
+	--color-surface: #fdf8f0;
+	--color-surface-2: #f6ecda;
+	--color-border: #eaddc4;
+	--color-text: #241d15;
+	--color-text-muted: #8d7c66;
+	--color-accent: #c1602f;
+	--color-accent-hover: #a34a22;
+	--color-success: #4d9c5c;
+	--color-warning: #d97706;
+	--color-danger: #dc2626;
 }
 
 [data-theme="forest"] {
@@ -89,10 +103,10 @@
 }
 
 /* ── Type, space, shape tokens ───────────────────────────────
-   Theme-agnostic (not under [data-theme]) so all 6 palettes inherit
-   these automatically. Not consumed by any component yet — see
-   gh-72 (UI kit) for the first consumers. --font-display is the
-   self-hosted Fraunces variable font (weight axis only), loaded via
+   Theme-agnostic (not under [data-theme]) so all palettes inherit
+   these automatically. Consumed by the shared UI kit in
+   src/components/ui/ (gh-72). --font-display is the self-hosted
+   Fraunces variable font (weight axis only), loaded via
    @fontsource-variable/fraunces with font-display: swap. */
 
 :root {

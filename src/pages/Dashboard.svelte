@@ -1,6 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import type { CoachPersonality } from "../../shared/types.js"
+import Button from "../components/ui/Button.svelte"
+import Card from "../components/ui/Card.svelte"
+import Pill from "../components/ui/Pill.svelte"
+import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
 
@@ -90,6 +94,10 @@ function nextMilestone(streak: number): number | null {
 	return MILESTONES.find((m) => m > streak) ?? null
 }
 
+function ringMax(streak: number): number {
+	return nextMilestone(streak) ?? Math.max(streak, 1)
+}
+
 onMount(() => {
 	loadStatus()
 	loadInspiration()
@@ -111,45 +119,57 @@ onMount(() => {
 	{/if}
 
 	{#if !loading && status}
-		<section class="card streak-card">
-			<div class="streak-header">
-				<span class="streak-icon">🔥</span>
-				<div>
-					<div class="streak-count">{status.streakCount}</div>
-					<div class="streak-label">day streak</div>
-				</div>
-				{#if MILESTONES.includes(status.streakCount)}
-					<div class="milestone-badge">
-						{status.streakCount}-day milestone!
-					</div>
-				{/if}
-			</div>
-
-			{#if !status.checkedInToday}
-				<p class="prompt">You haven't checked in today yet.</p>
-				<button
-					class="checkin-btn"
-					onclick={handleCheckin}
-					disabled={checkingIn}
-					type="button"
+		<Card>
+			<div class="streak-body">
+				<ProgressBar
+					variant="circular"
+					value={status.streakCount}
+					max={ringMax(status.streakCount)}
+					size={92}
+					thickness={8}
 				>
-					{checkingIn ? "Checking in…" : "Check in now"}
-				</button>
-			{:else}
-				<p class="done-msg">
-					{checkinDone ? "Checked in! Keep it up." : "You've checked in today."}
-				</p>
-			{/if}
+					{#snippet children()}
+						<div class="ring-content">
+							<span class="ring-count">{status.streakCount}</span>
+							<span class="ring-label">days</span>
+						</div>
+					{/snippet}
+				</ProgressBar>
 
-			{#if status.streakCount > 0}
-				{@const next = nextMilestone(status.streakCount)}
-				{#if next}
-					<p class="to-milestone">
-						{next - status.streakCount} day{next - status.streakCount === 1 ? "" : "s"} to {next}-day milestone
-					</p>
-				{/if}
-			{/if}
-		</section>
+				<div class="streak-copy">
+					<div class="streak-heading-row">
+						<h2 class="streak-heading">
+							{status.checkedInToday ? "You're on a roll" : "Keep the fire going"}
+						</h2>
+						{#if MILESTONES.includes(status.streakCount)}
+							<Pill tone="accent">{status.streakCount}-day milestone!</Pill>
+						{/if}
+					</div>
+
+					{#if !status.checkedInToday}
+						<p class="streak-subtext">
+							Check in before midnight or the streak resets.
+						</p>
+						<Button onclick={handleCheckin} disabled={checkingIn}>
+							{checkingIn ? "Checking in…" : "Check in now"}
+						</Button>
+					{:else}
+						<p class="streak-subtext">
+							{checkinDone ? "Checked in! Keep it up." : "You've checked in today."}
+						</p>
+					{/if}
+
+					{#if status.streakCount > 0}
+						{@const next = nextMilestone(status.streakCount)}
+						{#if next}
+							<p class="to-milestone">
+								{next - status.streakCount} day{next - status.streakCount === 1 ? "" : "s"} to {next}-day milestone
+							</p>
+						{/if}
+					{/if}
+				</div>
+			</div>
+		</Card>
 	{/if}
 
 	{#if gymSummary}
@@ -222,77 +242,65 @@ h1 {
 	gap: 1rem;
 }
 
-.streak-header {
+.streak-body {
 	display: flex;
 	align-items: center;
-	gap: 1rem;
+	gap: var(--space-6);
 }
 
-.streak-icon {
-	font-size: 2.5rem;
+.ring-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	line-height: 1;
 }
 
-.streak-count {
-	font-size: 2.25rem;
-	font-weight: 800;
-	color: var(--color-accent);
-	line-height: 1;
+.ring-count {
+	font-family: var(--font-display);
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
 }
 
-.streak-label {
-	font-size: 0.8125rem;
+.ring-label {
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	margin-top: var(--space-1);
 }
 
-.milestone-badge {
-	margin-left: auto;
-	background: color-mix(in srgb, var(--color-warning) 20%, transparent);
-	border: 1px solid var(--color-warning);
-	color: var(--color-warning);
-	font-size: 0.75rem;
-	font-weight: 700;
-	padding: 0.3rem 0.7rem;
-	border-radius: 99px;
+.streak-copy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	flex: 1;
+	min-width: 0;
 }
 
-.prompt {
-	font-size: 0.875rem;
-	color: var(--color-text-muted);
+.streak-heading-row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+
+.streak-heading {
+	font-family: var(--font-display);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
 	margin: 0;
 }
 
-.checkin-btn {
-	background: var(--color-accent);
-	color: #fff;
-	border: none;
-	border-radius: 0.375rem;
-	padding: 0.625rem 1.25rem;
-	font-size: 0.9375rem;
-	font-weight: 600;
-	cursor: pointer;
-	align-self: flex-start;
-}
-
-.checkin-btn:hover:not(:disabled) {
-	background: var(--color-accent-hover);
-}
-
-.checkin-btn:disabled {
-	opacity: 0.55;
-	cursor: not-allowed;
-}
-
-.done-msg {
-	font-size: 0.875rem;
-	color: var(--color-success);
+.streak-subtext {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
 	margin: 0;
 }
 
 .to-milestone {
-	font-size: 0.8125rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	margin: 0;
 }

@@ -17,6 +17,7 @@ export type Theme =
 	| "ocean"
 	| "light"
 	| "neon"
+	| "cream"
 
 export type WeightSource = "manual" | "apple_health" | "fitbit" | "garmin"
 

@@ -3,12 +3,13 @@ import type { Theme } from "../../shared/types.js"
 import { updateTheme, userProfile } from "../lib/user.svelte.js"
 
 const themes: { id: Theme; label: string; accent: string }[] = [
-	{ id: "midnight", label: "Midnight", accent: "#7c3aed" },
+	{ id: "midnight", label: "Midnight", accent: "#34c973" },
 	{ id: "forest", label: "Forest", accent: "#22c55e" },
 	{ id: "sunset", label: "Sunset", accent: "#f97316" },
 	{ id: "ocean", label: "Ocean", accent: "#0ea5e9" },
 	{ id: "light", label: "Light", accent: "#6d28d9" },
 	{ id: "neon", label: "Neon", accent: "#00ff88" },
+	{ id: "cream", label: "Cream", accent: "#c1602f" },
 ]
 
 let current = $derived(userProfile.data?.theme ?? "midnight")

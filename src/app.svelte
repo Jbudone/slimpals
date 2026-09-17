@@ -128,6 +128,10 @@ async function handleStopImpersonating() {
 		{#await import("./pages/GymSprites.svelte") then { default: GymSprites }}
 			<GymSprites />
 		{/await}
+	{:else if import.meta.env.DEV && currentPath === "/ui-kit"}
+		{#await import("./pages/UiKit.svelte") then { default: UiKit }}
+			<UiKit />
+		{/await}
 	{/if}
 	<Toast />
 {/if}

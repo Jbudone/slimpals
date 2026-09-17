@@ -15,6 +15,7 @@ const VALID_THEMES = [
 	"ocean",
 	"light",
 	"neon",
+	"cream",
 ] as const
 
 const VALID_PERSONALITIES: CoachPersonality[] = [
