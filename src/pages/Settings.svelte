@@ -4,6 +4,7 @@ import type { CoachPersonality, ViewMode } from "../../shared/types.js"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
 import { logout } from "../lib/auth.svelte.js"
+import { checkinState } from "../lib/checkin.svelte.js"
 import {
 	type UserProfile,
 	updateCoachPersonality,
@@ -13,6 +14,10 @@ import { page } from "../router.svelte.js"
 
 async function handleLogout() {
 	await logout()
+	// Clear cross-session state so a stale isAdmin/streak flash from this
+	// account can never bleed into whoever logs in next in this tab.
+	userProfile.data = null
+	checkinState.data = null
 	page("/login")
 }
 

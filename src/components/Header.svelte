@@ -1,15 +1,19 @@
 <script lang="ts">
 import { checkinState } from "../lib/checkin.svelte.js"
+import AvatarMenu from "./AvatarMenu.svelte"
 import Pill from "./ui/Pill.svelte"
 </script>
 
 <header class="app-header">
 	<span class="brand">SlimPals</span>
-	{#if checkinState.data}
-		<Pill tone="accent">
-			🔥 {checkinState.data.streakCount}
-		</Pill>
-	{/if}
+	<div class="header-right">
+		{#if checkinState.data}
+			<Pill tone="accent">
+				🔥 {checkinState.data.streakCount}
+			</Pill>
+		{/if}
+		<AvatarMenu />
+	</div>
 </header>
 
 <style>
@@ -30,5 +34,11 @@ import Pill from "./ui/Pill.svelte"
 	font-size: var(--font-size-lg);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-accent);
+}
+
+.header-right {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
 }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { authState, fetchSession } from "../lib/auth.svelte.js"
+import { fetchUserProfile } from "../lib/user.svelte.js"
 import { page } from "../router.svelte.js"
 
 let email = $state("")
@@ -24,6 +25,7 @@ async function handleSubmit(e: SubmitEvent) {
 			return
 		}
 		await fetchSession()
+		await fetchUserProfile()
 		page("/")
 	} catch {
 		error = "Network error — please try again"
