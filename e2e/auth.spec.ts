@@ -33,6 +33,10 @@ test("register with invite code, logout, and log back in", async ({
 		freshPage.getByRole("heading", { name: "Dashboard" }),
 	).toBeVisible()
 
+	// Sign out lives on the Settings page, not the top-nav — the bottom
+	// tab bar (gh-73) replaced the nav that used to have it directly, and
+	// avatar-menu/quick-access-to-settings lands in a later slice (gh-75).
+	await freshPage.goto("/settings")
 	await freshPage.getByRole("button", { name: "Sign out" }).click()
 	await expect(freshPage).toHaveURL(/\/login/)
 	await expect(

@@ -136,7 +136,7 @@ onMount(loadGym)
 .gym-page {
 	display: flex;
 	flex-direction: column;
-	height: calc(100vh - 52px);
+	height: 100%;
 }
 
 .canvas-area {

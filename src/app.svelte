@@ -1,7 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import BottomTabBar from "./components/BottomTabBar.svelte"
 import Toast from "./components/Toast.svelte"
-import { authState, fetchSession, logout } from "./lib/auth.svelte.js"
+import { authState, fetchSession } from "./lib/auth.svelte.js"
 import {
 	fetchUserProfile,
 	stopImpersonating,
@@ -24,12 +25,6 @@ import { initRouter, nav, page } from "./router.svelte.js"
 let currentPath = $derived(nav.path)
 let isLoggedIn = $derived(authState.user !== null)
 let isLoading = $derived(authState.loading)
-// An admin who is impersonating someone is still the admin underneath —
-// keep the Admin nav reachable so they aren't locked out of their own panel.
-let isAdmin = $derived(
-	(userProfile.data?.isAdmin ?? false) ||
-		userProfile.data?.impersonatedBy != null,
-)
 let impersonatedBy = $derived(userProfile.data?.impersonatedBy ?? null)
 
 onMount(async () => {
@@ -57,11 +52,6 @@ $effect(() => {
 	}
 })
 
-async function handleLogout() {
-	await logout()
-	page("/login")
-}
-
 async function handleStopImpersonating() {
 	await stopImpersonating()
 	await fetchSession()
@@ -87,53 +77,41 @@ async function handleStopImpersonating() {
 			</button>
 		</div>
 	{/if}
-	<nav class="top-nav">
-		<span class="brand">SlimPals</span>
-		<a class="nav-link" href="/" onclick={(e) => { e.preventDefault(); page("/") }}>Dashboard</a>
-		<a class="nav-link" href="/weight" onclick={(e) => { e.preventDefault(); page("/weight") }}>Weight</a>
-		<a class="nav-link" href="/food" onclick={(e) => { e.preventDefault(); page("/food") }}>Food</a>
-		<a class="nav-link" href="/social" onclick={(e) => { e.preventDefault(); page("/social") }}>Social</a>
-		<a class="nav-link" href="/tournaments" onclick={(e) => { e.preventDefault(); page("/tournaments") }}>Tournaments</a>
-		<a class="nav-link" href="/challenges" onclick={(e) => { e.preventDefault(); page("/challenges") }}>Challenges</a>
-		<a class="nav-link" href="/badges" onclick={(e) => { e.preventDefault(); page("/badges") }}>Badges</a>
-		<a class="nav-link" href="/gym" onclick={(e) => { e.preventDefault(); page("/gym") }}>Gym</a>
-		<a class="nav-link" href="/settings" onclick={(e) => { e.preventDefault(); page("/settings") }}>Settings</a>
-		{#if isAdmin}
-			<a class="nav-link admin-link" href="/admin" onclick={(e) => { e.preventDefault(); page("/admin") }}>Admin</a>
-		{/if}
-		<button class="logout-btn" onclick={handleLogout}>Sign out</button>
-	</nav>
-
-	{#if currentPath === "/"}
-		<Dashboard />
-	{:else if currentPath === "/weight"}
-		<Weight />
-	{:else if currentPath === "/food"}
-		<Food />
-	{:else if currentPath === "/social"}
-		<Social />
-	{:else if currentPath === "/tournaments"}
-		<Tournaments />
-	{:else if currentPath === "/challenges"}
-		<Challenges />
-	{:else if currentPath === "/badges"}
-		<Badges />
-	{:else if currentPath === "/gym"}
-		<Gym />
-	{:else if currentPath === "/settings"}
-		<Settings />
-	{:else if currentPath === "/admin"}
-		<Admin />
-	{:else if import.meta.env.DEV && currentPath === "/gym-sprites"}
-		{#await import("./pages/GymSprites.svelte") then { default: GymSprites }}
-			<GymSprites />
-		{/await}
-	{:else if import.meta.env.DEV && currentPath === "/ui-kit"}
-		{#await import("./pages/UiKit.svelte") then { default: UiKit }}
-			<UiKit />
-		{/await}
-	{/if}
-	<Toast />
+	<div class="app-shell">
+		<main class="app-content">
+			{#if currentPath === "/"}
+				<Dashboard />
+			{:else if currentPath === "/weight"}
+				<Weight />
+			{:else if currentPath === "/food"}
+				<Food />
+			{:else if currentPath === "/social"}
+				<Social />
+			{:else if currentPath === "/tournaments"}
+				<Tournaments />
+			{:else if currentPath === "/challenges"}
+				<Challenges />
+			{:else if currentPath === "/badges"}
+				<Badges />
+			{:else if currentPath === "/gym"}
+				<Gym />
+			{:else if currentPath === "/settings"}
+				<Settings />
+			{:else if currentPath === "/admin"}
+				<Admin />
+			{:else if import.meta.env.DEV && currentPath === "/gym-sprites"}
+				{#await import("./pages/GymSprites.svelte") then { default: GymSprites }}
+					<GymSprites />
+				{/await}
+			{:else if import.meta.env.DEV && currentPath === "/ui-kit"}
+				{#await import("./pages/UiKit.svelte") then { default: UiKit }}
+					<UiKit />
+				{/await}
+			{/if}
+			<Toast />
+		</main>
+		<BottomTabBar />
+	</div>
 {/if}
 
 <style>
@@ -173,49 +151,13 @@ async function handleStopImpersonating() {
 	background: #fff;
 }
 
-.top-nav {
+.app-shell {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0.75rem 1.5rem;
-	background: var(--color-surface);
-	border-bottom: 1px solid var(--color-border);
+	flex-direction: column;
+	min-height: 100vh;
 }
 
-.brand {
-	font-weight: 700;
-	font-size: 1.125rem;
-	color: var(--color-accent);
-}
-
-.nav-link {
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
-	text-decoration: none;
-	margin-right: auto;
-	margin-left: 1.5rem;
-}
-
-.nav-link:hover {
-	color: var(--color-text);
-}
-
-.admin-link {
-	color: #ef4444;
-}
-
-.logout-btn {
-	background: transparent;
-	border: 1px solid var(--color-border);
-	border-radius: 0.375rem;
-	padding: 0.375rem 0.75rem;
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
-	cursor: pointer;
-}
-
-.logout-btn:hover {
-	background: var(--color-surface-2);
-	color: var(--color-text);
+.app-content {
+	flex: 1;
 }
 </style>

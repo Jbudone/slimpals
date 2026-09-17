@@ -116,7 +116,7 @@ onMount(() => {
 
 .gallery-container {
 	width: 100%;
-	height: calc(100vh - 52px);
+	height: 100%;
 }
 
 .gallery-container :global(canvas) {

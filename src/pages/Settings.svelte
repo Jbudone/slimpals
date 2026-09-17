@@ -3,11 +3,18 @@ import { onMount } from "svelte"
 import type { CoachPersonality, ViewMode } from "../../shared/types.js"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
+import { logout } from "../lib/auth.svelte.js"
 import {
 	type UserProfile,
 	updateCoachPersonality,
 	userProfile,
 } from "../lib/user.svelte.js"
+import { page } from "../router.svelte.js"
+
+async function handleLogout() {
+	await logout()
+	page("/login")
+}
 
 type PersonalityOption = {
 	id: CoachPersonality
@@ -444,6 +451,13 @@ onMount(() => {
 				{/each}
 			</ul>
 		{/if}
+	</section>
+
+	<section class="section">
+		<h2>Account Actions</h2>
+		<button class="btn-signout" onclick={handleLogout} type="button">
+			Sign out
+		</button>
 	</section>
 </div>
 
@@ -906,5 +920,21 @@ dd {
 	font-weight: 600;
 	text-align: right;
 	margin: 0;
+}
+
+.btn-signout {
+	padding: 0.5rem 1rem;
+	background: transparent;
+	border: 1px solid var(--color-danger);
+	color: var(--color-danger);
+	border-radius: 0.375rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+	align-self: flex-start;
+}
+
+.btn-signout:hover {
+	background: color-mix(in srgb, var(--color-danger) 12%, transparent);
 }
 </style>
