@@ -3,6 +3,7 @@ import SegmentedTabs from "../components/ui/SegmentedTabs.svelte"
 import { nav, page } from "../router.svelte.js"
 import Badges from "./Badges.svelte"
 import Challenges from "./Challenges.svelte"
+import GymUpgrades from "./GymUpgrades.svelte"
 import Tournaments from "./Tournaments.svelte"
 
 const TABS = [
@@ -19,16 +20,19 @@ const TAB_TO_PATH = {
 	gym: "/gym",
 } as const
 
-// "Gym" isn't wired into this shell yet (gh-80/81) — clicking it just
-// navigates to the existing plain /gym route, leaving this shell entirely,
-// same as any other deep link. It can never be the *active* tab here since
-// Compete.svelte doesn't mount for /gym.
+// "Gym" now renders the upgrade-list view (gh-80) inline, same as the other
+// three tabs. The full Phaser canvas experience lives at the separate
+// /gym/canvas route (gh-81 will add a "Visit your gym" entry card here that
+// launches it) — this shell was never meant to embed the canvas itself, see
+// gh-35's original reasoning.
 let activeTab = $derived(
 	nav.path === "/challenges"
 		? "challenge"
 		: nav.path === "/badges"
 			? "badges"
-			: "tournaments",
+			: nav.path === "/gym"
+				? "gym"
+				: "tournaments",
 )
 
 function selectTab(id: string) {
@@ -44,6 +48,8 @@ function selectTab(id: string) {
 		<Challenges />
 	{:else if activeTab === "badges"}
 		<Badges />
+	{:else if activeTab === "gym"}
+		<GymUpgrades />
 	{:else}
 		<Tournaments />
 	{/if}

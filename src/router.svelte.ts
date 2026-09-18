@@ -9,6 +9,7 @@ export type RoutePath =
 	| "/challenges"
 	| "/social"
 	| "/gym"
+	| "/gym/canvas"
 	| "/tournaments"
 	| "/badges"
 	| "/settings"
@@ -34,6 +35,7 @@ export function initRouter() {
 	page("/challenges", go("/challenges"))
 	page("/social", go("/social"))
 	page("/gym", go("/gym"))
+	page("/gym/canvas", go("/gym/canvas"))
 	page("/tournaments", go("/tournaments"))
 	page("/badges", go("/badges"))
 	page("/settings", go("/settings"))

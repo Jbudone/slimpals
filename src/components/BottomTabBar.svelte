@@ -30,7 +30,13 @@ const TABS: Tab[] = [
 		label: "Compete",
 		icon: Trophy,
 		targetPath: "/tournaments",
-		matchPaths: ["/tournaments", "/challenges", "/badges", "/gym"],
+		matchPaths: [
+			"/tournaments",
+			"/challenges",
+			"/badges",
+			"/gym",
+			"/gym/canvas",
+		],
 	},
 	{
 		id: "social",

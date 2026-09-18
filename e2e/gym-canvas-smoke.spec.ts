@@ -42,7 +42,7 @@ test("gym canvas renders and GymScene becomes active with no console errors", as
 	const pageErrors: string[] = []
 	page.on("pageerror", (err) => pageErrors.push(err.message))
 
-	await page.goto("/gym")
+	await page.goto("/gym/canvas")
 
 	await expect(
 		page.locator(".gym-name", { hasText: `${uniqueName}'s Gym` }),

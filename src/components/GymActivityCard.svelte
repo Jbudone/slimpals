@@ -154,7 +154,7 @@ let hasContent = $derived(
 			</div>
 		{/if}
 
-		<Button variant="secondary" onclick={() => page("/gym")}>Visit gym</Button>
+		<Button variant="secondary" onclick={() => page("/gym/canvas")}>Visit gym</Button>
 	</Card>
 {/if}
 

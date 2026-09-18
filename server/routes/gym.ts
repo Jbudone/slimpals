@@ -144,6 +144,72 @@ function getMilestoneDialog(
 	return null
 }
 
+// Shared by GET /gym and POST /gym/claim-upgrade — both need the exact same
+// unlocked/pending/locked breakdown plus level-progress math, and previously
+// duplicated it verbatim (a discrepancy risk if one copy drifted from the
+// other, e.g. when adding the sortOrder field below).
+async function buildUpgradesPayload(gymId: number, gymXp: number) {
+	const catalog = await db
+		.select()
+		.from(gymUpgradesCatalog)
+		.orderBy(asc(gymUpgradesCatalog.sortOrder))
+
+	const unlockedRows = await db
+		.select()
+		.from(userGymUpgrades)
+		.where(eq(userGymUpgrades.gymId, gymId))
+
+	const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
+	const [gymRow] = await db
+		.select({ pendingUpgradeKeys: userGyms.pendingUpgradeKeys })
+		.from(userGyms)
+		.where(eq(userGyms.id, gymId))
+	const pendingKeys = new Set((gymRow?.pendingUpgradeKeys ?? []) as string[])
+
+	const unlocked = catalog
+		.filter((c) => unlockedKeys.has(c.key))
+		.map((c) => {
+			const row = unlockedRows.find((r) => r.upgradeKey === c.key)
+			return {
+				key: c.key,
+				name: c.name,
+				description: c.description,
+				category: c.category,
+				sortOrder: c.sortOrder,
+				unlockedAt: row?.unlockedAt,
+				placementData: row?.placementData,
+			}
+		})
+
+	const pending = catalog
+		.filter((c) => pendingKeys.has(c.key))
+		.map((c) => ({
+			key: c.key,
+			name: c.name,
+			description: c.description,
+			category: c.category,
+			sortOrder: c.sortOrder,
+			requiredXp: c.requiredXp,
+		}))
+
+	const locked = catalog
+		.filter((c) => !unlockedKeys.has(c.key) && !pendingKeys.has(c.key))
+		.map((c) => ({
+			key: c.key,
+			name: c.name,
+			description: c.description,
+			category: c.category,
+			sortOrder: c.sortOrder,
+			requiredXp: c.requiredXp,
+		}))
+
+	const currentLevel = computeLevel(gymXp)
+	const nextLevelXp = (currentLevel + 1) * (currentLevel + 1) * 50
+	const xpToNextLevel = nextLevelXp - gymXp
+
+	return { unlocked, pending, locked, xpToNextLevel }
+}
+
 export function createGymRouter(aiService: AIService) {
 	const router = Router()
 
@@ -172,56 +238,8 @@ export function createGymRouter(aiService: AIService) {
 			gym.gymVisitStreak = newStreak
 		}
 
-		const catalog = await db
-			.select()
-			.from(gymUpgradesCatalog)
-			.orderBy(asc(gymUpgradesCatalog.sortOrder))
-
-		const unlockedRows = await db
-			.select()
-			.from(userGymUpgrades)
-			.where(eq(userGymUpgrades.gymId, gym.id))
-
-		const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
-		const pendingKeys = new Set(gym.pendingUpgradeKeys)
-
-		const unlocked = catalog
-			.filter((c) => unlockedKeys.has(c.key))
-			.map((c) => {
-				const row = unlockedRows.find((r) => r.upgradeKey === c.key)
-				return {
-					key: c.key,
-					name: c.name,
-					description: c.description,
-					category: c.category,
-					unlockedAt: row?.unlockedAt,
-					placementData: row?.placementData,
-				}
-			})
-
-		const pending = catalog
-			.filter((c) => pendingKeys.has(c.key))
-			.map((c) => ({
-				key: c.key,
-				name: c.name,
-				description: c.description,
-				category: c.category,
-				requiredXp: c.requiredXp,
-			}))
-
-		const locked = catalog
-			.filter((c) => !unlockedKeys.has(c.key) && !pendingKeys.has(c.key))
-			.map((c) => ({
-				key: c.key,
-				name: c.name,
-				description: c.description,
-				category: c.category,
-				requiredXp: c.requiredXp,
-			}))
-
-		const currentLevel = computeLevel(gym.xp)
-		const nextLevelXp = (currentLevel + 1) * (currentLevel + 1) * 50
-		const xpToNextLevel = nextLevelXp - gym.xp
+		const { unlocked, pending, locked, xpToNextLevel } =
+			await buildUpgradesPayload(gym.id, gym.xp)
 
 		res.json({
 			gym: {
@@ -257,56 +275,8 @@ export function createGymRouter(aiService: AIService) {
 
 		const updatedGym = await getOrCreateGym(userId, db)
 
-		const catalog = await db
-			.select()
-			.from(gymUpgradesCatalog)
-			.orderBy(asc(gymUpgradesCatalog.sortOrder))
-
-		const unlockedRows = await db
-			.select()
-			.from(userGymUpgrades)
-			.where(eq(userGymUpgrades.gymId, updatedGym.id))
-
-		const unlockedKeys = new Set(unlockedRows.map((r) => r.upgradeKey))
-		const pendingKeys = new Set(updatedGym.pendingUpgradeKeys)
-
-		const unlocked = catalog
-			.filter((c) => unlockedKeys.has(c.key))
-			.map((c) => {
-				const row = unlockedRows.find((r) => r.upgradeKey === c.key)
-				return {
-					key: c.key,
-					name: c.name,
-					description: c.description,
-					category: c.category,
-					unlockedAt: row?.unlockedAt,
-					placementData: row?.placementData,
-				}
-			})
-
-		const pending = catalog
-			.filter((c) => pendingKeys.has(c.key))
-			.map((c) => ({
-				key: c.key,
-				name: c.name,
-				description: c.description,
-				category: c.category,
-				requiredXp: c.requiredXp,
-			}))
-
-		const locked = catalog
-			.filter((c) => !unlockedKeys.has(c.key) && !pendingKeys.has(c.key))
-			.map((c) => ({
-				key: c.key,
-				name: c.name,
-				description: c.description,
-				category: c.category,
-				requiredXp: c.requiredXp,
-			}))
-
-		const currentLevel = computeLevel(updatedGym.xp)
-		const nextLevelXp = (currentLevel + 1) * (currentLevel + 1) * 50
-		const xpToNextLevel = nextLevelXp - updatedGym.xp
+		const { unlocked, pending, locked, xpToNextLevel } =
+			await buildUpgradesPayload(updatedGym.id, updatedGym.xp)
 
 		res.json({
 			gym: {

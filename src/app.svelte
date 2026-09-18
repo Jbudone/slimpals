@@ -86,9 +86,9 @@ async function handleStopImpersonating() {
 				<Progress />
 			{:else if currentPath === "/social"}
 				<Social />
-			{:else if currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges"}
+			{:else if currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges" || currentPath === "/gym"}
 				<Compete />
-			{:else if currentPath === "/gym"}
+			{:else if currentPath === "/gym/canvas"}
 				<Gym />
 			{:else if currentPath === "/settings"}
 				<Settings />
