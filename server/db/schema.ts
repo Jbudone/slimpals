@@ -37,6 +37,7 @@ export const users = mysqlTable("users", {
 	heightCm: int("height_cm"),
 	goalWeightKg: int("goal_weight_kg"),
 	goalDate: timestamp("goal_date"),
+	dailyCalorieGoal: int("daily_calorie_goal"),
 	autoShareFoodLogs: boolean("auto_share_food_logs").notNull().default(false),
 	autoShareBadges: boolean("auto_share_badges").notNull().default(true),
 	autoShareWeightMilestones: boolean("auto_share_weight_milestones")

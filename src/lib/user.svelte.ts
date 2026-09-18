@@ -10,6 +10,7 @@ export type UserProfile = {
 	heightCm: number | null
 	goalWeightKg: number | null
 	goalDate: string | null
+	dailyCalorieGoal: number | null
 	isAdmin: boolean
 	autoShareFoodLogs: boolean
 	autoShareBadges: boolean

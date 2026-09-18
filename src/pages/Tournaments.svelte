@@ -1,6 +1,10 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { api } from "../lib/api.js"
+import {
+	TOURNAMENT_TYPE_LABELS as TYPE_LABELS,
+	TOURNAMENT_TYPE_UNITS as TYPE_UNITS,
+} from "../lib/tournamentLabels.js"
 
 type Tournament = {
 	id: number
@@ -35,20 +39,6 @@ type LeaderboardResponse = {
 		resolvedAt: string | null
 	}
 	leaderboard: LeaderboardEntry[]
-}
-
-const TYPE_LABELS: Record<string, string> = {
-	weight_loss: "Weight Loss",
-	step_count: "Step Count",
-	streak: "Check-in Streak",
-	food_challenge: "Food Quality",
-}
-
-const TYPE_UNITS: Record<string, string> = {
-	weight_loss: "% lost",
-	step_count: "steps",
-	streak: "day streak",
-	food_challenge: "avg rating",
 }
 
 let tournaments = $state<Tournament[]>([])

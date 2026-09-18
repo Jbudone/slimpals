@@ -70,6 +70,9 @@ let savingViewMode = $state(false)
 let heightInput = $state("")
 let savingHeight = $state(false)
 let heightSaved = $state(false)
+let calorieGoalInput = $state("")
+let savingCalorieGoal = $state(false)
+let calorieGoalSaved = $state(false)
 
 async function setViewMode(mode: ViewMode) {
 	if (!userProfile.data || savingViewMode || userProfile.data.viewMode === mode)
@@ -97,6 +100,31 @@ async function saveHeight() {
 		}, 2000)
 	} finally {
 		savingHeight = false
+	}
+}
+
+async function saveCalorieGoal() {
+	if (!userProfile.data || savingCalorieGoal) return
+	const goal = calorieGoalInput
+		? Math.round(Number.parseFloat(calorieGoalInput))
+		: null
+	if (
+		calorieGoalInput &&
+		(Number.isNaN(goal as number) || (goal as number) <= 0)
+	)
+		return
+	savingCalorieGoal = true
+	try {
+		const data = await api.patch<UserProfile>("/users/me", {
+			dailyCalorieGoal: goal,
+		})
+		userProfile.data = data
+		calorieGoalSaved = true
+		setTimeout(() => {
+			calorieGoalSaved = false
+		}, 2000)
+	} finally {
+		savingCalorieGoal = false
 	}
 }
 
@@ -199,6 +227,9 @@ onMount(() => {
 	if (userProfile.data?.heightCm) {
 		heightInput = String(userProfile.data.heightCm)
 	}
+	if (userProfile.data?.dailyCalorieGoal) {
+		calorieGoalInput = String(userProfile.data.dailyCalorieGoal)
+	}
 })
 </script>
 
@@ -266,6 +297,36 @@ onMount(() => {
 					{#if heightSaved}
 						Saved!
 					{:else if savingHeight}
+						Saving…
+					{:else}
+						Save
+					{/if}
+				</button>
+			</div>
+		</section>
+
+		<section class="section">
+			<h2>Daily Calorie Goal</h2>
+			<p class="section-desc">Used for the Eaten Today progress bar on your Today screen.</p>
+			<div class="height-form">
+				<input
+					type="number"
+					min="1"
+					step="1"
+					placeholder="e.g. 1900"
+					bind:value={calorieGoalInput}
+					class="height-input"
+				/>
+				<span class="height-unit">kcal</span>
+				<button
+					type="button"
+					class="btn-save-height"
+					disabled={savingCalorieGoal}
+					onclick={saveCalorieGoal}
+				>
+					{#if calorieGoalSaved}
+						Saved!
+					{:else if savingCalorieGoal}
 						Saving…
 					{:else}
 						Save

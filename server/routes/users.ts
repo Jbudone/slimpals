@@ -36,6 +36,7 @@ function userPayload(user: typeof users.$inferSelect) {
 		viewMode: user.viewMode,
 		goalWeightKg: user.goalWeightKg != null ? user.goalWeightKg / 10 : null,
 		goalDate: user.goalDate ?? null,
+		dailyCalorieGoal: user.dailyCalorieGoal,
 		heightCm: user.heightCm,
 		isAdmin: user.isAdmin,
 		autoShareFoodLogs: user.autoShareFoodLogs,
@@ -75,6 +76,7 @@ usersRouter.patch("/users/me", async (req, res) => {
 		theme,
 		goalWeightKg,
 		goalDate,
+		dailyCalorieGoal,
 		coachPersonality,
 		viewMode,
 		heightCm,
@@ -85,6 +87,7 @@ usersRouter.patch("/users/me", async (req, res) => {
 		theme?: string
 		goalWeightKg?: number
 		goalDate?: string
+		dailyCalorieGoal?: number | null
 		coachPersonality?: string
 		viewMode?: string
 		heightCm?: number | null
@@ -141,6 +144,17 @@ usersRouter.patch("/users/me", async (req, res) => {
 		return
 	}
 
+	if (
+		dailyCalorieGoal !== undefined &&
+		dailyCalorieGoal !== null &&
+		(typeof dailyCalorieGoal !== "number" || dailyCalorieGoal <= 0)
+	) {
+		res
+			.status(400)
+			.json({ error: "dailyCalorieGoal must be a positive number" })
+		return
+	}
+
 	const updates: Partial<typeof users.$inferInsert> = {}
 	if (theme !== undefined)
 		updates.theme = theme as (typeof VALID_THEMES)[number]
@@ -151,6 +165,8 @@ usersRouter.patch("/users/me", async (req, res) => {
 	if (goalWeightKg !== undefined)
 		updates.goalWeightKg = Math.round(goalWeightKg * 10)
 	if (goalDate !== undefined) updates.goalDate = new Date(goalDate)
+	if (dailyCalorieGoal !== undefined)
+		updates.dailyCalorieGoal = dailyCalorieGoal
 	if (autoShareFoodLogs !== undefined)
 		updates.autoShareFoodLogs = autoShareFoodLogs
 	if (autoShareBadges !== undefined) updates.autoShareBadges = autoShareBadges
