@@ -100,8 +100,8 @@ const progressPercent = $derived(
 .gym-ui {
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
-	padding: 1rem 1.25rem;
+	gap: var(--space-3);
+	padding: var(--space-4) var(--space-5);
 	background: var(--color-surface);
 	border-bottom: 1px solid var(--color-border);
 }
@@ -113,8 +113,9 @@ const progressPercent = $derived(
 }
 
 .gym-name {
-	font-size: 1.25rem;
-	font-weight: 700;
+	font-family: var(--font-display);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 	margin: 0;
 }
@@ -122,22 +123,22 @@ const progressPercent = $derived(
 .level-badge {
 	background: var(--color-accent);
 	color: #fff;
-	font-size: 0.75rem;
-	font-weight: 700;
-	padding: 0.25rem 0.625rem;
-	border-radius: 999px;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	padding: var(--space-1) var(--space-3);
+	border-radius: var(--radius-full);
 }
 
 .xp-section {
 	display: flex;
 	flex-direction: column;
-	gap: 0.375rem;
+	gap: var(--space-2);
 }
 
 .xp-label {
 	display: flex;
 	justify-content: space-between;
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
@@ -147,29 +148,29 @@ const progressPercent = $derived(
 
 .xp-bar-track {
 	height: 8px;
-	background: var(--color-surface-2, var(--color-border));
-	border-radius: 4px;
+	background: var(--color-surface-2);
+	border-radius: var(--radius-full);
 	overflow: hidden;
 }
 
 .xp-bar-fill {
 	height: 100%;
 	background: var(--color-accent);
-	border-radius: 4px;
+	border-radius: var(--radius-full);
 	transition: width 0.3s ease;
 }
 
 .claim-btn {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	background: var(--color-accent);
 	color: #fff;
 	border: none;
-	border-radius: 0.375rem;
-	padding: 0.5rem 1rem;
-	font-size: 0.875rem;
-	font-weight: 600;
+	border-radius: var(--radius-full);
+	padding: var(--space-3) var(--space-4);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 	transition: opacity 0.15s;
 }
@@ -180,9 +181,9 @@ const progressPercent = $derived(
 
 .badge {
 	background: rgba(0, 0, 0, 0.25);
-	border-radius: 999px;
+	border-radius: var(--radius-full);
 	font-size: 0.7rem;
-	font-weight: 700;
+	font-weight: var(--font-weight-bold);
 	padding: 0.1rem 0.4rem;
 	min-width: 1.2rem;
 	text-align: center;
@@ -191,11 +192,11 @@ const progressPercent = $derived(
 .event-banner {
 	display: flex;
 	align-items: center;
-	gap: 0.625rem;
+	gap: var(--space-2);
 	background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
 	border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
-	border-radius: 0.375rem;
-	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-3);
 }
 
 .event-icon {
@@ -211,33 +212,33 @@ const progressPercent = $derived(
 }
 
 .event-title {
-	font-size: 0.8125rem;
-	font-weight: 700;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 }
 
 .event-desc {
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
 .event-bonus {
 	font-size: 0.7rem;
-	font-weight: 700;
+	font-weight: var(--font-weight-bold);
 	color: var(--color-accent);
 	background: color-mix(in srgb, var(--color-accent) 15%, transparent);
-	padding: 0.15rem 0.5rem;
-	border-radius: 999px;
+	padding: 0.15rem var(--space-2);
+	border-radius: var(--radius-full);
 	white-space: nowrap;
 }
 
 .ceremony-hint {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	color: var(--color-accent);
-	font-size: 0.875rem;
-	font-weight: 600;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 	animation: pulse 1.5s ease-in-out infinite;
 }
 

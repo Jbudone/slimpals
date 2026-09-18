@@ -190,25 +190,26 @@ $effect(() => {
 .dialog-panel {
 	background: var(--color-surface);
 	border: 1px solid var(--color-border);
-	border-radius: 0.75rem;
-	padding: 1.25rem;
+	border-radius: var(--radius-lg);
+	padding: var(--space-5);
 	max-width: 400px;
 	width: 90%;
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
+	gap: var(--space-4);
+	box-shadow: var(--shadow-lg);
 }
 
 .npc-header {
 	display: flex;
-	gap: 0.75rem;
+	gap: var(--space-3);
 	align-items: flex-start;
 }
 
 .portrait {
 	width: 64px;
 	height: 64px;
-	border-radius: 0.5rem;
+	border-radius: var(--radius-md);
 	object-fit: cover;
 	border: 2px solid var(--color-border);
 }
@@ -216,14 +217,14 @@ $effect(() => {
 .portrait-placeholder {
 	width: 64px;
 	height: 64px;
-	border-radius: 0.5rem;
+	border-radius: var(--radius-md);
 	background: var(--color-accent);
 	color: #fff;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 1.5rem;
-	font-weight: 700;
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
 }
 
 .npc-info {
@@ -235,49 +236,50 @@ $effect(() => {
 
 .npc-name {
 	margin: 0;
-	font-size: 1.1rem;
-	font-weight: 700;
+	font-family: var(--font-display);
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 }
 
 .npc-role {
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	text-transform: capitalize;
 }
 
 .stage-badge {
 	font-size: 0.7rem;
-	font-weight: 600;
+	font-weight: var(--font-weight-semibold);
 }
 
 .rel-bar-track {
 	height: 4px;
 	background: var(--color-border);
-	border-radius: 2px;
-	margin-top: 0.25rem;
+	border-radius: var(--radius-full);
+	margin-top: var(--space-1);
 }
 
 .rel-bar-fill {
 	height: 100%;
 	background: var(--color-accent);
-	border-radius: 2px;
+	border-radius: var(--radius-full);
 	transition: width 0.3s;
 }
 
 .prompts {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	gap: var(--space-2);
 }
 
 .prompt-btn {
-	background: var(--color-surface-2, var(--color-border));
+	background: var(--color-surface-2);
 	border: 1px solid var(--color-border);
-	border-radius: 0.375rem;
-	padding: 0.5rem 0.75rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-3);
 	color: var(--color-text);
-	font-size: 0.8125rem;
+	font-size: var(--font-size-sm);
 	text-align: left;
 	cursor: pointer;
 	transition: background 0.15s;
@@ -296,18 +298,18 @@ $effect(() => {
 .response-area {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	gap: var(--space-2);
 }
 
 .prompt-echo {
-	font-size: 0.8125rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);
 	font-style: italic;
 	margin: 0;
 }
 
 .npc-response {
-	font-size: 0.875rem;
+	font-size: var(--font-size-base);
 	color: var(--color-text);
 	margin: 0;
 	line-height: 1.5;
@@ -316,17 +318,17 @@ $effect(() => {
 .rel-gain {
 	font-size: 0.7rem;
 	color: var(--color-accent);
-	font-weight: 600;
+	font-weight: var(--font-weight-semibold);
 }
 
 .stage-advance {
 	background: color-mix(in srgb, var(--color-accent) 15%, var(--color-surface));
 	border: 1px solid var(--color-accent);
-	border-radius: 0.375rem;
-	padding: 0.5rem 0.75rem;
-	font-size: 0.8125rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--font-size-sm);
 	color: var(--color-accent);
-	font-weight: 600;
+	font-weight: var(--font-weight-semibold);
 	text-align: center;
 }
 
@@ -334,10 +336,10 @@ $effect(() => {
 	background: var(--color-accent);
 	color: #fff;
 	border: none;
-	border-radius: 0.375rem;
-	padding: 0.5rem 1rem;
-	font-size: 0.8125rem;
-	font-weight: 600;
+	border-radius: var(--radius-full);
+	padding: var(--space-2) var(--space-4);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 }
 
@@ -349,17 +351,17 @@ $effect(() => {
 
 .muted {
 	color: var(--color-text-muted);
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 
 .error-msg {
 	color: var(--color-danger);
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 
 .error-msg.small {
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 }
 </style>

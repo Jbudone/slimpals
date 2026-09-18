@@ -7,6 +7,7 @@ import Card from "../components/ui/Card.svelte"
 import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
+import { page } from "../router.svelte.js"
 
 type UpgradeItem = {
 	key: string
@@ -127,6 +128,16 @@ onMount(loadGym)
 			</p>
 		</Card>
 
+		<Card padding="md">
+			<div class="visit-row">
+				<div class="visit-copy">
+					<span class="visit-title">Visit your gym</span>
+					<span class="visit-sub">See your gym come to life — NPCs, equipment, and more</span>
+				</div>
+				<Button onclick={() => page("/gym/canvas")}>Visit</Button>
+			</div>
+		</Card>
+
 		{#each rows as row (row.key)}
 			<Card padding="md">
 				<div class="upgrade-row">
@@ -204,6 +215,31 @@ onMount(loadGym)
 	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);
 	margin: var(--space-3) 0 0;
+}
+
+.visit-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+
+.visit-copy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 0;
+}
+
+.visit-title {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.visit-sub {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
 }
 
 .upgrade-row {
