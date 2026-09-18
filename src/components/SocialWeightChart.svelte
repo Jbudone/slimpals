@@ -104,7 +104,7 @@ let derived = $derived.by<Derived | null>(() => {
 			userName: u.userName,
 			path:
 				lineGen(
-					u.entries.sort(
+					[...u.entries].sort(
 						(a, b) =>
 							new Date(a.recordedAt).getTime() -
 							new Date(b.recordedAt).getTime(),

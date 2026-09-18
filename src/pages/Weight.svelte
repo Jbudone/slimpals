@@ -1,6 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import SocialWeightChart from "../components/SocialWeightChart.svelte"
+import Button from "../components/ui/Button.svelte"
+import Card from "../components/ui/Card.svelte"
 import WeightChart from "../components/WeightChart.svelte"
 import { api } from "../lib/api.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
@@ -49,10 +51,20 @@ function todayIso() {
 	return new Date().toISOString().slice(0, 10)
 }
 
-// Latest weight for the current user (for goal line anchor)
-let currentUserLatest = $derived(
-	entries.length > 0 ? entries[entries.length - 1].weightKg : null,
+// Entries ascending by date (API already returns this, sorted defensively).
+let sortedAsc = $derived(
+	[...entries].sort(
+		(a, b) =>
+			new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
+	),
 )
+
+let latest = $derived(
+	sortedAsc.length > 0 ? sortedAsc[sortedAsc.length - 1] : null,
+)
+
+// Latest weight for the current user (for goal line anchor)
+let currentUserLatest = $derived(latest?.weightKg ?? null)
 
 // Goal from user profile
 let goal = $derived.by(() => {
@@ -60,6 +72,41 @@ let goal = $derived.by(() => {
 	if (!p?.goalWeightKg || !p?.goalDate) return null
 	return { weightKg: p.goalWeightKg as number, goalDate: p.goalDate as string }
 })
+
+let remainingToGoal = $derived(
+	goal && latest ? latest.weightKg - goal.weightKg : null,
+)
+
+// Change over the last ~7 days, vs. the closest entry at or before that.
+let weekDelta = $derived.by(() => {
+	if (!latest || sortedAsc.length < 2) return null
+	const latestTime = new Date(latest.recordedAt).getTime()
+	const weekAgo = latestTime - 7 * 86_400_000
+	const candidates = sortedAsc.filter(
+		(e) => new Date(e.recordedAt).getTime() <= weekAgo,
+	)
+	if (candidates.length === 0) return null
+	const reference = candidates[candidates.length - 1]
+	return latest.weightKg - reference.weightKg
+})
+
+// Entries newest-first, each annotated with its delta from the prior entry.
+let entryRows = $derived(
+	sortedAsc
+		.map((entry, i) => ({
+			entry,
+			delta: i === 0 ? null : entry.weightKg - sortedAsc[i - 1].weightKg,
+		}))
+		.reverse(),
+)
+
+let daysSinceLatest = $derived(
+	latest
+		? Math.round(
+				(Date.now() - new Date(latest.recordedAt).getTime()) / 86_400_000,
+			)
+		: null,
+)
 
 async function loadEntries() {
 	try {
@@ -103,10 +150,7 @@ async function handleSubmit(e: SubmitEvent) {
 		if (newBadges?.length) {
 			for (const b of newBadges) showBadgeToast(b)
 		}
-		entries = [...entries, entry].sort(
-			(a, b) =>
-				new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
-		)
+		entries = [...entries, entry]
 		weightInput = ""
 		noteInput = ""
 		dateInput = todayIso()
@@ -158,178 +202,226 @@ onMount(async () => {
 })
 </script>
 
-<div class="weight-page">
-	<h1>Weight Tracker</h1>
+<div class="weight-tab">
+	{#if loading}
+		<p class="muted">Loading…</p>
+	{:else if error}
+		<p class="form-error">{error}</p>
+	{:else}
+		<Card>
+			<div class="overview-header">
+				<div>
+					{#if latest}
+						<span class="overview-value">{latest.weightKg} <span class="overview-unit">kg</span></span>
+					{:else}
+						<span class="overview-value overview-empty">No entries yet</span>
+					{/if}
+					{#if goal && remainingToGoal !== null}
+						<p class="overview-sub">
+							{#if remainingToGoal > 0}
+								{remainingToGoal.toFixed(1)} kg to your {goal.weightKg} kg goal
+							{:else}
+								Goal reached — {Math.abs(remainingToGoal).toFixed(1)} kg past your {goal.weightKg} kg goal
+							{/if}
+						</p>
+					{/if}
+				</div>
+				{#if weekDelta !== null}
+					<div class="overview-delta-block">
+						<span class="overview-delta" class:overview-delta-good={weekDelta < 0}>
+							{weekDelta > 0 ? "+" : ""}{weekDelta.toFixed(1)} kg
+						</span>
+						<span class="overview-delta-label">this week</span>
+					</div>
+				{/if}
+			</div>
 
-	<!-- Log entry form -->
-	<section class="card log-section">
-		<h2>Log a weight</h2>
+			<div class="chart-toggle-row">
+				<button class="toggle-btn" onclick={onToggle} type="button">
+					{groupView ? "My Journey Only" : "Compare with Friends"}
+				</button>
+			</div>
 
-		{#if formError}
-			<p class="form-error">{formError}</p>
-		{/if}
-
-		<form onsubmit={handleSubmit} class="log-form">
-			<label class="field">
-				<span>Weight (kg)</span>
-				<input
-					type="number"
-					step="0.1"
-					min="1"
-					placeholder="e.g. 82.5"
-					required
-					bind:value={weightInput}
-				/>
-			</label>
-
-			<label class="field">
-				<span>Date</span>
-				<input type="date" required bind:value={dateInput} />
-			</label>
-
-			<label class="field">
-				<span>Note <small>(optional)</small></span>
-				<input
-					type="text"
-					placeholder="Morning, after workout…"
-					bind:value={noteInput}
-				/>
-			</label>
-
-			<button type="submit" disabled={submitting}>
-				{submitting ? "Saving…" : "Log weight"}
-			</button>
-		</form>
-	</section>
-
-	<!-- Chart / history -->
-	<section class="card chart-section">
-		<div class="chart-header">
-			<h2>{groupView ? "Compare with friends" : "Your history"}</h2>
-			<button class="toggle-btn" onclick={onToggle} type="button">
-				{groupView ? "My Journey Only" : "Compare with Friends"}
-			</button>
-		</div>
-
-		{#if loading}
-			<p class="muted">Loading…</p>
-		{:else if error}
-			<p class="form-error">{error}</p>
-		{:else if groupView}
-			{#if socialLoading}
-				<p class="muted">Loading group data…</p>
+			{#if groupView}
+				{#if socialLoading}
+					<p class="muted">Loading group data…</p>
+				{:else}
+					<SocialWeightChart series={socialSeries} {currentUserLatest} {goal} />
+				{/if}
 			{:else}
-				<SocialWeightChart
-					series={socialSeries}
-					{currentUserLatest}
+				<WeightChart
+					{entries}
+					viewMode={userProfile.data?.viewMode ?? "simple"}
+					heightCm={userProfile.data?.heightCm ?? null}
 					{goal}
 				/>
 			{/if}
-		{:else}
-			<WeightChart
-				{entries}
-				viewMode={userProfile.data?.viewMode ?? "simple"}
-				heightCm={userProfile.data?.heightCm ?? null}
-			/>
+		</Card>
 
-			{#if entries.length > 0}
-				<table class="history-table">
-					<thead>
-						<tr>
-							<th>Date</th>
-							<th>Weight</th>
-							<th>Note</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each [...entries].reverse() as entry (entry.id)}
-							<tr>
-								<td>{new Date(entry.recordedAt).toLocaleDateString()}</td>
-								<td>{entry.weightKg} kg</td>
-								<td class="muted">{entry.note ?? "—"}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+		<Card>
+			<h2 class="section-heading">Log today</h2>
+			{#if formError}
+				<p class="form-error">{formError}</p>
 			{/if}
+			<form onsubmit={handleSubmit} class="log-form">
+				<div class="log-form-main">
+					<input
+						type="number"
+						step="0.1"
+						min="1"
+						placeholder="e.g. 82.5"
+						required
+						bind:value={weightInput}
+						aria-label="Weight (kg)"
+					/>
+					<Button type="submit" disabled={submitting}>
+						{submitting ? "Saving…" : "Save"}
+					</Button>
+				</div>
+				<div class="log-form-secondary">
+					<label class="field">
+						<span>Date</span>
+						<input type="date" required bind:value={dateInput} />
+					</label>
+					<label class="field">
+						<span>Note <small>(optional)</small></span>
+						<input
+							type="text"
+							placeholder="Morning, after workout…"
+							bind:value={noteInput}
+						/>
+					</label>
+				</div>
+			</form>
+			{#if latest}
+				<p class="last-entry-note">
+					Last entry {latest.weightKg} kg, {daysSinceLatest === 0 ? "today" : `${daysSinceLatest} day${daysSinceLatest === 1 ? "" : "s"} ago`}.
+				</p>
+			{/if}
+		</Card>
+
+		{#if entryRows.length > 0}
+			<Card padding="md">
+				{#each entryRows as { entry, delta }, i (entry.id)}
+					<div class="entry-row" class:entry-row-first={i === 0}>
+						<div class="entry-main">
+							<span class="entry-weight">{entry.weightKg} kg</span>
+							<span class="entry-note">{entry.note ?? (delta === null ? "Starting weight" : "—")}</span>
+						</div>
+						<div class="entry-meta">
+							<span class="entry-date">
+								{new Date(entry.recordedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+							</span>
+							<span class="entry-delta" class:entry-delta-good={delta !== null && delta < 0}>
+								{delta === null ? "—" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`}
+							</span>
+						</div>
+					</div>
+				{/each}
+			</Card>
 		{/if}
-	</section>
 
-	<!-- Goal setting -->
-	<section class="card goal-section">
-		<h2>Set a goal</h2>
-		<p class="section-desc">Define a target weight and date. A dashed goal line will appear on your chart.</p>
-
-		<form onsubmit={handleGoalSave} class="goal-form">
-			<label class="field">
-				<span>Target weight (kg)</span>
-				<input
-					type="number"
-					step="0.1"
-					min="1"
-					placeholder="e.g. 75"
-					bind:value={goalWeightInput}
-				/>
-			</label>
-
-			<label class="field">
-				<span>Target date</span>
-				<input type="date" bind:value={goalDateInput} />
-			</label>
-
-			<button type="submit" disabled={savingGoal || !goalWeightInput || !goalDateInput}>
-				{#if goalSaved}
-					Saved!
-				{:else if savingGoal}
-					Saving…
-				{:else}
-					Save goal
-				{/if}
-			</button>
-		</form>
-	</section>
+		<Card>
+			<h2 class="section-heading">Set a goal</h2>
+			<p class="section-desc">Define a target weight and date. A dashed goal line will appear on your chart.</p>
+			<form onsubmit={handleGoalSave} class="goal-form">
+				<label class="field">
+					<span>Target weight (kg)</span>
+					<input
+						type="number"
+						step="0.1"
+						min="1"
+						placeholder="e.g. 75"
+						bind:value={goalWeightInput}
+					/>
+				</label>
+				<label class="field">
+					<span>Target date</span>
+					<input type="date" bind:value={goalDateInput} />
+				</label>
+				<Button type="submit" disabled={savingGoal || !goalWeightInput || !goalDateInput}>
+					{#if goalSaved}
+						Saved!
+					{:else if savingGoal}
+						Saving…
+					{:else}
+						Save goal
+					{/if}
+				</Button>
+			</form>
+		</Card>
+	{/if}
 </div>
 
 <style>
-.weight-page {
-	max-width: 760px;
-	margin: 0 auto;
-	padding: 2rem 1.5rem;
+.weight-tab {
 	display: flex;
 	flex-direction: column;
-	gap: 1.5rem;
+	gap: var(--space-4);
 }
 
-h1 {
-	font-size: 1.5rem;
-	font-weight: 700;
-	color: var(--color-text);
-	margin: 0;
+.muted {
+	color: var(--color-text-muted);
 }
 
-.card {
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	border-radius: 0.75rem;
-	padding: 1.5rem;
-}
-
-h2 {
-	font-size: 1rem;
-	font-weight: 600;
-	color: var(--color-text);
-	margin: 0 0 1rem;
-}
-
-.chart-header {
+.overview-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	margin-bottom: 1rem;
+	gap: var(--space-3);
 }
 
-.chart-header h2 {
-	margin: 0;
+.overview-value {
+	font-family: var(--font-display);
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.overview-empty {
+	font-size: var(--font-size-lg);
+	color: var(--color-text-muted);
+}
+
+.overview-unit {
+	font-family: var(--font-sans);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-text-muted);
+}
+
+.overview-sub {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
+	margin: var(--space-1) 0 0;
+}
+
+.overview-delta-block {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	flex-shrink: 0;
+}
+
+.overview-delta {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.overview-delta-good {
+	color: var(--color-success);
+}
+
+.overview-delta-label {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.chart-toggle-row {
+	display: flex;
+	justify-content: flex-end;
+	margin: var(--space-3) 0 var(--space-2);
 }
 
 .toggle-btn {
@@ -339,7 +431,7 @@ h2 {
 	border: 1px solid var(--color-accent);
 	color: var(--color-accent);
 	background: transparent;
-	border-radius: 99px;
+	border-radius: var(--radius-full);
 	cursor: pointer;
 	white-space: nowrap;
 }
@@ -348,29 +440,49 @@ h2 {
 	background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
+.section-heading {
+	font-family: var(--font-display);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+	margin: 0;
+}
+
 .section-desc {
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);
-	margin: -0.5rem 0 1rem;
+	margin: 0;
 }
 
 .log-form,
 .goal-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.log-form-main {
+	display: flex;
+	gap: var(--space-3);
+}
+
+.log-form-main input {
+	flex: 1;
+	min-width: 0;
+}
+
+.log-form-secondary {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 1rem;
+	gap: var(--space-3);
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
 	gap: 0.375rem;
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);
-}
-
-.field:last-of-type {
-	grid-column: 1 / -1;
 }
 
 small {
@@ -381,7 +493,7 @@ small {
 input {
 	background: var(--color-surface-2);
 	border: 1px solid var(--color-border);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	padding: 0.625rem 0.75rem;
 	color: var(--color-text);
 	font-size: 1rem;
@@ -393,59 +505,73 @@ input:focus {
 	border-color: var(--color-accent);
 }
 
-button[type="submit"] {
-	grid-column: 1 / -1;
-	background: var(--color-accent);
-	color: #fff;
-	border: none;
-	border-radius: 0.375rem;
-	padding: 0.75rem;
-	font-size: 1rem;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-button[type="submit"]:hover:not(:disabled) {
-	background: var(--color-accent-hover);
-}
-
-button[type="submit"]:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
+.last-entry-note {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	margin: 0;
 }
 
 .form-error {
 	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
 	border: 1px solid var(--color-danger);
 	color: var(--color-danger);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	padding: 0.625rem 0.875rem;
 	font-size: 0.875rem;
-	margin: 0 0 1rem;
+	margin: 0;
 }
 
-.history-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-top: 1.25rem;
-	font-size: 0.875rem;
+.entry-row {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3) 0;
+	border-top: 1px solid var(--color-border);
 }
 
-.history-table th {
-	text-align: left;
-	color: var(--color-text-muted);
-	font-weight: 500;
-	padding: 0.375rem 0.5rem;
-	border-bottom: 1px solid var(--color-border);
+.entry-row-first {
+	border-top: none;
+	padding-top: 0;
 }
 
-.history-table td {
-	padding: 0.5rem 0.5rem;
+.entry-main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.entry-weight {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
-	border-bottom: 1px solid var(--color-surface-2);
 }
 
-.muted {
+.entry-note {
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
+}
+
+.entry-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--space-1);
+	flex-shrink: 0;
+}
+
+.entry-date {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.entry-delta {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-text);
+}
+
+.entry-delta-good {
+	color: var(--color-success);
 }
 </style>

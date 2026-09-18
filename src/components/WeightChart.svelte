@@ -8,10 +8,12 @@ let {
 	entries,
 	viewMode = "simple",
 	heightCm = null,
+	goal = null,
 }: {
 	entries: Entry[]
 	viewMode?: ViewMode
 	heightCm?: number | null
+	goal?: { weightKg: number } | null
 } = $props()
 
 let svgEl = $state<SVGSVGElement | undefined>(undefined)
@@ -123,6 +125,7 @@ type Derived = {
 	ciArea: string | null
 	bmiLines: { y18: number; y25: number; y30: number; visible: boolean } | null
 	rateLoss: string | null
+	goalY: number | null
 }
 
 let derived = $derived.by<Derived | null>(() => {
@@ -143,9 +146,11 @@ let derived = $derived.by<Derived | null>(() => {
 		.nice()
 
 	const [wMin, wMax] = d3.extent(weights) as [number, number]
+	const domainMin = goal ? Math.min(wMin, goal.weightKg) : wMin
+	const domainMax = goal ? Math.max(wMax, goal.weightKg) : wMax
 	const yScale = d3
 		.scaleLinear()
-		.domain([wMin - 1, wMax + 1])
+		.domain([domainMin - 1, domainMax + 1])
 		.range([iH, 0])
 		.nice()
 
@@ -239,6 +244,7 @@ let derived = $derived.by<Derived | null>(() => {
 		ciArea,
 		bmiLines,
 		rateLoss,
+		goalY: goal ? yScale(goal.weightKg) : null,
 	}
 })
 </script>
@@ -270,6 +276,17 @@ let derived = $derived.by<Derived | null>(() => {
 					stroke-width="1"
 				/>
 			{/each}
+
+			<!-- Goal line -->
+			{#if derived.goalY !== null}
+				<line
+					x1="0" x2={iW}
+					y1={derived.goalY} y2={derived.goalY}
+					stroke="var(--color-warning)"
+					stroke-width="1.5"
+					stroke-dasharray="5 4"
+				/>
+			{/if}
 
 			<!-- BMI bands (technical mode) -->
 			{#if viewMode === "technical" && derived.bmiLines?.visible}

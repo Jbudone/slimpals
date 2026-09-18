@@ -43,13 +43,13 @@ test("logging weight triggers auto-checkin, a badge, and a feed post", async ({
 	const page = await context.newPage()
 
 	await page.goto("/")
-	await expect(page.getByText(/haven't checked in today/i)).toBeVisible()
+	await expect(page.getByText(/keep the fire going/i)).toBeVisible()
 
 	await page.goto("/weight")
 	await page.getByLabel("Weight (kg)", { exact: true }).fill("82.5")
 	const today = new Date().toISOString().slice(0, 10)
 	await page.getByLabel("Date", { exact: true }).fill(today)
-	await page.getByRole("button", { name: "Log weight" }).click()
+	await page.getByRole("button", { name: "Save", exact: true }).click()
 
 	// The weight route awards the "First Weigh-In" badge and auto-checks-in.
 	await page.goto("/badges")

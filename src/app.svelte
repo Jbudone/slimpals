@@ -14,14 +14,13 @@ import Admin from "./pages/Admin.svelte"
 import Badges from "./pages/Badges.svelte"
 import Challenges from "./pages/Challenges.svelte"
 import Dashboard from "./pages/Dashboard.svelte"
-import Food from "./pages/Food.svelte"
 import Gym from "./pages/Gym.svelte"
 import Login from "./pages/Login.svelte"
+import Progress from "./pages/Progress.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
 import Social from "./pages/Social.svelte"
 import Tournaments from "./pages/Tournaments.svelte"
-import Weight from "./pages/Weight.svelte"
 import { initRouter, nav, page } from "./router.svelte.js"
 
 let currentPath = $derived(nav.path)
@@ -85,10 +84,8 @@ async function handleStopImpersonating() {
 		<main class="app-content">
 			{#if currentPath === "/"}
 				<Dashboard />
-			{:else if currentPath === "/weight"}
-				<Weight />
-			{:else if currentPath === "/food"}
-				<Food />
+			{:else if currentPath === "/weight" || currentPath === "/food"}
+				<Progress />
 			{:else if currentPath === "/social"}
 				<Social />
 			{:else if currentPath === "/tournaments"}
