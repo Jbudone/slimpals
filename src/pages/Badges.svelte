@@ -1,5 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import Avatar from "../components/ui/Avatar.svelte"
+import Card from "../components/ui/Card.svelte"
+import Pill from "../components/ui/Pill.svelte"
+import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 
 type BadgeTier = "bronze" | "silver" | "gold" | "platinum"
@@ -14,6 +18,15 @@ type CatalogBadge = {
 
 type EarnedBadge = CatalogBadge & { earnedAt: string }
 
+type ProgressEntry = {
+	key: string
+	name: string
+	tier: BadgeTier
+	current: number
+	target: number
+	unit: string
+}
+
 const TIER_EMOJI: Record<BadgeTier, string> = {
 	bronze: "🥉",
 	silver: "🥈",
@@ -22,36 +35,34 @@ const TIER_EMOJI: Record<BadgeTier, string> = {
 }
 
 const TIER_ORDER: BadgeTier[] = ["platinum", "gold", "silver", "bronze"]
+const CLOSEST_COUNT = 3
 
 let catalog = $state<CatalogBadge[]>([])
 let earned = $state<EarnedBadge[]>([])
+let progress = $state<ProgressEntry[]>([])
 let loading = $state(true)
 let error = $state<string | null>(null)
 
-const earnedKeys = $derived(new Set(earned.map((b) => b.key)))
-
-const byTier = $derived(
+let tierBreakdown = $derived(
 	TIER_ORDER.map((tier) => ({
 		tier,
-		badges: catalog.filter((b) => b.tier === tier),
-	})).filter((g) => g.badges.length > 0),
+		earnedCount: earned.filter((b) => b.tier === tier).length,
+		totalCount: catalog.filter((b) => b.tier === tier).length,
+	})).filter((t) => t.totalCount > 0),
 )
 
-function earnedAt(key: string): string | null {
-	const b = earned.find((e) => e.key === key)
-	if (!b) return null
-	return new Date(b.earnedAt).toLocaleDateString(undefined, {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	})
+let closest = $derived(progress.slice(0, CLOSEST_COUNT))
+
+function formatAmount(n: number): string {
+	return Number.isInteger(n) ? String(n) : n.toFixed(1)
 }
 
 async function load() {
 	try {
-		;[catalog, earned] = await Promise.all([
+		;[catalog, earned, progress] = await Promise.all([
 			api.get<CatalogBadge[]>("/badges"),
 			api.get<EarnedBadge[]>("/badges/mine"),
+			api.get<ProgressEntry[]>("/badges/progress"),
 		])
 	} catch {
 		error = "Failed to load badges"
@@ -63,174 +74,133 @@ async function load() {
 onMount(load)
 </script>
 
-<div class="badges-page">
-	<h1>Badge Collection</h1>
-	<p class="subtitle">
-		{#if !loading}
-			{earned.length} / {catalog.length} earned
-		{/if}
-	</p>
-
+<div class="badges-tab">
 	{#if loading}
 		<p class="muted">Loading…</p>
 	{:else if error}
 		<p class="error">{error}</p>
 	{:else}
-		{#each byTier as group (group.tier)}
-			<section class="tier-section">
-				<h2 class="tier-heading">
-					{TIER_EMOJI[group.tier]}
-					{group.tier.charAt(0).toUpperCase() + group.tier.slice(1)}
-				</h2>
-				<div class="badge-grid">
-					{#each group.badges as badge (badge.key)}
-						{@const isEarned = earnedKeys.has(badge.key)}
-						{@const date = earnedAt(badge.key)}
-						<div class="badge-card" class:earned={isEarned} class:locked={!isEarned}>
-							<div class="badge-icon" class:tier-{badge.tier}={true}>
-								{TIER_EMOJI[badge.tier]}
-							</div>
-							<div class="badge-body">
-								<div class="badge-name">{badge.name}</div>
-								{#if badge.description}
-									<div class="badge-desc">{badge.description}</div>
-								{/if}
-								{#if isEarned && date}
-									<div class="earned-date">Earned {date}</div>
-								{/if}
-							</div>
-							{#if !isEarned}
-								<div class="lock-icon">🔒</div>
-							{/if}
+		<Card>
+			<div class="earned-stat-row">
+				<span class="earned-stat">{earned.length}</span>
+				<span class="earned-stat-sub">of {catalog.length} earned</span>
+			</div>
+			<ProgressBar variant="linear" value={earned.length} max={Math.max(1, catalog.length)} />
+			<p class="tier-breakdown">
+				{#each tierBreakdown as t, i (t.tier)}
+					{i > 0 ? " · " : ""}{t.earnedCount}/{t.totalCount} {t.tier}
+				{/each}
+			</p>
+		</Card>
+
+		{#if closest.length > 0}
+			<h2 class="section-label">Closest to Unlocking</h2>
+			{#each closest as p (p.key)}
+				<Card padding="md">
+					<div class="closest-row">
+						<Avatar tone="accent" size={40}>
+							{#snippet icon()}
+								<span class="tier-icon">{TIER_EMOJI[p.tier]}</span>
+							{/snippet}
+						</Avatar>
+						<div class="closest-copy">
+							<span class="closest-title">{p.name}</span>
+							<span class="closest-sub">{formatAmount(p.current)} of {p.target} {p.unit}</span>
+							<ProgressBar variant="linear" value={p.current} max={p.target} />
 						</div>
-					{/each}
-				</div>
-			</section>
-		{/each}
+					</div>
+				</Card>
+			{/each}
+		{/if}
+
+		{#if earned.length > 0}
+			<h2 class="section-label">Earned</h2>
+			<div class="earned-grid">
+				{#each earned as badge (badge.key)}
+					<Pill tone="accent">{TIER_EMOJI[badge.tier]} {badge.name}</Pill>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 </div>
 
 <style>
-.badges-page {
-	max-width: 760px;
-	margin: 0 auto;
-	padding: 2rem 1.5rem;
+.badges-tab {
 	display: flex;
 	flex-direction: column;
-	gap: 2rem;
+	gap: var(--space-4);
 }
 
-h1 {
-	font-size: 1.5rem;
-	font-weight: 700;
-	color: var(--color-text);
-	margin: 0;
-}
-
-.subtitle {
-	font-size: 0.875rem;
-	color: var(--color-text-muted);
-	margin: -1.25rem 0 0;
-}
-
-.muted {
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
-}
+.muted { color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
 .error {
 	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
 	border: 1px solid var(--color-danger);
 	color: var(--color-danger);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	padding: 0.625rem 0.875rem;
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 
-.tier-section {
+.earned-stat-row {
 	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
+	align-items: baseline;
+	gap: var(--space-2);
+	margin-bottom: var(--space-2);
 }
 
-.tier-heading {
-	font-size: 1rem;
-	font-weight: 700;
+.earned-stat {
+	font-family: var(--font-display);
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.earned-stat-sub { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+.tier-breakdown {
+	font-size: var(--font-size-sm);
+	color: var(--color-text);
+	font-weight: var(--font-weight-semibold);
+	margin: var(--space-3) 0 0;
+}
+
+.section-label {
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	font-size: 0.8125rem;
+	letter-spacing: 0.04em;
 	margin: 0;
 }
 
-.badge-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-	gap: 0.75rem;
-}
-
-.badge-card {
+.closest-row {
 	display: flex;
-	align-items: flex-start;
-	gap: 0.75rem;
-	padding: 0.875rem 1rem;
-	border-radius: 0.625rem;
-	border: 1px solid var(--color-border);
-	background: var(--color-surface);
-	position: relative;
-	transition: box-shadow 0.15s;
+	align-items: center;
+	gap: var(--space-3);
 }
 
-.badge-card.earned {
-	border-color: var(--color-accent);
-	background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent);
-}
+.tier-icon { font-size: 1.125rem; line-height: 1; }
 
-.badge-card.locked {
-	opacity: 0.5;
-}
-
-.badge-icon {
-	font-size: 1.75rem;
-	line-height: 1;
-	flex-shrink: 0;
-}
-
-.badge-body {
-	flex: 1;
-	min-width: 0;
+.closest-copy {
 	display: flex;
 	flex-direction: column;
-	gap: 0.2rem;
+	gap: var(--space-1);
+	flex: 1;
+	min-width: 0;
 }
 
-.badge-name {
-	font-size: 0.9375rem;
-	font-weight: 600;
+.closest-title {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
-.badge-desc {
-	font-size: 0.75rem;
-	color: var(--color-text-muted);
-	line-height: 1.4;
-}
+.closest-sub { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
-.earned-date {
-	font-size: 0.6875rem;
-	color: var(--color-accent);
-	font-weight: 600;
-	margin-top: 0.125rem;
-}
-
-.lock-icon {
-	font-size: 0.875rem;
-	flex-shrink: 0;
-	opacity: 0.6;
+.earned-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
 }
 </style>

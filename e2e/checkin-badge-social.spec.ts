@@ -63,9 +63,7 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	await expect(page.getByText(/Checked in!/i)).toBeVisible()
 
 	await page.goto("/badges")
-	const badgeCard = page.locator(".badge-card.earned", {
-		hasText: "3-Day Streak",
-	})
+	const badgeCard = page.locator(".ui-pill", { hasText: "3-Day Streak" })
 	await expect(badgeCard).toBeVisible()
 
 	await page.goto("/social")

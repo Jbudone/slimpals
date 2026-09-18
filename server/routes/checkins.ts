@@ -14,7 +14,7 @@ export function startOfDayUtc(d: Date = new Date()): Date {
 	return r
 }
 
-function daysBetween(a: Date, b: Date): number {
+export function daysBetween(a: Date, b: Date): number {
 	return Math.round(
 		Math.abs(startOfDayUtc(a).getTime() - startOfDayUtc(b).getTime()) /
 			86_400_000,
@@ -32,7 +32,7 @@ function checkinPayload(row: typeof dailyCheckins.$inferSelect) {
 	}
 }
 
-async function getLastCheckin(userId: string) {
+export async function getLastCheckin(userId: string) {
 	const [row] = await db
 		.select()
 		.from(dailyCheckins)

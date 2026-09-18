@@ -54,7 +54,7 @@ test("logging weight triggers auto-checkin, a badge, and a feed post", async ({
 	// The weight route awards the "First Weigh-In" badge and auto-checks-in.
 	await page.goto("/badges")
 	await expect(
-		page.locator(".badge-card.earned", { hasText: "First Weigh-In" }),
+		page.locator(".ui-pill", { hasText: "First Weigh-In" }),
 	).toBeVisible()
 
 	await page.goto("/social")
@@ -105,7 +105,7 @@ test("logging food awards gym XP and a badge", async ({ request, browser }) => {
 
 	await page.goto("/badges")
 	await expect(
-		page.locator(".badge-card.earned", { hasText: "First Bite" }),
+		page.locator(".ui-pill", { hasText: "First Bite" }),
 	).toBeVisible()
 
 	const xpAfter = await getGymXp(request)

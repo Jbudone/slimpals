@@ -15,7 +15,7 @@ function startOfDayUtc(d: Date = new Date()): Date {
 	return r
 }
 
-function computeConsecutiveFoodDays(
+export function computeConsecutiveFoodDays(
 	logDates: Date[],
 	referenceDay: Date,
 ): number {

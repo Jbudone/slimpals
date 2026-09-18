@@ -128,7 +128,7 @@ test("completing a monthly challenge shows the celebration, awards the badge, an
 
 	await page.goto("/badges")
 	await expect(
-		page.locator(".badge-card.earned", { hasText: "Challenge Accepted" }),
+		page.locator(".ui-pill", { hasText: "Challenge Accepted" }),
 	).toBeVisible()
 
 	const xpAfter = await getGymXp(request)
@@ -300,7 +300,7 @@ test("a tournament resolves on leaderboard view, marking the winner and awarding
 
 	await pageA.goto("/badges")
 	await expect(
-		pageA.locator(".badge-card.earned", { hasText: "Tournament Champion" }),
+		pageA.locator(".ui-pill", { hasText: "Tournament Champion" }),
 	).toBeVisible()
 
 	await contextA.close()
