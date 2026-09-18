@@ -1,5 +1,9 @@
 <script lang="ts">
+import Button from "../components/ui/Button.svelte"
+import Card from "../components/ui/Card.svelte"
+import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
+import { userProfile } from "../lib/user.svelte.js"
 
 type Macros = { calories: number; protein: number; carbs: number; fat: number }
 type FoodAnalysis = {
@@ -30,6 +34,47 @@ let mealType = $state<string>("snack")
 let analyzing = $state(false)
 let analyzeError = $state<string | null>(null)
 let lastResult = $state<FoodLog | null>(null)
+let fileInputEl = $state<HTMLInputElement | null>(null)
+
+function isToday(iso: string): boolean {
+	const d = new Date(iso)
+	const now = new Date()
+	return (
+		d.getFullYear() === now.getFullYear() &&
+		d.getMonth() === now.getMonth() &&
+		d.getDate() === now.getDate()
+	)
+}
+
+let todayLogs = $derived(logs.filter((l) => isToday(l.loggedAt)))
+
+let todayTotals = $derived.by(() => {
+	const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 }
+	for (const l of todayLogs) {
+		if (!l.aiAnalysis) continue
+		totals.calories += l.aiAnalysis.macros.calories
+		totals.protein += l.aiAnalysis.macros.protein
+		totals.carbs += l.aiAnalysis.macros.carbs
+		totals.fat += l.aiAnalysis.macros.fat
+	}
+	return totals
+})
+
+let calorieGoal = $derived(userProfile.data?.dailyCalorieGoal ?? null)
+let remaining = $derived(
+	calorieGoal !== null ? calorieGoal - todayTotals.calories : null,
+)
+
+function letterGrade(rating: number): string {
+	if (rating >= 9) return "A+"
+	if (rating >= 8) return "A"
+	if (rating >= 7) return "B+"
+	if (rating >= 6) return "B"
+	if (rating >= 5) return "C+"
+	if (rating >= 4) return "C"
+	if (rating >= 3) return "D"
+	return "F"
+}
 
 async function loadLogs() {
 	try {
@@ -61,6 +106,10 @@ function onDrop(e: DragEvent) {
 		analyzeError = null
 		lastResult = null
 	}
+}
+
+function openFilePicker() {
+	fileInputEl?.click()
 }
 
 async function handleAnalyze() {
@@ -110,14 +159,44 @@ function ratingColor(r: number) {
 loadLogs()
 </script>
 
-<div class="food-page">
-	<h1>Food Log</h1>
+<div class="food-tab">
+	<Card>
+		<div class="summary-row">
+			{#if calorieGoal !== null}
+				<ProgressBar
+					variant="circular"
+					value={todayTotals.calories}
+					max={calorieGoal}
+					size={92}
+					thickness={8}
+				>
+					{#snippet children()}
+						<div class="ring-content">
+							<span class="ring-value">{Math.abs(remaining ?? 0)}</span>
+							<span class="ring-label">{(remaining ?? 0) < 0 ? "OVER" : "LEFT"}</span>
+						</div>
+					{/snippet}
+				</ProgressBar>
+			{/if}
 
-	<!-- Upload + analyze -->
-	<section class="card">
-		<h2>Analyze a meal</h2>
+			<div class="summary-copy">
+				<span class="summary-title">
+					{todayLogs.length} meal{todayLogs.length === 1 ? "" : "s"} logged today
+				</span>
+				{#if calorieGoal === null}
+					<span class="summary-macros">{todayTotals.calories} kcal today</span>
+				{/if}
+				<span class="summary-macros">
+					Protein {todayTotals.protein} g · Carbs {todayTotals.carbs} g · Fat {todayTotals.fat} g
+				</span>
+				<Button onclick={openFilePicker}>📷 Snap a meal</Button>
+			</div>
+		</div>
+	</Card>
 
-		<!-- Drop zone -->
+	<Card>
+		<h2 class="section-heading">Analyze a meal</h2>
+
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="drop-zone"
@@ -134,6 +213,7 @@ loadLogs()
 				</div>
 			{/if}
 			<input
+				bind:this={fileInputEl}
 				type="file"
 				accept="image/*"
 				class="file-input"
@@ -141,7 +221,6 @@ loadLogs()
 			/>
 		</div>
 
-		<!-- Meal type + submit -->
 		<div class="controls">
 			<div class="meal-type-row">
 				{#each MEAL_TYPES as type}
@@ -156,21 +235,15 @@ loadLogs()
 				{/each}
 			</div>
 
-			<button
-				class="analyze-btn"
-				onclick={handleAnalyze}
-				disabled={!selectedFile || analyzing}
-				type="button"
-			>
+			<Button onclick={handleAnalyze} disabled={!selectedFile || analyzing}>
 				{analyzing ? "Analysing…" : "Analyse meal"}
-			</button>
+			</Button>
 		</div>
 
 		{#if analyzeError}
 			<p class="error">{analyzeError}</p>
 		{/if}
 
-		<!-- Analysis result -->
 		{#if analyzing}
 			<div class="result-loading">
 				<div class="spinner"></div>
@@ -181,10 +254,9 @@ loadLogs()
 			<div class="result-card">
 				<div class="result-header">
 					<h3>{a.foodName}</h3>
-					<span
-						class="rating-badge"
-						style="background:{ratingColor(a.rating)}"
-					>{a.rating}/10</span>
+					<span class="rating-circle" style="background:{ratingColor(a.rating)}">
+						{letterGrade(a.rating)}
+					</span>
 				</div>
 
 				<div class="macros">
@@ -208,85 +280,113 @@ loadLogs()
 				{/if}
 			</div>
 		{/if}
-	</section>
+	</Card>
 
-	<!-- History -->
-	<section class="card">
-		<h2>Your food history</h2>
-
-		{#if logsLoading}
-			<p class="muted">Loading…</p>
-		{:else if logsError}
-			<p class="error">{logsError}</p>
-		{:else if logs.length === 0}
-			<p class="muted">No meals logged yet. Upload a photo above to get started.</p>
-		{:else}
-			<div class="log-list">
-				{#each logs as log (log.id)}
-					<div class="log-item">
-						<img
-							src={log.photoUrl}
-							alt={log.aiAnalysis?.foodName ?? "meal"}
-							class="log-thumb"
-						/>
-						<div class="log-info">
-							<div class="log-title">
-								{log.aiAnalysis?.foodName ?? "Unknown meal"}
-								<span class="log-meal-type">{log.mealType}</span>
-							</div>
-							{#if log.aiAnalysis}
-								<div class="log-macros">
-									{log.aiAnalysis.macros.calories} kcal ·
-									{log.aiAnalysis.macros.protein}g protein
-								</div>
-							{/if}
-							<div class="log-date">
-								{new Date(log.loggedAt).toLocaleString()}
-							</div>
-						</div>
+	{#if logsLoading}
+		<p class="muted">Loading…</p>
+	{:else if logsError}
+		<p class="error">{logsError}</p>
+	{:else if logs.length === 0}
+		<Card padding="md">
+			<p class="muted">No meals logged yet. Snap a photo above to get started.</p>
+		</Card>
+	{:else}
+		{#each logs as log (log.id)}
+			<Card padding="md">
+				<div class="meal-row">
+					<img
+						src={log.photoUrl}
+						alt={log.aiAnalysis?.foodName ?? "meal"}
+						class="meal-thumb"
+					/>
+					<div class="meal-copy">
+						<span class="meal-type-label">{log.mealType}</span>
+						<span class="meal-name">{log.aiAnalysis?.foodName ?? "Unknown meal"}</span>
 						{#if log.aiAnalysis}
-							<span
-								class="log-rating"
-								style="color:{ratingColor(log.aiAnalysis.rating)}"
-							>{log.aiAnalysis.rating}/10</span>
+							<span class="meal-macros">
+								{log.aiAnalysis.macros.calories} kcal · {log.aiAnalysis.macros.protein} g protein
+							</span>
 						{/if}
 					</div>
-				{/each}
-			</div>
-		{/if}
-	</section>
+					{#if log.aiAnalysis}
+						<span
+							class="rating-circle"
+							style="background:{ratingColor(log.aiAnalysis.rating)}"
+						>
+							{letterGrade(log.aiAnalysis.rating)}
+						</span>
+					{/if}
+				</div>
+			</Card>
+		{/each}
+	{/if}
 </div>
 
 <style>
-.food-page {
-	max-width: 680px;
-	margin: 0 auto;
-	padding: 2rem 1.5rem;
+.food-tab {
 	display: flex;
 	flex-direction: column;
-	gap: 1.5rem;
+	gap: var(--space-4);
 }
 
-h1 {
-	font-size: 1.5rem;
-	font-weight: 700;
+.muted {
+	color: var(--color-text-muted);
+	font-size: var(--font-size-sm);
+}
+
+/* Summary card */
+.summary-row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-5);
+}
+
+.ring-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	line-height: 1;
+}
+
+.ring-value {
+	font-family: var(--font-display);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
-	margin: 0;
 }
 
-.card {
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	border-radius: 0.75rem;
-	padding: 1.5rem;
+.ring-label {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-top: var(--space-1);
+}
+
+.summary-copy {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
+	gap: var(--space-2);
+	flex: 1;
+	min-width: 0;
+	align-items: flex-start;
 }
 
-h2 {
-	font-size: 1rem;
-	font-weight: 600;
+.summary-title {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.summary-macros {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
+}
+
+.section-heading {
+	font-family: var(--font-display);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 	margin: 0;
 }
@@ -295,14 +395,15 @@ h2 {
 .drop-zone {
 	position: relative;
 	border: 2px dashed var(--color-border);
-	border-radius: 0.5rem;
-	min-height: 180px;
+	border-radius: var(--radius-sm);
+	min-height: 160px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
 	overflow: hidden;
 	transition: border-color 0.15s;
+	margin-top: var(--space-3);
 }
 
 .drop-zone:hover {
@@ -320,7 +421,7 @@ h2 {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	pointer-events: none;
 }
 
@@ -330,7 +431,7 @@ h2 {
 
 .drop-hint p {
 	color: var(--color-text-muted);
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 
@@ -339,25 +440,26 @@ h2 {
 	height: 100%;
 	object-fit: cover;
 	max-height: 280px;
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 }
 
 /* Controls */
 .controls {
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
+	gap: var(--space-3);
+	margin-top: var(--space-3);
 }
 
 .meal-type-row {
 	display: flex;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	flex-wrap: wrap;
 }
 
 .meal-btn {
 	padding: 0.375rem 0.875rem;
-	border-radius: 99px;
+	border-radius: var(--radius-full);
 	border: 1px solid var(--color-border);
 	background: var(--color-surface-2);
 	color: var(--color-text-muted);
@@ -372,33 +474,14 @@ h2 {
 	color: #fff;
 }
 
-.analyze-btn {
-	background: var(--color-accent);
-	color: #fff;
-	border: none;
-	border-radius: 0.375rem;
-	padding: 0.75rem;
-	font-size: 1rem;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.analyze-btn:hover:not(:disabled) {
-	background: var(--color-accent-hover);
-}
-
-.analyze-btn:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
 /* Loading */
 .result-loading {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
+	gap: var(--space-3);
 	color: var(--color-text-muted);
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
+	margin-top: var(--space-3);
 }
 
 .spinner {
@@ -418,11 +501,12 @@ h2 {
 .result-card {
 	background: var(--color-surface-2);
 	border: 1px solid var(--color-border);
-	border-radius: 0.5rem;
-	padding: 1rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-4);
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
+	gap: var(--space-3);
+	margin-top: var(--space-3);
 }
 
 .result-header {
@@ -432,41 +516,46 @@ h2 {
 }
 
 .result-header h3 {
-	font-size: 1.125rem;
-	font-weight: 600;
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-text);
 	margin: 0;
 }
 
-.rating-badge {
-	font-size: 0.75rem;
-	font-weight: 700;
+.rating-circle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border-radius: var(--radius-full);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
 	color: #fff;
-	padding: 0.25rem 0.5rem;
-	border-radius: 99px;
+	flex-shrink: 0;
 }
 
 .macros {
 	display: flex;
-	gap: 1rem;
+	gap: var(--space-4);
 }
 
 .macro {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
 .macro span {
-	font-size: 1.125rem;
-	font-weight: 600;
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-text);
 }
 
 .coach-msg {
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);
 	font-style: italic;
 	margin: 0;
@@ -478,7 +567,7 @@ h2 {
 
 .alts-label {
 	color: var(--color-text-muted);
-	margin: 0 0 0.25rem;
+	margin: 0 0 var(--space-1);
 }
 
 .alternatives ul {
@@ -487,85 +576,55 @@ h2 {
 	color: var(--color-text);
 }
 
-/* History */
-.log-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-.log-item {
+/* Meal history rows */
+.meal-row {
 	display: flex;
 	align-items: center;
-	gap: 0.875rem;
-	padding: 0.625rem;
-	background: var(--color-surface-2);
-	border-radius: 0.5rem;
+	gap: var(--space-3);
 }
 
-.log-thumb {
-	width: 56px;
-	height: 56px;
+.meal-thumb {
+	width: 48px;
+	height: 48px;
 	object-fit: cover;
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	flex-shrink: 0;
 }
 
-.log-info {
+.meal-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
 	flex: 1;
 	min-width: 0;
 }
 
-.log-title {
-	font-size: 0.9375rem;
-	font-weight: 600;
-	color: var(--color-text);
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.log-meal-type {
-	font-size: 0.7rem;
-	font-weight: 400;
+.meal-type-label {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	color: var(--color-text-muted);
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	padding: 0.1rem 0.4rem;
-	border-radius: 99px;
 }
 
-.log-macros {
-	font-size: 0.8125rem;
+.meal-name {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
+}
+
+.meal-macros {
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
-}
-
-.log-date {
-	font-size: 0.75rem;
-	color: var(--color-text-muted);
-	margin-top: 0.125rem;
-}
-
-.log-rating {
-	font-size: 0.8125rem;
-	font-weight: 700;
-	flex-shrink: 0;
-}
-
-.muted {
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
 }
 
 .error {
 	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
 	border: 1px solid var(--color-danger);
 	color: var(--color-danger);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	padding: 0.625rem 0.875rem;
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 </style>
