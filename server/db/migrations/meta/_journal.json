@@ -85,6 +85,13 @@
       "when": 1789752744806,
       "tag": "0011_daily_calorie_goal",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1789765439002,
+      "tag": "0012_challenge_daily_log",
+      "breakpoints": true
     }
   ]
 }

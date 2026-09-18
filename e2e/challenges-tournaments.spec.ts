@@ -119,9 +119,9 @@ test("completing a monthly challenge shows the celebration, awards the badge, an
 	await page.getByRole("button", { name: "Join Challenge" }).click()
 
 	for (const goal of goals) {
-		const card = page.locator(".goal-card", { hasText: goal.title })
-		await card.locator(".tap-btn").click()
-		await expect(card.locator(".goal-done-badge")).toBeVisible()
+		const card = page.locator(".ui-card", { hasText: goal.title })
+		await card.getByRole("button", { name: goal.dailyPrompt }).click()
+		await expect(card.locator(".done-badge")).toBeVisible()
 	}
 
 	await expect(page.getByText("Challenge Complete!")).toBeVisible()

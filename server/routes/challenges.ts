@@ -9,6 +9,11 @@ import { generateChallengeForMonth } from "../services/challenges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
 
 type GoalProgress = Record<string, number>
+type DailyLog = Record<string, string[]>
+
+function todayIso(): string {
+	return new Date().toISOString().slice(0, 10)
+}
 
 export function createChallengesRouter(aiService: AIService) {
 	const router = Router()
@@ -43,6 +48,7 @@ export function createChallengesRouter(aiService: AIService) {
 
 		const goals = challenge.tasks as ChallengeGoal[]
 		const progress = (userChallenge?.completedTasks ?? {}) as GoalProgress
+		const dailyLog = (userChallenge?.dailyLog ?? {}) as DailyLog
 		const goalsCompleted = goals.filter(
 			(g) => (progress[g.id] ?? 0) >= g.target,
 		).length
@@ -57,6 +63,7 @@ export function createChallengesRouter(aiService: AIService) {
 			goals,
 			joined: !!userChallenge,
 			progress,
+			dailyLog,
 			completedAt: userChallenge?.completedAt ?? null,
 			goalsCompleted,
 			totalGoals: goals.length,
@@ -171,11 +178,18 @@ export function createChallengesRouter(aiService: AIService) {
 		const goals = challenge.tasks as ChallengeGoal[]
 		const validIds = new Set(goals.map((g) => g.id))
 		const current = (userChallenge.completedTasks ?? {}) as GoalProgress
+		const dailyLog = (userChallenge.dailyLog ?? {}) as DailyLog
+		const today = todayIso()
 
 		for (const [goalId, value] of Object.entries(dailyProgress)) {
 			if (!validIds.has(goalId)) continue
 			if (typeof value !== "number" || value < 0) continue
 			current[goalId] = (current[goalId] ?? 0) + value
+
+			const loggedDays = dailyLog[goalId] ?? []
+			if (!loggedDays.includes(today)) {
+				dailyLog[goalId] = [...loggedDays, today]
+			}
 		}
 
 		const goalsCompleted = goals.filter(
@@ -185,6 +199,7 @@ export function createChallengesRouter(aiService: AIService) {
 
 		const updates: Partial<typeof userChallenges.$inferInsert> = {
 			completedTasks: current,
+			dailyLog,
 		}
 		if (isComplete) {
 			updates.completedAt = new Date()
@@ -216,6 +231,7 @@ export function createChallengesRouter(aiService: AIService) {
 
 		res.json({
 			progress: current,
+			dailyLog,
 			goalsCompleted,
 			totalGoals: goals.length,
 			overallProgress:
@@ -225,6 +241,41 @@ export function createChallengesRouter(aiService: AIService) {
 			completed: isComplete,
 			newBadges,
 			gymXpAwarded: isComplete ? gymXpAwarded : 0,
+		})
+	})
+
+	router.get("/challenges/next", async (_req, res) => {
+		const now = new Date()
+		const thisMonth = now.getUTCMonth() + 1
+		const thisYear = now.getUTCFullYear()
+		const nextMonth = thisMonth === 12 ? 1 : thisMonth + 1
+		const nextYear = thisMonth === 12 ? thisYear + 1 : thisYear
+
+		const [challenge] = await db
+			.select()
+			.from(challenges)
+			.where(
+				and(eq(challenges.month, nextMonth), eq(challenges.year, nextYear)),
+			)
+			.limit(1)
+
+		if (!challenge) {
+			res.json(null)
+			return
+		}
+
+		const [{ value: participantCount }] = await db
+			.select({ value: count() })
+			.from(userChallenges)
+			.where(eq(userChallenges.challengeId, challenge.id))
+
+		res.json({
+			id: challenge.id,
+			title: challenge.title,
+			month: challenge.month,
+			year: challenge.year,
+			opensAt: new Date(Date.UTC(challenge.year, challenge.month - 1, 1)),
+			participantCount,
 		})
 	})
 

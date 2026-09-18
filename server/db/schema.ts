@@ -153,6 +153,12 @@ export const userChallenges = mysqlTable("user_challenges", {
 		.notNull()
 		.references(() => challenges.id),
 	completedTasks: json("completed_tasks").notNull().default([]),
+	// Additive alongside completedTasks (which stays a plain cumulative
+	// per-goal counter, untouched, so admin tooling that reads/writes it
+	// numerically keeps working unchanged) — Record<goalId, ISO date[]> of
+	// the calendar days progress was logged, purely for the day-grid
+	// visualization. Server-stamped on write, never client-supplied.
+	dailyLog: json("daily_log"),
 	completedAt: timestamp("completed_at"),
 })
 
