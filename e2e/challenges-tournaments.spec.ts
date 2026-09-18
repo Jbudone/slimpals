@@ -234,14 +234,14 @@ test("a tournament resolves on leaderboard view, marking the winner and awarding
 	const tournamentName = `Step Sprint ${runId}`
 	const pageA = await contextA.newPage()
 	await pageA.goto("/tournaments")
-	await pageA.getByRole("button", { name: "+ New Tournament" }).click()
+	await pageA.getByRole("button", { name: "+ Start a new tournament" }).click()
 	await pageA.getByLabel("Name").fill(tournamentName)
 	await pageA.getByLabel("Type").selectOption("step_count")
 	await pageA.getByLabel("Start Date").fill(isoDate(daysAgo(3)))
 	await pageA.getByLabel("End Date").fill(isoDate(daysAgo(-7)))
 	await pageA.getByRole("button", { name: "Create Tournament" }).click()
 	await expect(
-		pageA.locator(".tournament-card", { hasText: tournamentName }),
+		pageA.locator(".ui-card", { hasText: tournamentName }),
 	).toBeVisible()
 
 	const listRes = await contextA.request.get("/api/tournaments", {
@@ -280,17 +280,23 @@ test("a tournament resolves on leaderboard view, marking the winner and awarding
 		await conn.end()
 	}
 
-	// Viewing the leaderboard now (end date is in the past) lazily resolves
-	// the tournament.
-	await pageA
-		.locator(".tournament-card", { hasText: tournamentName })
-		.getByRole("button", { name: "Leaderboard" })
-		.click()
+	// Leaderboards render inline and reload with the page (end date is in the
+	// past now, so this reload lazily resolves the tournament). Every
+	// tournament (including ones left over from earlier test runs) renders
+	// inline on this one page, so every assertion below is scoped to this
+	// test's own card by name rather than matching page-wide.
+	await pageA.goto("/tournaments")
+	const tournamentCard = pageA.locator(".ui-card", { hasText: tournamentName })
 
-	const winnerRow = pageA.locator(".leaderboard-row.winner", { hasText: nameA })
+	// pageA is the winner viewing their own row, which renders as "You" (not
+	// their registered name) — identify the row by being both .winner and
+	// .is-me rather than by name text.
+	const winnerRow = tournamentCard.locator(".leaderboard-row.winner.is-me")
 	await expect(winnerRow).toBeVisible()
 	await expect(winnerRow.locator(".rank")).toHaveText("🏆")
-	await expect(pageA.locator(".victory-banner .victory-msg")).toBeVisible()
+	await expect(
+		tournamentCard.locator(".victory-banner .victory-msg"),
+	).toBeVisible()
 
 	await pageA.goto("/badges")
 	await expect(

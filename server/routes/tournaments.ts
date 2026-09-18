@@ -1,7 +1,12 @@
 import { and, count, desc, eq } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
-import { tournamentParticipants, tournaments, users } from "../db/schema.js"
+import {
+	socialPosts,
+	tournamentParticipants,
+	tournaments,
+	users,
+} from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
@@ -269,6 +274,53 @@ export function createTournamentsRouter(aiService: AIService) {
 			},
 			leaderboard,
 		})
+	})
+
+	router.post("/tournaments/:id/nudge", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const tournamentId = Number(req.params.id)
+
+		if (Number.isNaN(tournamentId)) {
+			res.status(400).json({ error: "Invalid tournament ID" })
+			return
+		}
+
+		const [tournament] = await db
+			.select()
+			.from(tournaments)
+			.where(eq(tournaments.id, tournamentId))
+
+		if (!tournament) {
+			res.status(404).json({ error: "Tournament not found" })
+			return
+		}
+
+		const [membership] = await db
+			.select()
+			.from(tournamentParticipants)
+			.where(
+				and(
+					eq(tournamentParticipants.tournamentId, tournamentId),
+					eq(tournamentParticipants.userId, userId),
+				),
+			)
+
+		if (!membership) {
+			res.status(403).json({
+				error: "Join the tournament before nudging the group",
+			})
+			return
+		}
+
+		await db.insert(socialPosts).values({
+			userId,
+			type: "milestone",
+			content: {
+				text: `Nudged the ${tournament.name} group to keep going! 💪`,
+			},
+		})
+
+		res.status(201).json({ nudged: true })
 	})
 
 	return router

@@ -1,4 +1,5 @@
 <script lang="ts">
+import { computeInitials } from "../lib/initials.js"
 import { userProfile } from "../lib/user.svelte.js"
 import { page } from "../router.svelte.js"
 import Avatar from "./ui/Avatar.svelte"
@@ -15,13 +16,6 @@ let isAdmin = $derived(
 )
 
 let initials = $derived(computeInitials(userProfile.data?.name ?? ""))
-
-function computeInitials(name: string): string {
-	const words = name.trim().split(/\s+/).filter(Boolean)
-	if (words.length === 0) return "?"
-	if (words.length === 1) return words[0].slice(0, 2)
-	return words[0][0] + words[1][0]
-}
 
 function toggle() {
 	open = !open

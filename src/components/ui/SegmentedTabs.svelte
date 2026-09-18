@@ -5,14 +5,16 @@ let {
 	options,
 	selected,
 	onselect,
+	fullWidth = false,
 }: {
 	options: Option[]
 	selected: string
 	onselect: (id: string) => void
+	fullWidth?: boolean
 } = $props()
 </script>
 
-<div class="ui-segmented-tabs" role="tablist">
+<div class="ui-segmented-tabs" class:full-width={fullWidth} role="tablist">
 	{#each options as opt (opt.id)}
 		<button
 			type="button"
@@ -56,5 +58,21 @@ let {
 .segment.active {
 	background: var(--color-accent);
 	color: #fff;
+}
+
+.ui-segmented-tabs.full-width {
+	display: flex;
+	width: 100%;
+}
+
+.full-width .segment {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: center;
+	padding-left: var(--space-2);
+	padding-right: var(--space-2);
 }
 </style>
