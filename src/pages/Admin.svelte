@@ -1022,8 +1022,11 @@ onMount(load)
 </script>
 
 <div class="admin-wrap">
-	<div class="admin-header">
-		<h1>Admin Panel</h1>
+	<div class="admin-banner">
+		<div class="admin-banner-text">
+			<p class="admin-banner-sub">⚠ Admin / dev surface</p>
+			<h1>Admin Panel</h1>
+		</div>
 		<span class="dev-tag">DEV ONLY</span>
 	</div>
 
@@ -1902,59 +1905,95 @@ onMount(load)
 
 <style>
 .admin-wrap {
+	--admin-on-warning: #1a1200;
 	max-width: 960px;
-	margin: 2rem auto;
-	padding: 0 1.5rem;
+	margin: var(--space-8) auto;
+	padding: 0 var(--space-6) var(--space-10);
 }
 
-.admin-header {
+.admin-banner {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
-	margin-bottom: 1.5rem;
+	justify-content: space-between;
+	gap: var(--space-4);
+	background: repeating-linear-gradient(
+		135deg,
+		color-mix(in srgb, var(--color-warning) 16%, var(--color-surface)),
+		color-mix(in srgb, var(--color-warning) 16%, var(--color-surface)) 14px,
+		color-mix(in srgb, var(--color-warning) 28%, var(--color-surface)) 14px,
+		color-mix(in srgb, var(--color-warning) 28%, var(--color-surface)) 28px
+	);
+	border: 2px solid var(--color-warning);
+	border-radius: var(--radius-lg);
+	padding: var(--space-4) var(--space-6);
+	margin: var(--space-6) 0 var(--space-5);
 }
 
-.admin-header h1 {
+.admin-banner-text {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.admin-banner-sub {
 	margin: 0;
-	font-size: 1.5rem;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-warning);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.admin-banner h1 {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
 }
 
 .dev-tag {
-	background: #ef4444;
-	color: #fff;
-	font-size: 0.7rem;
-	font-weight: 700;
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.05em;
-	padding: 0.2rem 0.5rem;
-	border-radius: 0.25rem;
+	padding: var(--space-1) var(--space-3);
+	border-radius: var(--radius-full);
+	white-space: nowrap;
 }
 
 .card {
 	background: var(--color-surface);
 	border: 1px solid var(--color-border);
-	border-radius: 0.5rem;
-	padding: 1.25rem;
-	margin-bottom: 1.5rem;
+	border-left: 3px solid var(--color-warning);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-sm);
+	padding: var(--space-5);
+	margin-bottom: var(--space-5);
 }
 
 .card h2 {
-	margin: 0 0 1rem;
-	font-size: 1rem;
+	margin: 0 0 var(--space-4);
+	font-family: var(--font-display);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-text);
 }
 
 .form-row {
 	display: flex;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	flex-wrap: wrap;
 }
 
 .inp {
 	background: var(--color-bg);
 	border: 1px solid var(--color-border);
-	border-radius: 0.375rem;
-	padding: 0.375rem 0.625rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-3);
 	color: var(--color-text);
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	min-width: 0;
 }
 
@@ -1964,11 +2003,12 @@ onMount(load)
 
 .btn {
 	border: none;
-	border-radius: 0.375rem;
-	padding: 0.375rem 0.875rem;
-	font-size: 0.875rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-4);
+	font-size: var(--font-size-sm);
 	cursor: pointer;
-	font-weight: 500;
+	font-weight: var(--font-weight-medium);
+	font-family: var(--font-sans);
 	white-space: nowrap;
 }
 
@@ -1978,13 +2018,13 @@ onMount(load)
 }
 
 .btn.sm {
-	padding: 0.25rem 0.625rem;
-	font-size: 0.8rem;
+	padding: var(--space-1) var(--space-3);
+	font-size: var(--font-size-xs);
 }
 
 .btn.primary {
-	background: var(--color-accent);
-	color: #fff;
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
 }
 
 .btn.primary:hover:not(:disabled) {
@@ -1992,8 +2032,8 @@ onMount(load)
 }
 
 .btn.accent {
-	background: var(--color-accent);
-	color: #fff;
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
 }
 
 .btn.outline {
@@ -2016,54 +2056,54 @@ onMount(load)
 }
 
 .status-msg {
-	margin: 0.5rem 0 0;
-	font-size: 0.8rem;
+	margin: var(--space-2) 0 0;
+	font-size: var(--font-size-xs);
 }
 
 .status-msg.ok {
-	color: #10b981;
+	color: var(--color-success);
 }
 
 .status-msg.fail {
-	color: #ef4444;
+	color: var(--color-danger);
 }
 
 .user-table {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 }
 
 .user-table th,
 .user-table td {
 	text-align: left;
-	padding: 0.5rem 0.75rem;
+	padding: var(--space-2) var(--space-3);
 	border-bottom: 1px solid var(--color-border);
 }
 
 .user-table th {
 	color: var(--color-text-muted);
-	font-weight: 500;
-	font-size: 0.8rem;
+	font-weight: var(--font-weight-medium);
+	font-size: var(--font-size-xs);
 }
 
 .mono {
 	font-family: monospace;
-	font-size: 0.8rem;
+	font-size: var(--font-size-xs);
 }
 
 .admin-badge {
-	background: var(--color-accent);
-	color: #fff;
-	font-size: 0.7rem;
-	font-weight: 600;
-	padding: 0.1rem 0.4rem;
-	border-radius: 0.25rem;
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	padding: 0.1rem var(--space-2);
+	border-radius: var(--radius-sm);
 }
 
 .actions-cell {
 	display: flex;
-	gap: 0.375rem;
+	gap: var(--space-2);
 	flex-wrap: wrap;
 }
 
@@ -2073,50 +2113,50 @@ onMount(load)
 }
 
 .seed-panel {
-	padding: 0.75rem 1rem;
+	padding: var(--space-3) var(--space-4);
 }
 
 .tab-bar {
 	display: flex;
-	gap: 0.25rem;
-	margin-bottom: 0.75rem;
+	gap: var(--space-1);
+	margin-bottom: var(--space-3);
 }
 
 .tab {
 	background: transparent;
 	border: 1px solid var(--color-border);
-	border-radius: 0.375rem;
-	padding: 0.25rem 0.75rem;
-	font-size: 0.8rem;
+	border-radius: var(--radius-sm);
+	padding: var(--space-1) var(--space-3);
+	font-size: var(--font-size-xs);
 	cursor: pointer;
 	color: var(--color-text-muted);
 	text-transform: capitalize;
 }
 
 .tab.active {
-	background: var(--color-accent);
-	color: #fff;
-	border-color: var(--color-accent);
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
+	border-color: var(--color-warning);
 }
 
 .tab-content {
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
+	gap: var(--space-3);
 }
 
 .field-row {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
+	gap: var(--space-3);
 	flex-wrap: wrap;
 }
 
 .field-row label {
 	display: flex;
 	align-items: center;
-	gap: 0.375rem;
-	font-size: 0.8rem;
+	gap: var(--space-2);
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
@@ -2161,28 +2201,29 @@ onMount(load)
 }
 
 .error-text {
-	color: #ef4444;
+	color: var(--color-danger);
 }
 
 .challenge-generate-note {
-	margin: 0.25rem 0 0.75rem;
-	font-size: 0.75rem;
+	margin: var(--space-1) 0 var(--space-3);
+	font-size: var(--font-size-xs);
 }
 
 .challenge-view {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	gap: var(--space-2);
 }
 
 .challenge-title {
 	margin: 0;
-	font-size: 0.95rem;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
 }
 
 .challenge-meta {
 	margin: 0;
-	font-size: 0.8rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
@@ -2192,15 +2233,15 @@ onMount(load)
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.25rem;
+	gap: var(--space-1);
 }
 
 .goal-list li {
 	display: flex;
 	justify-content: space-between;
-	gap: 0.75rem;
-	font-size: 0.85rem;
-	padding: 0.25rem 0;
+	gap: var(--space-3);
+	font-size: var(--font-size-sm);
+	padding: var(--space-1) 0;
 	border-bottom: 1px solid var(--color-border);
 }
 
@@ -2268,19 +2309,19 @@ onMount(load)
 .upgrades-table {
 	width: 100%;
 	border-collapse: collapse;
-	font-size: 0.8rem;
+	font-size: var(--font-size-xs);
 }
 
 .upgrades-table th {
 	text-align: left;
 	color: var(--color-text-muted);
-	font-weight: 600;
-	padding: 0.3rem 0.5rem;
+	font-weight: var(--font-weight-semibold);
+	padding: 0.3rem var(--space-2);
 	border-bottom: 1px solid var(--color-border);
 }
 
 .upgrades-table td {
-	padding: 0.3rem 0.5rem;
+	padding: 0.3rem var(--space-2);
 	border-bottom: 1px solid var(--color-border);
 }
 
@@ -2291,20 +2332,20 @@ onMount(load)
 }
 
 .upgrade-status {
-	padding: 0.1rem 0.4rem;
-	border-radius: 0.25rem;
+	padding: 0.1rem var(--space-2);
+	border-radius: var(--radius-sm);
 	font-size: 0.7rem;
 	text-transform: uppercase;
 }
 
 .upgrade-status.status-claimed {
-	background: #14532d;
-	color: #bbf7d0;
+	background: color-mix(in srgb, var(--color-success) 25%, var(--color-surface));
+	color: var(--color-success);
 }
 
 .upgrade-status.status-pending {
-	background: #78350f;
-	color: #fde68a;
+	background: color-mix(in srgb, var(--color-warning) 25%, var(--color-surface));
+	color: var(--color-warning);
 }
 
 .upgrade-status.status-locked {
