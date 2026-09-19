@@ -96,6 +96,7 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	punching_bags_double_end: { x: 8, y: 4 },
 	staff_assistant_trainer: { x: 12, y: 6 },
 	staff_manager_office: { x: 14, y: 6 },
+	staff_ownership_suite: { x: 16, y: 6 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -137,6 +138,8 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	staff_assistant_trainer:
 		"A second trainer station! More hands to help members.",
 	staff_manager_office: "A manager's office! The gym is really growing up.",
+	staff_ownership_suite:
+		"The ownership suite! This isn't just a gym anymore — it's a business.",
 }
 
 const NPC_NAMES: Record<string, string> = {

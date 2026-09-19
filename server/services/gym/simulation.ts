@@ -188,6 +188,7 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 		"staff_nutrition",
 		"staff_assistant_trainer",
 		"staff_manager_office",
+		"staff_ownership_suite",
 	],
 	boxing: ["boxing_ring", "boxing_mitts_station"],
 	lagree: ["lagree_megaformer", "lagree_studio_mirror"],

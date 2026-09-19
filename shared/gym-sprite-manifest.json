@@ -423,6 +423,16 @@
 			"description": "small manager office with desk and chair, gym prop"
 		},
 		{
+			"key": "staff_ownership_suite",
+			"filename": "staff_ownership_suite.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "plush private owner's office suite with leather furniture, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",

@@ -777,6 +777,26 @@ const GYM_UPGRADES: UpgradeRow[] = [
 			"pixel art small manager office with desk, stardew valley style, 64x64",
 		unlocksNpcKey: "npc_manager",
 	},
+
+	// ── Offices business-growth track (gh-117) ──────────────────────────────
+	// Per the PRD decision, offices are a business-growth track on the same
+	// "staff" category as gh-116, not a separate member-facing category:
+	// reception (staff_reception, already existed) -> manager's office
+	// (staff_manager_office, gh-116) -> ownership suite (this entry) — the
+	// final, top-of-the-ladder step. A cosmetic/status signal, not an NPC
+	// unlock: the PRD explicitly frames this as "the gym itself is growing
+	// as a business," so no unlocksNpcKey here.
+	{
+		key: "staff_ownership_suite",
+		name: "Ownership Suite",
+		description: "A plush private office for the gym's owner — you've made it",
+		category: "staff",
+		requiredXp: 23000,
+		sortOrder: 8,
+		assetPrompt:
+			"pixel art plush private owner's office suite, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {

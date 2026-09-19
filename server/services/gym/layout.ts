@@ -54,4 +54,5 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	// existing zone
 	staff_assistant_trainer: { x: 12, y: 6 },
 	staff_manager_office: { x: 14, y: 6 },
+	staff_ownership_suite: { x: 16, y: 6 },
 }

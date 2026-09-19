@@ -258,14 +258,14 @@ describe("POST /api/gym/claim-upgrade — integration", () => {
 })
 
 describe("GET /api/gym/catalog — full catalog", () => {
-	it("returns all 35 upgrades with required fields for rendering", async () => {
+	it("returns all 36 upgrades with required fields for rendering", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")
 			.set("Cookie", cookies)
 
 		expect(res.status).toBe(200)
-		expect(res.body).toHaveLength(35)
+		expect(res.body).toHaveLength(36)
 
 		for (const item of res.body) {
 			expect(item).toHaveProperty("key")
