@@ -203,14 +203,14 @@ describe("GET /api/gym", () => {
 })
 
 describe("GET /api/gym/catalog", () => {
-	it("returns 29 upgrades", async () => {
+	it("returns 31 upgrades", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")
 			.set("Cookie", cookies)
 
 		expect(res.status).toBe(200)
-		expect(res.body).toHaveLength(29)
+		expect(res.body).toHaveLength(31)
 
 		const categories = new Set(
 			res.body.map((u: { category: string }) => u.category),
@@ -224,6 +224,7 @@ describe("GET /api/gym/catalog", () => {
 				"staff",
 				"boxing",
 				"lagree",
+				"swimming",
 			]),
 		)
 	})

@@ -55,6 +55,7 @@ const CATEGORY_ZONES: Record<string, { startX: number; startY: number }> = {
 	staff: { startX: 6, startY: 5 },
 	boxing: { startX: 14, startY: 5 },
 	lagree: { startX: 14, startY: 7 },
+	swimming: { startX: 2, startY: 6 },
 }
 
 // Must match server/services/gym/layout.ts
@@ -88,6 +89,8 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	boxing_mitts_station: { x: 16, y: 5 },
 	lagree_megaformer: { x: 14, y: 7 },
 	lagree_studio_mirror: { x: 16, y: 7 },
+	swimming_lap_pool: { x: 2, y: 6 },
+	swimming_poolside_loungers: { x: 4, y: 6 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -121,6 +124,8 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	lagree_megaformer:
 		"A megaformer! Lagree classes are officially a thing here.",
 	lagree_studio_mirror: "Studio mirror wall! Form checks just got easier.",
+	swimming_lap_pool: "A lap pool! Swimming is officially part of the gym now.",
+	swimming_poolside_loungers: "Poolside loungers! Post-swim relaxation sorted.",
 }
 
 const NPC_NAMES: Record<string, string> = {

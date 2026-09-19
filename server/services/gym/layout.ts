@@ -41,4 +41,8 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	// Lagree zone (gh-113) — right side, below boxing, clear of every zone
 	lagree_megaformer: { x: 14, y: 7 },
 	lagree_studio_mirror: { x: 16, y: 7 },
+
+	// Swimming zone (gh-114) — left-center, clear of every existing zone
+	swimming_lap_pool: { x: 2, y: 6 },
+	swimming_poolside_loungers: { x: 4, y: 6 },
 }

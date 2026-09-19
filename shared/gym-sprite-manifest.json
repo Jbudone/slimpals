@@ -363,6 +363,26 @@
 			"description": "full-length studio mirror wall panel, gym prop"
 		},
 		{
+			"key": "swimming_lap_pool",
+			"filename": "swimming_lap_pool.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "indoor lap pool with lane markers, gym equipment"
+		},
+		{
+			"key": "swimming_poolside_loungers",
+			"filename": "swimming_poolside_loungers.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "poolside lounge chairs, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",

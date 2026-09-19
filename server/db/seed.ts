@@ -695,6 +695,32 @@ const GYM_UPGRADES: UpgradeRow[] = [
 		assetPrompt: "pixel art studio mirror wall, stardew valley style, 64x64",
 		unlocksNpcKey: null,
 	},
+
+	// ── Swimming (gh-114) ─────────────────────────────────────────────────
+	// Third new content category. Gated at the start of "Regional Chain"
+	// (12,500 xp, gh-65's fourth era), one tier up from lagree's
+	// "City Destination" gate.
+	{
+		key: "swimming_lap_pool",
+		name: "Lap Pool",
+		description: "A dedicated lap pool for swim training",
+		category: "swimming",
+		requiredXp: 12500,
+		sortOrder: 1,
+		assetPrompt: "pixel art indoor lap pool, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "swimming_poolside_loungers",
+		name: "Poolside Loungers",
+		description: "Loungers for relaxing poolside between laps",
+		category: "swimming",
+		requiredXp: 13200,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art poolside lounge chairs, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {
