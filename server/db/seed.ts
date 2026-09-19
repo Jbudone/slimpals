@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import type { GymNpcRole, GymUpgradeCategory } from "../../shared/types.js"
 import type * as schema from "./schema.js"
 import { badges, gymNpcs, gymUpgradesCatalog } from "./schema.js"
 
@@ -348,7 +349,10 @@ type UpgradeRow = {
 	key: string
 	name: string
 	description: string
-	category: "cardio" | "weights" | "amenities" | "decor" | "staff"
+	// GymUpgradeCategory, not a hand-written union (gh-64): a new category
+	// (gh-112+) is added to GYM_UPGRADE_CATEGORIES in shared/types.ts, and
+	// this literal array is validated against it at compile time.
+	category: GymUpgradeCategory
 	requiredXp: number
 	sortOrder: number
 	assetPrompt: string
@@ -645,7 +649,9 @@ export async function seedGymUpgrades(db: Db) {
 type NpcRow = {
 	key: string
 	name: string
-	role: "trainer" | "receptionist" | "regular" | "specialist"
+	// GymNpcRole, not a hand-written union (gh-64): a new role is added to
+	// GYM_NPC_ROLES in shared/types.ts, validated at compile time here.
+	role: GymNpcRole
 	personalityProfile: object
 	defaultSchedule: object
 	portraitUrl: string

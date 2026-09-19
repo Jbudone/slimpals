@@ -23,12 +23,28 @@ export type WeightSource = "manual" | "apple_health" | "fitbit" | "garmin"
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack"
 
-export type GymUpgradeCategory =
-	| "cardio"
-	| "weights"
-	| "amenities"
-	| "decor"
-	| "staff"
+/** The open-ended content-type allowlist for `gymUpgradesCatalog.category`
+ * (gh-64) — a validated varchar, not a DB enum, so new categories (gh-112+)
+ * are added here, not via a schema migration. */
+export const GYM_UPGRADE_CATEGORIES = [
+	"cardio",
+	"weights",
+	"amenities",
+	"decor",
+	"staff",
+] as const
+
+export type GymUpgradeCategory = (typeof GYM_UPGRADE_CATEGORIES)[number]
+
+/** Same open-ended pattern (gh-64) for `gymNpcs.role`. */
+export const GYM_NPC_ROLES = [
+	"trainer",
+	"receptionist",
+	"regular",
+	"specialist",
+] as const
+
+export type GymNpcRole = (typeof GYM_NPC_ROLES)[number]
 
 export type TournamentType =
 	| "weight_loss"

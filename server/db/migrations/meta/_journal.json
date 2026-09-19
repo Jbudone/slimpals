@@ -92,6 +92,13 @@
       "when": 1789765439002,
       "tag": "0012_challenge_daily_log",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1789952400000,
+      "tag": "0013_gym_open_content_types",
+      "breakpoints": true
     }
   ]
 }

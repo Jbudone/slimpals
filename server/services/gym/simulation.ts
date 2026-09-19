@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import type { GymNpcRole, GymUpgradeCategory } from "../../../shared/types.js"
 import type * as schema from "../../db/schema.js"
 import { gymNpcDailyState, userGymNpcRelationships } from "../../db/schema.js"
 
@@ -134,15 +135,21 @@ export function getCrowdMax(hour: number, gymDaysActive = 90): number {
 	return Math.max(1, Math.round(base * multiplier))
 }
 
+// Record<string, number> so lookups with an arbitrary runtime role (gh-64:
+// role is an open-ended varchar, not a closed enum) stay a safe `?? 99`
+// fallback rather than a type error; `satisfies` still forces this literal
+// to cover every currently-known role, so adding one to GYM_NPC_ROLES
+// without updating this map is a compile-time error, not a silent gap.
 const ROLE_PRIORITY: Record<string, number> = {
 	trainer: 1,
 	specialist: 2,
 	receptionist: 3,
 	regular: 4,
-}
+} satisfies Record<GymNpcRole, number>
 
 // ── Equipment mapping ────────────────────────────────────────────────────────
 
+// Same Record<string, T> + `satisfies` pattern as ROLE_PRIORITY above.
 const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 	cardio: [
 		"cardio_treadmill",
@@ -179,7 +186,7 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 		"staff_physio",
 		"staff_nutrition",
 	],
-}
+} satisfies Record<GymUpgradeCategory, string[]>
 
 const EQUIPMENT_POSITIONS: Record<string, { x: number; y: number }> = {
 	cardio_treadmill: { x: 2, y: 2 },

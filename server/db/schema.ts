@@ -218,13 +218,10 @@ export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
 	key: varchar("key", { length: 128 }).notNull().unique(),
 	name: varchar("name", { length: 255 }).notNull(),
 	description: text("description"),
-	category: mysqlEnum("category", [
-		"cardio",
-		"weights",
-		"amenities",
-		"decor",
-		"staff",
-	]).notNull(),
+	// varchar, not mysqlEnum (gh-64): validated at the TypeScript level
+	// against GYM_UPGRADE_CATEGORIES in shared/types.ts, so a new category
+	// is a content addition, not a schema migration.
+	category: varchar("category", { length: 64 }).notNull(),
 	requiredXp: int("required_xp").notNull().default(0),
 	sortOrder: int("sort_order").notNull().default(0),
 	assetPrompt: text("asset_prompt"),
@@ -245,12 +242,9 @@ export const gymNpcs = mysqlTable("gym_npcs", {
 	id: int("id").autoincrement().primaryKey(),
 	key: varchar("key", { length: 128 }).notNull().unique(),
 	name: varchar("name", { length: 255 }).notNull(),
-	role: mysqlEnum("role", [
-		"trainer",
-		"receptionist",
-		"regular",
-		"specialist",
-	]).notNull(),
+	// varchar, not mysqlEnum (gh-64): validated at the TypeScript level
+	// against GYM_NPC_ROLES in shared/types.ts.
+	role: varchar("role", { length: 64 }).notNull(),
 	personalityProfile: json("personality_profile").notNull(),
 	defaultSchedule: json("default_schedule").notNull(),
 	portraitUrl: varchar("portrait_url", { length: 500 }),
