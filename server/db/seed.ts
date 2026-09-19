@@ -721,6 +721,35 @@ const GYM_UPGRADES: UpgradeRow[] = [
 			"pixel art poolside lounge chairs, stardew valley style, 64x64",
 		unlocksNpcKey: null,
 	},
+
+	// ── Punching bags (gh-115) ──────────────────────────────────────────────
+	// Fourth and final new room category from the PRD's list. Gated at the
+	// start of "Flagship / Landmark" (20,000 xp, gh-65's top era) — the
+	// last tier on the current ladder. Distinct equipment concept from
+	// "boxing" (gh-112, ring + focus-mitt training) per the PRD's category
+	// list treating them as separate categories.
+	{
+		key: "punching_bags_heavy_bag_row",
+		name: "Heavy Bag Row",
+		description: "A row of hanging heavy bags for power and combo training",
+		category: "punching_bags",
+		requiredXp: 20000,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art row of hanging heavy punching bags, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "punching_bags_double_end",
+		name: "Double-End Bag",
+		description: "A double-end bag for speed and accuracy drills",
+		category: "punching_bags",
+		requiredXp: 21500,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art double-end punching bag rig, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {

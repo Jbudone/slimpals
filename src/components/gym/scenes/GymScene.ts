@@ -56,6 +56,7 @@ const CATEGORY_ZONES: Record<string, { startX: number; startY: number }> = {
 	boxing: { startX: 14, startY: 5 },
 	lagree: { startX: 14, startY: 7 },
 	swimming: { startX: 2, startY: 6 },
+	punching_bags: { startX: 6, startY: 4 },
 }
 
 // Must match server/services/gym/layout.ts
@@ -91,6 +92,8 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	lagree_studio_mirror: { x: 16, y: 7 },
 	swimming_lap_pool: { x: 2, y: 6 },
 	swimming_poolside_loungers: { x: 4, y: 6 },
+	punching_bags_heavy_bag_row: { x: 6, y: 4 },
+	punching_bags_double_end: { x: 8, y: 4 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -126,6 +129,9 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	lagree_studio_mirror: "Studio mirror wall! Form checks just got easier.",
 	swimming_lap_pool: "A lap pool! Swimming is officially part of the gym now.",
 	swimming_poolside_loungers: "Poolside loungers! Post-swim relaxation sorted.",
+	punching_bags_heavy_bag_row: "A row of heavy bags! Time to hit hard.",
+	punching_bags_double_end:
+		"Double-end bag! Speed and accuracy training unlocked.",
 }
 
 const NPC_NAMES: Record<string, string> = {

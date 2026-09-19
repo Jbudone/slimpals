@@ -45,4 +45,8 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	// Swimming zone (gh-114) — left-center, clear of every existing zone
 	swimming_lap_pool: { x: 2, y: 6 },
 	swimming_poolside_loungers: { x: 4, y: 6 },
+
+	// Punching bags zone (gh-115) — top-center, clear of every existing zone
+	punching_bags_heavy_bag_row: { x: 6, y: 4 },
+	punching_bags_double_end: { x: 8, y: 4 },
 }

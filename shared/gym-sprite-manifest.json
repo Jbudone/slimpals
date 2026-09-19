@@ -383,6 +383,26 @@
 			"description": "poolside lounge chairs, gym prop"
 		},
 		{
+			"key": "punching_bags_heavy_bag_row",
+			"filename": "punching_bags_heavy_bag_row.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "row of hanging heavy punching bags, gym equipment"
+		},
+		{
+			"key": "punching_bags_double_end",
+			"filename": "punching_bags_double_end.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "double-end punching bag rig with floor and ceiling tethers, gym equipment"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
