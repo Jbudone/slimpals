@@ -74,6 +74,48 @@ describe("getCrowdMax", () => {
 	})
 })
 
+describe("getCrowdMax progression scaling (gh-63)", () => {
+	it("defaults to the Established (day 90+) baseline when no progression is given", () => {
+		expect(getCrowdMax(16)).toBe(6)
+		expect(getCrowdMax(16, 90)).toBe(6)
+		expect(getCrowdMax(16, 365)).toBe(6)
+	})
+
+	it("shows visibly fewer people at the same hour for an earlier checkpoint", () => {
+		const grandOpening = getCrowdMax(16, 0)
+		const firstWeek = getCrowdMax(16, 7)
+		const oneMonthIn = getCrowdMax(16, 30)
+		const established = getCrowdMax(16, 90)
+		expect(grandOpening).toBeLessThan(firstWeek)
+		expect(firstWeek).toBeLessThan(oneMonthIn)
+		expect(oneMonthIn).toBeLessThan(established)
+	})
+
+	it("never closes an hour that's genuinely open, even at day 0", () => {
+		for (let h = 0; h < 24; h++) {
+			const base = getCrowdMax(h, 90)
+			const grandOpening = getCrowdMax(h, 0)
+			if (base > 0) {
+				expect(grandOpening).toBeGreaterThanOrEqual(1)
+			} else {
+				expect(grandOpening).toBe(0)
+			}
+		}
+	})
+
+	it("stays quiet (0) at 3am regardless of progression", () => {
+		expect(getCrowdMax(3, 0)).toBe(0)
+		expect(getCrowdMax(3, 7)).toBe(0)
+		expect(getCrowdMax(3, 30)).toBe(0)
+		expect(getCrowdMax(3, 90)).toBe(0)
+		expect(getCrowdMax(3, 500)).toBe(0)
+	})
+
+	it("treats negative or fractional daysActive as day 0", () => {
+		expect(getCrowdMax(16, -5)).toBe(getCrowdMax(16, 0))
+	})
+})
+
 // ── Mood variants ────────────────────────────────────────────────────────────
 
 describe("getMoodVariant", () => {
@@ -238,6 +280,58 @@ describe("computeGymSimState crowd cap", () => {
 		if (present.length === 1) {
 			expect(present[0].npcKey).toBe("trainer_t")
 		}
+	})
+
+	it("shows visibly more people at the same hour for an established gym than a brand-new one (gh-63)", async () => {
+		const { eq } = await import("drizzle-orm")
+		const db = await getTestDb()
+
+		await db.insert(users).values({ id: "u3", email: "u3@t.test", name: "U3" })
+		await db.insert(userGyms).values({ userId: "u3", name: "Test Gym 3" })
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, "u3"))
+
+		// 8 regulars all scheduled from 7am so the 4pm window (base cap 6) has
+		// enough eligible NPCs to actually exercise the full progression range.
+		const npcs = Array.from({ length: 8 }, (_, i) =>
+			makeNpc(`regular_${i}`, "regular", 7),
+		)
+		const unlockedUpgrades = ["cardio_treadmill"]
+		// Different calendar days so each call's gymNpcDailyState upsert is
+		// independent — presence/crowd-cap logic doesn't depend on that cache,
+		// but keeping the two scenarios on separate days avoids any coupling.
+		const grandOpeningAt4pm = new Date(2025, 0, 6, 16, 0)
+		const establishedAt4pm = new Date(2025, 0, 7, 16, 0)
+
+		const grandOpeningStates = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[{ npcKey: "regular_0", relationshipLevel: 10, gymDaysActive: 0 }],
+			db,
+			grandOpeningAt4pm,
+		)
+		const establishedStates = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[{ npcKey: "regular_0", relationshipLevel: 10, gymDaysActive: 90 }],
+			db,
+			establishedAt4pm,
+		)
+
+		const grandOpeningPresent = grandOpeningStates.filter(
+			(s) => s.isPresent,
+		).length
+		const establishedPresent = establishedStates.filter(
+			(s) => s.isPresent,
+		).length
+
+		expect(grandOpeningPresent).toBe(2)
+		expect(establishedPresent).toBe(6)
+		expect(establishedPresent).toBeGreaterThan(grandOpeningPresent)
 	})
 })
 

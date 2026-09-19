@@ -107,8 +107,31 @@ export const CROWD_WINDOWS: Array<{ start: number; end: number; max: number }> =
 		{ start: 21, end: 24, max: 0 },
 	]
 
-export function getCrowdMax(hour: number): number {
-	return CROWD_WINDOWS.find((w) => hour >= w.start && hour < w.end)?.max ?? 0
+/** Crowd-density progression multiplier (gh-63), keyed on the same
+ * `gymDaysActive` counter and named-checkpoint thresholds `getProgressionStage`
+ * below already uses. CROWD_WINDOWS's tuned caps are treated as the "Day 90 —
+ * Established" baseline (multiplier 1.0, so pre-existing callers that don't
+ * pass a progression value see unchanged behavior); earlier checkpoints scale
+ * the same shape down rather than replacing it. */
+function getCrowdProgressionMultiplier(gymDaysActive: number): number {
+	if (gymDaysActive >= 90) return 1.0 // Established
+	if (gymDaysActive >= 30) return 0.8 // One Month In
+	if (gymDaysActive >= 7) return 0.6 // First Week
+	return 0.4 // Grand Opening (day 0-6)
+}
+
+/** gymDaysActive defaults to 90 ("Established") so every pre-existing
+ * single-argument call site keeps returning CROWD_WINDOWS's tuned caps
+ * unchanged. A window that's genuinely open (base max > 0) never scales down
+ * to fully closed — progression thins out a busy gym, it doesn't shut an
+ * open one, keeping "still quiet at 3am, never NOT quiet" intact at every
+ * progression point. */
+export function getCrowdMax(hour: number, gymDaysActive = 90): number {
+	const base =
+		CROWD_WINDOWS.find((w) => hour >= w.start && hour < w.end)?.max ?? 0
+	if (base === 0) return 0
+	const multiplier = getCrowdProgressionMultiplier(gymDaysActive)
+	return Math.max(1, Math.round(base * multiplier))
 }
 
 const ROLE_PRIORITY: Record<string, number> = {
@@ -543,7 +566,15 @@ export async function computeGymSimState(
 	}
 
 	// Phase 1: Filter eligible NPCs (unlocked + scheduled today with mood offset)
-	const crowdMax = getCrowdMax(hour)
+	// gymDaysActive: the oldest relationship's counter is the truest read of
+	// "how long has this gym really been running" — a freshly-unlocked NPC's
+	// relationship starting at 0 shouldn't drag an established gym's crowd
+	// back down, so this takes the max, not an average.
+	const gymDaysActive =
+		relationships.length > 0
+			? Math.max(...relationships.map((r) => r.gymDaysActive))
+			: 0
+	const crowdMax = getCrowdMax(hour, gymDaysActive)
 
 	const eligibleNpcs = npcs.filter((npc) => {
 		if (
