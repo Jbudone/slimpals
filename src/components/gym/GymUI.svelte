@@ -122,7 +122,7 @@ const progressPercent = $derived(
 
 .level-badge {
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	padding: var(--space-1) var(--space-3);
@@ -165,7 +165,7 @@ const progressPercent = $derived(
 	align-items: center;
 	gap: var(--space-2);
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	border: none;
 	border-radius: var(--radius-full);
 	padding: var(--space-3) var(--space-4);

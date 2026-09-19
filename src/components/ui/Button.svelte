@@ -43,7 +43,7 @@ let {
 	font-family: var(--font-sans);
 	cursor: pointer;
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	transition: background 0.15s;
 }
 

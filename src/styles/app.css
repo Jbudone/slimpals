@@ -13,7 +13,9 @@
 	--color-text-muted: #8fae95;
 	--color-accent: #34c973;
 	--color-accent-hover: #22a85e;
+	--color-on-accent: #ffffff;
 	--color-success: #34c973;
+	--color-on-success: #ffffff;
 	--color-warning: #fbbf24;
 	--color-danger: #f87171;
 }
@@ -27,7 +29,9 @@
 	--color-text-muted: #8d7c66;
 	--color-accent: #c1602f;
 	--color-accent-hover: #a34a22;
+	--color-on-accent: #ffffff;
 	--color-success: #4d9c5c;
+	--color-on-success: #ffffff;
 	--color-warning: #d97706;
 	--color-danger: #dc2626;
 }
@@ -41,7 +45,9 @@
 	--color-text-muted: #7ea37e;
 	--color-accent: #22c55e;
 	--color-accent-hover: #16a34a;
+	--color-on-accent: #04210c;
 	--color-success: #4ade80;
+	--color-on-success: #042b12;
 	--color-warning: #fbbf24;
 	--color-danger: #f87171;
 }
@@ -55,7 +61,9 @@
 	--color-text-muted: #c4846a;
 	--color-accent: #f97316;
 	--color-accent-hover: #ea580c;
+	--color-on-accent: #2b0f03;
 	--color-success: #4ade80;
+	--color-on-success: #042b12;
 	--color-warning: #fbbf24;
 	--color-danger: #f87171;
 }
@@ -69,7 +77,9 @@
 	--color-text-muted: #6baed6;
 	--color-accent: #0ea5e9;
 	--color-accent-hover: #0284c7;
+	--color-on-accent: #031c30;
 	--color-success: #4ade80;
+	--color-on-success: #042b12;
 	--color-warning: #fbbf24;
 	--color-danger: #f87171;
 }
@@ -83,7 +93,9 @@
 	--color-text-muted: #6c757d;
 	--color-accent: #6d28d9;
 	--color-accent-hover: #5b21b6;
+	--color-on-accent: #ffffff;
 	--color-success: #16a34a;
+	--color-on-success: #ffffff;
 	--color-warning: #d97706;
 	--color-danger: #dc2626;
 }
@@ -97,7 +109,9 @@
 	--color-text-muted: #888888;
 	--color-accent: #00ff88;
 	--color-accent-hover: #00dd77;
+	--color-on-accent: #000000;
 	--color-success: #00ff88;
+	--color-on-success: #000000;
 	--color-warning: #ffff00;
 	--color-danger: #ff0055;
 }

@@ -442,8 +442,8 @@ onMount(loadChallenge)
 .sprint-check {
 	flex-shrink: 0; width: 20px; height: 20px; border: 2px solid var(--color-border);
 	border-radius: 4px; display: flex; align-items: center; justify-content: center;
-	font-size: 0.7rem; font-weight: 700; color: #fff; transition: background 0.15s, border-color 0.15s;
+	font-size: 0.7rem; font-weight: 700; transition: background 0.15s, border-color 0.15s;
 }
-.sprint-check.checked { background: var(--color-success, #22c55e); border-color: var(--color-success, #22c55e); }
+.sprint-check.checked { background: var(--color-success, #22c55e); border-color: var(--color-success, #22c55e); color: var(--color-on-success, #fff); }
 .sprint-task-title { font-size: 0.875rem; color: var(--color-text); }
 </style>

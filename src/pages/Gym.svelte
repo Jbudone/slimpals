@@ -171,7 +171,7 @@ onMount(loadGym)
 	left: 50%;
 	transform: translateX(-50%);
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	border-radius: 0.5rem;
 	padding: 0.625rem 1.25rem;
 	font-size: 0.9375rem;

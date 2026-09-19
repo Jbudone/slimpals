@@ -471,7 +471,7 @@ loadLogs()
 .meal-btn.active {
 	background: var(--color-accent);
 	border-color: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 }
 
 /* Loading */

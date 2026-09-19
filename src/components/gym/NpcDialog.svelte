@@ -219,7 +219,7 @@ $effect(() => {
 	height: 64px;
 	border-radius: var(--radius-md);
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -334,7 +334,7 @@ $effect(() => {
 
 .close-btn {
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-on-accent, #fff);
 	border: none;
 	border-radius: var(--radius-full);
 	padding: var(--space-2) var(--space-4);
