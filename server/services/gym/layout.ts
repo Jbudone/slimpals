@@ -33,4 +33,8 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	staff_massage: { x: 6, y: 7 },
 	staff_physio: { x: 8, y: 7 },
 	staff_nutrition: { x: 10, y: 6 },
+
+	// Boxing zone (gh-112) — right-center, clear of every existing zone
+	boxing_ring: { x: 14, y: 5 },
+	boxing_mitts_station: { x: 16, y: 5 },
 }

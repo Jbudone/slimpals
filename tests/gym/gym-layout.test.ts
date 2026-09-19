@@ -71,8 +71,8 @@ afterAll(async () => {
 })
 
 describe("UPGRADE_LAYOUT", () => {
-	it("defines positions for all 25 upgrades", () => {
-		expect(Object.keys(UPGRADE_LAYOUT)).toHaveLength(25)
+	it("defines positions for all 27 upgrades", () => {
+		expect(Object.keys(UPGRADE_LAYOUT)).toHaveLength(27)
 	})
 
 	it("all positions are within grid bounds (20x15)", () => {

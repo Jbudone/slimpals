@@ -53,6 +53,7 @@ const CATEGORY_ZONES: Record<string, { startX: number; startY: number }> = {
 	amenities: { startX: 2, startY: 8 },
 	decor: { startX: 10, startY: 8 },
 	staff: { startX: 6, startY: 5 },
+	boxing: { startX: 14, startY: 5 },
 }
 
 // Must match server/services/gym/layout.ts
@@ -82,6 +83,8 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	staff_massage: { x: 6, y: 7 },
 	staff_physio: { x: 8, y: 7 },
 	staff_nutrition: { x: 10, y: 6 },
+	boxing_ring: { x: 14, y: 5 },
+	boxing_mitts_station: { x: 16, y: 5 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -110,6 +113,8 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	staff_massage: "Massage chair! Recovery just leveled up.",
 	staff_physio: "Physical therapy room! Injuries handled right here.",
 	staff_nutrition: "Nutrition desk! Diet is half the battle.",
+	boxing_ring: "A boxing ring! Time to step in and spar.",
+	boxing_mitts_station: "Focus mitts station! Sharpen those combos.",
 }
 
 const NPC_NAMES: Record<string, string> = {

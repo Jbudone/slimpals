@@ -186,6 +186,7 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 		"staff_physio",
 		"staff_nutrition",
 	],
+	boxing: ["boxing_ring", "boxing_mitts_station"],
 } satisfies Record<GymUpgradeCategory, string[]>
 
 const EQUIPMENT_POSITIONS: Record<string, { x: number; y: number }> = {

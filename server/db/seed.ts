@@ -636,6 +636,38 @@ const GYM_UPGRADES: UpgradeRow[] = [
 		assetPrompt: "pixel art nutrition advice desk, stardew valley style, 64x64",
 		unlocksNpcKey: "npc_nutritionist",
 	},
+
+	// ── Boxing (gh-112) ───────────────────────────────────────────────────
+	// First new content category built on the open-ended foundation (gh-64)
+	// and gated on the tier ladder (gh-65) — a small proof set, not
+	// exhaustive equipment authoring. Gated at the start of "Local Hotspot"
+	// (3,500 xp, gh-65's second era beyond the original catalog's 1,500xp
+	// ceiling), so boxing is the first genuinely new unlock past what the
+	// original 25-item catalog offered. Deliberately equipment-agnostic of
+	// "punching bags" specifically — that's its own separate future category
+	// (gh-115) per the PRD's category list, so this proof set covers other
+	// boxing-gym staples (ring, focus-mitt training) instead of bags.
+	{
+		key: "boxing_ring",
+		name: "Boxing Ring",
+		description: "A roped-off sparring ring for boxing practice",
+		category: "boxing",
+		requiredXp: 3500,
+		sortOrder: 1,
+		assetPrompt: "pixel art roped boxing ring, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "boxing_mitts_station",
+		name: "Focus Mitts Station",
+		description: "A pad-work station for footwork and combo drills",
+		category: "boxing",
+		requiredXp: 4200,
+		sortOrder: 2,
+		assetPrompt:
+			"pixel art boxing focus mitts training station, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {

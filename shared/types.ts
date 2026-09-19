@@ -32,6 +32,7 @@ export const GYM_UPGRADE_CATEGORIES = [
 	"amenities",
 	"decor",
 	"staff",
+	"boxing", // gh-112
 ] as const
 
 export type GymUpgradeCategory = (typeof GYM_UPGRADE_CATEGORIES)[number]

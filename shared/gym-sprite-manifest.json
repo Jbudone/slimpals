@@ -323,6 +323,26 @@
 			"description": "nutrition consultation desk with supplement bottles and food charts on wall, gym prop"
 		},
 		{
+			"key": "boxing_ring",
+			"filename": "boxing_ring.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "roped boxing sparring ring, corner posts, canvas mat, gym equipment"
+		},
+		{
+			"key": "boxing_mitts_station",
+			"filename": "boxing_mitts_station.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "focus mitts training station, wall-mounted pads and gloves rack, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
