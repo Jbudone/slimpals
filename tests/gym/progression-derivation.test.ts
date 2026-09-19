@@ -4,6 +4,8 @@ import {
 	DAILY_XP_RATE,
 	deriveProgressionFromDays,
 	deriveUnlockedUpgradeKeys,
+	GYM_ERAS,
+	getEraForXp,
 } from "../../server/services/gym/index.js"
 
 const CATALOG = [
@@ -100,5 +102,68 @@ describe("deriveProgressionFromDays", () => {
 		expect(deriveProgressionFromDays(-10, CATALOG)).toEqual(
 			deriveProgressionFromDays(0, CATALOG),
 		)
+	})
+
+	it("includes the era matching its own xp (gh-65)", () => {
+		const snapshot = deriveProgressionFromDays(200, CATALOG)
+		expect(snapshot.era).toEqual(getEraForXp(snapshot.xp))
+	})
+})
+
+describe("GYM_ERAS / getEraForXp (gh-65)", () => {
+	it("defines at least 5-6 eras spanning a long engagement horizon", () => {
+		expect(GYM_ERAS.length).toBeGreaterThanOrEqual(5)
+	})
+
+	it("starts at xp 0 so every gym has a valid starting era", () => {
+		expect(GYM_ERAS[0].minXp).toBe(0)
+		expect(getEraForXp(0).id).toBe(GYM_ERAS[0].id)
+	})
+
+	it("is sorted ascending by minXp with no gaps or duplicate thresholds", () => {
+		for (let i = 1; i < GYM_ERAS.length; i++) {
+			expect(GYM_ERAS[i].minXp).toBeGreaterThan(GYM_ERAS[i - 1].minXp)
+		}
+	})
+
+	it("has unique, stable ids and non-empty names", () => {
+		const ids = GYM_ERAS.map((e) => e.id)
+		expect(new Set(ids).size).toBe(ids.length)
+		for (const era of GYM_ERAS) {
+			expect(era.name.length).toBeGreaterThan(0)
+		}
+	})
+
+	it("no era beyond the first is reachable within days of normal play", () => {
+		// DAILY_XP_RATE models a consistently-engaged user; every era after
+		// the starting one should take well over a week (7 days) to reach.
+		const oneWeekXp = DAILY_XP_RATE * 7
+		for (const era of GYM_ERAS.slice(1)) {
+			expect(era.minXp).toBeGreaterThan(oneWeekXp)
+		}
+	})
+
+	it("returns the exact matching era at its own threshold, and the prior era just below it", () => {
+		for (let i = 0; i < GYM_ERAS.length; i++) {
+			expect(getEraForXp(GYM_ERAS[i].minXp).id).toBe(GYM_ERAS[i].id)
+			if (i > 0) {
+				expect(getEraForXp(GYM_ERAS[i].minXp - 1).id).toBe(GYM_ERAS[i - 1].id)
+			}
+		}
+	})
+
+	it("is monotonic — era index never decreases as xp increases", () => {
+		let prevIndex = -1
+		for (let xp = 0; xp <= 30_000; xp += 250) {
+			const index = GYM_ERAS.findIndex((e) => e.id === getEraForXp(xp).id)
+			expect(index).toBeGreaterThanOrEqual(prevIndex)
+			prevIndex = index
+		}
+	})
+
+	it("reaches the top era well beyond a year of consistent engagement, not within weeks", () => {
+		const topEra = GYM_ERAS[GYM_ERAS.length - 1]
+		const daysToTopEra = topEra.minXp / DAILY_XP_RATE
+		expect(daysToTopEra).toBeGreaterThan(365)
 	})
 })

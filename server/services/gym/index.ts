@@ -42,6 +42,52 @@ export function computeLevel(xp: number): number {
 	return Math.floor(Math.sqrt(xp / 50))
 }
 
+export type GymEra = {
+	id: string
+	name: string
+	minXp: number
+}
+
+/**
+ * Long-term progression tier ladder (gh-65): named eras layered on top of
+ * `computeLevel`'s existing sqrt(xp/50) curve — this doesn't replace that
+ * formula, it just groups XP ranges into stable, referenceable names for
+ * the progression-checkpoint tooling (gh-62) to extend into once it needs
+ * more/later checkpoints than its current Day 1/7/30/90 horizon.
+ *
+ * Thresholds are calibrated against DAILY_XP_RATE (~33.8 xp/day for a
+ * consistently-engaged user, defined below) so pacing stays in
+ * "months, not weeks" territory even for the first non-starting era, and
+ * grows into a genuinely long-term (~1.5-2 year) horizon for the top tier:
+ *   Tiny Startup Gym      xp 0      (day 0 — immediate start)
+ *   Neighborhood Regular  xp 1,500  (~day 44  / ~1.5 months) — matches the
+ *                                    existing 25-item catalog's ceiling
+ *   Local Hotspot         xp 3,500  (~day 104 / ~3.4 months)
+ *   City Destination      xp 7,500  (~day 222 / ~7.3 months)
+ *   Regional Chain        xp 12,500 (~day 370 / ~12.2 months)
+ *   Flagship / Landmark   xp 20,000 (~day 592 / ~19.4 months)
+ * Sorted ascending by minXp — getEraForXp relies on this ordering.
+ */
+export const GYM_ERAS: GymEra[] = [
+	{ id: "tiny_startup", name: "Tiny Startup Gym", minXp: 0 },
+	{ id: "neighborhood_regular", name: "Neighborhood Regular", minXp: 1500 },
+	{ id: "local_hotspot", name: "Local Hotspot", minXp: 3500 },
+	{ id: "city_destination", name: "City Destination", minXp: 7500 },
+	{ id: "regional_chain", name: "Regional Chain", minXp: 12500 },
+	{ id: "flagship_landmark", name: "Flagship / Landmark", minXp: 20000 },
+]
+
+/** The highest era whose minXp threshold has been reached. GYM_ERAS[0]
+ * (minXp: 0) guarantees this always returns a value, even for xp <= 0. */
+export function getEraForXp(xp: number): GymEra {
+	let current = GYM_ERAS[0]
+	for (const era of GYM_ERAS) {
+		if (xp >= era.minXp) current = era
+		else break
+	}
+	return current
+}
+
 /** Pure threshold check shared by real XP awards (awardGymXp) and synthetic
  * progression previews (deriveProgressionFromDays, gh-109) — the single
  * source of truth for "which upgrades does this much XP unlock," so the two
@@ -72,6 +118,7 @@ export type ProgressionSnapshot = {
 	xp: number
 	level: number
 	unlockedUpgradeKeys: string[]
+	era: GymEra
 }
 
 /**
@@ -94,6 +141,7 @@ export function deriveProgressionFromDays(
 		xp,
 		level: computeLevel(xp),
 		unlockedUpgradeKeys: deriveUnlockedUpgradeKeys(xp, catalog),
+		era: getEraForXp(xp),
 	}
 }
 
