@@ -24,6 +24,7 @@ export type NpcState = {
 	mood: number
 	currentAnimation: string
 	isInteractable: boolean
+	isHeroVisit: boolean
 }
 
 export class NpcSprite {
@@ -291,8 +292,10 @@ export class NpcSprite {
 		this.sprite.setFlipX(dir === "left")
 	}
 
-	updateLabel(name: string, mood: number) {
-		this.nameLabel.setText(`${name} ${moodEmoji(mood)}`)
+	updateLabel(name: string, mood: number, isHeroVisit = false) {
+		const label = isHeroVisit ? `★ ${name}` : name
+		this.nameLabel.setText(`${label} ${moodEmoji(mood)}`)
+		this.nameLabel.setColor(isHeroVisit ? "#fbbf24" : "#e2e8f0")
 	}
 
 	updateDepth() {

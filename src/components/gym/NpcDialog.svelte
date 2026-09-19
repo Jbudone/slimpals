@@ -111,6 +111,9 @@ $effect(() => {
 			<p class="error-msg">{error}</p>
 			<button class="close-btn" onclick={onClose}>Close</button>
 		{:else if detail}
+			{#if detail.npc.role === "hero"}
+				<div class="hero-banner">★ Rare Visit — won't be here for long!</div>
+			{/if}
 			<div class="npc-header">
 				{#if portraitSrc && portraitFailedSrc !== portraitSrc}
 					<img
@@ -251,6 +254,17 @@ $effect(() => {
 .stage-badge {
 	font-size: 0.7rem;
 	font-weight: var(--font-weight-semibold);
+}
+
+.hero-banner {
+	background: linear-gradient(90deg, #fbbf24, #f59e0b);
+	color: #1e1b2e;
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-xs);
+	text-align: center;
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--radius-md);
+	margin-bottom: var(--space-2);
 }
 
 .rel-bar-track {

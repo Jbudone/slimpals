@@ -81,10 +81,10 @@ afterAll(async () => {
 })
 
 describe("NPC seeding", () => {
-	it("seeds 10 NPCs to gym_npcs", async () => {
+	it("seeds 12 NPCs to gym_npcs", async () => {
 		const db = await getTestDb()
 		const npcs = await db.select().from(gymNpcs)
-		expect(npcs).toHaveLength(10)
+		expect(npcs).toHaveLength(12)
 	})
 
 	it("each NPC has required fields", async () => {

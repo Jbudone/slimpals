@@ -157,7 +157,12 @@ export async function generateDialogBatch(
 			? `Recent milestones to naturally weave in (each only once): ${unreferencedEvents.map((e) => e.event).join(", ")}.`
 			: ""
 
-	const prompt = `You are ${npc.name}, a ${npc.role} at a gym. Personality: ${JSON.stringify(profile)}.
+	const heroFraming =
+		npc.role === "hero"
+			? "IMPORTANT: You are a famous visiting hero/influencer, not gym staff — you're here for a rare, limited-time appearance and will move on soon. Your tone should be energetic and a little larger-than-life, and you should make the member feel lucky to catch you before you leave.\n"
+			: ""
+
+	const prompt = `${heroFraming}You are ${npc.name}, a ${npc.role} at a gym. Personality: ${JSON.stringify(profile)}.
 Your relationship with this gym member is at stage ${stage} (${stageLabel}).
 Their recent stats: ${statsStr}
 Things you know about them from past conversations: ${notesStr}.

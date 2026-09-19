@@ -99,6 +99,13 @@
       "when": 1789952400000,
       "tag": "0013_gym_open_content_types",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1789960000000,
+      "tag": "0014_gym_hero_visits",
+      "breakpoints": true
     }
   ]
 }

@@ -433,6 +433,16 @@
 			"description": "plush private owner's office suite with leather furniture, gym prop"
 		},
 		{
+			"key": "hero_spotlight_stage",
+			"filename": "hero_spotlight_stage.png",
+			"category": "hero",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "small raised stage with velvet rope barriers and a spotlight, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
@@ -915,6 +925,56 @@
 						"default": {
 							"type": "spritesheet",
 							"file": "sprites/npc_manager_alex_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"hero_bodybuilder_rex": {
+			"description": "muscular bodybuilder hero in a sleeveless tank top, larger than life",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_hero_bodybuilder_rex.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_hero_bodybuilder_rex_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"hero_influencer_maya": {
+			"description": "camera-ready fitness influencer with a phone gimbal and bright athleisure",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_hero_influencer_maya.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_hero_influencer_maya_walk.png",
 							"frameWidth": 96,
 							"frameHeight": 96,
 							"frameCount": 4,

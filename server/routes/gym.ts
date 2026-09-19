@@ -341,6 +341,8 @@ export function createGymRouter(aiService: AIService) {
 			defaultSchedule: n.defaultSchedule,
 			spriteKey: n.spriteKey,
 			unlockedByUpgradeKey: n.unlockedByUpgradeKey,
+			heroVisitCadenceDays: n.heroVisitCadenceDays,
+			heroVisitDurationDays: n.heroVisitDurationDays,
 		})) as GymNpc[]
 
 		const gymRow = await db
@@ -365,6 +367,7 @@ export function createGymRouter(aiService: AIService) {
 			db,
 			simTime,
 			todayEvent,
+			gym.createdAt,
 		)
 
 		res.json({

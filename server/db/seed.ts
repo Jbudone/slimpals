@@ -797,6 +797,24 @@ const GYM_UPGRADES: UpgradeRow[] = [
 			"pixel art plush private owner's office suite, stardew valley style, 64x64",
 		unlocksNpcKey: null,
 	},
+
+	// ── Hero/influencer visits (gh-68) ──────────────────────────────────────
+	// Unlocks the hero-visit *program*, not a specific hero — both seeded
+	// heroes below share this single unlock key (unlocksNpcKey is singular
+	// and purely informational for the admin panel, so left null here; the
+	// functional gate is each hero NPC's own unlockedByUpgradeKey).
+	{
+		key: "hero_spotlight_stage",
+		name: "Hero Spotlight Stage",
+		description:
+			"A small raised stage with velvet ropes — reserved for when a visiting hero trainer drops by",
+		category: "hero",
+		requiredXp: 11000,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art small stage with velvet rope barriers and a spotlight, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {
@@ -818,6 +836,9 @@ type NpcRow = {
 	portraitUrl: string
 	spriteKey: string
 	unlockedByUpgradeKey: string | null
+	// Hero/influencer visits (gh-68) — see server/db/schema.ts comment.
+	heroVisitCadenceDays?: number
+	heroVisitDurationDays?: number
 }
 
 const NPC_CATALOG: NpcRow[] = [
@@ -1189,6 +1210,71 @@ const NPC_CATALOG: NpcRow[] = [
 		portraitUrl: "/assets/gym/portraits/manager_alex.png",
 		spriteKey: "npc_manager_alex",
 		unlockedByUpgradeKey: "staff_manager_office",
+	},
+
+	// ── Hero/influencer visits (gh-68) ──────────────────────────────────────
+	// Proof-of-concept roster of 2 (per the PRD, not a full roster). Both
+	// gated by hero_spotlight_stage; daysOfWeek covers every day since the
+	// hero-visit-window check (heroVisitCadenceDays/heroVisitDurationDays)
+	// is what decides which calendar days they're in town, not the weekly
+	// recurrence defaultSchedule normally encodes.
+	{
+		key: "hero_bodybuilder_rex",
+		name: 'Rex "The Titan" Ramirez',
+		role: "hero",
+		personalityProfile: {
+			traits: ["charismatic", "intense"],
+			goals: ["inspire_visitors", "promote_his_program"],
+			quirks: ["flexes_between_sentences", "signs_autographs"],
+			equipmentPreferences: ["weights_olympic", "weights_barbell"],
+			avoidEquipment: [],
+			friendlyWith: [],
+			rivalWith: [],
+			moodBaseline: 80,
+		},
+		defaultSchedule: {
+			arrivalHour: 11,
+			departureHour: 19,
+			daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+			activitySequence: [
+				{ type: "main", durationMin: 90, equipmentCategory: "weights" },
+				{ type: "cooldown", durationMin: 20, equipmentCategory: "amenities" },
+			],
+		},
+		portraitUrl: "/assets/gym/portraits/hero_bodybuilder_rex.png",
+		spriteKey: "npc_hero_bodybuilder_rex",
+		unlockedByUpgradeKey: "hero_spotlight_stage",
+		heroVisitCadenceDays: 14,
+		heroVisitDurationDays: 3,
+	},
+	{
+		key: "hero_influencer_maya",
+		name: "Maya Sparks",
+		role: "hero",
+		personalityProfile: {
+			traits: ["energetic", "camera_ready"],
+			goals: ["film_content", "hype_up_the_crowd"],
+			quirks: ["always_filming_a_reel", "asks_members_to_wave"],
+			equipmentPreferences: ["cardio_bikes", "amenity_juice"],
+			avoidEquipment: [],
+			friendlyWith: [],
+			rivalWith: [],
+			moodBaseline: 85,
+		},
+		defaultSchedule: {
+			arrivalHour: 10,
+			departureHour: 16,
+			daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+			activitySequence: [
+				{ type: "main", durationMin: 60, equipmentCategory: "cardio" },
+				{ type: "cooldown", durationMin: 15, equipmentCategory: "amenities" },
+			],
+		},
+		portraitUrl: "/assets/gym/portraits/hero_influencer_maya.png",
+		spriteKey: "npc_hero_influencer_maya",
+		unlockedByUpgradeKey: "hero_spotlight_stage",
+		heroVisitCadenceDays: 21,
+		heroVisitDurationDays: 2,
 	},
 ]
 

@@ -57,6 +57,7 @@ const CATEGORY_ZONES: Record<string, { startX: number; startY: number }> = {
 	lagree: { startX: 14, startY: 7 },
 	swimming: { startX: 2, startY: 6 },
 	punching_bags: { startX: 6, startY: 4 },
+	hero: { startX: 17, startY: 2 },
 }
 
 // Must match server/services/gym/layout.ts
@@ -97,6 +98,7 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	staff_assistant_trainer: { x: 12, y: 6 },
 	staff_manager_office: { x: 14, y: 6 },
 	staff_ownership_suite: { x: 16, y: 6 },
+	hero_spotlight_stage: { x: 17, y: 2 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -140,6 +142,8 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	staff_manager_office: "A manager's office! The gym is really growing up.",
 	staff_ownership_suite:
 		"The ownership suite! This isn't just a gym anymore — it's a business.",
+	hero_spotlight_stage:
+		"A spotlight stage! Word's getting out — hero trainers might start dropping by.",
 }
 
 const NPC_NAMES: Record<string, string> = {
@@ -153,6 +157,8 @@ const NPC_NAMES: Record<string, string> = {
 	specialist_nutritionist: "Dr. Kim",
 	trainer_jordan: "Jordan",
 	manager_alex: "Alex",
+	hero_bodybuilder_rex: 'Rex "The Titan" Ramirez',
+	hero_influencer_maya: "Maya Sparks",
 }
 
 function getDefaultPlacement(
@@ -398,7 +404,11 @@ export class GymScene extends Phaser.Scene {
 
 	private spawnNpcSprite(npc: NpcState, x: number, y: number): NpcSprite {
 		const ns = new NpcSprite(this, npc.npcKey, x, y, this.availableSpriteKeys)
-		ns.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
+		ns.updateLabel(
+			NPC_NAMES[npc.npcKey] ?? npc.npcKey,
+			npc.mood,
+			npc.isHeroVisit,
+		)
 		ns.faceDirection(npc.facingDirection)
 		ns.updateDepth()
 		this.npcSprites.set(npc.npcKey, ns)
@@ -478,7 +488,11 @@ export class GymScene extends Phaser.Scene {
 			if (!existing) {
 				this.spawnArrivingNpc(npc)
 			} else {
-				existing.updateLabel(NPC_NAMES[npc.npcKey] ?? npc.npcKey, npc.mood)
+				existing.updateLabel(
+					NPC_NAMES[npc.npcKey] ?? npc.npcKey,
+					npc.mood,
+					npc.isHeroVisit,
+				)
 				existing.moveTo(npc.position.x, npc.position.y)
 			}
 

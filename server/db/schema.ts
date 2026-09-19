@@ -251,6 +251,14 @@ export const gymNpcs = mysqlTable("gym_npcs", {
 	spriteKey: varchar("sprite_key", { length: 128 }).notNull(),
 	unlockedByUpgradeKey: varchar("unlocked_by_upgrade_key", { length: 128 }),
 	portraitGeneratedAt: timestamp("portrait_generated_at"),
+	// Hero/influencer visits (gh-68): null on both = a regular permanent NPC.
+	// Set on both = a periodic rotating visitor, present for
+	// heroVisitDurationDays every heroVisitCadenceDays (see
+	// isHeroVisitingToday in server/services/gym/simulation.ts). Layered on
+	// top of defaultSchedule, which still governs hour-of-day presence on a
+	// visiting day.
+	heroVisitCadenceDays: int("hero_visit_cadence_days"),
+	heroVisitDurationDays: int("hero_visit_duration_days"),
 })
 
 export const userGymNpcRelationships = mysqlTable(

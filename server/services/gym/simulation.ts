@@ -45,6 +45,11 @@ export type GymNpc = {
 	defaultSchedule: NpcSchedule
 	spriteKey: string
 	unlockedByUpgradeKey: string | null
+	// Optional (not just nullable) so existing test fixtures/object literals
+	// that predate gh-68 don't need updating — absent and null both mean
+	// "regular permanent NPC" to isHeroVisitingToday.
+	heroVisitCadenceDays?: number | null
+	heroVisitDurationDays?: number | null
 }
 
 export type NpcRelationship = {
@@ -80,6 +85,7 @@ export type NpcSimState = {
 	currentAnimation: string
 	isInteractable: boolean
 	progressionStage: string | null
+	isHeroVisit: boolean
 }
 
 type DailyStateRow = {
@@ -141,6 +147,7 @@ export function getCrowdMax(hour: number, gymDaysActive = 90): number {
 // to cover every currently-known role, so adding one to GYM_NPC_ROLES
 // without updating this map is a compile-time error, not a silent gap.
 const ROLE_PRIORITY: Record<string, number> = {
+	hero: 0,
 	trainer: 1,
 	specialist: 2,
 	manager: 2,
@@ -194,6 +201,9 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 	lagree: ["lagree_megaformer", "lagree_studio_mirror"],
 	swimming: ["swimming_lap_pool", "swimming_poolside_loungers"],
 	punching_bags: ["punching_bags_heavy_bag_row", "punching_bags_double_end"],
+	// The spotlight stage is a status/unlock signal, not equipment an NPC
+	// picks during its activity sequence.
+	hero: [],
 } satisfies Record<GymUpgradeCategory, string[]>
 
 const EQUIPMENT_POSITIONS: Record<string, { x: number; y: number }> = {
@@ -273,6 +283,37 @@ function isNpcPresentAtHour(
 		schedule.departureHour + departureOffset,
 	)
 	return hour >= effectiveArrival && hour < effectiveDeparture
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function startOfDay(date: Date): Date {
+	const d = new Date(date)
+	d.setHours(0, 0, 0, 0)
+	return d
+}
+
+/**
+ * Hero/influencer visit-window check (gh-68): a hero recurs for
+ * heroVisitDurationDays every heroVisitCadenceDays, counted in calendar
+ * days since the gym was created. Both null (a regular permanent NPC)
+ * always returns true — this check is additive on top of
+ * isNpcPresentAtHour, never a replacement for it.
+ */
+export function isHeroVisitingToday(
+	npc: Pick<GymNpc, "heroVisitCadenceDays" | "heroVisitDurationDays">,
+	gymCreatedAt: Date,
+	now: Date,
+): boolean {
+	if (npc.heroVisitCadenceDays == null || npc.heroVisitDurationDays == null)
+		return true
+	const daysSinceCreated = Math.round(
+		(startOfDay(now).getTime() - startOfDay(gymCreatedAt).getTime()) /
+			MS_PER_DAY,
+	)
+	if (daysSinceCreated < 0) return false
+	const dayInCycle = daysSinceCreated % npc.heroVisitCadenceDays
+	return dayInCycle < npc.heroVisitDurationDays
 }
 
 // ── Equipment selection ──────────────────────────────────────────────────────
@@ -557,10 +598,12 @@ export async function computeGymSimState(
 	db: Db,
 	now?: Date,
 	todayEvent?: TodayEvent,
+	gymCreatedAt?: Date,
 ): Promise<NpcSimState[]> {
 	const currentTime = now ?? new Date()
 	const hour = currentTime.getHours()
 	const dayOfWeek = currentTime.getDay()
+	const effectiveGymCreatedAt = gymCreatedAt ?? currentTime
 
 	// Get stored daily states to check existing mood values
 	const dateStart = new Date(currentTime)
@@ -596,6 +639,8 @@ export async function computeGymSimState(
 			npc.unlockedByUpgradeKey &&
 			!unlockedUpgrades.includes(npc.unlockedByUpgradeKey)
 		)
+			return false
+		if (!isHeroVisitingToday(npc, effectiveGymCreatedAt, currentTime))
 			return false
 		const mood =
 			getStoredMood(npc.key) ??
@@ -773,6 +818,7 @@ export async function computeGymSimState(
 			currentAnimation: animation,
 			isInteractable: true,
 			progressionStage,
+			isHeroVisit: npc.role === "hero",
 		})
 	}
 
@@ -800,6 +846,7 @@ export async function computeGymSimState(
 			currentAnimation: "absent",
 			isInteractable: false,
 			progressionStage: null,
+			isHeroVisit: false,
 		})
 	}
 

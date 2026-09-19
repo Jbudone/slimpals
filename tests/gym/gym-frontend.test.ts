@@ -180,6 +180,7 @@ describe("GET /api/gym — frontend data contract", () => {
 			"lagree",
 			"swimming",
 			"punching_bags",
+			"hero",
 		])
 
 		for (const u of allUpgrades) {
@@ -258,14 +259,14 @@ describe("POST /api/gym/claim-upgrade — integration", () => {
 })
 
 describe("GET /api/gym/catalog — full catalog", () => {
-	it("returns all 36 upgrades with required fields for rendering", async () => {
+	it("returns all 37 upgrades with required fields for rendering", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")
 			.set("Cookie", cookies)
 
 		expect(res.status).toBe(200)
-		expect(res.body).toHaveLength(36)
+		expect(res.body).toHaveLength(37)
 
 		for (const item of res.body) {
 			expect(item).toHaveProperty("key")
@@ -276,7 +277,7 @@ describe("GET /api/gym/catalog — full catalog", () => {
 		}
 	})
 
-	it("covers all nine equipment categories", async () => {
+	it("covers all ten equipment categories", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")
@@ -290,6 +291,7 @@ describe("GET /api/gym/catalog — full catalog", () => {
 			"boxing",
 			"cardio",
 			"decor",
+			"hero",
 			"lagree",
 			"punching_bags",
 			"staff",

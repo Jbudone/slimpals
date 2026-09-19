@@ -55,4 +55,7 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	staff_assistant_trainer: { x: 12, y: 6 },
 	staff_manager_office: { x: 14, y: 6 },
 	staff_ownership_suite: { x: 16, y: 6 },
+
+	// Hero zone (gh-68) — far right column, clear of every existing zone
+	hero_spotlight_stage: { x: 17, y: 2 },
 }

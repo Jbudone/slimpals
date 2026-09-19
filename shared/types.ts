@@ -36,6 +36,7 @@ export const GYM_UPGRADE_CATEGORIES = [
 	"lagree", // gh-113
 	"swimming", // gh-114
 	"punching_bags", // gh-115
+	"hero", // gh-68
 ] as const
 
 export type GymUpgradeCategory = (typeof GYM_UPGRADE_CATEGORIES)[number]
@@ -47,6 +48,7 @@ export const GYM_NPC_ROLES = [
 	"regular",
 	"specialist",
 	"manager", // gh-116
+	"hero", // gh-68
 ] as const
 
 export type GymNpcRole = (typeof GYM_NPC_ROLES)[number]
