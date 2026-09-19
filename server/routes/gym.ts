@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import {
 	badges,
 	dailyCheckins,
+	gymClasses,
 	gymNpcDailyState,
 	gymNpcs,
 	gymUpgradesCatalog,
@@ -38,7 +39,9 @@ import {
 } from "../services/gym/index.js"
 import {
 	computeGymSimState,
+	type GymClass,
 	type GymNpc,
+	isClassActiveNow,
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
 
@@ -359,6 +362,30 @@ export function createGymRouter(aiService: AIService) {
 
 		const simTime = effectiveGymTime(gym)
 
+		// In-gym classes (gh-69): gated by requiredXp AND the class's room
+		// category already being unlocked — a class never appears without
+		// its prerequisite room, matching the issue's acceptance criteria.
+		const catalog = await db.select().from(gymUpgradesCatalog)
+		const unlockedCategories = new Set(
+			catalog
+				.filter((c) => unlockedKeys.includes(c.key))
+				.map((c) => c.category),
+		)
+		const allClasses = await db.select().from(gymClasses)
+		const gatedClasses: GymClass[] = allClasses
+			.filter(
+				(c) => gym.xp >= c.requiredXp && unlockedCategories.has(c.category),
+			)
+			.map((c) => ({
+				key: c.key,
+				name: c.name,
+				category: c.category,
+				daysOfWeek: c.daysOfWeek as number[],
+				startHour: c.startHour,
+				endHour: c.endHour,
+				capacityBoost: c.capacityBoost,
+			}))
+
 		const npcs = await computeGymSimState(
 			gym.id,
 			npcData,
@@ -368,7 +395,12 @@ export function createGymRouter(aiService: AIService) {
 			simTime,
 			todayEvent,
 			gym.createdAt,
+			gatedClasses,
 		)
+
+		const activeClasses = gatedClasses
+			.filter((c) => isClassActiveNow(c, simTime.getHours(), simTime.getDay()))
+			.map((c) => ({ key: c.key, name: c.name, category: c.category }))
 
 		res.json({
 			simTime: simTime.toISOString(),
@@ -376,6 +408,7 @@ export function createGymRouter(aiService: AIService) {
 			gymId: gym.id,
 			todayEvent: gymRow?.todayEventData ?? null,
 			hourOverride: gym.simulatedHourOverride,
+			activeClasses,
 		})
 	})
 

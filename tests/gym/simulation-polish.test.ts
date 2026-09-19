@@ -2,11 +2,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { userGyms, users } from "../../server/db/schema.js"
 import {
 	computeGymSimState,
+	type GymClass,
 	type GymNpc,
 	getCrowdMax,
 	getMoodVariant,
 	getMoveSpeedMultiplier,
 	getProgressionStage,
+	isClassActiveNow,
 	type NpcRelationship,
 } from "../../server/services/gym/simulation.js"
 import {
@@ -332,6 +334,181 @@ describe("computeGymSimState crowd cap", () => {
 		expect(grandOpeningPresent).toBe(2)
 		expect(establishedPresent).toBe(6)
 		expect(establishedPresent).toBeGreaterThan(grandOpeningPresent)
+	})
+})
+
+// ── In-gym classes (gh-69) ───────────────────────────────────────────────────
+
+describe("isClassActiveNow — pure recurring-schedule logic", () => {
+	const boxingClass: GymClass = {
+		key: "boxing_6pm_class",
+		name: "6pm Boxing Class",
+		category: "boxing",
+		daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+		startHour: 18,
+		endHour: 19,
+		capacityBoost: 2,
+	}
+
+	it("is active within its hour window on a scheduled day", () => {
+		expect(isClassActiveNow(boxingClass, 18, 3)).toBe(true)
+	})
+
+	it("is inactive before its window", () => {
+		expect(isClassActiveNow(boxingClass, 17, 3)).toBe(false)
+	})
+
+	it("is inactive at/after its end hour", () => {
+		expect(isClassActiveNow(boxingClass, 19, 3)).toBe(false)
+	})
+
+	it("is inactive on a day not in daysOfWeek", () => {
+		const weekdaysOnly = { ...boxingClass, daysOfWeek: [1, 2, 3, 4, 5] }
+		expect(isClassActiveNow(weekdaysOnly, 18, 0)).toBe(false)
+	})
+})
+
+describe("getCrowdMax — classBoost", () => {
+	it("adds the boost on top of the base crowd cap", () => {
+		const withoutBoost = getCrowdMax(18, 90, 0)
+		const withBoost = getCrowdMax(18, 90, 2)
+		expect(withBoost).toBe(withoutBoost + 2)
+	})
+
+	it("never opens a genuinely closed gym, even with a boost", () => {
+		expect(getCrowdMax(2, 90, 5)).toBe(0)
+	})
+})
+
+describe("computeGymSimState — in-gym classes", () => {
+	const boxingNpc = (key: string): GymNpc => ({
+		key,
+		name: key,
+		role: "regular",
+		personalityProfile: {
+			traits: [],
+			goals: [],
+			quirks: [],
+			equipmentPreferences: ["boxing_ring"],
+			avoidEquipment: [],
+			friendlyWith: [],
+			rivalWith: [],
+			moodBaseline: 50,
+		},
+		defaultSchedule: {
+			arrivalHour: 17,
+			departureHour: 20,
+			daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+			activitySequence: [
+				{ type: "main", durationMin: 60, equipmentCategory: "boxing" },
+			],
+		},
+		spriteKey: key,
+		unlockedByUpgradeKey: null,
+	})
+
+	const boxingClass: GymClass = {
+		key: "boxing_6pm_class",
+		name: "6pm Boxing Class",
+		category: "boxing",
+		daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+		startHour: 18,
+		endHour: 19,
+		capacityBoost: 2,
+	}
+
+	it("visibly increases NPC presence during the class's scheduled window", async () => {
+		const { eq } = await import("drizzle-orm")
+		const db = await getTestDb()
+		await db
+			.insert(users)
+			.values({ id: "u-class-1", email: "class1@t.test", name: "C1" })
+		await db
+			.insert(userGyms)
+			.values({ userId: "u-class-1", name: "Class Gym 1" })
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, "u-class-1"))
+
+		// 6pm is within CROWD_WINDOWS' {16-19, max:6} band, so there's room for
+		// the boost to matter; 8 eligible NPCs so the cap (not headcount) is
+		// what's being measured.
+		const npcs = Array.from({ length: 8 }, (_, i) => boxingNpc(`boxer_${i}`))
+		const unlockedUpgrades = ["boxing_ring", "boxing_mitts_station"]
+		const at6pm = new Date(2025, 0, 6, 18, 30)
+
+		const withoutClass = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[],
+			db,
+			at6pm,
+		)
+		const withClass = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[],
+			db,
+			at6pm,
+			undefined,
+			undefined,
+			[boxingClass],
+		)
+
+		const presentWithoutClass = withoutClass.filter((s) => s.isPresent).length
+		const presentWithClass = withClass.filter((s) => s.isPresent).length
+
+		expect(presentWithClass).toBe(presentWithoutClass + 2)
+	})
+
+	it("has no effect outside the class's scheduled window", async () => {
+		const { eq } = await import("drizzle-orm")
+		const db = await getTestDb()
+		await db
+			.insert(users)
+			.values({ id: "u-class-2", email: "class2@t.test", name: "C2" })
+		await db
+			.insert(userGyms)
+			.values({ userId: "u-class-2", name: "Class Gym 2" })
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, "u-class-2"))
+
+		const npcs = Array.from({ length: 8 }, (_, i) => boxingNpc(`boxer2_${i}`))
+		const unlockedUpgrades = ["boxing_ring", "boxing_mitts_station"]
+		// 4pm is outside the class's 18:00-19:00 window but still an open hour
+		// (CROWD_WINDOWS {16-19, max:6}), so this isolates the class's effect
+		// from just "the gym happens to be closed."
+		const at4pm = new Date(2025, 0, 6, 16, 30)
+
+		const withoutClass = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[],
+			db,
+			at4pm,
+		)
+		const withClass = await computeGymSimState(
+			gym.id,
+			npcs,
+			unlockedUpgrades,
+			[],
+			db,
+			at4pm,
+			undefined,
+			undefined,
+			[boxingClass],
+		)
+
+		const presentWithoutClass = withoutClass.filter((s) => s.isPresent).length
+		const presentWithClass = withClass.filter((s) => s.isPresent).length
+
+		expect(presentWithClass).toBe(presentWithoutClass)
 	})
 })
 

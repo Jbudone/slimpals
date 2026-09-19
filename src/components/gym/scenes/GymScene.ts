@@ -47,6 +47,8 @@ export type GymSceneData = {
 	locked: LockedInfo[]
 }
 
+type ActiveClassInfo = { key: string; name: string; category: string }
+
 const CATEGORY_ZONES: Record<string, { startX: number; startY: number }> = {
 	cardio: { startX: 2, startY: 2 },
 	weights: { startX: 10, startY: 2 },
@@ -181,6 +183,7 @@ export class GymScene extends Phaser.Scene {
 	private dragStart: { x: number; y: number } | null = null
 	private categoryCounters: Record<string, number> = {}
 	private npcSprites: Map<string, NpcSprite> = new Map()
+	private classBanners: Map<string, Phaser.GameObjects.Text> = new Map()
 	private equipmentSprites: Map<string, Phaser.GameObjects.Sprite> = new Map()
 	private missingSpriteKeys: Set<string> = new Set()
 	private availableSpriteKeys: Set<string> = new Set()
@@ -451,8 +454,45 @@ export class GymScene extends Phaser.Scene {
 			if (!res.ok) return
 			const data = await res.json()
 			this.applySimState(data.npcs as NpcState[])
+			this.applyActiveClasses(
+				(data.activeClasses as ActiveClassInfo[] | undefined) ?? [],
+			)
 		} catch {
 			// silently skip poll failures
+		}
+	}
+
+	/** In-gym classes (gh-69): a small banner over the class's room zone
+	 * while it's in session, added/removed as the poll response changes. */
+	private applyActiveClasses(activeClasses: ActiveClassInfo[]) {
+		const activeKeys = new Set(activeClasses.map((c) => c.key))
+
+		for (const [key, banner] of this.classBanners) {
+			if (!activeKeys.has(key)) {
+				banner.destroy()
+				this.classBanners.delete(key)
+			}
+		}
+
+		for (const cls of activeClasses) {
+			if (this.classBanners.has(cls.key)) continue
+			const zone = CATEGORY_ZONES[cls.category]
+			if (!zone) continue
+			const banner = this.add
+				.text(
+					zone.startX * TILE,
+					zone.startY * TILE - 14,
+					`\u{1F3AB} ${cls.name} in session!`,
+					{
+						fontSize: "9px",
+						color: "#1e1b2e",
+						backgroundColor: "#fbbf24",
+						padding: { x: 3, y: 2 },
+						fontFamily: "monospace",
+					},
+				)
+				.setDepth(9999)
+			this.classBanners.set(cls.key, banner)
 		}
 	}
 
@@ -912,5 +952,9 @@ export class GymScene extends Phaser.Scene {
 			sprite.destroy()
 		}
 		this.npcSprites.clear()
+		for (const [, banner] of this.classBanners) {
+			banner.destroy()
+		}
+		this.classBanners.clear()
 	}
 }

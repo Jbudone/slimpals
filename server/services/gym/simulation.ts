@@ -133,12 +133,25 @@ function getCrowdProgressionMultiplier(gymDaysActive: number): number {
  * to fully closed — progression thins out a busy gym, it doesn't shut an
  * open one, keeping "still quiet at 3am, never NOT quiet" intact at every
  * progression point. */
-export function getCrowdMax(hour: number, gymDaysActive = 90): number {
+/**
+ * classBoost (gh-69, default 0 — unchanged behavior for every pre-existing
+ * call site) is extra crowd-cap headroom from in-session classes, added
+ * after the progression multiplier so a class always contributes its full
+ * declared boost rather than being thinned out like ambient crowd is. A
+ * gym that's genuinely closed (base max 0) still never opens for a class —
+ * same "never NOT quiet" guarantee the progression multiplier already
+ * honors.
+ */
+export function getCrowdMax(
+	hour: number,
+	gymDaysActive = 90,
+	classBoost = 0,
+): number {
 	const base =
 		CROWD_WINDOWS.find((w) => hour >= w.start && hour < w.end)?.max ?? 0
 	if (base === 0) return 0
 	const multiplier = getCrowdProgressionMultiplier(gymDaysActive)
-	return Math.max(1, Math.round(base * multiplier))
+	return Math.max(1, Math.round(base * multiplier)) + classBoost
 }
 
 // Record<string, number> so lookups with an arbitrary runtime role (gh-64:
@@ -314,6 +327,31 @@ export function isHeroVisitingToday(
 	if (daysSinceCreated < 0) return false
 	const dayInCycle = daysSinceCreated % npc.heroVisitCadenceDays
 	return dayInCycle < npc.heroVisitDurationDays
+}
+
+// ── In-gym events/classes (gh-69) ────────────────────────────────────────────
+
+export type GymClass = {
+	key: string
+	name: string
+	category: string
+	daysOfWeek: number[]
+	startHour: number
+	endHour: number
+	capacityBoost: number
+}
+
+/** Pure recurring-schedule check — a class has no mood-based arrival/
+ * departure slop the way NPCs do, so this is simpler than
+ * isNpcPresentAtHour: present iff today's in daysOfWeek and hour is within
+ * [startHour, endHour). */
+export function isClassActiveNow(
+	cls: Pick<GymClass, "daysOfWeek" | "startHour" | "endHour">,
+	hour: number,
+	dayOfWeek: number,
+): boolean {
+	if (!cls.daysOfWeek.includes(dayOfWeek)) return false
+	return hour >= cls.startHour && hour < cls.endHour
 }
 
 // ── Equipment selection ──────────────────────────────────────────────────────
@@ -599,11 +637,18 @@ export async function computeGymSimState(
 	now?: Date,
 	todayEvent?: TodayEvent,
 	gymCreatedAt?: Date,
+	classes?: GymClass[],
 ): Promise<NpcSimState[]> {
 	const currentTime = now ?? new Date()
 	const hour = currentTime.getHours()
 	const dayOfWeek = currentTime.getDay()
 	const effectiveGymCreatedAt = gymCreatedAt ?? currentTime
+
+	const activeClasses = (classes ?? []).filter((c) =>
+		isClassActiveNow(c, hour, dayOfWeek),
+	)
+	const classBoost = activeClasses.reduce((sum, c) => sum + c.capacityBoost, 0)
+	const activeClassCategories = new Set(activeClasses.map((c) => c.category))
 
 	// Get stored daily states to check existing mood values
 	const dateStart = new Date(currentTime)
@@ -632,7 +677,7 @@ export async function computeGymSimState(
 		relationships.length > 0
 			? Math.max(...relationships.map((r) => r.gymDaysActive))
 			: 0
-	const crowdMax = getCrowdMax(hour, gymDaysActive)
+	const crowdMax = getCrowdMax(hour, gymDaysActive, classBoost)
 
 	const eligibleNpcs = npcs.filter((npc) => {
 		if (
@@ -653,10 +698,26 @@ export async function computeGymSimState(
 		)
 	})
 
-	// Phase 2: Apply crowd cap (trainer > specialist > receptionist > regular)
-	const sortedEligible = [...eligibleNpcs].sort(
-		(a, b) => (ROLE_PRIORITY[a.role] ?? 99) - (ROLE_PRIORITY[b.role] ?? 99),
-	)
+	// Phase 2: Apply crowd cap (trainer > specialist > receptionist > regular),
+	// with a tie-breaking nudge (gh-69) for NPCs whose equipment preferences
+	// match a class in session right now — so the classBoost headroom above
+	// is disproportionately filled by NPCs who'd actually attend that class,
+	// not arbitrary extra bodies.
+	const prefersActiveClass = (npc: GymNpc): boolean => {
+		if (activeClassCategories.size === 0) return false
+		const prefs = (npc.personalityProfile as PersonalityProfile)
+			.equipmentPreferences
+		return [...activeClassCategories].some((category) =>
+			(EQUIPMENT_BY_CATEGORY[category] ?? []).some((e) => prefs.includes(e)),
+		)
+	}
+	const sortedEligible = [...eligibleNpcs].sort((a, b) => {
+		const aPriority =
+			(ROLE_PRIORITY[a.role] ?? 99) - (prefersActiveClass(a) ? 0.5 : 0)
+		const bPriority =
+			(ROLE_PRIORITY[b.role] ?? 99) - (prefersActiveClass(b) ? 0.5 : 0)
+		return aPriority - bPriority
+	})
 	const presentNpcs = sortedEligible.slice(0, Math.max(0, crowdMax))
 	const presentNpcKeys = presentNpcs.map((n) => n.key)
 

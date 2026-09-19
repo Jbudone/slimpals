@@ -4,7 +4,12 @@ import cors from "cors"
 import express from "express"
 import { auth } from "./auth.js"
 import { db } from "./db/index.js"
-import { seedBadges, seedGymUpgrades, seedNpcs } from "./db/seed.js"
+import {
+	seedBadges,
+	seedGymClasses,
+	seedGymUpgrades,
+	seedNpcs,
+} from "./db/seed.js"
 import { getDevAutologinUser } from "./middleware/devAutologin.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { createAdminRouter, createImpersonationRouter } from "./routes/admin.js"
@@ -46,6 +51,9 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 		console.error("Gym upgrade seed failed:", err),
 	)
 	seedNpcs(db).catch((err) => console.error("NPC seed failed:", err))
+	seedGymClasses(db).catch((err) =>
+		console.error("Gym class seed failed:", err),
+	)
 
 	if (
 		process.env.NODE_ENV !== "production" &&

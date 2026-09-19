@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type { GymNpcRole, GymUpgradeCategory } from "../../shared/types.js"
 import type * as schema from "./schema.js"
-import { badges, gymNpcs, gymUpgradesCatalog } from "./schema.js"
+import { badges, gymClasses, gymNpcs, gymUpgradesCatalog } from "./schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -1291,4 +1291,56 @@ export async function seedNpcs(db: Db) {
 				spriteKey: sql`VALUES(sprite_key)`,
 			},
 		})
+}
+
+type ClassRow = {
+	key: string
+	name: string
+	description: string
+	category: GymUpgradeCategory
+	requiredXp: number
+	daysOfWeek: number[]
+	startHour: number
+	endHour: number
+	capacityBoost: number
+}
+
+// ── In-gym events/classes (gh-69) ────────────────────────────────────────────
+// Proof-of-concept pair (per the PRD, not a full class schedule). Each
+// requiredXp is set comfortably above its room's own unlock threshold
+// (boxing_ring: 3500, swimming_lap_pool: 12500) so a class is never gated
+// open before its prerequisite room could plausibly exist — the actual
+// enforcement is server/routes/gym.ts checking the room category is
+// unlocked, this is just a sane authoring convention on top of that.
+const CLASS_CATALOG: ClassRow[] = [
+	{
+		key: "boxing_6pm_class",
+		name: "6pm Boxing Class",
+		description: "An evening group boxing class — the ring fills up fast",
+		category: "boxing",
+		requiredXp: 8000,
+		daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+		startHour: 18,
+		endHour: 19,
+		capacityBoost: 2,
+	},
+	{
+		key: "swimming_morning_class",
+		name: "Morning Swim Class",
+		description: "An early lap-swimming class for the early birds",
+		category: "swimming",
+		requiredXp: 13500,
+		daysOfWeek: [1, 2, 3, 4, 5],
+		startHour: 7,
+		endHour: 8,
+		capacityBoost: 2,
+	},
+]
+
+export async function seedGymClasses(db: Db) {
+	if (CLASS_CATALOG.length === 0) return
+	await db
+		.insert(gymClasses)
+		.values(CLASS_CATALOG)
+		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
 }

@@ -228,6 +228,28 @@ export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
 	unlocksNpcKey: varchar("unlocks_npc_key", { length: 128 }),
 })
 
+// In-gym events/classes (gh-69): a global catalog, like gymUpgradesCatalog,
+// not a per-user table — gating is computed dynamically each sim tick from
+// requiredXp + whether the matching-category room is unlocked, not claimed
+// once like an upgrade.
+export const gymClasses = mysqlTable("gym_classes", {
+	id: int("id").autoincrement().primaryKey(),
+	key: varchar("key", { length: 128 }).notNull().unique(),
+	name: varchar("name", { length: 255 }).notNull(),
+	description: text("description"),
+	// varchar, not mysqlEnum — same open-ended pattern as
+	// gymUpgradesCatalog.category (gh-64), validated against
+	// GYM_UPGRADE_CATEGORIES in shared/types.ts.
+	category: varchar("category", { length: 64 }).notNull(),
+	requiredXp: int("required_xp").notNull().default(0),
+	daysOfWeek: json("days_of_week").notNull(),
+	startHour: int("start_hour").notNull(),
+	endHour: int("end_hour").notNull(),
+	// Extra crowd-cap headroom while the class is in session — see
+	// getCrowdMax's classBoost param in server/services/gym/simulation.ts.
+	capacityBoost: int("capacity_boost").notNull().default(2),
+})
+
 export const userGymUpgrades = mysqlTable("user_gym_upgrades", {
 	id: int("id").autoincrement().primaryKey(),
 	gymId: int("gym_id")

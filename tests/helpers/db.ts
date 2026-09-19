@@ -3,7 +3,12 @@ import { join } from "node:path"
 import { drizzle } from "drizzle-orm/mysql2"
 import mysql from "mysql2/promise"
 import * as schema from "../../server/db/schema.js"
-import { seedBadges, seedGymUpgrades, seedNpcs } from "../../server/db/seed.js"
+import {
+	seedBadges,
+	seedGymClasses,
+	seedGymUpgrades,
+	seedNpcs,
+} from "../../server/db/seed.js"
 
 const TEST_DB_URL =
 	process.env.TEST_DATABASE_URL ??
@@ -133,6 +138,7 @@ export async function truncateAll() {
 			"badges",
 			"gym_npcs",
 			"gym_upgrades_catalog",
+			"gym_classes",
 			"challenges",
 		]
 		for (const t of tables) {
@@ -146,6 +152,7 @@ export async function truncateAll() {
 	await seedBadges(db)
 	await seedGymUpgrades(db)
 	await seedNpcs(db)
+	await seedGymClasses(db)
 }
 
 export async function closeTestDb() {
