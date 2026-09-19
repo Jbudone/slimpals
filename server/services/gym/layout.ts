@@ -49,4 +49,9 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	// Punching bags zone (gh-115) — top-center, clear of every existing zone
 	punching_bags_heavy_bag_row: { x: 6, y: 4 },
 	punching_bags_double_end: { x: 8, y: 4 },
+
+	// Staff growth track (gh-116) — extends the staff zone, clear of every
+	// existing zone
+	staff_assistant_trainer: { x: 12, y: 6 },
+	staff_manager_office: { x: 14, y: 6 },
 }

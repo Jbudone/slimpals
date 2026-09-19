@@ -46,6 +46,7 @@ export const GYM_NPC_ROLES = [
 	"receptionist",
 	"regular",
 	"specialist",
+	"manager", // gh-116
 ] as const
 
 export type GymNpcRole = (typeof GYM_NPC_ROLES)[number]

@@ -143,6 +143,7 @@ export function getCrowdMax(hour: number, gymDaysActive = 90): number {
 const ROLE_PRIORITY: Record<string, number> = {
 	trainer: 1,
 	specialist: 2,
+	manager: 2,
 	receptionist: 3,
 	regular: 4,
 } satisfies Record<GymNpcRole, number>
@@ -185,6 +186,8 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 		"staff_massage",
 		"staff_physio",
 		"staff_nutrition",
+		"staff_assistant_trainer",
+		"staff_manager_office",
 	],
 	boxing: ["boxing_ring", "boxing_mitts_station"],
 	lagree: ["lagree_megaformer", "lagree_studio_mirror"],

@@ -13,6 +13,7 @@ import {
 	computeGymSimState,
 	type GymNpc,
 } from "../../server/services/gym/simulation.js"
+import { GYM_NPC_ROLES } from "../../shared/types.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -80,10 +81,10 @@ afterAll(async () => {
 })
 
 describe("NPC seeding", () => {
-	it("seeds 8 NPCs to gym_npcs", async () => {
+	it("seeds 10 NPCs to gym_npcs", async () => {
 		const db = await getTestDb()
 		const npcs = await db.select().from(gymNpcs)
-		expect(npcs).toHaveLength(8)
+		expect(npcs).toHaveLength(10)
 	})
 
 	it("each NPC has required fields", async () => {
@@ -93,9 +94,7 @@ describe("NPC seeding", () => {
 		for (const npc of npcs) {
 			expect(npc.key).toBeTruthy()
 			expect(npc.name).toBeTruthy()
-			expect(["trainer", "receptionist", "regular", "specialist"]).toContain(
-				npc.role,
-			)
+			expect(GYM_NPC_ROLES).toContain(npc.role)
 			expect(npc.personalityProfile).toBeTruthy()
 			expect(npc.defaultSchedule).toBeTruthy()
 			expect(npc.spriteKey).toBeTruthy()
@@ -163,6 +162,95 @@ describe("computeGymSimState — NPC presence", () => {
 		expect(states).toHaveLength(1)
 		expect(states[0].isPresent).toBe(true)
 		expect(states[0].npcKey).toBe("trainer_marcus")
+	})
+
+	it("shows the gh-116 staff-growth-track NPCs as present during their real scheduled hours", async () => {
+		const db = await getTestDb()
+		await db.insert(users).values({
+			id: "user-sim-staff-growth",
+			email: "simuserstaffgrowth@test.com",
+			name: "Sim User Staff Growth",
+		})
+		const gym = await getOrCreateGym("user-sim-staff-growth", db)
+
+		// Mirrors the real gh-116 seed data (server/db/seed.ts) rather than
+		// synthetic schedules, so this exercises the actual proof-set NPCs'
+		// real arrival/departure/daysOfWeek — both are Mon-Fri only, so a
+		// live canvas check on a real-world weekend would show neither as
+		// present even though they're correctly unlocked; verify presence
+		// deterministically instead, same pattern as the test above.
+		const trainerJordan: GymNpc = {
+			key: "trainer_jordan",
+			name: "Jordan",
+			role: "trainer",
+			personalityProfile: {
+				traits: [],
+				goals: [],
+				quirks: [],
+				equipmentPreferences: ["weights_dumbbells"],
+				avoidEquipment: [],
+				friendlyWith: [],
+				rivalWith: [],
+				moodBaseline: 65,
+			},
+			defaultSchedule: {
+				arrivalHour: 10,
+				departureHour: 18,
+				daysOfWeek: [1, 2, 3, 4, 5],
+				activitySequence: [
+					{ type: "main", durationMin: 60, equipmentCategory: "weights" },
+				],
+			},
+			spriteKey: "npc_trainer_jordan",
+			unlockedByUpgradeKey: "staff_assistant_trainer",
+		}
+		const managerAlex: GymNpc = {
+			key: "manager_alex",
+			name: "Alex",
+			role: "manager",
+			personalityProfile: {
+				traits: [],
+				goals: [],
+				quirks: [],
+				equipmentPreferences: ["staff_reception"],
+				avoidEquipment: [],
+				friendlyWith: [],
+				rivalWith: [],
+				moodBaseline: 60,
+			},
+			defaultSchedule: {
+				arrivalHour: 8,
+				departureHour: 17,
+				daysOfWeek: [1, 2, 3, 4, 5],
+				activitySequence: [
+					{ type: "main", durationMin: 480, equipmentCategory: "staff" },
+				],
+			},
+			spriteKey: "npc_manager_alex",
+			unlockedByUpgradeKey: "staff_manager_office",
+		}
+
+		// 2026-06-17 is a Wednesday, within both NPCs' Mon-Fri schedule.
+		const wednesdayNoon = new Date("2026-06-17T12:00:00")
+		const states = await computeGymSimState(
+			gym.id,
+			[trainerJordan, managerAlex],
+			[
+				"weights_dumbbells",
+				"staff_reception",
+				"staff_assistant_trainer",
+				"staff_manager_office",
+			],
+			[],
+			db,
+			wednesdayNoon,
+		)
+
+		expect(states).toHaveLength(2)
+		const jordanState = states.find((s) => s.npcKey === "trainer_jordan")
+		const alexState = states.find((s) => s.npcKey === "manager_alex")
+		expect(jordanState?.isPresent).toBe(true)
+		expect(alexState?.isPresent).toBe(true)
 	})
 
 	it("shows NPC as not present outside their scheduled hours", async () => {

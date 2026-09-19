@@ -750,6 +750,33 @@ const GYM_UPGRADES: UpgradeRow[] = [
 			"pixel art double-end punching bag rig, stardew valley style, 64x64",
 		unlocksNpcKey: null,
 	},
+
+	// ── Staff growth track (gh-116) ─────────────────────────────────────────
+	// More staff-category content spread across the tier ladder, not
+	// crammed at one tier — a proof set (2 of the issue's 4 suggested
+	// roles: trainer, front desk, manager, cleaning), not the full roster.
+	{
+		key: "staff_assistant_trainer",
+		name: "Assistant Trainer Station",
+		description: "A second training station for a growing client roster",
+		category: "staff",
+		requiredXp: 9000,
+		sortOrder: 6,
+		assetPrompt:
+			"pixel art assistant trainer station, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_assistant_trainer",
+	},
+	{
+		key: "staff_manager_office",
+		name: "Manager's Office",
+		description: "A small office for the gym's day-to-day operations",
+		category: "staff",
+		requiredXp: 16000,
+		sortOrder: 7,
+		assetPrompt:
+			"pixel art small manager office with desk, stardew valley style, 64x64",
+		unlocksNpcKey: "npc_manager",
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {
@@ -1085,6 +1112,63 @@ const NPC_CATALOG: NpcRow[] = [
 		portraitUrl: "/assets/gym/portraits/specialist_nutritionist.png",
 		spriteKey: "npc_specialist_nutritionist",
 		unlockedByUpgradeKey: "staff_nutrition",
+	},
+	{
+		key: "trainer_jordan",
+		name: "Jordan",
+		role: "trainer",
+		personalityProfile: {
+			traits: ["patient", "encouraging"],
+			goals: ["build_beginner_confidence", "share_the_load_with_marcus"],
+			quirks: [
+				"demonstrates_every_exercise_first",
+				"keeps_a_clipboard_of_progress",
+			],
+			equipmentPreferences: ["weights_dumbbells", "cardio_bikes"],
+			avoidEquipment: [],
+			friendlyWith: ["trainer_marcus", "receptionist_lisa"],
+			rivalWith: [],
+			moodBaseline: 65,
+		},
+		defaultSchedule: {
+			arrivalHour: 10,
+			departureHour: 18,
+			daysOfWeek: [1, 2, 3, 4, 5],
+			activitySequence: [
+				{ type: "warmup", durationMin: 10, equipmentCategory: "cardio" },
+				{ type: "main", durationMin: 60, equipmentCategory: "weights" },
+				{ type: "cooldown", durationMin: 15, equipmentCategory: "amenities" },
+			],
+		},
+		portraitUrl: "/assets/gym/portraits/trainer_jordan.png",
+		spriteKey: "npc_trainer_jordan",
+		unlockedByUpgradeKey: "staff_assistant_trainer",
+	},
+	{
+		key: "manager_alex",
+		name: "Alex",
+		role: "manager",
+		personalityProfile: {
+			traits: ["organized", "decisive"],
+			goals: ["keep_the_gym_running_smoothly", "grow_membership"],
+			quirks: ["always_has_a_clipboard", "checks_in_with_every_department"],
+			equipmentPreferences: ["staff_reception"],
+			avoidEquipment: [],
+			friendlyWith: ["receptionist_lisa"],
+			rivalWith: [],
+			moodBaseline: 60,
+		},
+		defaultSchedule: {
+			arrivalHour: 8,
+			departureHour: 17,
+			daysOfWeek: [1, 2, 3, 4, 5],
+			activitySequence: [
+				{ type: "main", durationMin: 480, equipmentCategory: "staff" },
+			],
+		},
+		portraitUrl: "/assets/gym/portraits/manager_alex.png",
+		spriteKey: "npc_manager_alex",
+		unlockedByUpgradeKey: "staff_manager_office",
 	},
 ]
 

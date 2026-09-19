@@ -403,6 +403,26 @@
 			"description": "double-end punching bag rig with floor and ceiling tethers, gym equipment"
 		},
 		{
+			"key": "staff_assistant_trainer",
+			"filename": "staff_assistant_trainer.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "second personal trainer station with clipboard, gym prop"
+		},
+		{
+			"key": "staff_manager_office",
+			"filename": "staff_manager_office.png",
+			"category": "staff",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "small manager office with desk and chair, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
@@ -835,6 +855,56 @@
 						"default": {
 							"type": "spritesheet",
 							"file": "sprites/npc_specialist_nutritionist_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"trainer_jordan": {
+			"description": "encouraging trainer in green tank top holding a clipboard",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_trainer_jordan.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_trainer_jordan_walk.png",
+							"frameWidth": 96,
+							"frameHeight": 96,
+							"frameCount": 4,
+							"fps": 8
+						}
+					}
+				}
+			}
+		},
+		"manager_alex": {
+			"description": "organized gym manager in business-casual attire with a clipboard",
+			"animations": {
+				"idle": {
+					"directions": {
+						"default": {
+							"type": "static",
+							"file": "sprites/npc_manager_alex.png"
+						}
+					}
+				},
+				"walk": {
+					"directions": {
+						"default": {
+							"type": "spritesheet",
+							"file": "sprites/npc_manager_alex_walk.png",
 							"frameWidth": 96,
 							"frameHeight": 96,
 							"frameCount": 4,

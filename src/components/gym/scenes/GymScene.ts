@@ -94,6 +94,8 @@ const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	swimming_poolside_loungers: { x: 4, y: 6 },
 	punching_bags_heavy_bag_row: { x: 6, y: 4 },
 	punching_bags_double_end: { x: 8, y: 4 },
+	staff_assistant_trainer: { x: 12, y: 6 },
+	staff_manager_office: { x: 14, y: 6 },
 }
 
 const UPGRADE_CELEBRATIONS: Record<string, string> = {
@@ -132,6 +134,9 @@ const UPGRADE_CELEBRATIONS: Record<string, string> = {
 	punching_bags_heavy_bag_row: "A row of heavy bags! Time to hit hard.",
 	punching_bags_double_end:
 		"Double-end bag! Speed and accuracy training unlocked.",
+	staff_assistant_trainer:
+		"A second trainer station! More hands to help members.",
+	staff_manager_office: "A manager's office! The gym is really growing up.",
 }
 
 const NPC_NAMES: Record<string, string> = {
@@ -143,6 +148,8 @@ const NPC_NAMES: Record<string, string> = {
 	regular_elena: "Elena",
 	specialist_coach: "Coach Rivera",
 	specialist_nutritionist: "Dr. Kim",
+	trainer_jordan: "Jordan",
+	manager_alex: "Alex",
 }
 
 function getDefaultPlacement(
