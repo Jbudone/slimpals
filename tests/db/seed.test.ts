@@ -51,7 +51,20 @@ describe("badge seed", () => {
 	})
 })
 
-// ── Gym upgrades seed — boxing category proof set (gh-112) ────────────────
+// ── Gym upgrades seed — open-ended content categories (gh-112+) ───────────
+//
+// Generalized over GYM_UPGRADE_CATEGORIES rather than hardcoded to one
+// category name, so each new category issue (gh-113 lagree, gh-114
+// swimming, gh-115 punching bags, gh-116 staff, gh-117 offices) that adds
+// a catalog proof set + an allowlist entry is automatically covered here
+// without further test-file edits.
+const ORIGINAL_FIVE_CATEGORIES = new Set([
+	"cardio",
+	"weights",
+	"amenities",
+	"decor",
+	"staff",
+])
 
 describe("gym upgrades seed", () => {
 	beforeAll(async () => {
@@ -62,28 +75,37 @@ describe("gym upgrades seed", () => {
 		await closeTestDb()
 	})
 
-	it("seeds at least one boxing catalog entry, using a valid open-ended category", async () => {
+	it("seeds at least one entry for every open-ended category added beyond the original five", async () => {
 		const { seedGymUpgrades } = await import("../../server/db/seed.js")
 		const db = await getTestDb()
 		await seedGymUpgrades(db)
 
 		const all = await db.select().from(gymUpgradesCatalog)
-		const boxingEntries = all.filter((u) => u.category === "boxing")
+		const newCategories = GYM_UPGRADE_CATEGORIES.filter(
+			(c) => !ORIGINAL_FIVE_CATEGORIES.has(c),
+		)
+		expect(newCategories.length).toBeGreaterThanOrEqual(1)
 
-		expect(boxingEntries.length).toBeGreaterThanOrEqual(1)
+		for (const category of newCategories) {
+			const entries = all.filter((u) => u.category === category)
+			expect(entries.length).toBeGreaterThanOrEqual(1)
+		}
 		for (const entry of all) {
 			expect(GYM_UPGRADE_CATEGORIES).toContain(entry.category)
 		}
 	})
 
-	it("boxing entries unlock exactly at their own requiredXp threshold, not before", async () => {
+	it("every new-category entry unlocks exactly at its own requiredXp threshold, not before", async () => {
 		const db = await getTestDb()
 		const all = await db.select().from(gymUpgradesCatalog)
 		const catalog = all.map((u) => ({ key: u.key, requiredXp: u.requiredXp }))
-		const boxingEntries = all.filter((u) => u.category === "boxing")
-		expect(boxingEntries.length).toBeGreaterThanOrEqual(1)
+		const newCategories = GYM_UPGRADE_CATEGORIES.filter(
+			(c) => !ORIGINAL_FIVE_CATEGORIES.has(c),
+		)
+		const newEntries = all.filter((u) => newCategories.includes(u.category))
+		expect(newEntries.length).toBeGreaterThanOrEqual(1)
 
-		for (const entry of boxingEntries) {
+		for (const entry of newEntries) {
 			const justBelow = deriveUnlockedUpgradeKeys(entry.requiredXp - 1, catalog)
 			const atThreshold = deriveUnlockedUpgradeKeys(entry.requiredXp, catalog)
 			expect(justBelow).not.toContain(entry.key)
@@ -91,7 +113,7 @@ describe("gym upgrades seed", () => {
 		}
 	})
 
-	it("is idempotent — running seed twice does not duplicate the boxing entries", async () => {
+	it("is idempotent — running seed twice does not duplicate any entries", async () => {
 		const { seedGymUpgrades } = await import("../../server/db/seed.js")
 		const db = await getTestDb()
 		await seedGymUpgrades(db)

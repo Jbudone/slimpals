@@ -668,6 +668,33 @@ const GYM_UPGRADES: UpgradeRow[] = [
 			"pixel art boxing focus mitts training station, stardew valley style, 64x64",
 		unlocksNpcKey: null,
 	},
+
+	// ── Lagree (gh-113) ───────────────────────────────────────────────────
+	// Second new content category on the open-ended foundation. Gated at
+	// the start of "City Destination" (7,500 xp, gh-65's third era), one
+	// tier up from boxing's "Local Hotspot" gate.
+	{
+		key: "lagree_megaformer",
+		name: "Megaformer",
+		description:
+			"A spring-resistance Lagree machine for low-impact strength work",
+		category: "lagree",
+		requiredXp: 7500,
+		sortOrder: 1,
+		assetPrompt:
+			"pixel art lagree megaformer machine, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "lagree_studio_mirror",
+		name: "Lagree Studio Mirror Wall",
+		description: "A mirrored wall for form-checking during class",
+		category: "lagree",
+		requiredXp: 8500,
+		sortOrder: 2,
+		assetPrompt: "pixel art studio mirror wall, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
 ]
 
 export async function seedGymUpgrades(db: Db) {

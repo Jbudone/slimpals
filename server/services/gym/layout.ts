@@ -37,4 +37,8 @@ export const UPGRADE_LAYOUT: Record<string, { x: number; y: number }> = {
 	// Boxing zone (gh-112) — right-center, clear of every existing zone
 	boxing_ring: { x: 14, y: 5 },
 	boxing_mitts_station: { x: 16, y: 5 },
+
+	// Lagree zone (gh-113) — right side, below boxing, clear of every zone
+	lagree_megaformer: { x: 14, y: 7 },
+	lagree_studio_mirror: { x: 16, y: 7 },
 }

@@ -343,6 +343,26 @@
 			"description": "focus mitts training station, wall-mounted pads and gloves rack, gym prop"
 		},
 		{
+			"key": "lagree_megaformer",
+			"filename": "lagree_megaformer.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "lagree megaformer pilates machine, spring-loaded carriage, gym equipment"
+		},
+		{
+			"key": "lagree_studio_mirror",
+			"filename": "lagree_studio_mirror.png",
+			"category": "equipment",
+			"frameWidth": 96,
+			"frameHeight": 96,
+			"frameCount": 1,
+			"fps": 0,
+			"description": "full-length studio mirror wall panel, gym prop"
+		},
+		{
 			"key": "portrait_trainer_marcus",
 			"filename": "portraits/trainer_marcus.png",
 			"category": "portrait",
