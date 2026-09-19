@@ -1,12 +1,28 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import Avatar from "../components/ui/Avatar.svelte"
+import Card from "../components/ui/Card.svelte"
+import Pill from "../components/ui/Pill.svelte"
 import { api } from "../lib/api.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
+import { page } from "../router.svelte.js"
 
 type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 const EMOJIS = ["❤️", "😂", "💪", "🔥", "😭"] as const
 type Emoji = (typeof EMOJIS)[number]
+
+// Real emoji reactions stay exactly as-is (PRD decision #4) — these are just
+// short display labels for the new icon+label chip style. The mockup's
+// "Nice/Ha/Beast" wording was shorthand for a 3-reaction example, not a
+// scope change to fewer/renamed reaction types.
+const EMOJI_LABELS: Record<Emoji, string> = {
+	"❤️": "Love",
+	"😂": "Haha",
+	"💪": "Strong",
+	"🔥": "Fire",
+	"😭": "Cry",
+}
 
 type ReactionState = { count: number; userReacted: boolean }
 type Reactions = Record<Emoji, ReactionState>
@@ -18,6 +34,14 @@ type PostType =
 	| "ai_message"
 	| "challenge_completion"
 
+const TYPE_LABELS: Record<PostType, string> = {
+	weight_update: "Weight update",
+	food_photo: "Meal",
+	milestone: "Badge earned",
+	ai_message: "Coach",
+	challenge_completion: "Challenge",
+}
+
 type FeedPost = {
 	id: number
 	userId: string
@@ -28,10 +52,22 @@ type FeedPost = {
 	reactions: Reactions
 }
 
+type EarnedBadge = {
+	id: number
+	userBadgeId: number
+	key: string
+	name: string
+	tier: string
+}
+
 let posts = $state<FeedPost[]>([])
 let loading = $state(true)
 let error = $state<string | null>(null)
 let reacting = $state<Set<number>>(new Set())
+
+let showBragPicker = $state(false)
+let earnedBadges = $state<EarnedBadge[]>([])
+let bragging = $state<number | null>(null)
 
 async function loadFeed() {
 	try {
@@ -82,6 +118,32 @@ async function react(postId: number, emoji: Emoji) {
 	}
 }
 
+async function openBragPicker() {
+	showBragPicker = !showBragPicker
+	if (showBragPicker && earnedBadges.length === 0) {
+		try {
+			earnedBadges = await api.get<EarnedBadge[]>("/badges/mine")
+		} catch {
+			// ignore — picker just stays empty
+		}
+	}
+}
+
+async function brag(badge: EarnedBadge) {
+	if (bragging) return
+	bragging = badge.userBadgeId
+	try {
+		await api.post("/social/share", {
+			source_type: "badge",
+			source_id: badge.userBadgeId,
+		})
+		showBragPicker = false
+		await loadFeed()
+	} finally {
+		bragging = null
+	}
+}
+
 function initials(name: string) {
 	return name
 		.split(" ")
@@ -105,28 +167,63 @@ onMount(loadFeed)
 </script>
 
 <div class="social-page">
-	<h1>Social Feed</h1>
+	<h1>The pals</h1>
+
+	<div class="composer-row">
+		<button class="composer-btn" type="button" onclick={() => page("/weight")}>
+			Weigh-in
+		</button>
+		<button class="composer-btn" type="button" onclick={() => page("/food")}>
+			Meal photo
+		</button>
+		<button class="composer-btn" type="button" onclick={openBragPicker}>
+			Brag
+		</button>
+	</div>
+
+	{#if showBragPicker}
+		<Card padding="md">
+			{#if earnedBadges.length === 0}
+				<p class="muted">No badges earned yet — go earn one to brag about!</p>
+			{:else}
+				<div class="brag-list">
+					{#each earnedBadges as badge (badge.userBadgeId)}
+						<button
+							class="brag-item"
+							type="button"
+							disabled={bragging === badge.userBadgeId}
+							onclick={() => brag(badge)}
+						>
+							<span>{badge.name}</span>
+							<span class="brag-action">
+								{bragging === badge.userBadgeId ? "Sharing…" : "Share"}
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</Card>
+	{/if}
 
 	{#if loading}
 		<p class="muted">Loading…</p>
 	{:else if error}
 		<p class="error">{error}</p>
 	{:else if posts.length === 0}
-		<div class="empty">
-			<p>No activity yet. Log your weight or a meal to get things started!</p>
-		</div>
+		<Card padding="md">
+			<p class="muted">No activity yet. Log your weight or a meal to get things started!</p>
+		</Card>
 	{:else}
 		<div class="feed">
 			{#each posts as post (post.id)}
-				<article class="post-card">
-					<header class="post-header">
-						<div class="avatar">{initials(post.userName)}</div>
+				<Card padding="md">
+					<div class="post-header">
+						<Avatar tone="accent" initials={initials(post.userName)} />
 						<div class="meta">
 							<span class="user-name">{post.userName}</span>
-							<span class="timestamp">{timeAgo(post.createdAt)}</span>
+							<span class="timestamp">{TYPE_LABELS[post.type]} · {timeAgo(post.createdAt)}</span>
 						</div>
-						<span class="post-type-badge {post.type}">{post.type.replace("_", " ")}</span>
-					</header>
+					</div>
 
 					<div class="post-content">
 						{#if post.type === "weight_update"}
@@ -167,25 +264,25 @@ onMount(loadFeed)
 						{/if}
 					</div>
 
-					<footer class="reaction-bar">
+					<div class="reaction-bar">
 						{#each EMOJIS as emoji}
 							{@const state = post.reactions[emoji]}
 							<button
-								class="reaction-btn"
-								class:active={state.userReacted}
+								type="button"
 								onclick={() => react(post.id, emoji)}
 								disabled={reacting.has(post.id)}
-								type="button"
-								aria-label="{emoji} {state.count}"
+								aria-label="{EMOJI_LABELS[emoji]} {state.count}"
 							>
-								<span class="emoji">{emoji}</span>
-								{#if state.count > 0}
-									<span class="count">{state.count}</span>
-								{/if}
+								<Pill active={state.userReacted}>
+									{emoji} {EMOJI_LABELS[emoji]}
+									{#if state.count > 0}
+										{state.count}
+									{/if}
+								</Pill>
 							</button>
 						{/each}
-					</footer>
-				</article>
+					</div>
+				</Card>
 			{/each}
 		</div>
 	{/if}
@@ -193,79 +290,101 @@ onMount(loadFeed)
 
 <style>
 .social-page {
-	max-width: 600px;
+	max-width: 480px;
 	margin: 0 auto;
-	padding: 2rem 1.5rem;
+	padding: var(--space-8) var(--space-6);
 	display: flex;
 	flex-direction: column;
-	gap: 1.5rem;
+	gap: var(--space-4);
 }
 
 h1 {
-	font-size: 1.5rem;
-	font-weight: 700;
+	font-family: var(--font-display);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 	margin: 0;
 }
 
-.muted {
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
-}
+.muted { color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
 .error {
 	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
 	border: 1px solid var(--color-danger);
 	color: var(--color-danger);
-	border-radius: 0.375rem;
+	border-radius: var(--radius-sm);
 	padding: 0.625rem 0.875rem;
-	font-size: 0.875rem;
+	font-size: var(--font-size-sm);
 	margin: 0;
 }
 
-.empty {
+.composer-row {
+	display: flex;
+	gap: var(--space-2);
+}
+
+.composer-btn {
+	flex: 1;
 	background: var(--color-surface);
 	border: 1px solid var(--color-border);
-	border-radius: 0.75rem;
-	padding: 2rem;
-	text-align: center;
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
+	border-radius: var(--radius-full);
+	padding: var(--space-3) var(--space-2);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+
+.composer-btn:hover {
+	border-color: var(--color-accent);
+	color: var(--color-accent);
+}
+
+.brag-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.brag-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	background: var(--color-surface-2);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	padding: var(--space-2) var(--space-3);
+	color: var(--color-text);
+	font-size: var(--font-size-sm);
+	cursor: pointer;
+}
+
+.brag-item:hover:not(:disabled) {
+	border-color: var(--color-accent);
+}
+
+.brag-item:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.brag-action {
+	color: var(--color-accent);
+	font-weight: var(--font-weight-semibold);
 }
 
 .feed {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
-}
-
-/* Post card */
-.post-card {
-	background: var(--color-surface);
-	border: 1px solid var(--color-border);
-	border-radius: 0.75rem;
-	overflow: hidden;
+	gap: var(--space-4);
 }
 
 .post-header {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
-	padding: 0.875rem 1rem 0.75rem;
-}
-
-.avatar {
-	width: 2.25rem;
-	height: 2.25rem;
-	border-radius: 50%;
-	background: var(--color-accent);
-	color: #fff;
-	font-size: 0.75rem;
-	font-weight: 700;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
+	gap: var(--space-3);
+	margin-bottom: var(--space-3);
 }
 
 .meta {
@@ -273,38 +392,26 @@ h1 {
 	display: flex;
 	flex-direction: column;
 	gap: 0.1rem;
+	min-width: 0;
 }
 
 .user-name {
-	font-size: 0.9375rem;
-	font-weight: 600;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-bold);
 	color: var(--color-text);
 }
 
 .timestamp {
-	font-size: 0.75rem;
+	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 }
 
-.post-type-badge {
-	font-size: 0.6875rem;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	padding: 0.2rem 0.5rem;
-	border-radius: 99px;
-	border: 1px solid var(--color-border);
-	color: var(--color-text-muted);
-	background: var(--color-surface-2);
-}
-
-/* Post content */
 .post-content {
-	padding: 0 1rem 0.875rem;
+	margin-bottom: var(--space-3);
 }
 
 .content-line {
-	font-size: 0.9375rem;
+	font-size: var(--font-size-sm);
 	color: var(--color-text);
 	margin: 0;
 }
@@ -315,12 +422,12 @@ h1 {
 
 .macros {
 	color: var(--color-text-muted);
-	font-size: 0.8125rem;
+	font-size: var(--font-size-xs);
 }
 
 .milestone-text {
 	color: var(--color-warning);
-	font-weight: 600;
+	font-weight: var(--font-weight-semibold);
 }
 
 .ai-text {
@@ -332,59 +439,25 @@ h1 {
 	width: 100%;
 	max-height: 220px;
 	object-fit: cover;
-	border-radius: 0.5rem;
-	margin-bottom: 0.625rem;
+	border-radius: var(--radius-sm);
+	margin-bottom: var(--space-2);
 }
 
-/* Reaction bar */
 .reaction-bar {
 	display: flex;
-	gap: 0.375rem;
-	padding: 0.625rem 1rem;
-	border-top: 1px solid var(--color-border);
+	flex-wrap: wrap;
+	gap: var(--space-2);
 }
 
-.reaction-btn {
-	display: flex;
-	align-items: center;
-	gap: 0.25rem;
-	padding: 0.3rem 0.6rem;
-	border-radius: 99px;
-	border: 1px solid var(--color-border);
-	background: var(--color-surface-2);
+.reaction-bar button {
+	background: none;
+	border: none;
+	padding: 0;
 	cursor: pointer;
-	transition: background 0.1s, border-color 0.1s;
-	font-size: 0.875rem;
-	line-height: 1;
 }
 
-.reaction-btn:hover:not(:disabled) {
-	border-color: var(--color-accent);
-	background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-}
-
-.reaction-btn.active {
-	border-color: var(--color-accent);
-	background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-}
-
-.reaction-btn:disabled {
+.reaction-bar button:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
-}
-
-.emoji {
-	font-size: 1rem;
-	line-height: 1;
-}
-
-.count {
-	font-size: 0.75rem;
-	font-weight: 600;
-	color: var(--color-text-muted);
-}
-
-.reaction-btn.active .count {
-	color: var(--color-accent);
 }
 </style>

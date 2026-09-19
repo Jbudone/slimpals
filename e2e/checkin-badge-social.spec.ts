@@ -70,7 +70,7 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	// Scoped by author name too — the feed is shared across all users, so
 	// repeated e2e runs otherwise accumulate multiple matching posts.
 	const myPost = page
-		.locator(".post-card", { hasText: uniqueName })
+		.locator(".ui-card", { hasText: uniqueName })
 		.filter({ hasText: "3-Day Streak" })
 	await expect(myPost).toBeVisible()
 

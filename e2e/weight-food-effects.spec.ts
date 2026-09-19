@@ -61,7 +61,7 @@ test("logging weight triggers auto-checkin, a badge, and a feed post", async ({
 	// Scoped by author name too — the feed is shared across all users, so
 	// repeated e2e runs otherwise accumulate multiple matching posts.
 	const myPost = page
-		.locator(".post-card", { hasText: uniqueName })
+		.locator(".ui-card", { hasText: uniqueName })
 		.filter({ hasText: "First Weigh-In" })
 	await expect(myPost).toBeVisible()
 
