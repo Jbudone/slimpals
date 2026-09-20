@@ -140,7 +140,12 @@ async function generate() {
 			`/admin/content-tuning/${selectedType}/${selectedSubcategory}/generate`,
 			{ contextParams },
 		)
-		sample = res.sample
+		if (!res.sample && activeType?.sampleKind === "image") {
+			error = "Image generation failed — try again"
+			sample = null
+		} else {
+			sample = res.sample
+		}
 		selectedTags = []
 		note = ""
 		lastChangelog = null
@@ -178,7 +183,10 @@ async function submitFeedback() {
 		)
 		currentDoc = res.updatedDoc
 		lastChangelog = res.changelog
-		sample = res.newSample
+		sample =
+			!res.newSample && activeType?.sampleKind === "image"
+				? null
+				: res.newSample
 		selectedTags = []
 		note = ""
 		await loadHistory()
@@ -276,7 +284,9 @@ onMount(loadTypes)
 			<div class="ct-main">
 				<Card>
 					<h2 class="section-title">Sample</h2>
-					{#if sample}
+					{#if sample && activeType?.sampleKind === "image"}
+						<img class="sample-image" src={sample} alt="Generated preview" />
+					{:else if sample}
 						<p class="sample-text">{sample}</p>
 					{:else}
 						<p class="muted">Hit Generate to produce a sample.</p>
@@ -475,6 +485,15 @@ onMount(loadTypes)
 	font-size: var(--font-size-base);
 	color: var(--color-text);
 	margin: 0;
+}
+
+.sample-image {
+	width: 128px;
+	height: 128px;
+	image-rendering: pixelated;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-border);
+	background: var(--color-surface-2);
 }
 
 .changelog-text {

@@ -339,7 +339,7 @@ ${activityLines.join("\n")}`
 	): Promise<string | null> {
 		try {
 			const model = this.client.getGenerativeModel({
-				model: "gemini-2.0-flash-preview-image-generation",
+				model: "gemini-2.5-flash-image",
 			})
 
 			const result = await model.generateContent({

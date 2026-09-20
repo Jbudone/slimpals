@@ -16,6 +16,10 @@ playwright-report/
 uploads/*
 !uploads/.gitkeep
 
+# Content-tuning portrait previews — overwritten scratch files, never
+# meant to be committed (see server/services/contentTuning/npcPortraits.ts)
+public/assets/gym/portraits/_tuning-preview/
+
 # Logs
 *.log
 

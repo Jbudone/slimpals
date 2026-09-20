@@ -151,6 +151,25 @@ async function generateGymEventForUser(
 	}
 }
 
+export const PORTRAIT_STAGE_DESCRIPTIONS: Record<number, string> = {
+	2: "slightly warmer expression, small detail change such as a thumbs up",
+	3: "fully personalized portrait with a detail reference to the user's gym upgrades",
+}
+
+// The art-style rules (palette, outline, pixel spec) are tunable via
+// docs/npc_portraits.md; the character/stage/upgrade context stays
+// per-call dynamic data built by the caller.
+export function buildPortraitPrompt(params: {
+	npcName: string
+	stageDescription: string
+	upgradeHint: string
+}): string {
+	const styleDoc = readTuningDoc(
+		"server/services/contentTuning/docs/npc_portraits.md",
+	)
+	return `Pixel art portrait of ${params.npcName}, a gym character. ${params.stageDescription}.${params.upgradeHint} ${styleDoc}`
+}
+
 async function refreshStagePortrait(
 	npcKey: string,
 	npcName: string,
@@ -161,17 +180,17 @@ async function refreshStagePortrait(
 ): Promise<void> {
 	if (stage < 2) return
 
-	const stageDescriptions: Record<number, string> = {
-		2: "slightly warmer expression, small detail change such as a thumbs up",
-		3: "fully personalized portrait with a detail reference to the user's gym upgrades",
-	}
-
 	const upgradeHint =
 		stage === 3 && gymUpgrades.length > 0
 			? ` Background should subtly reference their gym's latest upgrade: ${gymUpgrades.slice(-1)[0]}.`
 			: ""
 
-	const prompt = `Pixel art portrait of ${npcName}, a gym character. ${stageDescriptions[stage] ?? "neutral expression"}.${upgradeHint} Style: 64x64 pixel art, clean outlines, warm palette. Return only the image.`
+	const prompt = buildPortraitPrompt({
+		npcName,
+		stageDescription:
+			PORTRAIT_STAGE_DESCRIPTIONS[stage] ?? "neutral expression",
+		upgradeHint,
+	})
 
 	const outputPath = `public/assets/gym/portraits/${npcKey}_stage${stage}.png`
 	await aiService.generateNpcPortrait(prompt, outputPath)
