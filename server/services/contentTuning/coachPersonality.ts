@@ -8,13 +8,16 @@ const SCENARIOS: Record<string, string> = {
 	post_workout_shake: "Protein shake with a banana right after a gym session",
 }
 
-const LABELS: Record<string, string> = {
+// Shared with victoryMessage.ts / weeklyInspiration.ts, which cascade from
+// these same persona docs (Tier 1) rather than owning their own tone.
+export const PERSONALITY_LABELS: Record<string, string> = {
 	drill_sergeant: "Drill Sergeant",
 	friendly: "Friendly",
 	roaster: "Roaster",
 	anime_sensei: "Anime Sensei",
 	bro: "Bro",
 }
+const LABELS = PERSONALITY_LABELS
 
 export const coachPersonalityType: ContentTuningType = {
 	key: "coach_personality",

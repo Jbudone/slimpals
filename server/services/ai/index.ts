@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import type { CoachPersonality } from "../../../shared/types.js"
 import { db } from "../../db/index.js"
 import { users } from "../../db/schema.js"
+import { readTuningDoc } from "../contentTuning/fs.js"
 import { getPersonalityPrompt, PERSONALITY_KEYS } from "./prompts/index.js"
 
 export type FoodAnalysis = {
@@ -189,7 +190,10 @@ export class GeminiAIService implements AIService {
 			step_count: "step count",
 		}
 
-		const prompt = `Write a short, enthusiastic victory message (2-3 sentences max) for ${userName} who just won the "${tournamentName}" ${typeLabels[tournamentType] ?? tournamentType} tournament. Speak in your coaching personality's voice. Make it celebratory and motivating. Plain text only, no markdown.`
+		const rulesDoc = readTuningDoc(
+			"server/services/contentTuning/docs/victory_message.md",
+		)
+		const prompt = `${rulesDoc}\n\nContext: ${userName} just won the "${tournamentName}" ${typeLabels[tournamentType] ?? tournamentType} tournament.`
 
 		const result = await model.generateContent(prompt)
 		return result.response.text().trim()
@@ -217,15 +221,16 @@ export class GeminiAIService implements AIService {
 				? `Weight change: ${stats.weightDeltaKg > 0 ? "+" : ""}${stats.weightDeltaKg.toFixed(1)}kg`
 				: "No weight entries this week"
 
-		const prompt = `Write a short, personalized weekly inspiration message (2-4 sentences) for ${userName} based on their past week's activity. Speak in your coaching personality's voice. Make it motivating and specific to their stats. Plain text only, no markdown.
+		const rulesDoc = readTuningDoc(
+			"server/services/contentTuning/docs/weekly_inspiration.md",
+		)
+		const prompt = `${rulesDoc}
 
-Their week in review:
+${userName}'s week in review:
 - Check-ins: ${stats.checkins}/7 days
 - ${weightLine}
 - Food logs: ${stats.foodLogs} meals tracked
-- Badges earned: ${stats.badgesEarned}
-
-Focus on what they did well and encourage them for the coming week.`
+- Badges earned: ${stats.badgesEarned}`
 
 		const result = await model.generateContent(prompt)
 		return result.response.text().trim()
@@ -255,32 +260,10 @@ Focus on what they did well and encourage them for the coming week.`
 			model: "gemini-2.5-flash",
 		})
 
-		const prompt = `Generate a themed monthly wellness challenge for ${monthName} ${year}. Respond with a JSON object only (no markdown, no explanation):
-{
-  "title": "short, encouraging challenge name (2-4 words)",
-  "description": "1 friendly sentence about the theme",
-  "theme": "one-word theme",
-  "goals": [
-    {
-      "id": "goal_1",
-      "title": "120 Glasses of Water",
-      "description": "Stay hydrated — about 6 glasses a day",
-      "target": 120,
-      "unit": "glasses",
-      "dailyAmount": 6,
-      "dailyPrompt": "Did you drink your 6 glasses today?"
-    }
-  ]
-}
-
-Generate exactly 3 goals. Each goal is a cumulative monthly total built from a simple daily habit. The target is the full-month total (dailyAmount × ~20 days). Each day the user taps a button and dailyAmount is added to their running total.
-- target should be an impressive-sounding cumulative number (e.g. 120 glasses, 400 minutes, 60 servings).
-- dailyAmount is the per-day portion that makes the goal easy (e.g. 6 glasses, 20 minutes, 3 servings).
-- unit should be the thing being counted (glasses, minutes, servings, steps), never "days".
-- Keep goals beginner-friendly — the daily amount should feel effortless.
-- Each dailyPrompt should be a yes/no question starting with "Did you".
-- Theme the 3 goals around a cohesive wellness concept.
-- Goal IDs: goal_1, goal_2, goal_3.`
+		const rulesDoc = readTuningDoc(
+			"server/services/contentTuning/docs/monthly_challenge.md",
+		)
+		const prompt = `${rulesDoc}\n\nTheme it for ${monthName} ${year}.`
 
 		const result = await model.generateContent(prompt)
 		const text = result.response.text().trim()
@@ -307,19 +290,14 @@ Generate exactly 3 goals. Each goal is a cumulative monthly total built from a s
 				: "No active monthly challenge",
 		]
 
-		const prompt = `Generate a personalized weekly sprint for ${userName}. These are 5-7 light, achievable tasks for this week. Respond with JSON only (no markdown):
-{
-  "title": "short sprint name (2-4 words)",
-  "tasks": [
-    { "id": "task_1", "title": "short task description (under 10 words)" },
-    ...
-  ]
-}
+		const rulesDoc = readTuningDoc(
+			"server/services/contentTuning/docs/sprints.md",
+		)
+		const prompt = `${rulesDoc}
 
+User: ${userName}
 Their recent activity:
-${activityLines.join("\n")}
-
-Generate exactly 6 tasks. Make them specific to their activity level — if they've been active, push a bit harder; if quiet, start easy. Tasks should be completable within a single week. Mix: exercise, nutrition, mindfulness, social. Task IDs: task_1 through task_6.`
+${activityLines.join("\n")}`
 
 		const result = await model.generateContent(prompt)
 		const text = result.response.text().trim()

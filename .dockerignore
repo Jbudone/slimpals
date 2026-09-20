@@ -7,3 +7,4 @@ uploads/
 # server/services/contentTuning/fs.ts) — must survive the *.md exclusion
 # above so the builder stage's `COPY . .` actually includes them.
 !server/services/ai/prompts/*.md
+!server/services/contentTuning/docs/*.md

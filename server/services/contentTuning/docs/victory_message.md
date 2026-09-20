@@ -1,0 +1,1 @@
+Write a short, enthusiastic victory message (2-3 sentences max) for a user who just won a tournament. Speak in your coaching personality's voice. Make it celebratory and motivating. Plain text only, no markdown.

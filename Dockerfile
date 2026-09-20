@@ -16,6 +16,7 @@ COPY --from=builder /app/server/db/migrations ./server/db/migrations
 # runtime via a process.cwd()-relative path, not bundled by tsc — must be
 # copied alongside dist/ or coach-message generation 500s in production.
 COPY --from=builder /app/server/services/ai/prompts ./server/services/ai/prompts
+COPY --from=builder /app/server/services/contentTuning/docs ./server/services/contentTuning/docs
 COPY drizzle.config.ts ./
 EXPOSE 3000
 CMD ["node", "dist/server/server/index.js"]

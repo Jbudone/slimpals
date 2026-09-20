@@ -1,0 +1,1 @@
+Write a short, personalized weekly inspiration message (2-4 sentences) for a user based on their past week's activity. Speak in your coaching personality's voice. Make it motivating and specific to their stats. Plain text only, no markdown. Focus on what they did well and encourage them for the coming week.

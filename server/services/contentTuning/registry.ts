@@ -1,5 +1,11 @@
 import type { AIService } from "../ai/index.js"
 import { coachPersonalityType } from "./coachPersonality.js"
+import { gymEventsType } from "./gymEvents.js"
+import { monthlyChallengeType } from "./monthlyChallenge.js"
+import { npcDialogType } from "./npcDialog.js"
+import { sprintsType } from "./sprints.js"
+import { victoryMessageType } from "./victoryMessage.js"
+import { weeklyInspirationType } from "./weeklyInspiration.js"
 
 export type ContextParamField =
 	| {
@@ -33,7 +39,15 @@ export type ContentTuningType = {
 	}) => Promise<string>
 }
 
-export const CONTENT_TUNING_TYPES: ContentTuningType[] = [coachPersonalityType]
+export const CONTENT_TUNING_TYPES: ContentTuningType[] = [
+	coachPersonalityType,
+	sprintsType,
+	monthlyChallengeType,
+	victoryMessageType,
+	weeklyInspirationType,
+	npcDialogType,
+	gymEventsType,
+]
 
 export function getContentTuningType(
 	key: string,

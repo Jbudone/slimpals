@@ -7,6 +7,7 @@ import {
 	userGymNpcRelationships,
 } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
+import { readTuningDoc } from "../contentTuning/fs.js"
 import type { MemoryEvent } from "./content.js"
 
 type Db = MySql2Database<typeof schema>
@@ -120,6 +121,36 @@ export async function getCurrentDialogBatch(
 	return batch.dialogs as DialogEntry[]
 }
 
+// The shared scaffolding (task/format instructions) is tunable via
+// docs/npc_dialog.md; everything above it — persona, relationship, stats,
+// memory — stays per-call dynamic data built by the caller.
+export function buildNpcDialogPrompt(params: {
+	npcName: string
+	npcRole: string
+	personalityProfile: Record<string, unknown>
+	stage: RelationshipStage
+	statsStr: string
+	notesStr: string
+	memoryStr: string
+	isHero: boolean
+}): string {
+	const heroFraming = params.isHero
+		? "IMPORTANT: You are a famous visiting hero/influencer, not gym staff — you're here for a rare, limited-time appearance and will move on soon. Your tone should be energetic and a little larger-than-life, and you should make the member feel lucky to catch you before you leave.\n"
+		: ""
+
+	const scaffoldingDoc = readTuningDoc(
+		"server/services/contentTuning/docs/npc_dialog.md",
+	)
+
+	return `${heroFraming}You are ${params.npcName}, a ${params.npcRole} at a gym. Personality: ${JSON.stringify(params.personalityProfile)}.
+Your relationship with this gym member is at stage ${params.stage} (${getStageLabel(params.stage)}).
+Their recent stats: ${params.statsStr}
+Things you know about them from past conversations: ${params.notesStr}.
+${params.memoryStr}
+
+${scaffoldingDoc}`
+}
+
 export async function generateDialogBatch(
 	gymId: number,
 	npcKey: string,
@@ -139,7 +170,6 @@ export async function generateDialogBatch(
 	const rel = await getOrCreateRelationship(gymId, npcKey, db)
 	const personalityNotes = (rel.personalityNotes as string[]) ?? []
 	const profile = npc.personalityProfile as Record<string, unknown>
-	const stageLabel = getStageLabel(stage)
 
 	const statsStr = userStats
 		? `Streak: ${userStats.streak} days. Recent badges: ${userStats.recentBadges.join(", ") || "none"}. Latest weight: ${userStats.latestWeightKg ?? "unknown"} kg.`
@@ -157,25 +187,16 @@ export async function generateDialogBatch(
 			? `Recent milestones to naturally weave in (each only once): ${unreferencedEvents.map((e) => e.event).join(", ")}.`
 			: ""
 
-	const heroFraming =
-		npc.role === "hero"
-			? "IMPORTANT: You are a famous visiting hero/influencer, not gym staff — you're here for a rare, limited-time appearance and will move on soon. Your tone should be energetic and a little larger-than-life, and you should make the member feel lucky to catch you before you leave.\n"
-			: ""
-
-	const prompt = `${heroFraming}You are ${npc.name}, a ${npc.role} at a gym. Personality: ${JSON.stringify(profile)}.
-Your relationship with this gym member is at stage ${stage} (${stageLabel}).
-Their recent stats: ${statsStr}
-Things you know about them from past conversations: ${notesStr}.
-${memoryStr}
-
-Generate 5 realistic, casual gym conversation exchanges.
-Each must have:
-- promptText: what the gym member could say (max 20 words, natural gym small talk)
-- response: your reply as ${npc.name} (max 40 words, in character)
-- portraitVariant: "happy" | "neutral" | "determined"
-- personalityTagAdded: a short tag describing something new you learned about them (or null)
-
-Return JSON array only, no markdown.`
+	const prompt = buildNpcDialogPrompt({
+		npcName: npc.name,
+		npcRole: npc.role,
+		personalityProfile: profile,
+		stage,
+		statsStr,
+		notesStr,
+		memoryStr,
+		isHero: npc.role === "hero",
+	})
 
 	const dialogs = await aiService.generateNpcDialogs(prompt)
 
