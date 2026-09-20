@@ -1,14 +1,16 @@
 import type { CoachPersonality } from "../../../../shared/types.js"
-import { animeSenseiPrompt } from "./anime_sensei.js"
-import { broPrompt } from "./bro.js"
-import { drillSergeantPrompt } from "./drill_sergeant.js"
-import { friendlyPrompt } from "./friendly.js"
-import { roasterPrompt } from "./roaster.js"
+import { readTuningDoc } from "../../contentTuning/fs.js"
 
-export const PERSONALITIES: Record<CoachPersonality, string> = {
-	drill_sergeant: drillSergeantPrompt,
-	friendly: friendlyPrompt,
-	roaster: roasterPrompt,
-	anime_sensei: animeSenseiPrompt,
-	bro: broPrompt,
+export const PERSONALITY_KEYS: CoachPersonality[] = [
+	"drill_sergeant",
+	"friendly",
+	"roaster",
+	"anime_sensei",
+	"bro",
+]
+
+// Read from disk on every call (not cached at import time) so edits made via
+// the /content-tuning admin page take effect immediately, without a restart.
+export function getPersonalityPrompt(key: CoachPersonality): string {
+	return readTuningDoc(`server/services/ai/prompts/${key}.md`)
 }

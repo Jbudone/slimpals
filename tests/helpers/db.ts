@@ -113,6 +113,7 @@ export async function truncateAll() {
 	try {
 		await conn.query("SET FOREIGN_KEY_CHECKS = 0")
 		const tables = [
+			"content_tuning_feedback",
 			"reactions",
 			"social_posts",
 			"tournament_participants",

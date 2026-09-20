@@ -1027,6 +1027,11 @@ onMount(load)
 			<p class="admin-banner-sub">⚠ Admin / dev surface</p>
 			<h1>Admin Panel</h1>
 		</div>
+		{#if import.meta.env.DEV}
+			<button class="btn outline sm" onclick={() => page("/content-tuning")}>
+				Content Tuning
+			</button>
+		{/if}
 		<span class="dev-tag">DEV ONLY</span>
 	</div>
 

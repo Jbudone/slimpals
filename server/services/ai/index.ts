@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm"
 import type { CoachPersonality } from "../../../shared/types.js"
 import { db } from "../../db/index.js"
 import { users } from "../../db/schema.js"
-import { PERSONALITIES } from "./prompts/index.js"
+import { getPersonalityPrompt, PERSONALITY_KEYS } from "./prompts/index.js"
 
 export type FoodAnalysis = {
 	foodName: string
@@ -64,6 +64,28 @@ export interface AIService {
 		prompt: string,
 		outputPath: string,
 	): Promise<string | null>
+	generateCoachSample(
+		systemInstruction: string,
+		scenarioText: string,
+	): Promise<string>
+	refineTuningDoc(
+		params: TuningRefinementParams,
+	): Promise<TuningRefinementResult>
+}
+
+export type TuningRefinementParams = {
+	contentTypeLabel: string
+	subcategoryLabel: string
+	currentDoc: string
+	sample: string
+	tags: string[]
+	note: string | null
+	noteScope: "sample" | "global"
+}
+
+export type TuningRefinementResult = {
+	updatedDoc: string
+	changelog: string
 }
 
 export type NpcDialogEntry = {
@@ -109,7 +131,7 @@ export class GeminiAIService implements AIService {
 	async analyzeFood(imageUrl: string, userId: string): Promise<FoodAnalysis> {
 		const [user] = await db.select().from(users).where(eq(users.id, userId))
 		const personality = user?.coachPersonality ?? "friendly"
-		const systemInstruction = PERSONALITIES[personality]
+		const systemInstruction = getPersonalityPrompt(personality)
 
 		const model = this.client.getGenerativeModel({
 			model: "gemini-2.5-flash",
@@ -149,9 +171,11 @@ export class GeminiAIService implements AIService {
 		personality: string,
 	): Promise<string> {
 		const coachKey = (
-			personality in PERSONALITIES ? personality : "friendly"
+			PERSONALITY_KEYS.includes(personality as CoachPersonality)
+				? personality
+				: "friendly"
 		) as CoachPersonality
-		const systemInstruction = PERSONALITIES[coachKey]
+		const systemInstruction = getPersonalityPrompt(coachKey)
 
 		const model = this.client.getGenerativeModel({
 			model: "gemini-2.5-flash",
@@ -177,9 +201,11 @@ export class GeminiAIService implements AIService {
 		personality: string,
 	): Promise<string> {
 		const coachKey = (
-			personality in PERSONALITIES ? personality : "friendly"
+			PERSONALITY_KEYS.includes(personality as CoachPersonality)
+				? personality
+				: "friendly"
 		) as CoachPersonality
-		const systemInstruction = PERSONALITIES[coachKey]
+		const systemInstruction = getPersonalityPrompt(coachKey)
 
 		const model = this.client.getGenerativeModel({
 			model: "gemini-2.5-flash",
@@ -363,5 +389,74 @@ Generate exactly 6 tasks. Make them specific to their activity level — if they
 			console.warn("[portrait] generation skipped:", (err as Error).message)
 			return null
 		}
+	}
+
+	async generateCoachSample(
+		systemInstruction: string,
+		scenarioText: string,
+	): Promise<string> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+			systemInstruction,
+		})
+
+		const prompt = `A user just logged this meal: "${scenarioText}". Write your 1-2 sentence coaching response in your personality's voice, exactly as you would after analyzing a food photo. Plain text only, no markdown, no JSON.`
+
+		const result = await model.generateContent(prompt)
+		return result.response.text().trim()
+	}
+
+	async refineTuningDoc(
+		params: TuningRefinementParams,
+	): Promise<TuningRefinementResult> {
+		const {
+			contentTypeLabel,
+			subcategoryLabel,
+			currentDoc,
+			sample,
+			tags,
+			note,
+			noteScope,
+		} = params
+
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+
+		const scopeInstruction =
+			noteScope === "global"
+				? "This note describes a durable rule that should apply to every future sample for this subcategory going forward — fold it in as a lasting instruction."
+				: "This note is anecdotal feedback on this one sample — generalize it into the doc only if it looks like a systemic issue, not a one-off."
+
+		const prompt = `You refine a content-generation instruction document based on human feedback on a sample it produced. Preserve the document's existing intent and voice; integrate the new feedback precisely; consolidate and prune rather than endlessly appending — keep the document tight and non-redundant even after many rounds of edits. Don't contradict earlier accepted guidance unless the new feedback clearly overrides it.
+
+Content type: ${contentTypeLabel} — ${subcategoryLabel}
+
+Current tuning document:
+"""
+${currentDoc}
+"""
+
+The sample this document produced:
+"""
+${sample}
+"""
+
+Feedback tags selected: ${tags.length > 0 ? tags.join(", ") : "(none)"}
+Free-text note: ${note ?? "(none)"}
+${scopeInstruction}
+
+Respond with a JSON object only (no markdown, no explanation):
+{
+  "updatedDoc": "the full revised tuning document text",
+  "changelog": "one short sentence describing what changed and why"
+}`
+
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as TuningRefinementResult
 	}
 }

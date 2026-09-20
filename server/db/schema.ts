@@ -412,6 +412,26 @@ export const sprints = mysqlTable("sprints", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
+export const contentTuningFeedback = mysqlTable("content_tuning_feedback", {
+	id: int("id").autoincrement().primaryKey(),
+	contentType: varchar("content_type", { length: 64 }).notNull(),
+	subcategory: varchar("subcategory", { length: 64 }).notNull(),
+	contextParams: json("context_params").notNull(),
+	generatedSample: text("generated_sample").notNull(),
+	tags: json("tags").notNull(),
+	note: text("note"),
+	noteScope: mysqlEnum("note_scope", ["sample", "global"])
+		.notNull()
+		.default("sample"),
+	tuningDocBefore: text("tuning_doc_before").notNull(),
+	tuningDocAfter: text("tuning_doc_after").notNull(),
+	changelog: text("changelog"),
+	createdBy: varchar("created_by", { length: 36 })
+		.notNull()
+		.references(() => users.id),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
 export const stepRecords = mysqlTable("step_records", {
 	id: int("id").autoincrement().primaryKey(),
 	userId: varchar("user_id", { length: 36 })

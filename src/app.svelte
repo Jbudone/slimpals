@@ -102,6 +102,10 @@ async function handleStopImpersonating() {
 				{#await import("./pages/UiKit.svelte") then { default: UiKit }}
 					<UiKit />
 				{/await}
+			{:else if import.meta.env.DEV && currentPath === "/content-tuning"}
+				{#await import("./pages/ContentTuning.svelte") then { default: ContentTuning }}
+					<ContentTuning />
+				{/await}
 			{/if}
 			<Toast />
 		</main>

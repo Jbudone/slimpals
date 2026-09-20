@@ -3,3 +3,7 @@ dist/
 .env
 uploads/
 *.md
+# Prompt tuning docs are read from disk at runtime (see
+# server/services/contentTuning/fs.ts) — must survive the *.md exclusion
+# above so the builder stage's `COPY . .` actually includes them.
+!server/services/ai/prompts/*.md
