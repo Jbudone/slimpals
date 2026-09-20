@@ -61,6 +61,7 @@ export interface AIService {
 	): Promise<SprintResult>
 	generateNpcDialogs(prompt: string): Promise<NpcDialogEntry[]>
 	generateGymEvent(prompt: string): Promise<GymEventData>
+	generateGymLayout(prompt: string): Promise<Record<string, GridPosition>>
 	generateNpcPortrait(
 		prompt: string,
 		outputPath: string,
@@ -95,6 +96,8 @@ export type NpcDialogEntry = {
 	portraitVariant: "happy" | "neutral" | "determined"
 	personalityTagAdded: string | null
 }
+
+export type GridPosition = { x: number; y: number }
 
 export type GymEventData = {
 	type: "competition" | "class" | "delivery" | "special_guest" | "maintenance"
@@ -331,6 +334,21 @@ ${activityLines.join("\n")}`
 		if (!match)
 			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as GymEventData
+	}
+
+	async generateGymLayout(
+		prompt: string,
+	): Promise<Record<string, GridPosition>> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as Record<string, GridPosition>
 	}
 
 	async generateNpcPortrait(

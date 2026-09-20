@@ -1,6 +1,7 @@
 import type { AIService } from "../ai/index.js"
 import { coachPersonalityType } from "./coachPersonality.js"
 import { gymEventsType } from "./gymEvents.js"
+import { gymLayoutType } from "./gymLayout.js"
 import { monthlyChallengeType } from "./monthlyChallenge.js"
 import { npcDialogType } from "./npcDialog.js"
 import { npcPortraitsType } from "./npcPortraits.js"
@@ -26,9 +27,10 @@ export type ContentTuningSubcategory = {
 export type ContentTuningType = {
 	key: string
 	label: string
-	// Default "text" — an image-based type (e.g. NPC portraits, a future
-	// tier) can set "image" so the frontend renders an <img> instead.
-	sampleKind?: "text" | "image"
+	// Default "text". "image" renders an <img> (e.g. NPC portraits).
+	// "layout" renders a JSON.parse'd {layout, items} spatial preview as
+	// inline SVG (e.g. gym layout).
+	sampleKind?: "text" | "image" | "layout"
 	subcategories: ContentTuningSubcategory[]
 	contextParamFields: ContextParamField[]
 	feedbackTags: string[]
@@ -49,6 +51,7 @@ export const CONTENT_TUNING_TYPES: ContentTuningType[] = [
 	npcDialogType,
 	gymEventsType,
 	npcPortraitsType,
+	gymLayoutType,
 ]
 
 export function getContentTuningType(

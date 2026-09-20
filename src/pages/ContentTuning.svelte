@@ -18,10 +18,42 @@ type ContextParamField =
 type TypeMeta = {
 	key: string
 	label: string
-	sampleKind: "text" | "image"
+	sampleKind: "text" | "image" | "layout"
 	subcategories: { key: string; label: string }[]
 	contextParamFields: ContextParamField[]
 	feedbackTags: string[]
+}
+
+type LayoutSample = {
+	layout: Record<string, { x: number; y: number }>
+	items: { key: string; name: string; category: string }[]
+}
+
+const CATEGORY_COLORS = [
+	"#e07a5f",
+	"#81b29a",
+	"#f2cc8f",
+	"#3d5a80",
+	"#9d8189",
+	"#e9c46a",
+	"#2a9d8f",
+	"#bc6c25",
+	"#6d597a",
+	"#457b9d",
+]
+
+function categoryColor(category: string, allCategories: string[]): string {
+	const idx = allCategories.indexOf(category)
+	return CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
+}
+
+function parseLayoutSample(raw: string | null): LayoutSample | null {
+	if (!raw) return null
+	try {
+		return JSON.parse(raw) as LayoutSample
+	} catch {
+		return null
+	}
 }
 
 type HistoryRow = {
@@ -56,6 +88,14 @@ let submitting = $state(false)
 
 let activeType = $derived.by(
 	() => types.find((t) => t.key === selectedType) ?? null,
+)
+
+let layoutSample = $derived.by(() =>
+	activeType?.sampleKind === "layout" ? parseLayoutSample(sample) : null,
+)
+
+let layoutCategories = $derived.by(() =>
+	layoutSample ? [...new Set(layoutSample.items.map((i) => i.category))] : [],
 )
 
 const NOTE_SCOPE_OPTIONS = [
@@ -286,6 +326,30 @@ onMount(loadTypes)
 					<h2 class="section-title">Sample</h2>
 					{#if sample && activeType?.sampleKind === "image"}
 						<img class="sample-image" src={sample} alt="Generated preview" />
+					{:else if sample && activeType?.sampleKind === "layout" && layoutSample}
+						{@const scale = 24}
+						{@const width = 20 * scale}
+						{@const height = 14 * scale}
+						<svg class="layout-svg" viewBox="0 0 {width} {height}" role="img" aria-label="Gym layout preview">
+							<rect width={width} height={height} class="layout-bg" />
+							{#each layoutSample.items as item (item.key)}
+								{@const pos = layoutSample.layout[item.key]}
+								{#if pos}
+									<g transform="translate({pos.x * scale}, {pos.y * scale})">
+										<circle r="9" fill={categoryColor(item.category, layoutCategories)} />
+										<text y="18" text-anchor="middle" class="layout-label">{item.name}</text>
+									</g>
+								{/if}
+							{/each}
+						</svg>
+						<div class="layout-legend">
+							{#each layoutCategories as cat (cat)}
+								<span class="legend-chip">
+									<span class="legend-dot" style="background: {categoryColor(cat, layoutCategories)}"></span>
+									{cat}
+								</span>
+							{/each}
+						</div>
 					{:else if sample}
 						<p class="sample-text">{sample}</p>
 					{:else}
@@ -494,6 +558,43 @@ onMount(loadTypes)
 	border-radius: var(--radius-sm);
 	border: 1px solid var(--color-border);
 	background: var(--color-surface-2);
+}
+
+.layout-svg {
+	width: 100%;
+	max-width: 560px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-border);
+}
+
+.layout-bg { fill: var(--color-surface-2); }
+
+.layout-label {
+	font-size: 7px;
+	fill: var(--color-text);
+	font-family: var(--font-sans);
+}
+
+.layout-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
+	margin-top: var(--space-2);
+}
+
+.legend-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+
+.legend-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: var(--radius-full);
+	display: inline-block;
 }
 
 .changelog-text {
