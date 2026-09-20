@@ -1,6 +1,14 @@
 import { eq } from "drizzle-orm"
 import request from "supertest"
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest"
 import { gymNpcs, invites, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
@@ -137,7 +145,9 @@ describe("GET /api/admin/users/:id/gym/npcs/:npcKey/dialogs", () => {
 	it("returns 404 for an unknown npc key", async () => {
 		const { adminCookie, memberId } = await adminAndMember()
 		const res = await request(app)
-			.get(`/api/admin/users/${memberId}/gym/npcs/does_not_exist/dialogs?stage=0`)
+			.get(
+				`/api/admin/users/${memberId}/gym/npcs/does_not_exist/dialogs?stage=0`,
+			)
 			.set("Cookie", adminCookie)
 		expect(res.status).toBe(404)
 	})

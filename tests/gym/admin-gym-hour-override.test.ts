@@ -82,9 +82,7 @@ afterAll(async () => {
 
 describe("GET /api/admin/users/:id/gym/hour-override", () => {
 	it("returns 401 without auth", async () => {
-		const res = await request(app).get(
-			"/api/admin/users/x/gym/hour-override",
-		)
+		const res = await request(app).get("/api/admin/users/x/gym/hour-override")
 		expect(res.status).toBe(401)
 	})
 
