@@ -15,7 +15,8 @@ services:
       retries: 10
 
   app:
-    build: .
+    image: ghcr.io/jbudone/slimpals:${IMAGE_TAG:-latest}
+    pull_policy: always
     environment:
       DATABASE_URL: mysql://${MYSQL_USER:-slimpals}:${MYSQL_PASSWORD:-slimpals}@mysql:3306/${MYSQL_DATABASE:-slimpals}
       NODE_ENV: production
