@@ -44,8 +44,8 @@ export function initRouter() {
 	if (import.meta.env.DEV) {
 		page("/gym-sprites", go("/gym-sprites"))
 		page("/ui-kit", go("/ui-kit"))
-		page("/content-tuning", go("/content-tuning"))
 	}
+	page("/content-tuning", go("/content-tuning"))
 	page("/", go("/"))
 	page()
 }

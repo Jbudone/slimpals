@@ -262,6 +262,15 @@ onMount(loadTypes)
 		<span class="dev-tag">DEV ONLY</span>
 	</div>
 
+	{#if import.meta.env.PROD}
+		<div class="ct-prod-warning">
+			⚠ Edits made here are written to this container's local filesystem, not
+			to git — they will be lost on the next deploy. Do real tuning iteration
+			in Codespaces, commit the doc changes, then redeploy. Use this prod
+			view for reviewing/testing generated output only.
+		</div>
+	{/if}
+
 	{#if loading}
 		<p class="muted">Loading…</p>
 	{:else if error}
@@ -452,6 +461,15 @@ onMount(loadTypes)
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--space-3);
+}
+
+.ct-prod-warning {
+	background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+	border: 1px solid var(--color-danger);
+	color: var(--color-danger);
+	border-radius: var(--radius-sm);
+	padding: 0.625rem 0.875rem;
+	font-size: var(--font-size-sm);
 }
 
 .ct-banner-sub {
