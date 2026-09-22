@@ -13,9 +13,24 @@ type Mission = {
 	cadence: MissionCadence
 	difficulty: MissionDifficulty
 	createdAt: string
+	completedThisPeriod: boolean
 }
 
 type MissionsResponse = { daily: Mission[]; weekly: Mission[] }
+
+type GymProgress = {
+	xp: number
+	level: number
+	xpToNextLevel: number
+	xpIntoLevel: number
+	xpForLevel: number
+}
+
+let {
+	onXpChange,
+}: {
+	onXpChange?: (gym: GymProgress) => void
+} = $props()
 
 const DIFFICULTY_LABEL: Record<MissionDifficulty, string> = {
 	easy: "Easy",
@@ -27,6 +42,7 @@ let loading = $state(true)
 let loadError = $state<string | null>(null)
 let daily = $state<Mission[]>([])
 let weekly = $state<Mission[]>([])
+let togglingId = $state<number | null>(null)
 
 let formOpen = $state(false)
 let editingId = $state<number | null>(null)
@@ -113,6 +129,22 @@ async function archiveMission(id: number) {
 	}
 }
 
+async function toggleMission(mission: Mission) {
+	togglingId = mission.id
+	try {
+		const path = mission.completedThisPeriod
+			? `/missions/${mission.id}/uncomplete`
+			: `/missions/${mission.id}/complete`
+		const res = await api.post<{ gym: GymProgress }>(path)
+		onXpChange?.(res.gym)
+		await loadMissions()
+	} catch {
+		// swallow — checkbox simply won't flip, user can retry
+	} finally {
+		togglingId = null
+	}
+}
+
 onMount(loadMissions)
 </script>
 
@@ -140,8 +172,18 @@ onMount(loadMissions)
 				<ul class="mission-list">
 					{#each daily as mission (mission.id)}
 						<li class="mission-item">
+							<input
+								type="checkbox"
+								class="mission-checkbox"
+								checked={mission.completedThisPeriod}
+								disabled={togglingId === mission.id}
+								onchange={() => toggleMission(mission)}
+								aria-label={`Mark "${mission.title}" as ${mission.completedThisPeriod ? "not done" : "done"}`}
+							/>
 							<div class="mission-item-body">
-								<span class="mission-title">{mission.title}</span>
+								<span class="mission-title" class:mission-title-done={mission.completedThisPeriod}>
+									{mission.title}
+								</span>
 								{#if mission.description}
 									<span class="mission-description">{mission.description}</span>
 								{/if}
@@ -171,8 +213,18 @@ onMount(loadMissions)
 				<ul class="mission-list">
 					{#each weekly as mission (mission.id)}
 						<li class="mission-item">
+							<input
+								type="checkbox"
+								class="mission-checkbox"
+								checked={mission.completedThisPeriod}
+								disabled={togglingId === mission.id}
+								onchange={() => toggleMission(mission)}
+								aria-label={`Mark "${mission.title}" as ${mission.completedThisPeriod ? "not done" : "done"}`}
+							/>
 							<div class="mission-item-body">
-								<span class="mission-title">{mission.title}</span>
+								<span class="mission-title" class:mission-title-done={mission.completedThisPeriod}>
+									{mission.title}
+								</span>
 								{#if mission.description}
 									<span class="mission-description">{mission.description}</span>
 								{/if}
@@ -317,6 +369,19 @@ onMount(loadMissions)
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-sm);
 	background: var(--color-surface-2);
+}
+
+.mission-checkbox {
+	flex-shrink: 0;
+	width: 1.25rem;
+	height: 1.25rem;
+	accent-color: var(--color-accent);
+	cursor: pointer;
+}
+
+.mission-title-done {
+	text-decoration: line-through;
+	color: var(--color-text-muted);
 }
 
 .mission-item-body {

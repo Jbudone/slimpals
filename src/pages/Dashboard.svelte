@@ -259,7 +259,11 @@ onMount(() => {
 		</Card>
 	{/if}
 
-	<MissionsCard />
+	<MissionsCard
+		onXpChange={(gym) => {
+			if (gymSummary) gymSummary = { ...gymSummary, ...gym }
+		}}
+	/>
 
 	{#if inspiration}
 		<section class="card inspiration-card">

@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { invites, users } from "../../server/db/schema.js"
+import { invites, missionCompletions, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
+import { currentPeriodStart } from "../../server/services/missions/index.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -311,5 +313,191 @@ describe("POST /api/missions/:id/archive", () => {
 			.post(`/api/missions/${created.body.id}/archive`)
 			.set("Cookie", cookiesB)
 		expect(res.status).toBe(404)
+	})
+})
+
+describe("POST /api/missions/:id/complete", () => {
+	it("awards the correct XP and marks the mission completed this period", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "medium" })
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+
+		expect(res.status).toBe(200)
+		expect(res.body.completed).toBe(true)
+		expect(res.body.xpAwarded).toBe(10)
+		expect(res.body.gym.xp).toBe(10)
+
+		const listRes = await request(app)
+			.get("/api/missions")
+			.set("Cookie", cookies)
+		expect(listRes.body.daily[0].completedThisPeriod).toBe(true)
+	})
+
+	it("awards the correct XP for a weekly hard mission", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Deep clean", cadence: "weekly", difficulty: "hard" })
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+
+		expect(res.body.xpAwarded).toBe(80)
+		expect(res.body.gym.xp).toBe(80)
+	})
+
+	it("rejects completing a mission already completed this period", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "easy" })
+
+		await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+		const second = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+
+		expect(second.status).toBe(400)
+	})
+
+	it("returns 404 for an archived mission", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "easy" })
+		await request(app)
+			.post(`/api/missions/${created.body.id}/archive`)
+			.set("Cookie", cookies)
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+		expect(res.status).toBe(404)
+	})
+
+	it("returns 404 for a mission owned by another user", async () => {
+		const cookiesA = await registerAndLogin("a@slimpals.test", "User A")
+		const cookiesB = await registerAndLogin(
+			"b@slimpals.test",
+			"User B",
+			"VALID-INVITE-B",
+		)
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookiesA)
+			.send({ title: "A's mission", cadence: "daily", difficulty: "easy" })
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookiesB)
+		expect(res.status).toBe(404)
+	})
+
+	it("allows completing again after the daily period has reset", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "easy" })
+
+		const db = await getTestDb()
+		const yesterday = new Date(
+			currentPeriodStart("daily").getTime() - 86_400_000,
+		)
+		await db.insert(missionCompletions).values({
+			missionId: created.body.id,
+			userId: (
+				await db
+					.select()
+					.from(users)
+					.where(eq(users.email, "user@slimpals.test"))
+			)[0].id,
+			periodStart: yesterday,
+			xpAwarded: 5,
+		})
+
+		const listRes = await request(app)
+			.get("/api/missions")
+			.set("Cookie", cookies)
+		expect(listRes.body.daily[0].completedThisPeriod).toBe(false)
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+		expect(res.status).toBe(200)
+	})
+})
+
+describe("POST /api/missions/:id/uncomplete", () => {
+	it("retracts the exact XP that was awarded", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "hard" })
+
+		await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/uncomplete`)
+			.set("Cookie", cookies)
+
+		expect(res.status).toBe(200)
+		expect(res.body.completed).toBe(false)
+		expect(res.body.xpRetracted).toBe(20)
+		expect(res.body.gym.xp).toBe(0)
+
+		const listRes = await request(app)
+			.get("/api/missions")
+			.set("Cookie", cookies)
+		expect(listRes.body.daily[0].completedThisPeriod).toBe(false)
+	})
+
+	it("rejects un-completing a mission not completed this period", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "easy" })
+
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/uncomplete`)
+			.set("Cookie", cookies)
+		expect(res.status).toBe(400)
+	})
+
+	it("can be completed again after un-completing, within the same period", async () => {
+		const cookies = await registerAndLogin()
+		const created = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookies)
+			.send({ title: "Read", cadence: "daily", difficulty: "easy" })
+
+		await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+		await request(app)
+			.post(`/api/missions/${created.body.id}/uncomplete`)
+			.set("Cookie", cookies)
+		const res = await request(app)
+			.post(`/api/missions/${created.body.id}/complete`)
+			.set("Cookie", cookies)
+
+		expect(res.status).toBe(200)
+		expect(res.body.gym.xp).toBe(5)
 	})
 })

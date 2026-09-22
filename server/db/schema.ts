@@ -425,6 +425,19 @@ export const missions = mysqlTable("missions", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
+export const missionCompletions = mysqlTable("mission_completions", {
+	id: int("id").autoincrement().primaryKey(),
+	missionId: int("mission_id")
+		.notNull()
+		.references(() => missions.id),
+	userId: varchar("user_id", { length: 36 })
+		.notNull()
+		.references(() => users.id),
+	periodStart: timestamp("period_start").notNull(),
+	completedAt: timestamp("completed_at").notNull().defaultNow(),
+	xpAwarded: int("xp_awarded").notNull(),
+})
+
 export const contentTuningFeedback = mysqlTable("content_tuning_feedback", {
 	id: int("id").autoincrement().primaryKey(),
 	contentType: varchar("content_type", { length: 64 }).notNull(),
