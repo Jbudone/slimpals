@@ -202,6 +202,42 @@ describe("GET /api/gym", () => {
 	})
 })
 
+describe("GET /api/gym/daily-summary", () => {
+	it("includes level/xp/xpToNextLevel matching GET /api/gym", async () => {
+		const cookies = await registerAndLogin()
+		const db = await getTestDb()
+		const [user] = await db
+			.select()
+			.from(users)
+			.where(eq(users.email, "user@slimpals.test"))
+		await awardGymXp(user.id, 60, "test", db)
+
+		const gymRes = await request(app).get("/api/gym").set("Cookie", cookies)
+		const summaryRes = await request(app)
+			.get("/api/gym/daily-summary")
+			.set("Cookie", cookies)
+
+		expect(summaryRes.status).toBe(200)
+		expect(summaryRes.body.level).toBe(gymRes.body.gym.level)
+		expect(summaryRes.body.xp).toBe(gymRes.body.gym.xp)
+		expect(summaryRes.body.xpToNextLevel).toBe(gymRes.body.xpToNextLevel)
+	})
+
+	it("returns level 0 / xp 0 and a sane progress span for a fresh account", async () => {
+		const cookies = await registerAndLogin()
+		const res = await request(app)
+			.get("/api/gym/daily-summary")
+			.set("Cookie", cookies)
+
+		expect(res.status).toBe(200)
+		expect(res.body.level).toBe(0)
+		expect(res.body.xp).toBe(0)
+		expect(res.body.xpToNextLevel).toBe(50)
+		expect(res.body.xpIntoLevel).toBe(0)
+		expect(res.body.xpForLevel).toBe(50)
+	})
+})
+
 describe("GET /api/gym/catalog", () => {
 	it("returns 37 upgrades", async () => {
 		const cookies = await registerAndLogin()

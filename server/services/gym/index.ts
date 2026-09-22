@@ -42,6 +42,32 @@ export function computeLevel(xp: number): number {
 	return Math.floor(Math.sqrt(xp / 50))
 }
 
+export type LevelProgress = {
+	level: number
+	nextLevelXp: number
+	xpToNextLevel: number
+	/** XP earned since the start of the current level — the bar's "value". */
+	xpIntoLevel: number
+	/** Total XP span of the current level — the bar's "max". */
+	xpForLevel: number
+}
+
+/** Shared by the /gym upgrades payload and the Dashboard's level/XP bar so
+ * the level-curve formula (inverse of computeLevel) lives in exactly one
+ * place. */
+export function getLevelProgress(xp: number): LevelProgress {
+	const level = computeLevel(xp)
+	const levelStartXp = level * level * 50
+	const nextLevelXp = (level + 1) * (level + 1) * 50
+	return {
+		level,
+		nextLevelXp,
+		xpToNextLevel: nextLevelXp - xp,
+		xpIntoLevel: xp - levelStartXp,
+		xpForLevel: nextLevelXp - levelStartXp,
+	}
+}
+
 export type GymEra = {
 	id: string
 	name: string

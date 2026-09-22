@@ -33,8 +33,8 @@ import {
 } from "../services/gym/dialog.js"
 import {
 	claimUpgrade,
-	computeLevel,
 	effectiveGymTime,
+	getLevelProgress,
 	getOrCreateGym,
 } from "../services/gym/index.js"
 import {
@@ -206,9 +206,7 @@ async function buildUpgradesPayload(gymId: number, gymXp: number) {
 			requiredXp: c.requiredXp,
 		}))
 
-	const currentLevel = computeLevel(gymXp)
-	const nextLevelXp = (currentLevel + 1) * (currentLevel + 1) * 50
-	const xpToNextLevel = nextLevelXp - gymXp
+	const { xpToNextLevel } = getLevelProgress(gymXp)
 
 	return { unlocked, pending, locked, xpToNextLevel }
 }
@@ -708,12 +706,21 @@ export function createGymRouter(aiService: AIService) {
 			.filter((c) => pendingKeys.includes(c.key))
 			.map((c) => ({ key: c.key, name: c.name, category: c.category }))
 
+		const { level, xpToNextLevel, xpIntoLevel, xpForLevel } = getLevelProgress(
+			gym.xp,
+		)
+
 		res.json({
 			todayEvent: gym.todayEventData ?? null,
 			npcStatusUpdates,
 			streakBonus,
 			unclaimedXp: 0,
 			pendingUpgrades,
+			level,
+			xp: gym.xp,
+			xpToNextLevel,
+			xpIntoLevel,
+			xpForLevel,
 		})
 	})
 

@@ -24,6 +24,11 @@ type GymDailySummary = {
 	todayEvent: { title: string; description: string } | null
 	streakBonus: { active: boolean; multiplier: number; currentStreak: number }
 	pendingUpgrades: Array<{ key: string; name: string; category: string }>
+	level: number
+	xp: number
+	xpToNextLevel: number
+	xpIntoLevel: number
+	xpForLevel: number
 }
 
 type WeightEntry = { id: number; weightKg: number; recordedAt: string }
@@ -241,6 +246,18 @@ onMount(() => {
 <div class="dashboard">
 	<h1>Dashboard</h1>
 
+	{#if gymSummary}
+		<Card padding="md">
+			<div class="level-bar-header">
+				<span class="level-bar-label">Level {gymSummary.level}</span>
+				<span class="level-bar-xp">
+					{gymSummary.xpIntoLevel} / {gymSummary.xpForLevel} XP
+				</span>
+			</div>
+			<ProgressBar value={gymSummary.xpIntoLevel} max={gymSummary.xpForLevel} />
+		</Card>
+	{/if}
+
 	{#if inspiration}
 		<section class="card inspiration-card">
 			<div class="inspiration-header">
@@ -434,6 +451,26 @@ h1 {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
+}
+
+.level-bar-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-3);
+	margin-bottom: 0.5rem;
+}
+
+.level-bar-label {
+	font-family: var(--font-display);
+	font-weight: var(--font-weight-semibold);
+	font-size: var(--font-size-lg);
+	color: var(--color-text);
+}
+
+.level-bar-xp {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-muted);
 }
 
 .streak-body {
