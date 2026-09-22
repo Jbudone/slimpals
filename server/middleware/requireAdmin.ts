@@ -18,10 +18,6 @@ export async function requireAdmin(
 	res: Response,
 	next: NextFunction,
 ) {
-	if (process.env.NODE_ENV === "production") {
-		res.status(403).json({ error: "Admin panel not available in production" })
-		return
-	}
 	const userId = (req as AuthRequest).user.id
 	if (await isAdminUser(userId)) {
 		next()

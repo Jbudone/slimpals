@@ -1030,7 +1030,7 @@ onMount(load)
 		<button class="btn outline sm" onclick={() => page("/content-tuning")}>
 			Content Tuning
 		</button>
-		<span class="dev-tag">DEV ONLY</span>
+		<span class="dev-tag">ADMIN ONLY</span>
 	</div>
 
 	{#if loading}

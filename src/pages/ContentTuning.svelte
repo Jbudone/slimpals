@@ -259,7 +259,7 @@ onMount(loadTypes)
 			<p class="ct-banner-sub">⚠ Admin / dev surface</p>
 			<h1>Content Tuning</h1>
 		</div>
-		<span class="dev-tag">DEV ONLY</span>
+		<span class="dev-tag">ADMIN ONLY</span>
 	</div>
 
 	{#if import.meta.env.PROD}
