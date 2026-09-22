@@ -23,6 +23,7 @@ import { createGymRouter } from "./routes/gym.js"
 import { healthRouter } from "./routes/health.js"
 import { createInspirationRouter } from "./routes/inspiration.js"
 import { invitesRouter } from "./routes/invites.js"
+import { missionsRouter } from "./routes/missions.js"
 import { validateInvite } from "./routes/register.js"
 import { socialRouter } from "./routes/social.js"
 import { createSprintsRouter } from "./routes/sprints.js"
@@ -125,6 +126,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", checkinsRouter)
 	app.use("/api", socialRouter)
 	app.use("/api", invitesRouter)
+	app.use("/api", missionsRouter)
 	app.use("/api", badgesRouter)
 	app.use("/api", createGymRouter(aiService))
 	app.use("/api", createTournamentsRouter(aiService))

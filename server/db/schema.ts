@@ -412,6 +412,19 @@ export const sprints = mysqlTable("sprints", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
+export const missions = mysqlTable("missions", {
+	id: int("id").autoincrement().primaryKey(),
+	userId: varchar("user_id", { length: 36 })
+		.notNull()
+		.references(() => users.id),
+	title: varchar("title", { length: 255 }).notNull(),
+	description: text("description"),
+	cadence: mysqlEnum("cadence", ["daily", "weekly"]).notNull(),
+	difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull(),
+	archivedAt: timestamp("archived_at"),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
 export const contentTuningFeedback = mysqlTable("content_tuning_feedback", {
 	id: int("id").autoincrement().primaryKey(),
 	contentType: varchar("content_type", { length: 64 }).notNull(),

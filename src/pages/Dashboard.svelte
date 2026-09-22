@@ -3,6 +3,7 @@ import { Dumbbell, Trophy } from "@lucide/svelte"
 import { onMount } from "svelte"
 import type { CoachPersonality } from "../../shared/types.js"
 import GymActivityCard from "../components/GymActivityCard.svelte"
+import MissionsCard from "../components/MissionsCard.svelte"
 import Avatar from "../components/ui/Avatar.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
@@ -257,6 +258,8 @@ onMount(() => {
 			<ProgressBar value={gymSummary.xpIntoLevel} max={gymSummary.xpForLevel} />
 		</Card>
 	{/if}
+
+	<MissionsCard />
 
 	{#if inspiration}
 		<section class="card inspiration-card">
