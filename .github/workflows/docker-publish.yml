@@ -59,5 +59,11 @@ jobs:
       # No-op until PORTAINER_WEBHOOK_URL is added as a repo secret — see
       # the stack/container's Webhooks section in the Portainer UI.
       - name: Notify Portainer
-        if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
-        run: curl -sf -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
+        env:
+          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            curl -sf -X POST "$WEBHOOK_URL"
+          else
+            echo "PORTAINER_WEBHOOK_URL not set, skipping redeploy notification"
+          fi
