@@ -7,7 +7,11 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
 ENV NODE_ENV=production
+ENV GIT_SHA=${GIT_SHA}
+ENV BUILD_TIME=${BUILD_TIME}
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist

@@ -31,6 +31,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - id: buildtime
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -46,5 +49,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.buildtime.outputs.time }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Triggers Portainer to pull-and-redeploy the app stack immediately.
+      # No-op until PORTAINER_WEBHOOK_URL is added as a repo secret — see
+      # the stack/container's Webhooks section in the Portainer UI.
+      - name: Notify Portainer
+        if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
+        run: curl -sf -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"

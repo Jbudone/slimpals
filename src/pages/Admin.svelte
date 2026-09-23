@@ -148,9 +148,12 @@ type AdminSocialPost = {
 	reactionCount: number
 }
 
+type VersionInfo = { gitSha: string; buildTime: string }
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
+let versionInfo = $state<VersionInfo | null>(null)
 let loadError = $state<string | null>(null)
 
 let tournaments = $state<AdminTournamentSummary[]>([])
@@ -1019,6 +1022,13 @@ async function runSeed(path: string, body: object, msg: string) {
 }
 
 onMount(load)
+onMount(async () => {
+	try {
+		versionInfo = await api.get<VersionInfo>("/health")
+	} catch {
+		// non-critical — banner just omits the version line
+	}
+})
 </script>
 
 <div class="admin-wrap">
@@ -1026,6 +1036,14 @@ onMount(load)
 		<div class="admin-banner-text">
 			<p class="admin-banner-sub">⚠ Admin / dev surface</p>
 			<h1>Admin Panel</h1>
+			{#if versionInfo}
+				<p class="admin-version">
+					{versionInfo.gitSha === "dev" ? "dev build" : `#${versionInfo.gitSha.slice(0, 7)}`}
+					{#if versionInfo.buildTime !== "dev"}
+						· deployed {new Date(versionInfo.buildTime).toLocaleString()}
+					{/if}
+				</p>
+			{/if}
 		</div>
 		<button class="btn outline sm" onclick={() => page("/content-tuning")}>
 			Content Tuning
@@ -1945,6 +1963,13 @@ onMount(load)
 	color: var(--color-warning);
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
+}
+
+.admin-version {
+	margin: 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+	font-family: monospace;
 }
 
 .admin-banner h1 {
