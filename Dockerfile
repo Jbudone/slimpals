@@ -22,5 +22,7 @@ COPY --from=builder /app/server/db/migrations ./server/db/migrations
 COPY --from=builder /app/server/services/ai/prompts ./server/services/ai/prompts
 COPY --from=builder /app/server/services/contentTuning/docs ./server/services/contentTuning/docs
 COPY drizzle.config.ts ./
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 EXPOSE 3000
-CMD ["node", "dist/server/server/index.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -14,16 +14,6 @@ services:
       timeout: 5s
       retries: 10
 
-  migrate:
-    image: ghcr.io/jbudone/slimpals:${IMAGE_TAG:-latest}
-    pull_policy: always
-    command: ["npm", "run", "db:migrate"]
-    environment:
-      DATABASE_URL: mysql://${MYSQL_USER:-slimpals}:${MYSQL_PASSWORD:-slimpals}@mysql:3306/${MYSQL_DATABASE:-slimpals}
-    depends_on:
-      mysql:
-        condition: service_healthy
-
   app:
     image: ghcr.io/jbudone/slimpals:${IMAGE_TAG:-latest}
     pull_policy: always
@@ -44,8 +34,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
 
   nginx:
     image: nginx:alpine
