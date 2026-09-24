@@ -55,15 +55,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Triggers Portainer to pull-and-redeploy the app stack immediately.
-      # No-op until PORTAINER_WEBHOOK_URL is added as a repo secret — see
-      # the stack/container's Webhooks section in the Portainer UI.
-      - name: Notify Portainer
+      # Triggers Watchtower to pull-and-redeploy the app immediately instead
+      # of waiting for its poll interval. No-op until both WATCHTOWER_URL and
+      # WATCHTOWER_HTTP_API_TOKEN are added as repo secrets.
+      - name: Notify Watchtower
         env:
-          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+          WATCHTOWER_URL: ${{ secrets.WATCHTOWER_URL }}
+          WATCHTOWER_TOKEN: ${{ secrets.WATCHTOWER_HTTP_API_TOKEN }}
         run: |
-          if [ -n "$WEBHOOK_URL" ]; then
-            curl -sf -X POST "$WEBHOOK_URL"
+          if [ -n "$WATCHTOWER_URL" ] && [ -n "$WATCHTOWER_TOKEN" ]; then
+            curl -sf -H "Authorization: Bearer $WATCHTOWER_TOKEN" "$WATCHTOWER_URL/v1/update"
           else
-            echo "PORTAINER_WEBHOOK_URL not set, skipping redeploy notification"
+            echo "WATCHTOWER_URL/WATCHTOWER_HTTP_API_TOKEN not set, skipping redeploy trigger"
           fi
