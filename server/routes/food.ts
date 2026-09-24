@@ -67,13 +67,13 @@ export function createFoodRouter(aiService: AIService) {
 
 		const photoUrl = await storage.upload(req.file)
 
-		// Build absolute URL for Gemini to fetch the image
-		const baseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
-		const absoluteUrl = `${baseUrl}${photoUrl}`
-
 		let analysis: Awaited<ReturnType<typeof aiService.analyzeFood>>
 		try {
-			analysis = await aiService.analyzeFood(absoluteUrl, userId)
+			analysis = await aiService.analyzeFood(
+				req.file.buffer,
+				req.file.mimetype,
+				userId,
+			)
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : ""
 			const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota")

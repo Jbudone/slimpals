@@ -39,7 +39,11 @@ export type GeneratedChallenge = {
 }
 
 export interface AIService {
-	analyzeFood(imageUrl: string, userId: string): Promise<FoodAnalysis>
+	analyzeFood(
+		imageBuffer: Buffer,
+		mimeType: string,
+		userId: string,
+	): Promise<FoodAnalysis>
 	generateVictoryMessage(
 		userName: string,
 		tournamentName: string,
@@ -132,7 +136,11 @@ export class GeminiAIService implements AIService {
 		this.client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "")
 	}
 
-	async analyzeFood(imageUrl: string, userId: string): Promise<FoodAnalysis> {
+	async analyzeFood(
+		imageBuffer: Buffer,
+		mimeType: string,
+		userId: string,
+	): Promise<FoodAnalysis> {
 		const [user] = await db.select().from(users).where(eq(users.id, userId))
 		const personality = user?.coachPersonality ?? "friendly"
 		const systemInstruction = getPersonalityPrompt(personality)
@@ -142,10 +150,7 @@ export class GeminiAIService implements AIService {
 			systemInstruction,
 		})
 
-		const imgRes = await fetch(imageUrl)
-		const imgBuffer = await imgRes.arrayBuffer()
-		const base64 = Buffer.from(imgBuffer).toString("base64")
-		const mimeType = imgRes.headers.get("content-type") ?? "image/jpeg"
+		const base64 = imageBuffer.toString("base64")
 
 		const prompt = `Analyze this meal photo and respond with a JSON object only (no markdown, no explanation):
 {
