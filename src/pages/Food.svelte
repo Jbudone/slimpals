@@ -35,6 +35,7 @@ let analyzing = $state(false)
 let analyzeError = $state<string | null>(null)
 let lastResult = $state<FoodLog | null>(null)
 let fileInputEl = $state<HTMLInputElement | null>(null)
+let expandedLogId = $state<number | null>(null)
 
 function isToday(iso: string): boolean {
 	const d = new Date(iso)
@@ -293,7 +294,19 @@ loadLogs()
 	{:else}
 		{#each logs as log (log.id)}
 			<Card padding="md">
-				<div class="meal-row">
+				<div
+					class="meal-row clickable"
+					role="button"
+					tabindex="0"
+					onclick={() =>
+						(expandedLogId = expandedLogId === log.id ? null : log.id)}
+					onkeydown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault()
+							expandedLogId = expandedLogId === log.id ? null : log.id
+						}
+					}}
+				>
 					<img
 						src={log.photoUrl}
 						alt={log.aiAnalysis?.foodName ?? "meal"}
@@ -317,6 +330,31 @@ loadLogs()
 						</span>
 					{/if}
 				</div>
+
+				{#if expandedLogId === log.id && log.aiAnalysis}
+					{@const a = log.aiAnalysis}
+					<div class="result-card">
+						<div class="macros">
+							<div class="macro"><span>{a.macros.calories}</span>kcal</div>
+							<div class="macro"><span>{a.macros.protein}g</span>protein</div>
+							<div class="macro"><span>{a.macros.carbs}g</span>carbs</div>
+							<div class="macro"><span>{a.macros.fat}g</span>fat</div>
+						</div>
+
+						<p class="coach-msg">"{a.coachMessage}"</p>
+
+						{#if a.alternatives.length > 0}
+							<div class="alternatives">
+								<p class="alts-label">Healthier swaps:</p>
+								<ul>
+									{#each a.alternatives as alt}
+										<li>{alt}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</Card>
 		{/each}
 	{/if}
@@ -581,6 +619,16 @@ loadLogs()
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
+}
+
+.meal-row.clickable {
+	cursor: pointer;
+	border-radius: var(--radius-sm);
+}
+
+.meal-row.clickable:hover,
+.meal-row.clickable:focus-visible {
+	background: var(--color-surface-2);
 }
 
 .meal-thumb {
