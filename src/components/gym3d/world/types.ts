@@ -1,0 +1,145 @@
+// Shared shapes of the 3D gym world: stations (where a person works out),
+// pieces (placed equipment / decor) and people.
+import type * as T from "three"
+import type { Outfit } from "../people/outfits"
+import type { Rig } from "../people/rig"
+
+export type TickFn = (dt: number) => void
+
+export type PoseName =
+	| "idle"
+	| "walk"
+	| "run"
+	| "bench"
+	| "curl"
+	| "sit"
+	| "stand_work"
+	| "bike"
+	| "sitstool"
+	| "stretch"
+	| "row"
+	| "climb"
+	| "punch"
+	| "mitts"
+	| "lie"
+	| "swim"
+	| "lift"
+	| "seated"
+	| "coach"
+	| "flex"
+	| "fly"
+	| "lunge"
+
+/** A place on a piece where one person works out (or works). Coordinates are
+ * world space once the piece is placed; lx/lz/lface keep the local ones. */
+export type Station = {
+	type?:
+		| "run"
+		| "bench"
+		| "curl"
+		| "bike"
+		| "sit"
+		| "sitstool"
+		| "stretch"
+		| "staff"
+	pose?: PoseName
+	x: number
+	y: number
+	z: number
+	face: number
+	lx: number
+	lz: number
+	lface: number
+	label: string
+	/** Worked by staff, not members. */
+	staff?: boolean
+	/** Sit variant: stand at the counter instead. */
+	stand?: boolean
+	busy: Person | null
+	piece: Piece | null
+	skip?: boolean
+	closed?: boolean
+	// pose options
+	dz?: number
+	bar?: T.Object3D
+	barRest?: T.Vector3
+	barAxis?: "y"
+	benchGroup?: T.Object3D
+	lift?: "squat" | "dead"
+	footZ?: number
+	frontZ?: number
+	prop?: "board" | "tablet" | "none"
+	prone?: boolean
+	recline?: number
+	legLift?: boolean
+	work?: boolean
+	talk?: boolean
+	/** Punch phase offset so two sparring partners alternate. */
+	sync?: number
+	/** Set by the punch pose (0..1), read by bags to swing. */
+	hit?: number
+	/** Swim laps remember where they started. */
+	x0?: number | null
+	z0?: number | null
+	tick?: (p: Person, t: number, dt: number) => void
+}
+
+export type PieceKind = "equipment" | "decor"
+
+export type BakeSrc = { geo: T.BufferGeometry; m: T.Matrix4; mat: T.Material }
+
+export type Piece = {
+	/** Layout piece id from the server. */
+	id: number
+	itemKey: string
+	kind: PieceKind
+	upgradeKey: string | null
+	name: string
+	size: number
+	tier: number
+	x: number
+	z: number
+	rot: number
+	roomId: number | null
+	locked: boolean
+	root: T.Group
+	inner: T.Group
+	hit: T.Mesh
+	ticks: TickFn[]
+	stations: Station[]
+	bakeSrc?: BakeSrc[]
+	bakeMesh?: T.Mesh
+	deco?: T.Group
+}
+
+export type PersonKind = "npc" | "staff" | "member"
+
+export type Person = {
+	/** Identity across polls: npc:<key>, staff:<piece>:<i>, member:<n>. */
+	key: string
+	kind: PersonKind
+	name: string
+	npcKey: string | null
+	role: string | null
+	out: Outfit
+	rig: Rig
+	proxy: T.Mesh
+	path: [number, number][]
+	state: "idle" | "walk" | "use"
+	idle: number
+	t: number
+	station: Station | null
+	/** A station this person keeps (staff, swimmers, named NPCs on a target). */
+	fixed: Station | null
+	after: "use" | "leave" | "idle" | null
+	dest: [number, number, number | undefined] | null
+	fin: [number, number] | null
+	exitFrom: Station | null
+	timer: number
+	onscr?: boolean
+	needRepath?: boolean
+	/** Where a named NPC with nothing to do hangs out. */
+	home: { x: number; z: number; face: number } | null
+	/** Marked for removal (walking out of the door). */
+	leaving: boolean
+}

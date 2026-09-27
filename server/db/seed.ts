@@ -359,7 +359,7 @@ type UpgradeRow = {
 	unlocksNpcKey: string | null
 }
 
-const GYM_UPGRADES: UpgradeRow[] = [
+export const GYM_UPGRADES: UpgradeRow[] = [
 	// ── Cardio ────────────────────────────────────────────────────────────
 	{
 		key: "cardio_treadmill",

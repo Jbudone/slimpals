@@ -82,3 +82,60 @@ export type PostType =
 	| "challenge_completion"
 
 export type ReactionEmoji = "❤️" | "😂" | "💪" | "🔥" | "😭"
+
+// ── 3D gym layout (gym3d slice 1): GET /api/gym/layout ──────────────────────
+
+export type GymLayoutPaint = {
+	wall: string
+	floorStyle: string
+	floorColor: string
+}
+
+export type GymLayoutPlotDto = {
+	px: number
+	pz: number
+	state: string
+	lotShape: string
+	roomId: number | null
+}
+
+export type GymLayoutRoomDto = {
+	id: number
+	/** RoomType from shared/gym3d/rooms.ts. */
+	type: string
+	shape: string
+	level: number
+	layoutVersion: number
+	cells: { px: number; pz: number }[]
+	/** Stored paint, or the room type's default. */
+	paint: GymLayoutPaint
+}
+
+export type GymLayoutPieceDto = {
+	id: number
+	roomId: number | null
+	kind: "equipment" | "decor"
+	/** Builder key: the upgrade key for equipment, a decor key for decor. */
+	itemKey: string
+	upgradeKey: string | null
+	/** Catalog name of the upgrade (or the decor item's own name). */
+	name: string
+	spotIndex: number | null
+	/** World position (x, z), on a half-unit grid. */
+	x: number
+	z: number
+	/** Quarter turns. */
+	rot: number
+	tier: number
+	locked: boolean
+	status: string
+}
+
+export type GymLayoutDto = {
+	gymId: number
+	plots: GymLayoutPlotDto[]
+	rooms: GymLayoutRoomDto[]
+	pieces: GymLayoutPieceDto[]
+	/** Unlocked upgrades the 3D gym has no place for yet (never dropped). */
+	unplaced: { key: string; name: string }[]
+}
