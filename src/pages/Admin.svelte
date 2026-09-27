@@ -742,6 +742,54 @@ async function clearGymHourOverride(userId: string) {
 	}
 }
 
+// Test event of the day (gym3d slice 3): the in-gym event visuals without
+// waiting for the AI content job. All day, hosted by Marcus.
+let gymEventType = $state("competition")
+let gymEventStatus = $state<{ text: string; ok: boolean } | null>(null)
+const GYM_EVENT_PRESETS: Record<
+	string,
+	{ title: string; description: string }
+> = {
+	competition: { title: "Plank-off", description: "Longest plank wins" },
+	class: { title: "Pop-up yoga", description: "Stretch in the lobby" },
+	delivery: { title: "New gear day", description: "Boxes everywhere!" },
+	special_guest: {
+		title: "Guest coach",
+		description: "A special guest drops by",
+	},
+	maintenance: {
+		title: "Deep clean",
+		description: "Mind the wet floor",
+	},
+}
+
+async function setGymTestEvent(userId: string, clear = false) {
+	gymEventStatus = null
+	const preset = GYM_EVENT_PRESETS[gymEventType]
+	try {
+		await api.post(`/admin/users/${userId}/gym/today-event`, {
+			event: clear
+				? null
+				: {
+						type: gymEventType,
+						...preset,
+						npcKey: "trainer_marcus",
+						activeHours: [0, 24],
+						effects: { allNpcMoodBonus: 10 },
+					},
+		})
+		gymEventStatus = {
+			text: clear ? "Event cleared" : `Event set: ${preset.title}`,
+			ok: true,
+		}
+	} catch (e) {
+		gymEventStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 async function loadDialogPreview(
 	userId: string,
 	npcKey: string,
@@ -1401,6 +1449,23 @@ onMount(async () => {
 												{/if}
 												{#if gymHourOverride !== null}
 													<p class="muted">Gym clock forced to {gymHourOverride}:00 (real time is {gymCurrentHour}:00).</p>
+												{/if}
+												<div class="field-row">
+													<label>
+														Test event today
+														<select class="inp inp-sm" bind:value={gymEventType}>
+															{#each Object.keys(GYM_EVENT_PRESETS) as t (t)}
+																<option value={t}>{GYM_EVENT_PRESETS[t].title} ({t})</option>
+															{/each}
+														</select>
+													</label>
+													<button class="btn primary sm" onclick={() => setGymTestEvent(user.id)}>Set event</button>
+													<button class="btn outline sm" onclick={() => setGymTestEvent(user.id, true)}>Clear</button>
+												</div>
+												{#if gymEventStatus}
+													<p class="status-msg" class:ok={gymEventStatus.ok} class:fail={!gymEventStatus.ok}>
+														{gymEventStatus.text}
+													</p>
 												{/if}
 												<div class="challenge-view">
 													{#if gymNpcsLoading}

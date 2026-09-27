@@ -52,6 +52,7 @@ import {
 	ensureGymLayout,
 	getGymLayoutDto,
 } from "../services/gym/layout3dStore.js"
+import { buildNpcLines } from "../services/gym/npcLines.js"
 import {
 	computeGymSimState,
 	type GymClass,
@@ -105,7 +106,7 @@ type MilestoneDialogResult = {
 	response: string
 }
 
-const MILESTONE_DIALOGS: Record<
+export const MILESTONE_DIALOGS: Record<
 	string,
 	{
 		npcKey: string
@@ -559,6 +560,14 @@ export function createGymRouter(aiService: AIService) {
 		})
 
 		res.json(result)
+	})
+
+	// Speech-bubble lines for the 3D gym, cut from dialog the server already
+	// has (no AI call), with each NPC's friends and rivals.
+	router.get("/gym/npc-lines", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json(await buildNpcLines(gym.id, db, MILESTONE_DIALOGS))
 	})
 
 	router.get("/gym/npc/:key", async (req, res) => {
