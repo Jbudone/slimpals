@@ -149,7 +149,9 @@ describe("GET /api/gym/layout", () => {
 		expect(gym.layoutSeededAt).not.toBeNull()
 
 		const second = await getLayout(cookie)
-		expect(second).toEqual(first)
+		expect({ ...second, serverNow: "" }).toEqual({ ...first, serverNow: "" })
+		// the one-time starter coins arrive with the first read, once
+		expect(second.coins).toBe(1500)
 		const rows = await db
 			.select()
 			.from(gymPieces)
@@ -227,12 +229,15 @@ describe("GET /api/gym/layout", () => {
 		// earlier pieces keep their ids and places
 		for (const p of before.pieces)
 			expect(after.pieces.find((q) => q.id === p.id)).toEqual(p)
-		// a new room opens for the ring, on its 3 x 3 spot
-		const boxing = after.rooms.find((r) => r.type === "boxing")
-		expect(boxing).toBeDefined()
+		// no boxing room yet: after seeding the player builds rooms, so the
+		// ring waits in storage until they place it
+		expect(after.rooms.find((r) => r.type === "boxing")).toBeUndefined()
 		const ring = after.pieces.find((p) => p.upgradeKey === "boxing_ring")
-		expect(ring?.roomId).toBe(boxing?.id)
-		expect(ring?.spotIndex).toBe(0)
+		expect(ring?.status).toBe("stored")
+		expect(ring?.roomId).toBeNull()
+		expect(ring?.spotIndex).toBeNull()
+		expect(ring?.roomType).toBe("boxing")
+		expect(ring?.size).toBe(3)
 	})
 
 	it("admin reset clears the layout and the next read seeds it again", async () => {

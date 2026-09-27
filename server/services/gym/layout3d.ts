@@ -34,7 +34,8 @@ export type PlanRoom = {
 	/** Set for rooms that already exist in the database. */
 	id?: number
 	type: RoomType
-	shape: "normal"
+	/** Lot shape the room was built on (slice 1 seeds only "normal"). */
+	shape: string
 	level: number
 	cells: PlotCell[]
 }
@@ -56,6 +57,8 @@ export type PlanPiece = {
 	/** Quarter turns. */
 	rot: number
 	locked: boolean
+	/** "stored": unlocked gear with no spot (no room, no position). */
+	status: "placed" | "stored" | "upgrading"
 }
 
 export type LayoutPlan = {
@@ -164,6 +167,7 @@ export function lobbyOnlyPlan(): LayoutPlan {
 			z2: half(LOBBY_CELL.pz * PD + f.z),
 			rot: 0,
 			locked: true,
+			status: "placed" as const,
 		})),
 		unplaced: [],
 	}
@@ -186,13 +190,30 @@ function byUnlockOrder(a: UnlockedUpgrade, b: UnlockedUpgrade): number {
 	)
 }
 
+export type PlaceOpts = {
+	/** Open a room (on the next free cell) for a category with no room yet
+	 * and fill bonus spots, raising the room's level: only while seeding a
+	 * gym's first layout. Afterwards the player builds rooms, and new gear
+	 * goes to an open spot of a room of its type or else to storage. */
+	newRooms?: boolean
+}
+
+/** The room type a catalog upgrade belongs in, or null (fixtures, decor,
+ * lobby staff, offices). */
+export function roomTypeFor(u: UnlockedUpgrade): EquipmentRoomType | null {
+	const t = targetFor(u)
+	return t.kind === "room" ? t.room : null
+}
+
 /** Places every upgrade in `missing` that the plan does not already hold
- * (placed or unplaced) and returns the new plan. Idempotent: placing the
- * same keys twice changes nothing. Never mutates `plan`. */
+ * (placed, stored or unplaced) and returns the new plan. Idempotent: placing
+ * the same keys twice changes nothing. Never mutates `plan`. */
 export function placeNewUnlocks(
 	plan: LayoutPlan,
 	missing: readonly UnlockedUpgrade[],
+	opts: PlaceOpts = { newRooms: true },
 ): LayoutPlan {
+	const newRooms = opts.newRooms !== false
 	const next = clonePlan(plan)
 	const known = new Set<string>([
 		...next.pieces.flatMap((p) => (p.upgradeKey ? [p.upgradeKey] : [])),
@@ -238,6 +259,7 @@ export function placeNewUnlocks(
 				z2: half(lobbyRoom.cells[0].pz * PD + t.z),
 				rot: 0,
 				locked: true,
+				status: "placed",
 			})
 		} else if (t.kind === "lobbyExtra") extras.push(u)
 		else if (t.kind === "decor") decor.push({ u, item: t.item })
@@ -245,58 +267,90 @@ export function placeNewUnlocks(
 	}
 
 	// Equipment rooms, in the fixed room order so seeding is deterministic.
+	const store = (u: UnlockedUpgrade) =>
+		next.pieces.push({
+			kind: "equipment",
+			itemKey: u.key,
+			upgradeKey: u.key,
+			roomRef: 0,
+			spotIndex: null,
+			x2: 0,
+			z2: 0,
+			rot: 0,
+			locked: false,
+			status: "stored",
+		})
 	const usedCells = new Set(next.rooms.flatMap((r) => r.cells.map(cellKey)))
 	for (const type of ROOM_ORDER) {
 		const items = byRoom.get(type)
 		if (!items?.length) continue
-		let room = next.rooms.find((r) => r.type === type)
-		if (!room) {
+		// gear fills the rooms of its type in the order they were built
+		const rooms = next.rooms
+			.filter((r) => r.type === type)
+			.sort((a, b) => a.ref - b.ref)
+		if (!rooms.length && newRooms) {
 			const cell = ROOM_CELLS.find((c) => !usedCells.has(cellKey(c)))
-			if (!cell) {
-				for (const u of items) unplace(u.key)
-				continue
+			if (cell) {
+				usedCells.add(cellKey(cell))
+				const room: PlanRoom = {
+					ref: Math.max(0, ...next.rooms.map((r) => r.ref)) + 1,
+					type,
+					shape: "normal",
+					level: 1,
+					cells: [{ ...cell }],
+				}
+				next.rooms.push(room)
+				rooms.push(room)
 			}
-			usedCells.add(cellKey(cell))
-			room = {
-				ref: Math.max(0, ...next.rooms.map((r) => r.ref)) + 1,
-				type,
-				shape: "normal",
-				level: 1,
-				cells: [{ ...cell }],
-			}
-			next.rooms.push(room)
 		}
-		const r = room
-		const spots = roomSpots(type, r.cells)
-		const used = new Set(
-			next.pieces
-				.filter((p) => p.roomRef === r.ref && p.spotIndex != null)
-				.map((p) => p.spotIndex as number),
-		)
-		const order = spots
-			.slice()
-			.sort((a, b) => a.unlock - b.unlock || a.index - b.index)
+		const state = rooms.map((r) => {
+			const spots = roomSpots(type, r.cells)
+			return {
+				r,
+				spots,
+				used: new Set(
+					next.pieces
+						.filter((p) => p.roomRef === r.ref && p.spotIndex != null)
+						.map((p) => p.spotIndex as number),
+				),
+				order: spots
+					.filter((sp) => newRooms || sp.unlock <= r.level)
+					.sort((a, b) => a.unlock - b.unlock || a.index - b.index),
+			}
+		})
 		for (const u of items) {
 			const size = itemSize(u.key, "equipment")
-			const spot = order.find((s) => s.size === size && !used.has(s.index))
-			if (!spot) {
-				unplace(u.key)
-				continue
+			let placed = false
+			for (const st of state) {
+				const spot = st.order.find(
+					(sp) => sp.size === size && !st.used.has(sp.index),
+				)
+				if (!spot) continue
+				st.used.add(spot.index)
+				next.pieces.push({
+					kind: "equipment",
+					itemKey: u.key,
+					upgradeKey: u.key,
+					roomRef: st.r.ref,
+					spotIndex: spot.index,
+					x2: half(spot.x),
+					z2: half(spot.z),
+					rot: 0,
+					locked: false,
+					status: "placed",
+				})
+				placed = true
+				break
 			}
-			used.add(spot.index)
-			next.pieces.push({
-				kind: "equipment",
-				itemKey: u.key,
-				upgradeKey: u.key,
-				roomRef: r.ref,
-				spotIndex: spot.index,
-				x2: half(spot.x),
-				z2: half(spot.z),
-				rot: 0,
-				locked: false,
-			})
+			if (placed) continue
+			// no room had space: seeding lists it (as slice 1 did), later
+			// unlocks wait in storage for the player to place
+			if (newRooms) unplace(u.key)
+			else store(u)
 		}
-		r.level = Math.max(r.level, levelForSpots(spots, used))
+		if (newRooms)
+			for (const st of state)
+				st.r.level = Math.max(st.r.level, levelForSpots(st.spots, st.used))
 	}
 
 	// Staff pieces with no room of their own stand in the lobby.
@@ -323,6 +377,7 @@ export function placeNewUnlocks(
 			z2: half(lz + free.z),
 			rot: 0,
 			locked: false,
+			status: "placed",
 		})
 	}
 
@@ -359,6 +414,7 @@ export function placeNewUnlocks(
 				z2: slot.z2,
 				rot: 0,
 				locked: false,
+				status: "placed",
 			})
 		}
 	}

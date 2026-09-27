@@ -1,6 +1,7 @@
 import {
 	boolean,
 	datetime,
+	index,
 	int,
 	json,
 	mysqlEnum,
@@ -215,6 +216,13 @@ export const userGyms = mysqlTable("user_gyms", {
 	// 3D gym (gym3d slice 1): set once the first layout has been seeded from
 	// the gym's unlocked upgrades; null = seed on the next GET /gym/layout.
 	layoutSeededAt: timestamp("layout_seeded_at"),
+	// 3D gym building (gym3d slice 2): the coin balance (every gym XP award
+	// also grants coins; see ECONOMY in shared/gym3d/economy.ts), how many
+	// plots were bought (the next one costs more) and when the one-time
+	// starter coins were granted (null = not yet).
+	coins: int("coins").notNull().default(0),
+	plotsBought: int("plots_bought").notNull().default(0),
+	starterCoinsAt: timestamp("starter_coins_at"),
 })
 
 export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
@@ -326,6 +334,30 @@ export const gymPieces = mysqlTable(
 		unique("gym_pieces_gym_upgrade_unique").on(t.gymId, t.upgradeKey),
 		unique("gym_pieces_room_spot_unique").on(t.roomId, t.spotIndex),
 	],
+)
+
+// Timed construction (gym3d slice 2): buying a plot (kind "plot", room_id)
+// or upgrading a piece (kind "upgrade", piece_id + target_tier). Jobs finish
+// lazily: any read or write of the gym settles those with ends_at <= now.
+export const gymJobs = mysqlTable(
+	"gym_jobs",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		kind: varchar("kind", { length: 16 }).notNull(),
+		roomId: int("room_id").references(() => gymRooms.id),
+		pieceId: int("piece_id").references(() => gymPieces.id),
+		targetTier: int("target_tier"),
+		cost: int("cost").notNull().default(0),
+		// active | done
+		status: varchar("status", { length: 16 }).notNull().default("active"),
+		startedAt: timestamp("started_at").notNull().defaultNow(),
+		endsAt: timestamp("ends_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(t) => [index("gym_jobs_gym_status_idx").on(t.gymId, t.status)],
 )
 
 export const gymNpcs = mysqlTable("gym_npcs", {

@@ -101,10 +101,16 @@ export type GymLayoutPlotDto = {
 
 export type GymLayoutRoomDto = {
 	id: number
-	/** RoomType from shared/gym3d/rooms.ts. */
+	/** RoomType from shared/gym3d/rooms.ts, or "empty" (bought, type not
+	 * chosen yet). */
 	type: string
+	/** Lot shape: normal | wide | L | big. */
 	shape: string
 	level: number
+	/** Sum of the tiers of the pieces on its spots (room level points). */
+	points: number
+	/** Plots still under construction. */
+	building: boolean
 	layoutVersion: number
 	cells: { px: number; pz: number }[]
 	/** Stored paint, or the room type's default. */
@@ -128,7 +134,33 @@ export type GymLayoutPieceDto = {
 	rot: number
 	tier: number
 	locked: boolean
+	/** placed | stored (unlocked, not on a spot) | upgrading */
 	status: string
+	/** Room type this gear goes in (null: fixtures, decor, lobby staff). */
+	roomType: string | null
+	/** Footprint in tiles (spot size it needs). */
+	size: number
+}
+
+export type GymLotDto = {
+	id: string
+	shape: string
+	cells: { px: number; pz: number }[]
+	price: number
+	hours: number
+}
+
+export type GymJobDto = {
+	id: number
+	kind: "plot" | "upgrade"
+	roomId: number | null
+	pieceId: number | null
+	targetTier: number | null
+	status: "active" | "done"
+	cost: number
+	startedAt: string
+	endsAt: string
+	finishedAt: string | null
 }
 
 export type GymLayoutDto = {
@@ -138,4 +170,20 @@ export type GymLayoutDto = {
 	pieces: GymLayoutPieceDto[]
 	/** Unlocked upgrades the 3D gym has no place for yet (never dropped). */
 	unplaced: { key: string; name: string }[]
+	/** Coin balance (gym3d slice 2). */
+	coins: number
+	/** Server clock when this was read (ISO), to time jobs on the client. */
+	serverNow: string
+	/** For Sale lots next to the building. */
+	lots: GymLotDto[]
+	/** Active jobs, plus ones finished in the last day (for the ribbon). */
+	jobs: GymJobDto[]
+	/** Room gear not unlocked yet (shown greyed out in the spot picker). */
+	lockedGear: {
+		key: string
+		name: string
+		requiredXp: number
+		roomType: string
+		size: number
+	}[]
 }

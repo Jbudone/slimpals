@@ -122,6 +122,7 @@ export async function truncateAll() {
 			"gym_npc_daily_state",
 			"user_gym_npc_relationships",
 			"user_gym_upgrades",
+			"gym_jobs",
 			"gym_pieces",
 			"gym_plots",
 			"gym_rooms",
