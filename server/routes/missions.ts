@@ -8,6 +8,7 @@ import {
 import { db } from "../db/index.js"
 import { missionCompletions, missions } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { cutActiveJobs } from "../services/gym/build3dJobs.js"
 import {
 	awardGymXp,
 	getLevelProgress,
@@ -291,6 +292,8 @@ missionsRouter.post("/missions/:id/complete", async (req, res) => {
 		xpAwarded,
 	})
 	await awardGymXp(userId, xpAwarded, "mission_complete", db)
+	// real activity speeds up the 3D gym's construction (-1h per job)
+	await cutActiveJobs(userId, db)
 
 	res.json({
 		completed: true,

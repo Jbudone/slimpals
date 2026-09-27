@@ -257,8 +257,11 @@ let gymUpgradesForUser = $state<AdminGymUpgrade[]>([])
 let gymUpgradesGym = $state<{
 	level: number
 	xp: number
+	coins: number
 	pendingUpgradeKeys: string[]
 } | null>(null)
+let gymCoinsGrant = $state(500)
+let gymCoinsStatus = $state<{ text: string; ok: boolean } | null>(null)
 let gymUpgradesLoading = $state(false)
 let gymUpgradesError = $state<string | null>(null)
 
@@ -777,7 +780,12 @@ async function loadGymUpgrades(userId: string) {
 	try {
 		const result = await api.get<{
 			hasGym: boolean
-			gym: { level: number; xp: number; pendingUpgradeKeys: string[] } | null
+			gym: {
+				level: number
+				xp: number
+				coins: number
+				pendingUpgradeKeys: string[]
+			} | null
 			upgrades: AdminGymUpgrade[]
 		}>(`/admin/users/${userId}/gym/upgrades`)
 		gymUpgradesGym = result.gym
@@ -786,6 +794,23 @@ async function loadGymUpgrades(userId: string) {
 		gymUpgradesError = e instanceof Error ? e.message : "Failed to load"
 	} finally {
 		gymUpgradesLoading = false
+	}
+}
+
+async function grantGymCoins(userId: string, amount: number) {
+	gymCoinsStatus = null
+	try {
+		const r = await api.post<{ coins: number }>(
+			`/admin/users/${userId}/gym/coins`,
+			{ amount },
+		)
+		if (gymUpgradesGym) gymUpgradesGym = { ...gymUpgradesGym, coins: r.coins }
+		gymCoinsStatus = { text: `Balance: ${r.coins} coins`, ok: true }
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
 	}
 }
 
@@ -1485,8 +1510,38 @@ onMount(async () => {
 													{:else}
 														{#if gymUpgradesGym}
 															<p class="challenge-meta">
-																Level {gymUpgradesGym.level} · {gymUpgradesGym.xp} XP
+																Level {gymUpgradesGym.level} · {gymUpgradesGym.xp} XP ·
+																<span data-testid="admin-gym-coins"
+																	>{gymUpgradesGym.coins} coins</span
+																>
 															</p>
+															<div class="field-row">
+																<label class="progression-slider-label">
+																	Grant coins (3D gym)
+																	<input
+																		type="number"
+																		step="100"
+																		bind:value={gymCoinsGrant}
+																		aria-label="Coins to grant"
+																	/>
+																</label>
+																<button
+																	class="btn primary sm"
+																	disabled={!gymCoinsGrant}
+																	onclick={() => grantGymCoins(user.id, gymCoinsGrant)}
+																>
+																	Grant coins
+																</button>
+															</div>
+															{#if gymCoinsStatus}
+																<p
+																	class="status-msg"
+																	class:ok={gymCoinsStatus.ok}
+																	class:fail={!gymCoinsStatus.ok}
+																>
+																	{gymCoinsStatus.text}
+																</p>
+															{/if}
 														{/if}
 														<table class="upgrades-table">
 															<thead>

@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import { dailyCheckins, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { cutActiveJobs } from "../services/gym/build3dJobs.js"
 import { awardGymXp } from "../services/gym/index.js"
 
 export const checkinsRouter = Router()
@@ -131,6 +132,8 @@ checkinsRouter.post("/checkins", async (req, res) => {
 		gymXp += 10
 	}
 	await awardGymXp(userId, gymXp, "checkin", db)
+	// a real check-in speeds up the 3D gym's construction (-1h per job)
+	await cutActiveJobs(userId, db)
 
 	if (newBadges.length > 0) {
 		const [user] = await db

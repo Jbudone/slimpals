@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
-import { and, asc, count, desc, eq } from "drizzle-orm"
+import { and, asc, count, desc, eq, sql } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
@@ -941,6 +941,7 @@ export function createAdminRouter(aiService: AIService) {
 			gym: {
 				level: gym.level,
 				xp: gym.xp,
+				coins: gym.coins,
 				pendingUpgradeKeys: gym.pendingUpgradeKeys,
 			},
 			upgrades,
@@ -1042,6 +1043,33 @@ export function createAdminRouter(aiService: AIService) {
 		}
 		await resetGymLayout(gym.id, db)
 		res.json({ success: true })
+	})
+
+	// 3D gym coins (gym3d slice 2): grant (or, negative, take back) coins;
+	// the balance never drops below 0.
+	adminRouter.post("/admin/users/:id/gym/coins", async (req, res) => {
+		const amount = Number((req.body as { amount?: unknown })?.amount)
+		if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1e6) {
+			res.status(400).json({ error: "amount must be a non-zero integer" })
+			return
+		}
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, req.params.id))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		await db
+			.update(userGyms)
+			.set({ coins: sql`GREATEST(0, ${userGyms.coins} + ${amount})` })
+			.where(eq(userGyms.id, gym.id))
+		const [row] = await db
+			.select({ coins: userGyms.coins })
+			.from(userGyms)
+			.where(eq(userGyms.id, gym.id))
+		res.json({ coins: row?.coins ?? 0 })
 	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
