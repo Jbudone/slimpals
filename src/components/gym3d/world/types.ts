@@ -29,6 +29,7 @@ export type PoseName =
 	| "flex"
 	| "fly"
 	| "lunge"
+	| "hammer"
 
 /** A place on a piece where one person works out (or works). Coordinates are
  * world space once the piece is placed; lx/lz/lface keep the local ones. */
@@ -102,6 +103,11 @@ export type Piece = {
 	rot: number
 	roomId: number | null
 	locked: boolean
+	/** placed | upgrading */
+	status: string
+	/** Room type this gear goes in (null: fixtures, decor, lobby staff). */
+	roomType: string | null
+	spotIndex: number | null
 	root: T.Group
 	inner: T.Group
 	hit: T.Mesh

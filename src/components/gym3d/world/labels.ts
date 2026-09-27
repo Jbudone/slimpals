@@ -12,12 +12,23 @@ export type Label = {
 	sy: number
 	vis: boolean
 	dead: boolean
+	/** Kept fully on screen (timer bubbles), pinned to the nearest edge. */
+	clamp: boolean
+	/** Soft labels fade while a clamped label covers them. */
+	soft: boolean
+	cw: number
+	ch: number
+	dim: boolean
+	pin: boolean
 }
 
 export class LabelLayer {
 	readonly root: HTMLDivElement
 	private labels: Label[] = []
 	private pt = { x: 0, y: 0 }
+	private n = 0
+	/** Screen space kept free at the top (HUD) and bottom (open sheet). */
+	insets = { top: 0, bottom: 0 }
 
 	constructor(host: HTMLElement) {
 		const d = document.createElement("div")
@@ -29,7 +40,11 @@ export class LabelLayer {
 		this.root = d
 	}
 
-	add(el: HTMLElement, anchor: () => T.Vector3): Label {
+	add(
+		el: HTMLElement,
+		anchor: () => T.Vector3,
+		opts?: { clamp?: boolean; soft?: boolean },
+	): Label {
 		el.style.position = "absolute"
 		el.style.left = "0"
 		el.style.top = "0"
@@ -42,7 +57,14 @@ export class LabelLayer {
 			sy: Number.NaN,
 			vis: true,
 			dead: false,
+			clamp: !!opts?.clamp,
+			soft: !!opts?.soft,
+			cw: 0,
+			ch: 0,
+			dim: false,
+			pin: false,
 		}
+		if (L.clamp || L.soft) el.style.pointerEvents = "auto"
 		this.labels.push(L)
 		return L
 	}
@@ -54,13 +76,41 @@ export class LabelLayer {
 		this.labels = this.labels.filter((x) => x !== L)
 	}
 
+	/** Re-measure a label after its content changed size. */
+	remeasure(L: Label): void {
+		L.cw = 0
+	}
+
 	update(r: GymRenderer): void {
 		const { w, h } = r.size
+		this.n++
 		for (const L of this.labels) {
 			const p = r.toScreen(L.anchor(), this.pt)
-			const vis = !(p.x < -200 || p.x > w + 200 || p.y < -100 || p.y > h + 200)
-			const x = Math.round(p.x * 2) / 2
-			const y = Math.round(p.y * 2) / 2
+			let vis = !(p.x < -200 || p.x > w + 200 || p.y < -100 || p.y > h + 200)
+			let px = p.x
+			let py = p.y
+			let pin = false
+			if (L.clamp) {
+				if (!L.cw) {
+					L.cw = L.el.offsetWidth
+					L.ch = L.el.offsetHeight
+				}
+				const hw = L.cw / 2
+				const top = this.insets.top + 6
+				const bot = h - this.insets.bottom - 6
+				const nx = Math.min(Math.max(px, hw + 6), w - hw - 6)
+				const ny = Math.min(Math.max(py, top + L.ch), Math.max(top + L.ch, bot))
+				pin = Math.abs(nx - px) > 1 || Math.abs(ny - py) > 1
+				px = nx
+				py = ny
+				vis = true
+			}
+			if (pin !== L.pin) {
+				L.pin = pin
+				L.el.classList.toggle("pin", pin)
+			}
+			const x = Math.round(px * 2) / 2
+			const y = Math.round(py * 2) / 2
 			if (x !== L.sx || y !== L.sy) {
 				L.el.style.transform = `translate3d(${x}px,${y}px,0) translate(-50%,-100%)`
 				L.sx = x
@@ -69,6 +119,28 @@ export class LabelLayer {
 			if (vis !== L.vis) {
 				L.el.style.visibility = vis ? "" : "hidden"
 				L.vis = vis
+			}
+		}
+		// a soft label (room badge) under a timer bubble fades so the timer
+		// stays readable; checked a few times a second
+		if (this.n % 8 === 0) {
+			const hard = this.labels.filter((L) => L.clamp && L.cw)
+			for (const L of this.labels) {
+				if (!L.soft) continue
+				if (!L.cw) {
+					L.cw = L.el.offsetWidth
+					L.ch = L.el.offsetHeight
+				}
+				const dim = hard.some(
+					(H) =>
+						Math.abs(H.sx - L.sx) < (H.cw + L.cw) / 2 &&
+						L.sy > H.sy - H.ch &&
+						L.sy - L.ch < H.sy,
+				)
+				if (dim !== L.dim) {
+					L.dim = dim
+					L.el.classList.toggle("dim", dim)
+				}
 			}
 		}
 	}
@@ -84,9 +156,14 @@ export class LabelLayer {
 	}
 }
 
-/** A room badge: name, level and stars, built with textContent only. */
-export function roomBadge(name: string, level: number): HTMLElement {
-	const b = document.createElement("div")
+/** A room badge: name, level, stars and progress to the next level,
+ * built with textContent only. */
+export function roomBadge(
+	name: string,
+	level: number,
+	progress?: number,
+): HTMLElement {
+	const b = document.createElement(progress == null ? "div" : "button")
 	b.className = "g3d-badge"
 	const l1 = document.createElement("span")
 	l1.className = "g3d-badge-l1"
@@ -99,6 +176,16 @@ export function roomBadge(name: string, level: number): HTMLElement {
 	st.textContent = "★".repeat(level) + "☆".repeat(Math.max(0, 5 - level))
 	l1.append(nm, lv, st)
 	b.append(l1)
+	if (progress != null) {
+		;(b as HTMLButtonElement).type = "button"
+		b.setAttribute("aria-label", `${name}, level ${level}`)
+		const bar = document.createElement("span")
+		bar.className = "g3d-pbar"
+		const i = document.createElement("i")
+		i.style.width = `${Math.round(progress * 100)}%`
+		bar.append(i)
+		b.append(bar)
+	}
 	return b
 }
 
