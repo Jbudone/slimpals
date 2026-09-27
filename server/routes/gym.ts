@@ -38,6 +38,10 @@ import {
 	getOrCreateGym,
 } from "../services/gym/index.js"
 import {
+	ensureGymLayout,
+	getGymLayoutDto,
+} from "../services/gym/layout3dStore.js"
+import {
 	computeGymSimState,
 	type GymClass,
 	type GymNpc,
@@ -289,6 +293,15 @@ export function createGymRouter(aiService: AIService) {
 			upgrades: { unlocked, pending, locked },
 			xpToNextLevel,
 		})
+	})
+
+	// 3D gym layout (gym3d slice 1): seeds the layout on first read, then
+	// places any claimed upgrade that has no piece yet.
+	router.get("/gym/layout", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		res.json(await getGymLayoutDto(gym.id, db))
 	})
 
 	router.get("/gym/catalog", async (_req, res) => {

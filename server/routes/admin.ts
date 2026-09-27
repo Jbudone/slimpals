@@ -49,6 +49,7 @@ import {
 	getOrCreateGym,
 } from "../services/gym/index.js"
 import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
+import { resetGymLayout } from "../services/gym/layout3dStore.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
 import {
 	generateSprintForUser,
@@ -1014,6 +1015,10 @@ export function createAdminRouter(aiService: AIService) {
 				)
 		}
 
+		// The 3D layout was seeded from the old unlocks; drop it so the next
+		// GET /gym/layout seeds it again from the scrubbed set.
+		await resetGymLayout(gym.id, db)
+
 		res.json({
 			daysElapsed: progression.daysElapsed,
 			xp: progression.xp,
@@ -1022,6 +1027,21 @@ export function createAdminRouter(aiService: AIService) {
 			relationshipLevel: relationship.relationshipLevel,
 			gymDaysActive: relationship.gymDaysActive,
 		})
+	})
+
+	// 3D gym (gym3d slice 1): wipe a user's stored layout; the next
+	// GET /gym/layout seeds it again from their claimed upgrades.
+	adminRouter.post("/admin/users/:id/gym/layout/reset", async (req, res) => {
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, req.params.id))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		await resetGymLayout(gym.id, db)
+		res.json({ success: true })
 	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {

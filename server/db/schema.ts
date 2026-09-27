@@ -7,6 +7,7 @@ import {
 	mysqlTable,
 	text,
 	timestamp,
+	unique,
 	varchar,
 } from "drizzle-orm/mysql-core"
 
@@ -211,6 +212,9 @@ export const userGyms = mysqlTable("user_gyms", {
 	lastGymVisitDate: timestamp("last_gym_visit_date"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	simulatedHourOverride: int("simulated_hour_override"),
+	// 3D gym (gym3d slice 1): set once the first layout has been seeded from
+	// the gym's unlocked upgrades; null = seed on the next GET /gym/layout.
+	layoutSeededAt: timestamp("layout_seeded_at"),
 })
 
 export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
@@ -259,6 +263,70 @@ export const userGymUpgrades = mysqlTable("user_gym_upgrades", {
 	unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
 	placementData: json("placement_data"),
 })
+
+// ── 3D gym layout (gym3d slice 1) ─────────────────────────────────────────
+// Rooms sit on plots (9 x 6 cells of the neighbourhood grid); pieces sit on a
+// room's spots (derived from shared/gym3d/rooms.ts, not stored) or, for
+// decor, at a free position. Positions are stored doubled (half-unit grid).
+
+export const gymRooms = mysqlTable("gym_rooms", {
+	id: int("id").autoincrement().primaryKey(),
+	gymId: int("gym_id")
+		.notNull()
+		.references(() => userGyms.id),
+	// RoomType in shared/gym3d/rooms.ts, validated in TypeScript (gh-64 style).
+	type: varchar("type", { length: 32 }).notNull(),
+	shape: varchar("shape", { length: 16 }).notNull().default("normal"),
+	level: int("level").notNull().default(1),
+	layoutVersion: int("layout_version").notNull().default(1),
+	// Paint overrides; null = the room type's default from PAINT.
+	wallColor: varchar("wall_color", { length: 16 }),
+	floorStyle: varchar("floor_style", { length: 16 }),
+	floorColor: varchar("floor_color", { length: 16 }),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+export const gymPlots = mysqlTable(
+	"gym_plots",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		px: int("px").notNull(),
+		pz: int("pz").notNull(),
+		state: varchar("state", { length: 16 }).notNull().default("owned"),
+		lotShape: varchar("lot_shape", { length: 16 }).notNull().default("normal"),
+		roomId: int("room_id").references(() => gymRooms.id),
+	},
+	(t) => [unique("gym_plots_gym_cell_unique").on(t.gymId, t.px, t.pz)],
+)
+
+export const gymPieces = mysqlTable(
+	"gym_pieces",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		roomId: int("room_id").references(() => gymRooms.id),
+		kind: varchar("kind", { length: 16 }).notNull(),
+		itemKey: varchar("item_key", { length: 128 }).notNull(),
+		upgradeKey: varchar("upgrade_key", { length: 128 }),
+		spotIndex: int("spot_index"),
+		posX2: int("pos_x2").notNull(),
+		posZ2: int("pos_z2").notNull(),
+		rot: int("rot").notNull().default(0),
+		tier: int("tier").notNull().default(1),
+		locked: boolean("locked").notNull().default(false),
+		status: varchar("status", { length: 16 }).notNull().default("placed"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [
+		unique("gym_pieces_gym_upgrade_unique").on(t.gymId, t.upgradeKey),
+		unique("gym_pieces_room_spot_unique").on(t.roomId, t.spotIndex),
+	],
+)
 
 export const gymNpcs = mysqlTable("gym_npcs", {
 	id: int("id").autoincrement().primaryKey(),

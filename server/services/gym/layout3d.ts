@@ -45,7 +45,8 @@ export type PlanPiece = {
 	kind: PieceKind
 	/** Which builder draws it: the upgrade key for equipment, a decor key for decor. */
 	itemKey: string
-	upgradeKey: string
+	/** Null for pieces that do not come from a catalog upgrade. */
+	upgradeKey: string | null
 	roomRef: number
 	spotIndex: number | null
 	/** World x * 2 (positions live on a half-unit grid). */
@@ -194,7 +195,7 @@ export function placeNewUnlocks(
 ): LayoutPlan {
 	const next = clonePlan(plan)
 	const known = new Set<string>([
-		...next.pieces.map((p) => p.upgradeKey),
+		...next.pieces.flatMap((p) => (p.upgradeKey ? [p.upgradeKey] : [])),
 		...next.unplaced,
 	])
 	const seen = new Set<string>()
