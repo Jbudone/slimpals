@@ -4,6 +4,7 @@ import GymUI from "../components/gym/GymUI.svelte"
 import NpcDialog from "../components/gym/NpcDialog.svelte"
 import PhaserGym from "../components/gym/PhaserGym.svelte"
 import { api } from "../lib/api.js"
+import { readGym3dFlag } from "../lib/gym3dFlag.js"
 
 type UpgradeItem = {
 	key: string
@@ -44,6 +45,26 @@ let ceremonyUpgradeKey = $state<string | null>(null)
 let ceremonyActive = $state(false)
 let upgradeCompleteToast = $state(false)
 
+// Beta 3D gym (per device). The component is loaded on demand so three.js
+// stays out of the main bundle; any failure falls back to the 2D gym.
+const start3d = readGym3dFlag()
+let use3d = $state(start3d)
+let layoutRev = $state(0)
+type Gym3DComponent = typeof import("../components/gym3d/Gym3D.svelte").default
+let Gym3D = $state<Gym3DComponent | null>(null)
+if (start3d)
+	import("../components/gym3d/Gym3D.svelte")
+		.then((m) => {
+			Gym3D = m.default
+		})
+		.catch(() => {
+			use3d = false
+		})
+
+function handle3dFallback() {
+	use3d = false
+}
+
 async function loadGym() {
 	try {
 		gymData = await api.get<GymResponse>("/gym")
@@ -66,6 +87,9 @@ function claimNext() {
 	dialogNpcKey = null
 	ceremonyUpgradeKey = nextKey
 	ceremonyActive = true
+	// The 3D gym has no claim ceremony yet: claim straight away and rebuild
+	// the 3D view from the new layout.
+	if (use3d) void handleCeremonyComplete()
 }
 
 async function handleCeremonyComplete() {
@@ -74,6 +98,7 @@ async function handleCeremonyComplete() {
 	claiming = true
 	try {
 		gymData = await api.post<GymResponse>("/gym/claim-upgrade", { key })
+		layoutRev++
 		upgradeCompleteToast = true
 		setTimeout(() => {
 			upgradeCompleteToast = false
@@ -115,13 +140,23 @@ onMount(loadGym)
 			todayEvent={gymData.todayEvent ?? null}
 		/>
 		<div class="canvas-area">
-			<PhaserGym
-				unlocked={gymData.upgrades.unlocked}
-				locked={gymData.upgrades.locked}
-				onNpcClick={handleNpcClick}
-				{ceremonyUpgradeKey}
-				onCeremonyComplete={handleCeremonyComplete}
-			/>
+			{#if use3d}
+				{#if Gym3D}
+					{#key layoutRev}
+						<Gym3D onNpcClick={handleNpcClick} onFallback={handle3dFallback} />
+					{/key}
+				{:else}
+					<p class="muted center">Loading 3D gym...</p>
+				{/if}
+			{:else}
+				<PhaserGym
+					unlocked={gymData.upgrades.unlocked}
+					locked={gymData.upgrades.locked}
+					onNpcClick={handleNpcClick}
+					{ceremonyUpgradeKey}
+					onCeremonyComplete={handleCeremonyComplete}
+				/>
+			{/if}
 			{#if dialogNpcKey}
 				<NpcDialog npcKey={dialogNpcKey} onClose={closeDialog} />
 			{/if}
