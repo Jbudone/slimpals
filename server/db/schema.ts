@@ -360,6 +360,23 @@ export const gymJobs = mysqlTable(
 	(t) => [index("gym_jobs_gym_status_idx").on(t.gymId, t.status)],
 )
 
+/** Real activities that already sped up the 3D gym's jobs, so the same
+ * activity (a mission completed, un-completed and completed again) cuts
+ * at most once. `source` is e.g. `checkin:2026-09-27` or
+ * `mission:12:2026-09-21`. */
+export const gymActivityCuts = mysqlTable(
+	"gym_activity_cuts",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		source: varchar("source", { length: 64 }).notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_activity_cuts_gym_source_uq").on(t.gymId, t.source)],
+)
+
 export const gymNpcs = mysqlTable("gym_npcs", {
 	id: int("id").autoincrement().primaryKey(),
 	key: varchar("key", { length: 128 }).notNull().unique(),

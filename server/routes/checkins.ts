@@ -133,7 +133,11 @@ checkinsRouter.post("/checkins", async (req, res) => {
 	}
 	await awardGymXp(userId, gymXp, "checkin", db)
 	// a real check-in speeds up the 3D gym's construction (-1h per job)
-	await cutActiveJobs(userId, db)
+	await cutActiveJobs(
+		userId,
+		db,
+		`checkin:${row.date.toISOString().slice(0, 10)}`,
+	)
 
 	if (newBadges.length > 0) {
 		const [user] = await db

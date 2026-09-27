@@ -292,8 +292,13 @@ missionsRouter.post("/missions/:id/complete", async (req, res) => {
 		xpAwarded,
 	})
 	await awardGymXp(userId, xpAwarded, "mission_complete", db)
-	// real activity speeds up the 3D gym's construction (-1h per job)
-	await cutActiveJobs(userId, db)
+	// real activity speeds up the 3D gym's construction (-1h per job), once
+	// per mission and period: un-completing and completing again cuts nothing
+	await cutActiveJobs(
+		userId,
+		db,
+		`mission:${missionId}:${periodStart.toISOString().slice(0, 10)}`,
+	)
 
 	res.json({
 		completed: true,

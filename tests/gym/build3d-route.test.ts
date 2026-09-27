@@ -362,6 +362,37 @@ describe("construction jobs", () => {
 		expect(l.jobs.find((j) => j.id === b.jobs[0].id)?.status).toBe("done")
 		expect(l.plots.every((p) => p.state === "owned")).toBe(true)
 	})
+
+	it("toggling a mission complete three times cuts only one hour", async () => {
+		const { cookie } = await setup([])
+		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
+			.body as GymLayoutDto
+		const job0 = b.jobs[0]
+		const len = (j: { startedAt: string; endsAt: string }) =>
+			Date.parse(j.endsAt) - Date.parse(j.startedAt)
+		expect(len(job0)).toBe(4 * 3_600_000)
+		const m = await request(app)
+			.post("/api/missions")
+			.set("Cookie", cookie)
+			.send({ title: "Walk", cadence: "daily", difficulty: "easy" })
+			.expect(201)
+		for (let i = 0; i < 3; i++) {
+			await request(app)
+				.post(`/api/missions/${m.body.id}/complete`)
+				.set("Cookie", cookie)
+				.expect(200)
+			if (i < 2)
+				await request(app)
+					.post(`/api/missions/${m.body.id}/uncomplete`)
+					.set("Cookie", cookie)
+					.expect(200)
+		}
+		const l = await getLayout(cookie)
+		const job = l.jobs.find((j) => j.id === job0.id)
+		expect(job?.status).toBe("active")
+		// one hour off, not three; un-completing refunded nothing
+		expect(len(job ?? job0)).toBe(3 * 3_600_000)
+	})
 })
 
 describe("pieces", () => {

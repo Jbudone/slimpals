@@ -5,6 +5,7 @@
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm"
 import { ECONOMY, levelFromPoints } from "../../../shared/gym3d/economy.js"
 import {
+	gymActivityCuts,
 	gymJobs,
 	gymPieces,
 	gymPlots,
@@ -90,9 +91,14 @@ export async function settleJobs(
 /** Real activity was logged: take `hours` off every active job of the
  * user's gym (they finish on the next read once their time is up).
  * Returns how many jobs were sped up. */
+/** Takes `hours` off every active job of the user's gym for one real
+ * activity. `source` names that activity (see gymActivityCuts); an activity
+ * already recorded cuts nothing, so undoing and redoing it never repeats
+ * the cut (and undoing it refunds nothing). Returns the jobs cut. */
 export async function cutActiveJobs(
 	userId: string,
 	db: Db,
+	source: string,
 	hours: number = ECONOMY.activityCutHours,
 ): Promise<number> {
 	const [gym] = await db
@@ -100,12 +106,19 @@ export async function cutActiveJobs(
 		.from(userGyms)
 		.where(eq(userGyms.userId, userId))
 	if (!gym) return 0
-	const secs = Math.round(hours * 3600)
-	const [res] = await db
-		.update(gymJobs)
-		.set({
-			endsAt: sql`GREATEST(${gymJobs.startedAt}, ${gymJobs.endsAt} - INTERVAL ${secs} SECOND)`,
-		})
-		.where(and(eq(gymJobs.gymId, gym.id), eq(gymJobs.status, "active")))
-	return res.affectedRows ?? 0
+	return db.transaction(async (tx) => {
+		const [claim] = await tx
+			.insert(gymActivityCuts)
+			.ignore()
+			.values({ gymId: gym.id, source: source.slice(0, 64) })
+		if (!claim.affectedRows) return 0
+		const secs = Math.round(hours * 3600)
+		const [res] = await tx
+			.update(gymJobs)
+			.set({
+				endsAt: sql`GREATEST(${gymJobs.startedAt}, ${gymJobs.endsAt} - INTERVAL ${secs} SECOND)`,
+			})
+			.where(and(eq(gymJobs.gymId, gym.id), eq(gymJobs.status, "active")))
+		return res.affectedRows ?? 0
+	})
 }
