@@ -28,5 +28,14 @@ export default defineConfig({
 			DEV_AUTOLOGIN_EMAIL: "",
 		},
 	},
-	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+	projects: [
+		{ name: "chromium", use: { ...devices["Desktop Chrome"] } },
+		// Phone-sized run for the 3D gym (its camera, taps and GPU budget are
+		// tuned for phones first).
+		{
+			name: "mobile-chromium",
+			use: { ...devices["Pixel 7"] },
+			testMatch: /gym3d-.*\.spec\.ts/,
+		},
+	],
 })
