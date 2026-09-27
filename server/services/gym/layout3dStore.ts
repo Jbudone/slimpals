@@ -4,16 +4,30 @@
 // gym row (SELECT ... FOR UPDATE), so two first reads racing each other
 // cannot both seed.
 
-import { asc, eq, inArray } from "drizzle-orm"
+import { and, asc, eq, gte, lt, lte, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import {
+	ECONOMY,
+	type LotShape,
+	levelFromPoints,
+	plotHours,
+	plotPrice,
+} from "../../../shared/gym3d/economy.js"
+import { lotsForSale } from "../../../shared/gym3d/lots.js"
+import {
 	isRoomType,
+	itemSize,
 	PAINT,
 	type RoomType,
 } from "../../../shared/gym3d/rooms.js"
-import type { GymLayoutDto, GymLayoutPieceDto } from "../../../shared/types.js"
+import type {
+	GymJobDto,
+	GymLayoutDto,
+	GymLayoutPieceDto,
+} from "../../../shared/types.js"
 import type * as schema from "../../db/schema.js"
 import {
+	gymJobs,
 	gymPieces,
 	gymPlots,
 	gymRooms,
@@ -21,18 +35,20 @@ import {
 	userGyms,
 	userGymUpgrades,
 } from "../../db/schema.js"
+import { settleJobs } from "./build3dJobs.js"
 import {
 	type LayoutPlan,
 	lobbyOnlyPlan,
 	type PieceKind,
 	type PlanRoom,
 	placeNewUnlocks,
+	roomTypeFor,
 	type UnlockedUpgrade,
 } from "./layout3d.js"
 
-type Db = MySql2Database<typeof schema>
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0]
-type Conn = Db | Tx
+export type Db = MySql2Database<typeof schema>
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0]
+export type Conn = Db | Tx
 
 /** Display names for decor builders that have no catalog row of their own. */
 const DECOR_NAMES: Readonly<Record<string, string>> = {
@@ -45,7 +61,7 @@ const DECOR_NAMES: Readonly<Record<string, string>> = {
 	trophy: "Trophy stand",
 }
 
-async function unlockedUpgrades(
+export async function unlockedUpgrades(
 	conn: Conn,
 	gymId: number,
 ): Promise<UnlockedUpgrade[]> {
@@ -70,8 +86,9 @@ async function unlockedUpgrades(
 	}))
 }
 
-/** The stored layout as a plan (room refs are DB ids). */
-async function readPlan(conn: Conn, gymId: number): Promise<LayoutPlan> {
+/** The stored layout as a plan (room refs are DB ids). Rooms still being
+ * built or with no type yet are left out: nothing is placed in them. */
+export async function readPlan(conn: Conn, gymId: number): Promise<LayoutPlan> {
 	const rooms = await conn
 		.select()
 		.from(gymRooms)
@@ -90,11 +107,13 @@ async function readPlan(conn: Conn, gymId: number): Promise<LayoutPlan> {
 	const planRooms: PlanRoom[] = []
 	for (const r of rooms) {
 		if (!isRoomType(r.type)) continue
+		const cells = plots.filter((p) => p.roomId === r.id)
+		if (cells.some((p) => p.state !== "owned")) continue
 		planRooms.push({
 			ref: r.id,
 			id: r.id,
 			type: r.type,
-			shape: "normal",
+			shape: r.shape,
 			level: r.level,
 			cells: plots
 				.filter((p) => p.roomId === r.id)
@@ -114,6 +133,12 @@ async function readPlan(conn: Conn, gymId: number): Promise<LayoutPlan> {
 			z2: p.posZ2,
 			rot: p.rot,
 			locked: p.locked,
+			status:
+				p.status === "stored"
+					? "stored"
+					: p.status === "upgrading"
+						? "upgrading"
+						: "placed",
 		})),
 		unplaced: [],
 	}
@@ -178,42 +203,73 @@ async function writeAdditions(
 				posZ2: p.z2,
 				rot: p.rot,
 				locked: p.locked,
-				status: "placed",
+				status: p.status,
 			})),
 		)
 }
 
 /** Seeds the gym's layout if it has none yet, otherwise places any claimed
- * upgrade that has no piece. Safe to call on every read and concurrently. */
+ * upgrade that has no piece; grants the one-time starter coins and settles
+ * finished jobs. Safe to call on every read and concurrently. */
 export async function ensureGymLayout(gymId: number, db: Db): Promise<void> {
 	// Fast path, no lock: nothing to do for a seeded gym with nothing new.
 	const [gym] = await db
-		.select({ seededAt: userGyms.layoutSeededAt })
+		.select({
+			seededAt: userGyms.layoutSeededAt,
+			starterAt: userGyms.starterCoinsAt,
+		})
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
 	if (!gym) return
-	if (gym.seededAt) {
+	if (gym.seededAt && gym.starterAt) {
 		const before = await readPlan(db, gymId)
-		const next = placeNewUnlocks(before, await unlockedUpgrades(db, gymId))
-		if (!hasChanges(before, next)) return
+		const next = placeNewUnlocks(before, await unlockedUpgrades(db, gymId), {
+			newRooms: false,
+		})
+		const due = await db
+			.select({ id: gymJobs.id })
+			.from(gymJobs)
+			.where(
+				and(
+					eq(gymJobs.gymId, gymId),
+					eq(gymJobs.status, "active"),
+					lte(gymJobs.endsAt, new Date()),
+				),
+			)
+			.limit(1)
+		if (!hasChanges(before, next) && !due.length) return
 	}
 
 	await db.transaction(async (tx) => {
 		// The locking read comes first so this transaction's later reads see
 		// whatever a racing seeder committed while we waited for the lock.
 		const [locked] = await tx
-			.select({ seededAt: userGyms.layoutSeededAt })
+			.select({
+				seededAt: userGyms.layoutSeededAt,
+				starterAt: userGyms.starterCoinsAt,
+			})
 			.from(userGyms)
 			.where(eq(userGyms.id, gymId))
 			.for("update")
 		if (!locked) return
+		await settleJobs(tx, gymId, new Date())
 		const before = locked.seededAt ? await readPlan(tx, gymId) : lobbyOnlyPlan()
-		const next = placeNewUnlocks(before, await unlockedUpgrades(tx, gymId))
+		const next = placeNewUnlocks(before, await unlockedUpgrades(tx, gymId), {
+			newRooms: !locked.seededAt,
+		})
 		if (hasChanges(before, next)) await writeAdditions(tx, gymId, before, next)
-		if (!locked.seededAt)
+		if (!locked.seededAt || !locked.starterAt)
 			await tx
 				.update(userGyms)
-				.set({ layoutSeededAt: new Date() })
+				.set({
+					...(locked.seededAt ? {} : { layoutSeededAt: new Date() }),
+					...(locked.starterAt
+						? {}
+						: {
+								starterCoinsAt: new Date(),
+								coins: sql`${userGyms.coins} + ${ECONOMY.starterCoins}`,
+							}),
+				})
 				.where(eq(userGyms.id, gymId))
 	})
 }
@@ -226,12 +282,15 @@ export async function resetGymLayout(gymId: number, db: Db): Promise<void> {
 			.from(userGyms)
 			.where(eq(userGyms.id, gymId))
 			.for("update")
+		await tx.delete(gymJobs).where(eq(gymJobs.gymId, gymId))
 		await tx.delete(gymPieces).where(eq(gymPieces.gymId, gymId))
 		await tx.delete(gymPlots).where(eq(gymPlots.gymId, gymId))
 		await tx.delete(gymRooms).where(eq(gymRooms.gymId, gymId))
+		// coins stay (they came from real tasks); the starter grant is not
+		// repeated, and plot prices start over with the new layout
 		await tx
 			.update(userGyms)
-			.set({ layoutSeededAt: null })
+			.set({ layoutSeededAt: null, plotsBought: 0 })
 			.where(eq(userGyms.id, gymId))
 	})
 }
@@ -240,6 +299,11 @@ export async function getGymLayoutDto(
 	gymId: number,
 	db: Db,
 ): Promise<GymLayoutDto> {
+	const now = new Date()
+	const [gym] = await db
+		.select({ coins: userGyms.coins, plotsBought: userGyms.plotsBought })
+		.from(userGyms)
+		.where(eq(userGyms.id, gymId))
 	const rooms = await db
 		.select()
 		.from(gymRooms)
@@ -255,27 +319,73 @@ export async function getGymLayoutDto(
 		.from(gymPieces)
 		.where(eq(gymPieces.gymId, gymId))
 		.orderBy(asc(gymPieces.id))
+	const jobs = await db
+		.select()
+		.from(gymJobs)
+		.where(
+			and(
+				eq(gymJobs.gymId, gymId),
+				or(
+					eq(gymJobs.status, "active"),
+					gte(gymJobs.finishedAt, new Date(now.getTime() - 86_400_000)),
+				),
+			),
+		)
+		.orderBy(asc(gymJobs.id))
 
 	const plan = await readPlan(db, gymId)
 	const unlocked = await unlockedUpgrades(db, gymId)
-	const unplacedKeys = placeNewUnlocks(plan, unlocked).unplaced
+	const unplacedKeys = placeNewUnlocks(plan, unlocked, {
+		newRooms: false,
+	}).unplaced
+	const catalog = await db
+		.select({
+			key: gymUpgradesCatalog.key,
+			name: gymUpgradesCatalog.name,
+			category: gymUpgradesCatalog.category,
+			requiredXp: gymUpgradesCatalog.requiredXp,
+			sortOrder: gymUpgradesCatalog.sortOrder,
+		})
+		.from(gymUpgradesCatalog)
+		.orderBy(asc(gymUpgradesCatalog.sortOrder))
+	const byKey = new Map(catalog.map((c) => [c.key, c]))
+	const nameOf = (k: string) => byKey.get(k)?.name
+	const roomTypeOf = (k: string | null): string | null => {
+		if (!k) return null
+		const c = byKey.get(k)
+		return roomTypeFor({
+			key: k,
+			category: c?.category ?? "",
+			sortOrder: c?.sortOrder ?? 0,
+		})
+	}
+	const unlockedKeys = new Set(unlocked.map((u) => u.key))
 
-	const nameKeys = [
-		...new Set([
-			...pieces.map((p) => p.upgradeKey).filter((k): k is string => !!k),
-			...unplacedKeys,
-		]),
-	]
-	const catalog = nameKeys.length
-		? await db
-				.select({ key: gymUpgradesCatalog.key, name: gymUpgradesCatalog.name })
-				.from(gymUpgradesCatalog)
-				.where(inArray(gymUpgradesCatalog.key, nameKeys))
-		: []
-	const nameOf = new Map(catalog.map((c) => [c.key, c.name]))
+	const built = plots.map((p) => ({ px: p.px, pz: p.pz }))
+	const bought = gym?.plotsBought ?? 0
+
+	// Room level follows the tiers on its spots and never drops. Rooms seeded
+	// before (or filled by new unlocks) may lag behind: raise them here, with
+	// a guard so a concurrent raise is harmless.
+	const pointsOf = (roomId: number) =>
+		pieces
+			.filter((p) => p.roomId === roomId && p.spotIndex != null)
+			.reduce((a, p) => a + p.tier, 0)
+	const levels = new Map<number, number>()
+	for (const r of rooms) {
+		const lv = Math.max(r.level, levelFromPoints(pointsOf(r.id)))
+		levels.set(r.id, lv)
+		if (lv > r.level && r.type !== "lobby" && r.type !== "empty")
+			await db
+				.update(gymRooms)
+				.set({ level: lv })
+				.where(and(eq(gymRooms.id, r.id), lt(gymRooms.level, lv)))
+	}
 
 	return {
 		gymId,
+		coins: gym?.coins ?? 0,
+		serverNow: now.toISOString(),
 		plots: plots.map((p) => ({
 			px: p.px,
 			pz: p.pz,
@@ -285,15 +395,19 @@ export async function getGymLayoutDto(
 		})),
 		rooms: rooms.map((r) => {
 			const d = PAINT[isRoomType(r.type) ? (r.type as RoomType) : "empty"]
+			const cells = plots.filter((p) => p.roomId === r.id)
 			return {
 				id: r.id,
 				type: r.type,
 				shape: r.shape,
-				level: r.level,
+				level:
+					r.type === "lobby" || r.type === "empty"
+						? r.level
+						: (levels.get(r.id) ?? r.level),
+				points: pointsOf(r.id),
+				building: cells.some((p) => p.state !== "owned"),
 				layoutVersion: r.layoutVersion,
-				cells: plots
-					.filter((p) => p.roomId === r.id)
-					.map((p) => ({ px: p.px, pz: p.pz })),
+				cells: cells.map((p) => ({ px: p.px, pz: p.pz })),
 				paint: {
 					wall: r.wallColor ?? d.wall,
 					floorStyle: r.floorStyle ?? d.floorStyle,
@@ -309,7 +423,7 @@ export async function getGymLayoutDto(
 				itemKey: p.itemKey,
 				upgradeKey: p.upgradeKey,
 				name:
-					(p.upgradeKey ? nameOf.get(p.upgradeKey) : undefined) ??
+					(p.upgradeKey ? nameOf(p.upgradeKey) : undefined) ??
 					DECOR_NAMES[p.itemKey] ??
 					p.itemKey,
 				spotIndex: p.spotIndex,
@@ -319,8 +433,46 @@ export async function getGymLayoutDto(
 				tier: p.tier,
 				locked: p.locked,
 				status: p.status,
+				roomType: p.kind === "decor" ? null : roomTypeOf(p.upgradeKey),
+				size: itemSize(p.itemKey, p.kind === "decor" ? "decor" : "equipment"),
 			}),
 		),
-		unplaced: unplacedKeys.map((k) => ({ key: k, name: nameOf.get(k) ?? k })),
+		unplaced: unplacedKeys.map((k) => ({ key: k, name: nameOf(k) ?? k })),
+		lots: lotsForSale(built).map((l) => ({
+			id: l.id,
+			shape: l.shape,
+			cells: l.cells,
+			price: plotPrice(l.shape as LotShape, bought),
+			hours: plotHours(l.shape as LotShape),
+		})),
+		jobs: jobs.map(
+			(j): GymJobDto => ({
+				id: j.id,
+				kind: j.kind === "upgrade" ? "upgrade" : "plot",
+				roomId: j.roomId,
+				pieceId: j.pieceId,
+				targetTier: j.targetTier,
+				status: j.status === "done" ? "done" : "active",
+				cost: j.cost,
+				startedAt: j.startedAt.toISOString(),
+				endsAt: j.endsAt.toISOString(),
+				finishedAt: j.finishedAt ? j.finishedAt.toISOString() : null,
+			}),
+		),
+		lockedGear: catalog.flatMap((c) => {
+			if (unlockedKeys.has(c.key)) return []
+			const rt = roomTypeOf(c.key)
+			return rt
+				? [
+						{
+							key: c.key,
+							name: c.name,
+							requiredXp: c.requiredXp,
+							roomType: rt,
+							size: itemSize(c.key, "equipment"),
+						},
+					]
+				: []
+		}),
 	}
 }

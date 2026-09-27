@@ -3,6 +3,7 @@
 // with its stations. Ported from the build lab's world/walls/pieces code,
 // minus everything slice 1 leaves out (street, lots, building, coins).
 import * as T from "three"
+import { NEIGHBOURHOOD_COLS } from "../../../../shared/gym3d/lots"
 import {
 	DOOR_HALF,
 	isRoomType,
@@ -46,8 +47,12 @@ const H_FRONT = 0.45
 export type RoomView = {
 	id: number
 	type: string
+	shape: string
 	name: string
 	level: number
+	points: number
+	/** Plots still under construction. */
+	building: boolean
 	cells: { px: number; pz: number }[]
 	x0: number
 	z0: number
@@ -59,8 +64,35 @@ export type RoomView = {
 export type PickInfo =
 	| { kind: "piece"; piece: Piece }
 	| { kind: "person"; key: string }
+	| { kind: "floor"; roomId: number }
+	| { kind: "wall" }
+	| { kind: "lot"; lotId: string }
+	| { kind: "pad"; roomId: number; spot: number }
+	| { kind: "job"; jobId: number }
+
+/** What a layout change did to the pieces (people on removed stations
+ * need to move on). */
+export type LayoutDiff = {
+	removed: Set<Station>
+	added: Piece[]
+}
 
 const pkey = (px: number, pz: number) => `${px},${pz}`
+
+function isInside(o: T.Object3D, root: T.Object3D): boolean {
+	for (let q: T.Object3D | null = o; q; q = q.parent)
+		if (q === root) return true
+	return false
+}
+
+/** Display name of a room: "Cardio", "Pool hall" (a pool on a big plot),
+ * "New room" (bought, type not chosen). */
+export function roomLabel(type: string, shape: string): string {
+	if (type === "pool" && shape === "big") return "Pool hall"
+	if (type === "empty") return "New room"
+	if (isRoomType(type) && type !== "lobby") return RT[type].name
+	return roomName(type)
+}
 
 // ── floors ───────────────────────────────────────────────────────────────────
 
@@ -160,7 +192,7 @@ export class GymWorld implements NavSource {
 	readonly ctx: WorldCtx
 	readonly scene: T.Scene
 	readonly sun: T.DirectionalLight
-	readonly cols: number
+	cols: number
 	readonly rows = WORLD_ROWS
 	readonly frontZ: number
 	readonly doorX: number
@@ -171,14 +203,25 @@ export class GymWorld implements NavSource {
 	readonly paths: PathFinder
 	/** Invisible pick proxies (pieces; people add their own). */
 	readonly pickables: T.Object3D[] = []
+	/** Walkable (owned) cells -> room id. */
 	private plotRoom = new Map<string, number>()
+	/** Owned and building cells -> room id (walls). */
+	private plotAll = new Map<string, number>()
 	private wallSegs: WallSeg[] = []
 	private flags: { mesh: T.Object3D; id: number }[] = []
+	private floorG = new T.Group()
+	private wallG = new T.Group()
+	/** Walls of rooms under construction, scaled by build progress. */
+	readonly risingWalls = new Map<number, T.Mesh>()
+	layout: GymLayoutDto
 
-	constructor(
-		readonly layout: GymLayoutDto,
-		assets: AssetCache,
-	) {
+	/** Floors and walls, for taps on a room (last in the pick order). */
+	get structure(): T.Object3D[] {
+		return [...this.floorG.children, ...this.wallG.children]
+	}
+
+	constructor(layout: GymLayoutDto, assets: AssetCache) {
+		this.layout = layout
 		this.scene = new T.Scene()
 		this.ctx = {
 			scene: this.scene,
@@ -191,46 +234,31 @@ export class GymWorld implements NavSource {
 			rng: mulberry32(hashString(`gym:${layout.gymId}`)),
 		}
 		bindWorld(this.ctx)
-		const maxPx = layout.plots.reduce(
-			(m, p) => Math.max(m, p.px),
-			LOBBY_CELL.px,
-		)
-		this.cols = Math.max(3, maxPx + 1)
+		this.cols = 3
 		this.frontZ = this.rows * PD
 		this.lobby = { x0: LOBBY_CELL.px * PW, z0: LOBBY_CELL.pz * PD }
 		this.doorX = this.lobby.x0 + PW / 2
-		for (const p of layout.plots)
-			if (p.roomId != null && p.state === "owned")
-				this.plotRoom.set(pkey(p.px, p.pz), p.roomId)
-		for (const r of layout.rooms) {
-			if (!r.cells.length) continue
-			const x0 = Math.min(...r.cells.map((c) => c.px * PW))
-			const z0 = Math.min(...r.cells.map((c) => c.pz * PD))
-			const cx =
-				r.cells.reduce((a, c) => a + c.px * PW + PW / 2, 0) / r.cells.length
-			const cz =
-				r.cells.reduce((a, c) => a + c.pz * PD + PD / 2, 0) / r.cells.length
-			this.rooms.push({
-				id: r.id,
-				type: r.type,
-				name:
-					isRoomType(r.type) && r.type !== "lobby"
-						? RT[r.type].name
-						: roomName(r.type),
-				level: r.level,
-				cells: r.cells,
-				x0,
-				z0,
-				cx,
-				cz,
-				paint: r.paint,
-			})
-		}
+		this.readLayout(layout)
 		this.paths = new PathFinder(this)
+		this.scene.add(this.floorG, this.wallG)
 
 		this.scene.add(new T.HemisphereLight(0xfff4ea, 0xb07a6a, 0.72 * Math.PI))
 		const sun = new T.DirectionalLight(0xffffff, 0.62 * Math.PI)
 		sun.shadow.mapSize.set(2048, 2048)
+		sun.shadow.bias = -0.0006
+		this.scene.add(sun, sun.target)
+		this.sun = sun
+		this.fitSun()
+
+		this.buildGround()
+		this.buildFloors()
+		this.buildWalls()
+		for (const p of layout.pieces) this.addPiece(p)
+	}
+
+	/** Sizes the (static) shadow map to the built columns. */
+	private fitSun(): void {
+		const sun = this.sun
 		const sc = sun.shadow.camera
 		const cx = (this.cols * PW) / 2
 		const cz = (this.rows * PD) / 2 + 3
@@ -241,16 +269,166 @@ export class GymWorld implements NavSource {
 		sc.bottom = -R
 		sc.near = 1
 		sc.far = 160
-		sun.shadow.bias = -0.0006
+		sc.updateProjectionMatrix()
 		sun.position.set(cx - 26, 36, cz + 3)
 		sun.target.position.set(cx, 0, cz)
-		this.scene.add(sun, sun.target)
-		this.sun = sun
+		sun.target.updateMatrixWorld()
+	}
 
-		this.buildGround()
+	/** Rooms, walkable cells and the grid width from a layout. */
+	private readLayout(layout: GymLayoutDto): void {
+		this.layout = layout
+		const maxPx = layout.plots.reduce(
+			(m, p) => Math.max(m, p.px),
+			LOBBY_CELL.px,
+		)
+		this.cols = Math.max(3, maxPx + 1)
+		this.plotRoom.clear()
+		this.plotAll.clear()
+		for (const p of layout.plots) {
+			if (p.roomId == null) continue
+			this.plotAll.set(pkey(p.px, p.pz), p.roomId)
+			if (p.state === "owned") this.plotRoom.set(pkey(p.px, p.pz), p.roomId)
+		}
+		this.rooms.length = 0
+		for (const r of layout.rooms) {
+			if (!r.cells.length) continue
+			const x0 = Math.min(...r.cells.map((c) => c.px * PW))
+			const z0 = Math.min(...r.cells.map((c) => c.pz * PD))
+			let cx =
+				r.cells.reduce((a, c) => a + c.px * PW + PW / 2, 0) / r.cells.length
+			let cz =
+				r.cells.reduce((a, c) => a + c.pz * PD + PD / 2, 0) / r.cells.length
+			// an L's centroid falls outside it: use its first cell's centre
+			if (
+				!r.cells.some(
+					(c) =>
+						cx >= c.px * PW &&
+						cx <= c.px * PW + PW &&
+						cz >= c.pz * PD &&
+						cz <= c.pz * PD + PD,
+				)
+			) {
+				cx = r.cells[0].px * PW + PW / 2
+				cz = r.cells[0].pz * PD + PD / 2
+			}
+			this.rooms.push({
+				id: r.id,
+				type: r.type,
+				shape: r.shape,
+				name: roomLabel(r.type, r.shape),
+				level: r.level,
+				points: r.points ?? 0,
+				building: !!r.building,
+				cells: r.cells,
+				x0,
+				z0,
+				cx,
+				cz,
+				paint: r.paint,
+			})
+		}
+	}
+
+	/** Applies a new layout in place: floors and walls are rebuilt, pieces
+	 * are diffed by id (changed ones rebuilt), so people keep walking. */
+	applyLayout(next: GymLayoutDto): LayoutDiff {
+		bindWorld(this.ctx)
+		const cols = this.cols
+		this.readLayout(next)
+		if (cols !== this.cols) this.fitSun()
+		this.clearGroup(this.floorG)
+		this.clearGroup(this.wallG)
+		this.risingWalls.clear()
 		this.buildFloors()
 		this.buildWalls()
-		for (const p of layout.pieces) this.addPiece(p)
+		const removed = new Set<Station>()
+		const added: Piece[] = []
+		const want = new Map(
+			next.pieces
+				.filter((d) => d.status !== "stored" && d.roomId != null)
+				.map((d) => [d.id, d]),
+		)
+		for (const p of this.pieces.slice()) {
+			const d = want.get(p.id)
+			if (
+				d &&
+				d.x === p.x &&
+				d.z === p.z &&
+				d.rot === p.rot &&
+				d.tier === p.tier &&
+				d.itemKey === p.itemKey
+			) {
+				p.name = d.name
+				p.roomId = d.roomId
+				p.status = d.status
+				this.syncClosed(p)
+				want.delete(p.id)
+				continue
+			}
+			for (const st of p.stations) removed.add(st)
+			this.removePiece(p)
+		}
+		for (const d of want.values()) {
+			const p = this.addPiece(d)
+			if (p) added.push(p)
+		}
+		this.paths.invalidate()
+		return { removed, added }
+	}
+
+	/** Stations of a piece being upgraded are closed to members. */
+	private syncClosed(p: Piece): void {
+		const closed = p.status === "upgrading"
+		for (const st of p.stations) if (!st.staff) st.closed = closed
+	}
+
+	private clearGroup(g: T.Group): void {
+		const a = this.ctx.assets
+		for (const c of g.children.slice()) {
+			c.removeFromParent()
+			c.traverse((o) => {
+				const m = o as T.Mesh
+				if (m.geometry) a.release(m.geometry)
+			})
+		}
+	}
+
+	private removePiece(p: Piece): void {
+		const a = this.ctx.assets
+		p.root.removeFromParent()
+		p.root.traverse((o) => {
+			const m = o as T.Mesh
+			if (m.geometry) a.release(m.geometry)
+			const mat = m.material as T.Material | T.Material[] | undefined
+			for (const x of Array.isArray(mat) ? mat : mat ? [mat] : []) {
+				const map = (x as T.MeshStandardMaterial).map
+				if (map) a.release(map)
+				a.release(x)
+			}
+		})
+		const i = this.pieces.indexOf(p)
+		if (i >= 0) this.pieces.splice(i, 1)
+		const k = this.pickables.indexOf(p.hit)
+		if (k >= 0) this.pickables.splice(k, 1)
+		this.flags = this.flags.filter((f) => f.id !== p.id)
+		for (const st of p.stations) {
+			const j = this.stations.indexOf(st)
+			if (j >= 0) this.stations.splice(j, 1)
+		}
+		for (const b of this.ctx.belts.slice())
+			if (!b.parent || isInside(b, p.root))
+				this.ctx.belts.splice(this.ctx.belts.indexOf(b), 1)
+		for (const w of this.ctx.wheels.slice())
+			if (isInside(w, p.root))
+				this.ctx.wheels.splice(this.ctx.wheels.indexOf(w), 1)
+	}
+
+	/** The room (id) whose owned cell holds a world point. */
+	roomIdAt(x: number, z: number): number | null {
+		return (
+			this.plotAll.get(pkey(Math.floor(x / PW), Math.floor(z / PD))) ?? null
+		)
 	}
 
 	/** Where the camera should look to frame the whole gym. */
@@ -277,7 +455,7 @@ export class GymWorld implements NavSource {
 	private buildGround(): void {
 		const fz = this.frontZ
 		const X0 = -30
-		const X1 = this.cols * PW + 30
+		const X1 = Math.max(this.cols, NEIGHBOURHOOD_COLS) * PW + 30
 		const L = X1 - X0
 		const mx = (X0 + X1) / 2
 		const parts: Part[] = []
@@ -312,14 +490,15 @@ export class GymWorld implements NavSource {
 				s,
 			)
 		}
-		for (let x = 3; x < this.cols * PW; x += 7.5)
+		const wide = Math.max(this.cols, NEIGHBOURHOOD_COLS) * PW
+		for (let x = 3; x < wide; x += 7.5)
 			tree(
 				x + Math.sin(x) * 1.5,
 				-2.2 - Math.abs(Math.cos(x)) * 1.5,
 				1 + Math.abs(Math.sin(x * 1.7)) * 0.4,
 			)
 		// street lamps along the curb
-		for (let x = 4.5; x < this.cols * PW; x += 9) {
+		for (let x = 4.5; x < wide; x += 9) {
 			const z = fz + APRON - 0.35
 			pGeo(parts, cylGeo(0.07, 3.2, 6), "#4a4050", x, 1.6, z)
 			pBox(parts, 0.08, 0.08, 0.9, "#4a4050", x, 3.15, z + 0.4)
@@ -360,23 +539,22 @@ export class GymWorld implements NavSource {
 	private buildFloors(): void {
 		const a = this.ctx.assets
 		for (const r of this.rooms) {
-			const mat = a.mat(
-				`floor_${r.paint.floorStyle}${r.paint.floorColor}`,
-				() => {
-					const t = a.track(
-						new T.CanvasTexture(
-							floorCanvas(r.paint.floorStyle, r.paint.floorColor, this.ctx.rng),
-						),
-					)
-					t.wrapS = T.RepeatWrapping
-					t.wrapT = T.RepeatWrapping
-					t.anisotropy = 4
-					return new T.MeshStandardMaterial({
-						map: t,
-						roughness: r.paint.floorStyle === "tile" ? 0.6 : 1,
-					})
-				},
-			)
+			const style = r.building ? "concrete" : r.paint.floorStyle
+			const col = r.building ? "#cfc6bd" : r.paint.floorColor
+			const mat = a.mat(`floor_${style}${col}`, () => {
+				const t = a.track(
+					new T.CanvasTexture(
+						floorCanvas(style, col, mulberry32(hashString(style + col))),
+					),
+				)
+				t.wrapS = T.RepeatWrapping
+				t.wrapT = T.RepeatWrapping
+				t.anisotropy = 4
+				return new T.MeshStandardMaterial({
+					map: t,
+					roughness: style === "tile" ? 0.6 : 1,
+				})
+			})
 			for (const c of r.cells) {
 				const x0 = c.px * PW
 				const z0 = c.pz * PD
@@ -398,15 +576,23 @@ export class GymWorld implements NavSource {
 				f.receiveShadow = true
 				f.matrixAutoUpdate = false
 				f.updateMatrix()
-				this.scene.add(f)
+				const info: PickInfo = { kind: "floor", roomId: r.id }
+				f.userData.pick = info
+				this.floorG.add(f)
 			}
 		}
 	}
 
 	private buildWalls(): void {
-		type Seg = WallSeg & { gaps: [number, number][]; color: string }
+		type Seg = WallSeg & {
+			gaps: [number, number][]
+			color: string
+			room: number
+			building: boolean
+		}
 		const segs: Seg[] = []
 		for (const r of this.rooms) {
+			const own = { room: r.id, building: r.building }
 			for (const P of r.cells) {
 				const x0 = P.px * PW
 				const z0 = P.pz * PD
@@ -425,7 +611,7 @@ export class GymWorld implements NavSource {
 					[0, 1, false, z0 + PD, x0, x0 + PW, false],
 				]
 				for (const [dx, dz, vert, c, a0, a1, low] of edges) {
-					const nb = this.plotRoom.get(pkey(P.px + dx, P.pz + dz))
+					const nb = this.plotAll.get(pkey(P.px + dx, P.pz + dz))
 					const mid = (a0 + a1) / 2
 					if (nb != null) {
 						if (nb === r.id || !low) continue
@@ -437,6 +623,7 @@ export class GymWorld implements NavSource {
 							h: H_IN,
 							gaps: [[mid - DOOR_HALF, mid + DOOR_HALF]],
 							color: r.paint.wall,
+							...own,
 						})
 					} else {
 						const gaps: [number, number][] = []
@@ -456,6 +643,7 @@ export class GymWorld implements NavSource {
 							h: low ? H_BACK : H_FRONT,
 							gaps,
 							color: r.paint.wall,
+							...own,
 						})
 					}
 				}
@@ -471,52 +659,72 @@ export class GymWorld implements NavSource {
 			if (st < s.a1) out.push({ ...s, a0: st, a1: s.a1 })
 		}
 		this.wallSegs = out
+		const byRoom = new Map<number, Part[]>()
 		const parts: Part[] = []
 		for (const s of out) {
-			const L = s.a1 - s.a0
-			const mid = (s.a0 + s.a1) / 2
-			const th = 0.24
-			const h = s.h
-			const X = s.vert ? s.c : mid
-			const Z = s.vert ? mid : s.c
-			pBox(parts, s.vert ? th : L, h, s.vert ? L : th, s.color, X, h / 2, Z)
-			pBox(
-				parts,
-				s.vert ? th + 0.06 : L + 0.02,
-				0.1,
-				s.vert ? L + 0.02 : th + 0.06,
-				C.wallTop,
-				X,
-				h + 0.05,
-				Z,
-			)
-			pBox(
-				parts,
-				s.vert ? th + 0.02 : L + 0.01,
-				0.16,
-				s.vert ? L + 0.01 : th + 0.02,
-				C.wallOut,
-				X,
-				0.08,
-				Z,
-			)
-			if (h > 2)
-				pBox(
-					parts,
-					s.vert ? 0.02 : L,
-					0.14,
-					s.vert ? L : 0.02,
-					C.trim,
-					X + (s.vert ? 0.13 : 0),
-					1.05,
-					Z + (s.vert ? 0 : 0.13),
-				)
+			let parts2 = parts
+			if (s.building) {
+				parts2 = byRoom.get(s.room) ?? []
+				byRoom.set(s.room, parts2)
+			}
+			this.wallParts(parts2, s)
 		}
-		if (parts.length) batchMesh(parts)
+		if (parts.length) {
+			const m = batchMesh(parts, this.wallG)
+			const info: PickInfo = { kind: "wall" }
+			m.userData.pick = info
+		}
+		for (const [room, ps] of byRoom) {
+			const m = batchMesh(ps, this.wallG, { static: false })
+			m.scale.y = 0.05
+			this.risingWalls.set(room, m)
+		}
 		this.paths.invalidate()
 	}
 
+	private wallParts(parts: Part[], s: WallSeg & { color: string }): void {
+		const L = s.a1 - s.a0
+		const mid = (s.a0 + s.a1) / 2
+		const th = 0.24
+		const h = s.h
+		const X = s.vert ? s.c : mid
+		const Z = s.vert ? mid : s.c
+		pBox(parts, s.vert ? th : L, h, s.vert ? L : th, s.color, X, h / 2, Z)
+		pBox(
+			parts,
+			s.vert ? th + 0.06 : L + 0.02,
+			0.1,
+			s.vert ? L + 0.02 : th + 0.06,
+			C.wallTop,
+			X,
+			h + 0.05,
+			Z,
+		)
+		pBox(
+			parts,
+			s.vert ? th + 0.02 : L + 0.01,
+			0.16,
+			s.vert ? L + 0.01 : th + 0.02,
+			C.wallOut,
+			X,
+			0.08,
+			Z,
+		)
+		if (h > 2)
+			pBox(
+				parts,
+				s.vert ? 0.02 : L,
+				0.14,
+				s.vert ? L : 0.02,
+				C.trim,
+				X + (s.vert ? 0.13 : 0),
+				1.05,
+				Z + (s.vert ? 0 : 0.13),
+			)
+	}
+
 	private addPiece(d: GymLayoutDto["pieces"][number]): Piece | null {
+		if (d.status === "stored" || d.roomId == null) return null
 		const build = d.kind === "decor" ? DECOR[d.itemKey] : EQUIP[d.itemKey]
 		if (!build) return null
 		const c = this.ctx
@@ -561,6 +769,9 @@ export class GymWorld implements NavSource {
 			rot: d.rot,
 			roomId: d.roomId,
 			locked: d.locked,
+			status: d.status,
+			roomType: d.roomType ?? null,
+			spotIndex: d.spotIndex,
 			root,
 			inner: g,
 			hit,
@@ -587,6 +798,7 @@ export class GymWorld implements NavSource {
 		}
 		bakePiece(p)
 		if (p.tier > 1) applyTier(p)
+		this.syncClosed(p)
 		this.pieces.push(p)
 		if (p.deco) this.flags.push({ mesh: p.deco, id: p.id })
 		this.paths.invalidate()

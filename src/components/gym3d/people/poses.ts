@@ -101,9 +101,36 @@ const mkDumbbells = (r: Rig): T.Object3D[] =>
 		return d
 	})
 
+const mkHammer = (r: Rig): T.Object3D[] => {
+	const g = group(0, -0.03, 0, r.armR.hand)
+	const h = cyl(0.018, 0.36, C.woodD, 0, 0, 0.12, g, 6, [Math.PI / 2, 0, 0])
+	h.castShadow = false
+	const hd = box(0.08, 0.08, 0.18, "#5a5f6a", 0, 0, 0.3, g, { noCast: true })
+	hd.rotation.x = Math.PI / 2
+	return [g]
+}
+
 type PoseFn = (r: Rig, t: number, st: Station | null) => void
 
 export const POSES: Record<PoseName, PoseFn> = {
+	/** Construction worker swinging a hammer (the build lab's POSES.hammer). */
+	hammer(r, t) {
+		const c = (t * 1.4) % 1
+		const k =
+			c < 0.72
+				? Math.sin((c / 0.72) * (Math.PI / 2))
+				: Math.cos(((c - 0.72) / 0.28) * (Math.PI / 2))
+		plantLegs(r, -0.4, 0.8, 0)
+		r.torso.rotation.x = 0.32 - 0.14 * k
+		r.neck.rotation.x = -0.25
+		r.armR.sh.rotation.x = lerp(-0.45, -2.75, k)
+		r.armR.el.rotation.x = lerp(-0.7, -0.9, k)
+		r.armR.sh.rotation.z = 0.12
+		r.armL.sh.rotation.x = -0.85
+		r.armL.el.rotation.x = -0.55
+		r.armL.sh.rotation.z = -0.12
+		rigProp(r, "hammer", mkHammer)
+	},
 	idle(r, t) {
 		r.hips.position.y = H0 + Math.sin(t * 2) * 0.006
 		r.armL.sh.rotation.z = 0.08

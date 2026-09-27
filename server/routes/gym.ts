@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte } from "drizzle-orm"
-import { Router } from "express"
+import { type Request, type Response, Router } from "express"
 import { db } from "../db/index.js"
 import {
 	badges,
@@ -17,6 +17,17 @@ import {
 import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
+import {
+	BuildError,
+	buyLot,
+	chooseRoomType,
+	finishJobNow,
+	movePiece,
+	paintRoom,
+	rotatePiece,
+	storePiece,
+	upgradePiece,
+} from "../services/gym/build3d.js"
 import {
 	appendMemoryEvent,
 	generateContentForUser,
@@ -303,6 +314,94 @@ export function createGymRouter(aiService: AIService) {
 		await ensureGymLayout(gym.id, db)
 		res.json(await getGymLayoutDto(gym.id, db))
 	})
+
+	// 3D gym building (gym3d slice 2). Every action validates on the server
+	// and answers with the whole new layout (or 4xx + { error }).
+	const build =
+		(
+			fn: (gymId: number, req: Request) => Promise<unknown>,
+		): ((req: Request, res: Response) => Promise<void>) =>
+		async (req, res) => {
+			const userId = (req as AuthRequest).user.id
+			const gym = await getOrCreateGym(userId, db)
+			await ensureGymLayout(gym.id, db)
+			try {
+				await fn(gym.id, req)
+			} catch (e) {
+				if (e instanceof BuildError) {
+					res.status(e.status).json({ error: e.message })
+					return
+				}
+				throw e
+			}
+			res.json(await getGymLayoutDto(gym.id, db))
+		}
+	const idParam = (req: Request, name: string): number => {
+		const v = Number(req.params[name])
+		if (!Number.isInteger(v) || v <= 0) throw new BuildError(400, `Bad ${name}`)
+		return v
+	}
+	router.post(
+		"/gym/layout/lots/:lotId/buy",
+		build((gymId, req) => buyLot(db, gymId, String(req.params.lotId))),
+	)
+	router.post(
+		"/gym/layout/rooms/:roomId/type",
+		build((gymId, req) =>
+			chooseRoomType(
+				db,
+				gymId,
+				idParam(req, "roomId"),
+				String((req.body as { type?: unknown })?.type ?? ""),
+			),
+		),
+	)
+	router.post(
+		"/gym/layout/rooms/:roomId/paint",
+		build((gymId, req) =>
+			paintRoom(db, gymId, idParam(req, "roomId"), req.body ?? {}),
+		),
+	)
+	router.post(
+		"/gym/layout/pieces/:pieceId/move",
+		build((gymId, req) => {
+			const b = (req.body ?? {}) as { roomId?: unknown; spotIndex?: unknown }
+			const roomId = Number(b.roomId)
+			if (!Number.isInteger(roomId) || roomId <= 0)
+				throw new BuildError(400, "Bad roomId")
+			return movePiece(
+				db,
+				gymId,
+				idParam(req, "pieceId"),
+				roomId,
+				Number(b.spotIndex),
+			)
+		}),
+	)
+	router.post(
+		"/gym/layout/pieces/:pieceId/store",
+		build((gymId, req) => storePiece(db, gymId, idParam(req, "pieceId"))),
+	)
+	router.post(
+		"/gym/layout/pieces/:pieceId/rotate",
+		build((gymId, req) => rotatePiece(db, gymId, idParam(req, "pieceId"))),
+	)
+	router.post(
+		"/gym/layout/pieces/:pieceId/upgrade",
+		build((gymId, req) => upgradePiece(db, gymId, idParam(req, "pieceId"))),
+	)
+	router.post(
+		"/gym/layout/jobs/:jobId/finish",
+		build((gymId, req) => {
+			const m = (req.body as { maxCost?: unknown } | undefined)?.maxCost
+			return finishJobNow(
+				db,
+				gymId,
+				idParam(req, "jobId"),
+				typeof m === "number" && Number.isFinite(m) ? m : undefined,
+			)
+		}),
+	)
 
 	router.get("/gym/catalog", async (_req, res) => {
 		const catalog = await db

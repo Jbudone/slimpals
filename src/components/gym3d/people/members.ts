@@ -136,6 +136,55 @@ export class People {
 		this.claimSnap(m, st)
 	}
 
+	/** The layout changed: people on removed stations move on (anonymous
+	 * staff and swimmers go), members leave stations that closed (gear being
+	 * upgraded), walkers re-path around the new walls and pieces, and new
+	 * staff stations get their staff. */
+	layoutChanged(removed: ReadonlySet<Station>): void {
+		for (const p of this.people.slice()) {
+			if (p.exitFrom && removed.has(p.exitFrom)) p.exitFrom = null
+			const gone =
+				(p.station && removed.has(p.station)) ||
+				(p.fixed && removed.has(p.fixed))
+			if (gone) {
+				if (p.kind === "staff") {
+					this.remove(p)
+					continue
+				}
+				const st = p.station
+				if (st && st.busy === p) st.busy = null
+				p.station = null
+				p.fixed = null
+				resetPose(p.rig)
+				p.rig.root.position.y = 0
+				if (p.kind === "member") this.chooseNext(p)
+				else {
+					p.state = "idle"
+					p.idle = 1
+				}
+				continue
+			}
+			if (p.kind === "member" && p.station?.closed) {
+				this.release(p)
+				this.chooseNext(p)
+				continue
+			}
+			if (p.state === "walk" && p.dest) {
+				const [x, z, m] = p.dest
+				if (!this.walkTo(p, x, z, p.after, m, p.fin ?? undefined)) {
+					this.release(p)
+					if (p.kind === "member") this.chooseNext(p)
+					else if (p.leaving) this.remove(p)
+					else {
+						p.state = "idle"
+						p.idle = 1
+					}
+				}
+			}
+		}
+		this.seedFixed()
+	}
+
 	/** Seeds ambient members already working out, plus one walking in. */
 	seedMembers(): void {
 		const fr = this.freeStations().sort(() => this.rng() - 0.5)
