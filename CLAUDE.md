@@ -59,8 +59,16 @@ Settings > Beta. `Gym.svelte` loads it with a dynamic import and falls back to P
 - Layout comes from `GET /api/gym/layout` (tables `gym_rooms`/`gym_plots`/`gym_pieces`, seeded lazily
   from unlocked upgrades by `server/services/gym/layout3d*.ts`; room/spot tables in `shared/gym3d/rooms.ts`).
 - People follow `/api/gym/sim-state` (polled every 30s); tap a person for a name chip, Talk opens `NpcDialog`.
-- Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people() }`;
-  `stats()` gives rooms, pieces, people, drawCalls, geometries, textures, quality, fps. It is cleared on unmount.
+- Building (slice 2): coins (`user_gyms.coins`, +1 per gym XP, 1500 starter), For Sale lots, timed jobs
+  (`gym_jobs`, settled lazily on read), spots, upgrades and paint. All numbers live in `ECONOMY`
+  (`shared/gym3d/economy.ts`); lots in `shared/gym3d/lots.ts`. Endpoints `POST /api/gym/layout/...`
+  (`lots/:id/buy`, `rooms/:id/type|paint`, `pieces/:id/move|store|rotate|upgrade`, `jobs/:id/finish`)
+  lock the gym row and return the whole layout; logic in `server/services/gym/build3d*.ts`. Check-ins and
+  mission completions call `cutActiveJobs` (-1h). Admin grants coins (`POST /admin/users/:id/gym/coins`).
+- Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
+  screenAt(x, y, z), panTo(x, z), moveTargets() }`; `stats()` gives rooms, pieces, people, drawCalls,
+  geometries, textures, quality, fps, lots, pads, jobs, coins. It is cleared on unmount.
+  `e2e/gym3d-build.spec.ts` buys, finishes, types, moves and upgrades (`GYM3D_SHOTS=<dir>` saves screenshots).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
 
