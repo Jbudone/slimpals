@@ -10,6 +10,7 @@ import {
 	LOBBY_CELL,
 	LOBBY_EXTRA_SPOTS,
 	LOBBY_FIXTURES,
+	LOBBY_OFFICES,
 	levelForSpots,
 	PD,
 	type PlotCell,
@@ -101,6 +102,8 @@ const KEY_ROOM: Readonly<Record<string, EquipmentRoomType>> = {
 	amenity_showers: "recovery",
 	staff_massage: "recovery",
 	staff_physio: "recovery",
+	// the owner's lounge suite is Juice bar gear (the social hub)
+	staff_ownership_suite: "juice",
 }
 
 /** Catalog key -> free-standing decor builder. */
@@ -116,9 +119,6 @@ export const DECOR_ITEM: Readonly<Record<string, string>> = {
 /** Staff pieces that stand in the lobby (no room of their own yet). */
 const LOBBY_EXTRA_KEYS = new Set(["staff_assistant_trainer"])
 
-/** Offices with no home until the building slice; listed, never dropped. */
-const UNPLACED_KEYS = new Set(["staff_manager_office", "staff_ownership_suite"])
-
 const CATEGORY_ROOM: Readonly<Record<string, EquipmentRoomType>> = {
 	cardio: "cardio",
 	lagree: "cardio",
@@ -133,7 +133,8 @@ const CATEGORY_ROOM: Readonly<Record<string, EquipmentRoomType>> = {
 export function targetFor(u: UnlockedUpgrade): Target {
 	const fx = LOBBY_FIXTURES.find((f) => f.key === u.key)
 	if (fx) return { kind: "fixture", x: fx.x, z: fx.z }
-	if (UNPLACED_KEYS.has(u.key)) return { kind: "unplaced" }
+	const office = LOBBY_OFFICES.find((f) => f.key === u.key)
+	if (office) return { kind: "fixture", x: office.x, z: office.z }
 	if (LOBBY_EXTRA_KEYS.has(u.key)) return { kind: "lobbyExtra" }
 	const decor = DECOR_ITEM[u.key]
 	if (decor) return { kind: "decor", item: decor }
@@ -198,8 +199,8 @@ export type PlaceOpts = {
 	newRooms?: boolean
 }
 
-/** The room type a catalog upgrade belongs in, or null (fixtures, decor,
- * lobby staff, offices). */
+/** The room type a catalog upgrade belongs in, or null (fixtures, lobby
+ * offices, decor, lobby staff). */
 export function roomTypeFor(u: UnlockedUpgrade): EquipmentRoomType | null {
 	const t = targetFor(u)
 	return t.kind === "room" ? t.room : null
