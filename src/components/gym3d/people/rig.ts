@@ -330,6 +330,18 @@ function roundFace(g: T.Object3D, out: Outfit): void {
 		ck.position.set(s * 0.092, y - 0.035, z - 0.02)
 		ck.scale.set(1, 0.6, 0.3)
 	}
+	if (out.freckles)
+		for (const s of [-1, 1])
+			for (const [dx, dy] of [
+				[0.075, -0.012],
+				[0.095, -0.02],
+				[0.083, -0.028],
+			]) {
+				const f = add(
+					new T.Mesh(sphGeo(0.0055, 5, 4), a.BM(shade(out.skin, -0.28))),
+				)
+				f.position.set(s * dx, y + dy, z - 0.008)
+			}
 	const mouth = add(
 		new T.Mesh(
 			eqGeo("mouth", () => new T.TorusGeometry(0.026, 0.006, 6, 12, Math.PI)),
@@ -383,7 +395,8 @@ function roundHair(g: T.Object3D, out: Outfit): void {
 		st === "long" ||
 		st === "bun" ||
 		st === "pony" ||
-		st === "curly"
+		st === "curly" ||
+		st === "buns"
 	) {
 		cap(0.5, 1.02, 1.02, 1.02, 0.006)
 		// fringe
@@ -436,6 +449,22 @@ function roundHair(g: T.Object3D, out: Outfit): void {
 	}
 	if (st === "bun")
 		tmesh(sphGeo(0.075, 12, 10), "hair", h, g, 0, y + 0.19, -0.07)
+	if (st === "buns")
+		for (const s of [-1, 1]) {
+			tmesh(sphGeo(0.072, 12, 10), "hair", h, g, s * 0.12, y + 0.16, -0.03)
+			// a scrunchie under each bun
+			const sc = tmesh(
+				eqGeo("scrunchie", () => new T.TorusGeometry(0.05, 0.016, 6, 14)),
+				"band",
+				out.band ?? "#f2c14a",
+				g,
+				s * 0.105,
+				y + 0.125,
+				-0.025,
+				true,
+			)
+			sc.rotation.set(Math.PI / 2 - 0.2, 0, s * 0.55)
+		}
 	if (st === "pony") {
 		tmesh(
 			sphGeo(0.035, 8, 6),
@@ -477,7 +506,13 @@ function roundHair(g: T.Object3D, out: Outfit): void {
 		)
 		brim.scale.set(1, 1, 1.1)
 	}
-	if (out.band && st !== "cap" && st !== "bald" && st !== "pony") {
+	if (
+		out.band &&
+		st !== "cap" &&
+		st !== "bald" &&
+		st !== "pony" &&
+		st !== "buns"
+	) {
 		const b = tmesh(
 			eqGeo("headband", () => new T.TorusGeometry(0.168, 0.017, 6, 24)),
 			"band",
@@ -662,6 +697,46 @@ function teeTex(kind: TeeKind, top: string): { key: string; tex: T.Texture } {
 			x.strokeStyle = "#e8604a"
 			x.strokeText("07", c, c + 8)
 			x.fillText("07", c, c + 8)
+		}
+		if (kind === "staff") {
+			// the gym's logo (a little dumbbell in a ring) over STAFF
+			x.lineWidth = 9
+			x.beginPath()
+			x.arc(c, c - 34, 34, 0, 7)
+			x.stroke()
+			x.fillRect(c - 20, c - 38, 40, 8)
+			x.fillRect(c - 26, c - 48, 9, 28)
+			x.fillRect(c + 17, c - 48, 9, 28)
+			fitText(x, "STAFF", 170, "900", DISPLAY_FONT)
+			x.fillText("STAFF", c, c + 44)
+		}
+		if (kind === "titan") {
+			x.fillStyle = "#f2c14a"
+			star(x, c, c - 30, 40, 17)
+			x.fill()
+			x.lineWidth = 6
+			x.strokeStyle = ink
+			x.stroke()
+			x.fillStyle = ink
+			fitText(x, "TITAN", 190, "900", `Impact, ${DISPLAY_FONT}`)
+			x.fillText("TITAN", c, c + 40)
+		}
+		if (kind === "sparks") {
+			for (const [sx, sy, r] of [
+				[c - 44, c - 40, 26],
+				[c + 30, c - 50, 18],
+				[c + 50, c - 8, 12],
+			]) {
+				x.fillStyle = "#fff1b8"
+				star(x, sx, sy, r, r * 0.4)
+				x.fill()
+				x.lineWidth = 4
+				x.strokeStyle = ink
+				x.stroke()
+			}
+			x.fillStyle = ink
+			fitText(x, "SPARKS", 190, "900", DISPLAY_FONT)
+			x.fillText("SPARKS", c, c + 42)
 		}
 		if (kind === "gymrat") {
 			fitText(x, "GYM RAT", 200, "900", DISPLAY_FONT)
@@ -938,6 +1013,78 @@ function dress(r: Rig, out: Outfit): void {
 			)
 			st.position.y = -0.045
 			sh.add(keep(st))
+		}
+	}
+	if (acc.includes("earrings"))
+		for (const s of [-1, 1]) {
+			const e = new T.Mesh(
+				sphGeo(0.018, 8, 6),
+				a.mat(
+					"chain",
+					() =>
+						new T.MeshStandardMaterial({
+							color: "#e8c05a",
+							metalness: 0.6,
+							roughness: 0.3,
+						}),
+				),
+			)
+			e.position.set(s * 0.162, y - 0.035, 0)
+			r.neck.add(keep(e))
+		}
+	if (acc.includes("headset")) {
+		const band = new T.Mesh(
+			eqGeo(
+				"headsetband",
+				() => new T.TorusGeometry(0.182, 0.009, 5, 18, Math.PI),
+			),
+			TM("#2c2f36"),
+		)
+		band.position.set(0, y + 0.01, 0.01)
+		r.hairG.add(keep(band))
+		const cup = new T.Mesh(
+			eqGeo("headsetcup", () => new T.CylinderGeometry(0.04, 0.04, 0.035, 12)),
+			TM("#2c2f36"),
+		)
+		cup.rotation.z = Math.PI / 2
+		cup.position.set(-0.18, y, 0.01)
+		r.hairG.add(keep(cup))
+		const boom = new T.Mesh(
+			eqGeo("headsetboom", () => new T.BoxGeometry(0.012, 0.012, 0.13)),
+			TM("#2c2f36"),
+		)
+		boom.position.set(-0.165, y - 0.055, 0.075)
+		boom.rotation.y = -0.45
+		boom.rotation.x = -0.35
+		r.hairG.add(keep(boom))
+		const mic = new T.Mesh(sphGeo(0.018, 8, 6), TM("#e8604a"))
+		mic.position.set(-0.13, y - 0.075, 0.13)
+		r.hairG.add(keep(mic))
+	}
+	if (acc.includes("whistle") || acc.includes("lanyard")) {
+		const cord = new T.Mesh(
+			eqGeo("lanyard", () => new T.TorusGeometry(0.09, 0.006, 5, 18)),
+			TM(acc.includes("whistle") ? "#e8604a" : "#4a78c8"),
+		)
+		cord.rotation.x = Math.PI / 2 - 0.55
+		cord.position.set(0, 0.36, 0.03)
+		r.torso.add(keep(cord))
+		if (acc.includes("whistle")) {
+			const w = new T.Mesh(
+				eqGeo("whistle", () => new T.CylinderGeometry(0.022, 0.022, 0.05, 10)),
+				TM("#c8ccd4"),
+			)
+			w.rotation.z = Math.PI / 2
+			w.position.set(0, 0.29, 0.135)
+			r.torso.add(keep(w))
+		} else {
+			const card = new T.Mesh(
+				eqGeo("idcard", () => new T.BoxGeometry(0.06, 0.08, 0.012)),
+				TM("#fff7ea"),
+			)
+			card.position.set(0, 0.27, 0.14)
+			card.rotation.x = -0.15
+			r.torso.add(keep(card))
 		}
 	}
 	if (acc.includes("chain")) {

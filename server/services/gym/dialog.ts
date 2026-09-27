@@ -1,5 +1,7 @@
 import { and, eq, gt } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import type { RelationshipStage } from "../../../shared/gym3d/npcInfo.js"
+import { getStageLabel } from "../../../shared/gym3d/npcInfo.js"
 import type * as schema from "../../db/schema.js"
 import {
 	gymNpcDialogBatches,
@@ -19,25 +21,13 @@ export type DialogEntry = {
 	personalityTagAdded: string | null
 }
 
-export type RelationshipStage = 0 | 1 | 2 | 3
-
-const STAGE_LABELS: Record<RelationshipStage, string> = {
-	0: "Stranger",
-	1: "Acquaintance",
-	2: "Gym Buddy",
-	3: "Friend",
-}
-
-export function getRelationshipStage(level: number): RelationshipStage {
-	if (level >= 75) return 3
-	if (level >= 50) return 2
-	if (level >= 25) return 1
-	return 0
-}
-
-export function getStageLabel(stage: RelationshipStage): string {
-	return STAGE_LABELS[stage]
-}
+// Stage thresholds live in shared/ so the 3D gym's name chip shows the same
+// labels; re-exported here for the existing server imports.
+export {
+	getRelationshipStage,
+	getStageLabel,
+	type RelationshipStage,
+} from "../../../shared/gym3d/npcInfo.js"
 
 /** Days to reach full (100) relationship level under the synthetic
  * progression ramp (gh-110) — matches the "Established" 90-day checkpoint

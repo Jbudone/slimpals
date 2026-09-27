@@ -14,13 +14,8 @@ import type { Assignment } from "../world/assignTargets"
 import { ctx } from "../world/state"
 import type { Person, PersonKind, Station } from "../world/types"
 import type { GymWorld } from "../world/world"
-import {
-	type Outfit,
-	outfitFor,
-	randOutfit,
-	staffOutfit,
-	swimOutfit,
-} from "./outfits"
+import { outfitFor } from "./cast"
+import { type Outfit, randOutfit, staffOutfit, swimOutfit } from "./outfits"
 import { POSES, poseOf } from "./poses"
 import { disposeRig, makeRig, resetPose } from "./rig"
 
