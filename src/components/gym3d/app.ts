@@ -829,7 +829,13 @@ export class Gym3DApp {
 		)
 		for (const hit of hits) {
 			const info = hit.object.userData.pick as PickInfo | undefined
-			if (info?.kind === "piece" || info?.kind === "job") break
+			// only builder gear (and sites) wins over a person: fixtures like
+			// the reception desk still name the staff member behind them
+			if (
+				(info?.kind === "piece" && info.piece.roomType) ||
+				info?.kind === "job"
+			)
+				break
 			if (person) return person
 			break
 		}

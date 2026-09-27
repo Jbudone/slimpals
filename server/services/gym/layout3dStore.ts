@@ -4,11 +4,12 @@
 // gym row (SELECT ... FOR UPDATE), so two first reads racing each other
 // cannot both seed.
 
-import { and, asc, eq, gte, lte, or, sql } from "drizzle-orm"
+import { and, asc, eq, gte, lt, lte, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import {
 	ECONOMY,
 	type LotShape,
+	levelFromPoints,
 	plotHours,
 	plotPrice,
 } from "../../../shared/gym3d/economy.js"
@@ -363,6 +364,24 @@ export async function getGymLayoutDto(
 	const built = plots.map((p) => ({ px: p.px, pz: p.pz }))
 	const bought = gym?.plotsBought ?? 0
 
+	// Room level follows the tiers on its spots and never drops. Rooms seeded
+	// before (or filled by new unlocks) may lag behind: raise them here, with
+	// a guard so a concurrent raise is harmless.
+	const pointsOf = (roomId: number) =>
+		pieces
+			.filter((p) => p.roomId === roomId && p.spotIndex != null)
+			.reduce((a, p) => a + p.tier, 0)
+	const levels = new Map<number, number>()
+	for (const r of rooms) {
+		const lv = Math.max(r.level, levelFromPoints(pointsOf(r.id)))
+		levels.set(r.id, lv)
+		if (lv > r.level && r.type !== "lobby" && r.type !== "empty")
+			await db
+				.update(gymRooms)
+				.set({ level: lv })
+				.where(and(eq(gymRooms.id, r.id), lt(gymRooms.level, lv)))
+	}
+
 	return {
 		gymId,
 		coins: gym?.coins ?? 0,
@@ -381,10 +400,11 @@ export async function getGymLayoutDto(
 				id: r.id,
 				type: r.type,
 				shape: r.shape,
-				level: r.level,
-				points: pieces
-					.filter((p) => p.roomId === r.id && p.spotIndex != null)
-					.reduce((a, p) => a + p.tier, 0),
+				level:
+					r.type === "lobby" || r.type === "empty"
+						? r.level
+						: (levels.get(r.id) ?? r.level),
+				points: pointsOf(r.id),
 				building: cells.some((p) => p.state !== "owned"),
 				layoutVersion: r.layoutVersion,
 				cells: cells.map((p) => ({ px: p.px, pz: p.pz })),

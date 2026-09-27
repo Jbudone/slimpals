@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
 	gymJobs,
 	gymPlots,
+	gymRooms,
 	invites,
 	userGyms,
 	userGymUpgrades,
@@ -541,6 +542,24 @@ describe("pieces", () => {
 		const stored = l.pieces.find((p) => p.id === tread?.id)
 		expect(stored?.tier).toBe(2)
 		await post(cookie, `/pieces/${tread?.id}/upgrade`).expect(409)
+	})
+
+	it("a room whose points passed its level is raised on the next read", async () => {
+		const { layout } = await setup([
+			"cardio_treadmill",
+			"cardio_bikes",
+			"cardio_rowing",
+		])
+		const cardio = layout.rooms.find((r) => r.type === "cardio")
+		expect(cardio?.points).toBe(3)
+		// seeded at Lv 1 from its spots, but 3 points is Lv 2
+		expect(cardio?.level).toBe(2)
+		const db = await getTestDb()
+		const [row] = await db
+			.select({ level: gymRooms.level })
+			.from(gymRooms)
+			.where(eq(gymRooms.id, cardio?.id ?? 0))
+		expect(row.level).toBe(2)
 	})
 })
 
