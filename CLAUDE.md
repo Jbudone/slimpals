@@ -65,9 +65,18 @@ Settings > Beta. `Gym.svelte` loads it with a dynamic import and falls back to P
   (`lots/:id/buy`, `rooms/:id/type|paint`, `pieces/:id/move|store|rotate|upgrade`, `jobs/:id/finish`)
   lock the gym row and return the whole layout; logic in `server/services/gym/build3d*.ts`. Check-ins and
   mission completions call `cutActiveJobs` (-1h). Admin grants coins (`POST /admin/users/:id/gym/coins`).
+- Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
+  `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
+  bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus
+  cast/role lines (`shared/gym3d/npcLines.ts`). `world/happenings.ts` draws today's event (host + props by the
+  entrance, `eventActive` from sim-state), active classes (a synced group in the class's room) and hero tags.
+  Upgrade claims play in place (`Gym3DApp.claimCeremony`, no remount); lines in `shared/gym3d/celebrations.ts`.
+  Admin sets a test event with `POST /admin/users/:id/gym/today-event`.
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
-  screenAt(x, y, z), panTo(x, z), moveTargets() }`; `stats()` gives rooms, pieces, people, drawCalls,
-  geometries, textures, quality, fps, lots, pads, jobs, coins. It is cleared on unmount.
+  screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey) }`;
+  `stats()` gives rooms, pieces, people, drawCalls, geometries, textures, quality, fps, lots, pads, jobs, coins,
+  says, event, classes, classPeople, heroes. It is cleared on unmount. `e2e/gym3d-life.spec.ts` covers events,
+  classes, the chip, bubbles, the lineup and the claim ceremony.
   `e2e/gym3d-build.spec.ts` buys, finishes, types, moves and upgrades (`GYM3D_SHOTS=<dir>` saves screenshots).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
