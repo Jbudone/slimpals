@@ -57,8 +57,13 @@ function keydown(e: KeyboardEvent) {
 	}
 }
 
+// a sheet took over: drop any drag in flight so the drawer really tucks away
+$effect(() => {
+	if (hidden) drag = null
+})
+
 const offset = $derived.by(() => {
-	if (!drag) return null
+	if (!drag || hidden) return null
 	const h = el?.offsetHeight ?? 500
 	const peek = 78
 	const base = open ? 0 : h - peek

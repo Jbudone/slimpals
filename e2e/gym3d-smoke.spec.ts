@@ -115,18 +115,30 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	)
 	expect(stats?.running).toBe(true)
 
-	// tap the staff member at the reception desk (a real pointer tap on the
-	// canvas at the person's screen point) and expect a name chip
-	const keys = await page.evaluate(() => window.gym3d?.people() ?? [])
-	const staffKey = keys.find((k) => k.startsWith("staff:")) ?? keys[0]
-	expect(staffKey).toBeTruthy()
+	// tap a person who is on screen, staff first (a real pointer tap on the
+	// canvas at the person's screen point), and expect a name chip
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym box")
 	const pt = await page.evaluate(
-		(k) => window.gym3d?.screenOf(k) ?? null,
-		staffKey,
+		({ w, h }) => {
+			const g = window.gym3d
+			if (!g) return null
+			const keys = g.people()
+			const order = [
+				...keys.filter((k) => k.startsWith("staff:")),
+				...keys.filter((k) => !k.startsWith("staff:")),
+			]
+			for (const k of order) {
+				const p = g.screenOf(k)
+				if (p && p.x > 40 && p.x < w - 40 && p.y > 170 && p.y < h - 120)
+					return p
+			}
+			return null
+		},
+		{ w: box.width, h: box.height },
 	)
 	expect(pt).toBeTruthy()
-	const box = await page.locator("[data-testid=gym3d]").boundingBox()
-	if (!box || !pt) throw new Error("no gym box or person point")
+	if (!pt) return
 	await page.mouse.click(box.x + pt.x, box.y + pt.y)
 	await expect(page.locator(".g3d-chip")).toBeVisible()
 	await expect(page.locator(".g3d-chip-name")).not.toHaveText("")

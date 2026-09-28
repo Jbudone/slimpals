@@ -535,7 +535,13 @@ export class Gym3DApp {
 		this.labels.update(this.r)
 		const { w, h } = this.r.size
 		this.says.top = this.labels.insets.top
-		this.says.frame(this.clock, (v) => this.r.toScreen(v, _s), w, h)
+		this.says.frame(
+			this.clock,
+			(v) => this.r.toScreen(v, _s),
+			w,
+			h,
+			(x0, y0, x1, y1) => this.labels.coversBox(x0, y0, x1, y1),
+		)
 		this.placeChip()
 	}
 

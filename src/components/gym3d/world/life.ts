@@ -126,6 +126,8 @@ export class Bubbles {
 		toScreen: (v: T.Vector3) => { x: number; y: number },
 		w: number,
 		h: number,
+		/** Screen boxes kept clear (timer cards): a bubble there waits. */
+		blocked?: (x0: number, y0: number, x1: number, y1: number) => boolean,
 	): void {
 		for (const s of this.slots) {
 			const p = s.p
@@ -147,6 +149,13 @@ export class Bubbles {
 			const hw = s.w / 2
 			const x = Math.round(Math.min(Math.max(sp.x, hw + 6), w - hw - 6))
 			const y = Math.round(Math.max(sp.y, this.top + s.h + 4))
+			if (blocked?.(x - hw, y - s.h, x + hw, y)) {
+				if (s.vis) {
+					s.el.style.visibility = "hidden"
+					s.vis = false
+				}
+				continue
+			}
 			if (x !== s.sx || y !== s.sy) {
 				s.el.style.transform = `translate3d(${x - hw}px,${y - s.h}px,0)`
 				s.sx = x

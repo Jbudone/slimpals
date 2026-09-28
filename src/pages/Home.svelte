@@ -37,6 +37,23 @@ let coachPick = $state(0)
 /** A gym sheet (kitchen, job, piece...) or move mode is up: the drawer
  * steps aside so the sheet has the room. */
 let sheetUp = $state(false)
+/** Gym feedback ("Sweat spent...") the coach says for a moment. */
+let tip = $state<{ text: string; kind: "info" | "error" } | null>(null)
+let tipTimer: ReturnType<typeof setTimeout> | null = null
+let sayH = $state(0)
+/** The coach's corner under the HUD: gym cards (job timers, speech) are kept
+ * below it so the coach's bubble never covers them. */
+const coachBand = $derived(
+	(coachOpen || tip) && sayH ? Math.max(56, sayH + 10) : 56,
+)
+
+function onTip(text: string, kind: "info" | "error") {
+	tip = { text, kind }
+	if (tipTimer) clearTimeout(tipTimer)
+	tipTimer = setTimeout(() => {
+		tip = null
+	}, 4000)
+}
 
 const COACH_NAMES: Record<string, string> = {
 	friendly: "Coach Sam",
@@ -168,6 +185,7 @@ onMount(() => {
 		}
 	return () => {
 		if (coachTimer) clearTimeout(coachTimer)
+		if (tipTimer) clearTimeout(tipTimer)
 		if (import.meta.env.DEV) window.spRemountGym = undefined
 	}
 })
@@ -201,9 +219,10 @@ onMount(() => {
 				onFallback={(r) => (failed = r.includes("WebGL") ? "webgl" : "load")}
 				claim={claim3d}
 				onClaimDone={claimDone}
-				insetTop={hudBottom}
+				insetTop={hudBottom + coachBand}
 				insetBottom={sheetUp ? 0 : 78}
 				{onLayout}
+				{onTip}
 				onSheet={(o) => {
 					sheetUp = o
 					if (o) drawerOpen = false
@@ -224,8 +243,26 @@ onMount(() => {
 	>
 		{@html COACH_SVG}
 	</button>
-	{#if coachOpen}
-		<div class="say" style="top:{hudBottom + 6}px" role="status" data-testid="coach-say">
+	{#if tip}
+		<div
+			class="say"
+			class:err={tip.kind === "error"}
+			style="top:{hudBottom + 6}px"
+			bind:clientHeight={sayH}
+			role="status"
+			data-testid="gym3d-tip"
+		>
+			<small>{coachName.toUpperCase()}</small>
+			{tip.text}
+		</div>
+	{:else if coachOpen}
+		<div
+			class="say"
+			style="top:{hudBottom + 6}px"
+			bind:clientHeight={sayH}
+			role="status"
+			data-testid="coach-say"
+		>
 			<small>{coachName.toUpperCase()}</small>
 			<b>{coachLine.lead}</b> {coachLine.rest}
 		</div>
@@ -319,6 +356,11 @@ onMount(() => {
 	font: 800 10.5px/1.2 system-ui, sans-serif;
 	letter-spacing: 0.12em;
 	margin-bottom: 2px;
+}
+
+.say.err {
+	background: #ffe3dc;
+	color: #7a1f17;
 }
 
 .say b {

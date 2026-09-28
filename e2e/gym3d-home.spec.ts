@@ -5,7 +5,12 @@ import {
 	request as pwRequest,
 	test,
 } from "@playwright/test"
-import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
+import {
+	AUTH_ORIGIN,
+	expectUncovered,
+	mintInviteCode,
+	registerUser,
+} from "./helpers.js"
 
 // Gym home on a phone: the HUD, the Today drawer (a tick flies Sweat into
 // the HUD), coin bubbles and Collect all, the Slim Kitchen (Greens unlock a
@@ -172,10 +177,17 @@ test("gym home: tick a task, collect coins, run the kitchen, come back", async (
 	await expect(page.getByTestId("collect-all")).toHaveCount(0, {
 		timeout: 10_000,
 	})
-	const coins1 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
-	await expect(page.getByTestId("hud-coins")).toHaveText(
-		coins1.toLocaleString("en-US"),
-	)
+	// the HUD settles on the gym's balance (read together, after the last
+	// collect answer lands)
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const hud = document.querySelector("[data-testid=hud-coins]")
+				const c = window.gym3d?.layout().coins ?? -1
+				return hud?.textContent?.trim() === c.toLocaleString("en-US")
+			}),
+		)
+		.toBe(true)
 
 	// ── the Slim Kitchen: Greens put a new item on the menu ──
 	const k = await page.evaluate(() => window.gym3d?.kitchen())
@@ -188,6 +200,9 @@ test("gym home: tick a task, collect coins, run the kitchen, come back", async (
 	// the drawer steps aside while a sheet is up
 	await expect(page.getByTestId("today-drawer")).toHaveClass(/gone/)
 	await expect(page.getByTestId("kitchen-rate")).toContainText("8")
+	// the whole sheet sits above the tab bar, its last button uncovered
+	await page.getByTestId("kitchen-collect").scrollIntoViewIfNeeded()
+	await expectUncovered(page, "kitchen-collect")
 	await shot(page, "07-kitchen")
 	await page.getByTestId("kitchen-add-protein").click()
 	await expect(page.getByTestId("kitchen-rate")).toContainText("14")

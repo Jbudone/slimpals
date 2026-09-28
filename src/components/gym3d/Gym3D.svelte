@@ -42,6 +42,9 @@ type Props = {
 	onLayout?: (l: GymLayoutDto) => void
 	/** A bottom sheet opened or closed (Home tucks the Today drawer away). */
 	onSheet?: (open: boolean) => void
+	/** Short feedback ("Sweat spent...") for the host to show (Home puts it
+	 * in the coach's bubble); without it the gym shows its own tip. */
+	onTip?: (text: string, kind: "info" | "error") => void
 }
 
 let {
@@ -53,6 +56,7 @@ let {
 	insetBottom = 0,
 	onLayout,
 	onSheet,
+	onTip,
 }: Props = $props()
 
 const TYPES: EquipmentRoomType[] = [
@@ -180,6 +184,10 @@ $effect(() => {
 })
 
 function say(text: string, kind: "info" | "error" = "info") {
+	if (onTip) {
+		onTip(text, kind)
+		return
+	}
 	tip = { text, kind }
 	if (tipTimer) clearTimeout(tipTimer)
 	tipTimer = setTimeout(() => {

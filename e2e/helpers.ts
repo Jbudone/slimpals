@@ -1,4 +1,4 @@
-import type { APIRequestContext } from "@playwright/test"
+import { type APIRequestContext, expect, type Page } from "@playwright/test"
 
 // better-auth rejects state-changing requests without an Origin header
 // matching its trustedOrigins (CSRF protection) — matches scripts/seed-dev.ts's
@@ -49,4 +49,60 @@ export async function registerUser(
 			`Registration failed for ${params.email}. Status: ${res.status()}. Body: ${body}`,
 		)
 	}
+}
+
+/** The element is on screen above the tab bar and nothing covers it (its
+ * middle and near its bottom corners, clear of the rounding, hit the element itself). */
+export async function expectUncovered(page: Page, testId: string) {
+	await page.waitForTimeout(500) // sheet and drawer transitions settle
+	const res = await page.evaluate((id) => {
+		const el = document.querySelector(`[data-testid="${id}"]`)
+		if (!el) return "missing"
+		const r = el.getBoundingClientRect()
+		const tab = document.querySelector("[data-testid=tab-gym]")
+		const tabTop = tab
+			? (tab.closest("nav") ?? tab).getBoundingClientRect().top
+			: innerHeight
+		if (r.top < 0 || r.bottom > tabTop + 0.5)
+			return `off screen: ${r.top}..${r.bottom}, tab bar at ${tabTop}`
+		const pts: [number, number][] = [
+			[r.left + r.width / 2, r.top + r.height / 2],
+			[r.left + 14, r.bottom - 4],
+			[r.right - 14, r.bottom - 4],
+		]
+		for (const [x, y] of pts) {
+			const hit = document.elementFromPoint(x, y)
+			if (!hit || !(hit === el || el.contains(hit)))
+				return `covered at ${Math.round(x)},${Math.round(y)} by ${hit?.className}`
+		}
+		return "ok"
+	}, testId)
+	expect(res).toBe("ok")
+}
+
+/** Two on-screen boxes do not overlap (the coach's bubble vs a job card).
+ * Both are read in one go, as soon as both are there. */
+export async function expectNoOverlap(page: Page, a: string, b: string) {
+	await expect
+		.poll(() =>
+			page.evaluate(
+				([a, b]) => {
+					const ea = document.querySelector(a)
+					const eb = document.querySelector(b)
+					if (!ea || !eb) return `missing ${ea ? b : a}`
+					const ra = ea.getBoundingClientRect()
+					const rb = eb.getBoundingClientRect()
+					const hit =
+						ra.left < rb.right &&
+						rb.left < ra.right &&
+						ra.top < rb.bottom &&
+						rb.top < ra.bottom
+					return hit
+						? `overlap ${a} ${ra.top}..${ra.bottom} vs ${b} ${rb.top}..${rb.bottom}`
+						: "ok"
+				},
+				[a, b],
+			),
+		)
+		.toBe("ok")
 }
