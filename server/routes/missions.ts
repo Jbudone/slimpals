@@ -1,6 +1,11 @@
 import { and, eq, gte, isNull } from "drizzle-orm"
 import { Router } from "express"
 import {
+	guessMissionKind,
+	type TaskKind,
+	taskReward,
+} from "../../shared/gym3d/economy.js"
+import {
 	MISSION_XP,
 	type MissionCadence,
 	type MissionDifficulty,
@@ -8,12 +13,12 @@ import {
 import { db } from "../db/index.js"
 import { missionCompletions, missions } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
-import { cutActiveJobs } from "../services/gym/build3dJobs.js"
 import {
 	awardGymXp,
 	getLevelProgress,
 	getOrCreateGym,
 } from "../services/gym/index.js"
+import { payReward } from "../services/gym/rewards.js"
 import {
 	currentPeriodStart,
 	isWithinCurrentPeriod,
@@ -23,6 +28,11 @@ export const missionsRouter = Router()
 
 const CADENCES: MissionCadence[] = ["daily", "weekly"]
 const DIFFICULTIES: MissionDifficulty[] = ["easy", "medium", "hard"]
+const KINDS: TaskKind[] = ["exercise", "diet", "other"]
+
+function kindOf(row: typeof missions.$inferSelect): TaskKind {
+	return KINDS.includes(row.kind as TaskKind) ? (row.kind as TaskKind) : "other"
+}
 
 function missionPayload(
 	row: typeof missions.$inferSelect,
@@ -34,17 +44,31 @@ function missionPayload(
 		description: row.description,
 		cadence: row.cadence,
 		difficulty: row.difficulty,
+		kind: kindOf(row),
+		// what ticking it pays on top of its XP
+		xp: MISSION_XP[row.cadence as MissionCadence][
+			row.difficulty as MissionDifficulty
+		],
+		...taskReward(
+			kindOf(row),
+			row.cadence as MissionCadence,
+			row.difficulty as MissionDifficulty,
+		),
 		createdAt: row.createdAt,
 		completedThisPeriod,
 	}
 }
 
 function validateMissionInput(body: unknown): string | null {
-	const { title, cadence, difficulty, description } = (body ?? {}) as {
+	const { title, cadence, difficulty, description, kind } = (body ?? {}) as {
 		title?: unknown
 		cadence?: unknown
 		difficulty?: unknown
 		description?: unknown
+		kind?: unknown
+	}
+	if (kind !== undefined && !KINDS.includes(kind as TaskKind)) {
+		return "kind must be 'exercise', 'diet', or 'other'"
 	}
 
 	if (typeof title !== "string" || title.trim().length === 0) {
@@ -124,11 +148,12 @@ missionsRouter.post("/missions", async (req, res) => {
 		return
 	}
 
-	const { title, description, cadence, difficulty } = req.body as {
+	const { title, description, cadence, difficulty, kind } = req.body as {
 		title: string
 		description?: string
 		cadence: MissionCadence
 		difficulty: MissionDifficulty
+		kind?: TaskKind
 	}
 
 	const [inserted] = await db
@@ -139,6 +164,7 @@ missionsRouter.post("/missions", async (req, res) => {
 			description: description?.trim() || null,
 			cadence,
 			difficulty,
+			kind: kind ?? guessMissionKind(title),
 		})
 		.$returningId()
 
@@ -175,17 +201,19 @@ missionsRouter.patch("/missions/:id", async (req, res) => {
 		cadence: req.body?.cadence ?? existing.cadence,
 		difficulty: req.body?.difficulty ?? existing.difficulty,
 		description: req.body?.description ?? existing.description ?? undefined,
+		kind: req.body?.kind,
 	})
 	if (error) {
 		res.status(400).json({ error })
 		return
 	}
 
-	const { title, description, cadence, difficulty } = req.body as {
+	const { title, description, cadence, difficulty, kind } = req.body as {
 		title?: string
 		description?: string
 		cadence?: MissionCadence
 		difficulty?: MissionDifficulty
+		kind?: TaskKind
 	}
 
 	await db
@@ -198,6 +226,7 @@ missionsRouter.patch("/missions/:id", async (req, res) => {
 					: existing.description,
 			cadence: cadence ?? existing.cadence,
 			difficulty: difficulty ?? existing.difficulty,
+			kind: kind ?? existing.kind,
 		})
 		.where(eq(missions.id, missionId))
 
@@ -248,7 +277,13 @@ async function loadOwnedActiveMission(missionId: number, userId: string) {
 
 async function gymProgressPayload(userId: string) {
 	const gym = await getOrCreateGym(userId, db)
-	return { xp: gym.xp, ...getLevelProgress(gym.xp) }
+	return {
+		xp: gym.xp,
+		...getLevelProgress(gym.xp),
+		coins: gym.coins,
+		sweat: gym.sweat,
+		greens: gym.greens,
+	}
 }
 
 missionsRouter.post("/missions/:id/complete", async (req, res) => {
@@ -291,18 +326,25 @@ missionsRouter.post("/missions/:id/complete", async (req, res) => {
 		periodStart,
 		xpAwarded,
 	})
-	await awardGymXp(userId, xpAwarded, "mission_complete", db)
-	// real activity speeds up the 3D gym's construction (-1h per job), once
-	// per mission and period: un-completing and completing again cuts nothing
-	await cutActiveJobs(
+	const award = await awardGymXp(userId, xpAwarded, "mission_complete", db)
+	// exercise pays Sweat, diet pays Greens: once per mission and period, so
+	// un-completing and completing again pays nothing more
+	const paid = await payReward(
 		userId,
-		db,
 		`mission:${missionId}:${periodStart.toISOString().slice(0, 10)}`,
+		taskReward(
+			kindOf(mission),
+			cadence,
+			mission.difficulty as MissionDifficulty,
+		),
+		db,
 	)
 
 	res.json({
 		completed: true,
 		xpAwarded,
+		rewards: { xp: xpAwarded, ...paid },
+		newPendingUpgrades: award.newPendingUpgrades,
 		gym: await gymProgressPayload(userId),
 	})
 })

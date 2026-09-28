@@ -223,6 +223,17 @@ export const userGyms = mysqlTable("user_gyms", {
 	coins: int("coins").notNull().default(0),
 	plotsBought: int("plots_bought").notNull().default(0),
 	starterCoinsAt: timestamp("starter_coins_at"),
+	// Gym home (0021): Sweat (exercise tasks) and Greens (diet tasks), see
+	// ECONOMY. Idle coins accrue lazily from the *_collected_at times (null =
+	// since the gym was created); the Slim Kitchen menu is a bitmask over
+	// KITCHEN_MENU. last_open_at drives the "Welcome back" card.
+	sweat: int("sweat").notNull().default(0),
+	greens: int("greens").notNull().default(0),
+	deskCollectedAt: timestamp("desk_collected_at"),
+	kitchenCollectedAt: timestamp("kitchen_collected_at"),
+	kitchenMenu: int("kitchen_menu").notNull().default(1),
+	kitchenRushEndsAt: timestamp("kitchen_rush_ends_at"),
+	lastOpenAt: timestamp("last_open_at"),
 })
 
 export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
@@ -329,6 +340,9 @@ export const gymPieces = mysqlTable(
 		locked: boolean("locked").notNull().default(false),
 		status: varchar("status", { length: 16 }).notNull().default("placed"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
+		// Idle coins (0021): a placed machine's bubble fills from this time
+		// (null = since created_at).
+		collectedAt: timestamp("collected_at"),
 	},
 	(t) => [
 		unique("gym_pieces_gym_upgrade_unique").on(t.gymId, t.upgradeKey),
@@ -360,7 +374,27 @@ export const gymJobs = mysqlTable(
 	(t) => [index("gym_jobs_gym_status_idx").on(t.gymId, t.status)],
 )
 
-/** Real activities that already sped up the 3D gym's jobs, so the same
+/** Sweat / Greens paid for a real activity, once per gym and `source`
+ * (e.g. `mission:12:2026-09-28`, `meal:2026-09-28:lunch`,
+ * `weight:2026-09-28`): un-ticking and ticking again never pays twice. */
+export const gymRewards = mysqlTable(
+	"gym_rewards",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		source: varchar("source", { length: 64 }).notNull(),
+		sweat: int("sweat").notNull().default(0),
+		greens: int("greens").notNull().default(0),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_rewards_gym_source_uq").on(t.gymId, t.source)],
+)
+
+/** Legacy (slice 2, no longer written since 0021): real activities that
+ * sped up the 3D gym's jobs by an hour. Sweat replaced the automatic cut.
+ * Kept so existing rows stay readable. The same
  * activity (a mission completed, un-completed and completed again) cuts
  * at most once. `source` is e.g. `checkin:2026-09-27` or
  * `mission:12:2026-09-21`. */
@@ -538,6 +572,8 @@ export const missions = mysqlTable("missions", {
 	description: text("description"),
 	cadence: mysqlEnum("cadence", ["daily", "weekly"]).notNull(),
 	difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull(),
+	// exercise | diet | other (0021): exercise pays Sweat, diet pays Greens.
+	kind: varchar("kind", { length: 16 }).notNull().default("other"),
 	archivedAt: timestamp("archived_at"),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })

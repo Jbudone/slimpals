@@ -56,11 +56,11 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	const context = await browser.newContext({ storageState })
 	const page = await context.newPage()
 
-	await page.goto("/")
-	await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible()
+	await page.goto("/today")
+	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
 
-	await page.getByRole("button", { name: "Check in now" }).click()
-	await expect(page.getByText(/Checked in!/i)).toBeVisible()
+	await page.getByTestId("checkin-btn").click()
+	await expect(page.getByTestId("checkin-card")).toHaveClass(/done/)
 
 	await page.goto("/badges")
 	const badgeCard = page.locator(".ui-pill", { hasText: "3-Day Streak" })

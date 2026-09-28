@@ -21,11 +21,11 @@ import {
 	BuildError,
 	buyLot,
 	chooseRoomType,
-	finishJobNow,
 	movePiece,
 	paintRoom,
 	rotatePiece,
 	storePiece,
+	sweatJob,
 	upgradePiece,
 } from "../services/gym/build3d.js"
 import {
@@ -42,6 +42,12 @@ import {
 	getRelationshipStage,
 	getStageLabel,
 } from "../services/gym/dialog.js"
+import {
+	collectIncome,
+	openGym,
+	startRushHour,
+	unlockKitchenItem,
+} from "../services/gym/income3d.js"
 import {
 	claimUpgrade,
 	effectiveGymTime,
@@ -309,11 +315,35 @@ export function createGymRouter(aiService: AIService) {
 
 	// 3D gym layout (gym3d slice 1): seeds the layout on first read, then
 	// places any claimed upgrade that has no piece yet.
+	// ?open=1 (the gym screen mounting) records the open and, after a long
+	// absence, adds the "Welcome back" summary.
 	router.get("/gym/layout", async (req, res) => {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		await ensureGymLayout(gym.id, db)
-		res.json(await getGymLayoutDto(gym.id, db))
+		const welcomeBack =
+			req.query.open === "1" ? await openGym(db, gym.id) : null
+		res.json({ ...(await getGymLayoutDto(gym.id, db)), welcomeBack })
+	})
+
+	// The HUD on every tab: level, XP and the three currencies.
+	router.get("/gym/wallet", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		// the one-time starter coins, Sweat and Greens come with the layout
+		await ensureGymLayout((await getOrCreateGym(userId, db)).id, db)
+		const gym = await getOrCreateGym(userId, db)
+		const catalog = await db
+			.select({ key: gymUpgradesCatalog.key, name: gymUpgradesCatalog.name })
+			.from(gymUpgradesCatalog)
+		const pending = (gym.pendingUpgradeKeys as string[]) ?? []
+		res.json({
+			xp: gym.xp,
+			...getLevelProgress(gym.xp),
+			coins: gym.coins,
+			sweat: gym.sweat,
+			greens: gym.greens,
+			pendingUpgrades: catalog.filter((c) => pending.includes(c.key)),
+		})
 	})
 
 	// 3D gym building (gym3d slice 2). Every action validates on the server
@@ -326,8 +356,9 @@ export function createGymRouter(aiService: AIService) {
 			const userId = (req as AuthRequest).user.id
 			const gym = await getOrCreateGym(userId, db)
 			await ensureGymLayout(gym.id, db)
+			let out: unknown
 			try {
-				await fn(gym.id, req)
+				out = await fn(gym.id, req)
 			} catch (e) {
 				if (e instanceof BuildError) {
 					res.status(e.status).json({ error: e.message })
@@ -335,7 +366,14 @@ export function createGymRouter(aiService: AIService) {
 				}
 				throw e
 			}
-			res.json(await getGymLayoutDto(gym.id, db))
+			const collected =
+				out && typeof out === "object" && "collected" in out
+					? Number((out as { collected: unknown }).collected) || 0
+					: undefined
+			res.json({
+				...(await getGymLayoutDto(gym.id, db)),
+				...(collected != null ? { collected } : {}),
+			})
 		}
 	const idParam = (req: Request, name: string): number => {
 		const v = Number(req.params[name])
@@ -391,17 +429,43 @@ export function createGymRouter(aiService: AIService) {
 		"/gym/layout/pieces/:pieceId/upgrade",
 		build((gymId, req) => upgradePiece(db, gymId, idParam(req, "pieceId"))),
 	)
+	// Sweat speeds jobs up: /sweat takes an hour off for 1 Sweat, /finish
+	// ends the job for ceil(remaining hours) Sweat.
+	const maxCostOf = (req: Request): number | undefined => {
+		const m = (req.body as { maxCost?: unknown } | undefined)?.maxCost
+		return typeof m === "number" && Number.isFinite(m) ? m : undefined
+	}
 	router.post(
 		"/gym/layout/jobs/:jobId/finish",
+		build((gymId, req) =>
+			sweatJob(db, gymId, idParam(req, "jobId"), "finish", maxCostOf(req)),
+		),
+	)
+	router.post(
+		"/gym/layout/jobs/:jobId/sweat",
+		build((gymId, req) =>
+			sweatJob(db, gymId, idParam(req, "jobId"), "hour", maxCostOf(req)),
+		),
+	)
+	// Idle coins: tap one bubble ({ keys: ["piece:12"] }) or collect all.
+	router.post(
+		"/gym/layout/income/collect",
 		build((gymId, req) => {
-			const m = (req.body as { maxCost?: unknown } | undefined)?.maxCost
-			return finishJobNow(
-				db,
-				gymId,
-				idParam(req, "jobId"),
-				typeof m === "number" && Number.isFinite(m) ? m : undefined,
-			)
+			const keys = (req.body as { keys?: unknown } | undefined)?.keys
+			if (keys !== undefined && !Array.isArray(keys))
+				throw new BuildError(400, "keys must be a list")
+			return collectIncome(db, gymId, (keys as string[] | undefined) ?? null)
 		}),
+	)
+	router.post(
+		"/gym/layout/kitchen/menu/:item",
+		build((gymId, req) =>
+			unlockKitchenItem(db, gymId, String(req.params.item)),
+		),
+	)
+	router.post(
+		"/gym/layout/kitchen/rush",
+		build((gymId) => startRushHour(db, gymId)),
 	)
 
 	router.get("/gym/catalog", async (_req, res) => {

@@ -50,8 +50,10 @@ export type NpcLines = {
 	rivals: string[]
 }
 
-export function loadLayout(): Promise<GymLayoutDto> {
-	return api.get<GymLayoutDto>("/gym/layout")
+/** The gym's layout; `open` marks a fresh open of the gym (the answer may
+ * carry a "welcome back" summary after a long absence). */
+export function loadLayout(open = false): Promise<GymLayoutDto> {
+	return api.get<GymLayoutDto>(open ? "/gym/layout?open=1" : "/gym/layout")
 }
 
 export function loadRoster(): Promise<NpcRosterEntry[]> {

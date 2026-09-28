@@ -4,7 +4,6 @@ import { db } from "../db/index.js"
 import { dailyCheckins, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
-import { cutActiveJobs } from "../services/gym/build3dJobs.js"
 import { awardGymXp } from "../services/gym/index.js"
 
 export const checkinsRouter = Router()
@@ -131,13 +130,8 @@ checkinsRouter.post("/checkins", async (req, res) => {
 	for (const _badge of newBadges) {
 		gymXp += 10
 	}
-	await awardGymXp(userId, gymXp, "checkin", db)
-	// a real check-in speeds up the 3D gym's construction (-1h per job)
-	await cutActiveJobs(
-		userId,
-		db,
-		`checkin:${row.date.toISOString().slice(0, 10)}`,
-	)
+	// the check-in pays XP and the streak (no Sweat / Greens, see ECONOMY)
+	const award = await awardGymXp(userId, gymXp, "checkin", db)
 
 	if (newBadges.length > 0) {
 		const [user] = await db
@@ -160,7 +154,12 @@ checkinsRouter.post("/checkins", async (req, res) => {
 		}
 	}
 
-	res.status(201).json({ ...checkinPayload(row), newBadges })
+	res.status(201).json({
+		...checkinPayload(row),
+		newBadges,
+		rewards: { xp: gymXp, sweat: 0, greens: 0 },
+		newPendingUpgrades: award.newPendingUpgrades,
+	})
 })
 
 export async function ensureCheckin(userId: string): Promise<void> {

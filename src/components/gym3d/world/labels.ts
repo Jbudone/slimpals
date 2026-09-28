@@ -35,7 +35,7 @@ export class LabelLayer {
 		d.className = "g3d-labels"
 		d.setAttribute("aria-hidden", "false")
 		d.style.cssText =
-			"position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2"
+			"position:absolute;inset:0;pointer-events:none;overflow:hidden;overflow:clip;z-index:2"
 		host.appendChild(d)
 		this.root = d
 	}
@@ -103,7 +103,9 @@ export class LabelLayer {
 				pin = Math.abs(nx - px) > 1 || Math.abs(ny - py) > 1
 				px = nx
 				py = ny
-				vis = true
+				// no room between the HUD and a tall sheet: step aside rather
+				// than sit half under the sheet
+				vis = top + L.ch <= bot
 			}
 			if (pin !== L.pin) {
 				L.pin = pin
@@ -143,6 +145,17 @@ export class LabelLayer {
 				}
 			}
 		}
+	}
+
+	/** A shown clamped label (a timer card) covers part of this screen box. */
+	coversBox(x0: number, y0: number, x1: number, y1: number): boolean {
+		for (const H of this.labels) {
+			if (!H.clamp || !H.vis || !H.cw) continue
+			const hw = H.cw / 2
+			if (x0 < H.sx + hw && H.sx - hw < x1 && y0 < H.sy && H.sy - H.ch < y1)
+				return true
+		}
+		return false
 	}
 
 	get count(): number {

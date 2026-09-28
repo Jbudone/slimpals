@@ -148,6 +148,13 @@
       "when": 1790020000000,
       "tag": "0020_gym_building",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1790030000000,
+      "tag": "0021_gym_home",
+      "breakpoints": true
     }
   ]
 }

@@ -473,13 +473,14 @@ onMount(async () => {
 
 .log-form-secondary {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: var(--space-3);
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
 	gap: 0.375rem;
 	font-size: var(--font-size-sm);
 	color: var(--color-text-muted);

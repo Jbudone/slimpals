@@ -135,7 +135,7 @@ test("3D gym life: event, class, tap chip, bubbles and the cast lineup", async (
 	const errors: string[] = []
 	page.on("pageerror", (e) => errors.push(e.message))
 
-	await page.goto("/gym/canvas?gym3d=1")
+	await page.goto("/")
 	await waitReady(page)
 	await page.waitForTimeout(1200)
 	await shot(page, "01-start")
@@ -310,7 +310,7 @@ test("3D gym: claiming an upgrade builds it in place", async ({
 	}
 	const errors: string[] = []
 	page.on("pageerror", (e) => errors.push(e.message))
-	await page.goto("/gym/canvas?gym3d=1")
+	await page.goto("/")
 	await waitReady(page)
 	const before = await page.evaluate(
 		() =>
@@ -324,7 +324,7 @@ test("3D gym: claiming an upgrade builds it in place", async ({
 	await page.evaluate(() => {
 		;(window.gym3d as unknown as { mark?: number }).mark = 1
 	})
-	await page.getByRole("button", { name: "Claim Upgrade" }).click()
+	await page.getByTestId("place-gear").click()
 	await expect(
 		page.getByText("Tap the gym to help build!").first(),
 	).toBeVisible()

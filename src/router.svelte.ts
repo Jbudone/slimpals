@@ -2,19 +2,18 @@ import page from "page"
 
 export type RoutePath =
 	| "/"
+	| "/today"
+	| "/upgrades"
 	| "/login"
 	| "/register"
 	| "/weight"
 	| "/food"
 	| "/challenges"
 	| "/social"
-	| "/gym"
-	| "/gym/canvas"
 	| "/tournaments"
 	| "/badges"
 	| "/settings"
 	| "/admin"
-	| "/gym-sprites"
 	| "/ui-kit"
 	| "/content-tuning"
 
@@ -35,14 +34,16 @@ export function initRouter() {
 	page("/food", go("/food"))
 	page("/challenges", go("/challenges"))
 	page("/social", go("/social"))
-	page("/gym", go("/gym"))
-	page("/gym/canvas", go("/gym/canvas"))
+	page("/today", go("/today"))
+	page("/upgrades", go("/upgrades"))
+	// the gym is home now (old links and bookmarks)
+	page.redirect("/gym", "/")
+	page.redirect("/gym/canvas", "/")
 	page("/tournaments", go("/tournaments"))
 	page("/badges", go("/badges"))
 	page("/settings", go("/settings"))
 	page("/admin", go("/admin"))
 	if (import.meta.env.DEV) {
-		page("/gym-sprites", go("/gym-sprites"))
 		page("/ui-kit", go("/ui-kit"))
 	}
 	page("/content-tuning", go("/content-tuning"))

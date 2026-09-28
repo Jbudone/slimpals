@@ -1,11 +1,12 @@
 // Building the 3D gym (gym3d slice 2): buy a For Sale lot, choose a room
 // type once it is built, move / swap / store / rotate gear between spots,
-// upgrade gear, finish a job with coins, paint a room. The server is the
+// upgrade gear, speed a job up with Sweat (gym home), paint a room. The server is the
 // source of truth: every action runs in one transaction that locks the
 // user's gym row (SELECT ... FOR UPDATE), settles finished jobs, validates
 // everything and only then writes.
 import { and, asc, eq, sql } from "drizzle-orm"
 import {
+	ECONOMY,
 	FLOOR_TINTS,
 	finishCost,
 	hoursMs,
@@ -33,6 +34,7 @@ import {
 	userGyms,
 } from "../../db/schema.js"
 import { recalcRoomLevel, settleJobs } from "./build3dJobs.js"
+import { bankPiece } from "./income3d.js"
 import { roomTypeFor } from "./layout3d.js"
 import type { Db, Tx } from "./layout3dStore.js"
 
@@ -46,10 +48,16 @@ export class BuildError extends Error {
 	}
 }
 
-type Locked = { id: number; coins: number; plotsBought: number }
+export type Locked = {
+	id: number
+	coins: number
+	plotsBought: number
+	sweat: number
+	greens: number
+}
 
 /** Runs `fn` with the gym row locked and due jobs settled. */
-async function withGym<R>(
+export async function withGym<R>(
 	db: Db,
 	gymId: number,
 	fn: (tx: Tx, gym: Locked, now: Date) => Promise<R>,
@@ -60,6 +68,8 @@ async function withGym<R>(
 				id: userGyms.id,
 				coins: userGyms.coins,
 				plotsBought: userGyms.plotsBought,
+				sweat: userGyms.sweat,
+				greens: userGyms.greens,
 				seededAt: userGyms.layoutSeededAt,
 			})
 			.from(userGyms)
@@ -72,6 +82,32 @@ async function withGym<R>(
 		await settleJobs(tx, gymId, now)
 		return fn(tx, gym, now)
 	})
+}
+
+/** Takes `n` Sweat or Greens from the locked gym, or refuses. */
+export async function spendCurrency(
+	tx: Tx,
+	gym: Locked,
+	what: "sweat" | "greens",
+	n: number,
+): Promise<void> {
+	if (n <= 0) return
+	const have = gym[what]
+	const name = what === "sweat" ? "Sweat" : "Greens"
+	if (n > have)
+		throw new BuildError(
+			409,
+			`Not enough ${name} (${n} needed, you have ${have})`,
+		)
+	await tx
+		.update(userGyms)
+		.set(
+			what === "sweat"
+				? { sweat: sql`${userGyms.sweat} - ${n}` }
+				: { greens: sql`${userGyms.greens} - ${n}` },
+		)
+		.where(eq(userGyms.id, gym.id))
+	gym[what] -= n
 }
 
 async function spend(tx: Tx, gym: Locked, cost: number): Promise<void> {
@@ -276,7 +312,7 @@ export async function movePiece(
 ): Promise<void> {
 	if (!Number.isInteger(spotIndex) || spotIndex < 0)
 		throw new BuildError(400, "Bad spot")
-	await withGym(db, gymId, async (tx) => {
+	await withGym(db, gymId, async (tx, _gym, now) => {
 		const p = await pieceOf(tx, gymId, pieceId)
 		assertMovable(p)
 		const rt = await pieceRoomType(tx, p.upgradeKey)
@@ -330,6 +366,8 @@ export async function movePiece(
 			)
 				otherTo = { roomId: p.roomId, spotIndex: p.spotIndex, x: fs.x, z: fs.z }
 		}
+		// a machine going to storage pays out its coin bubble first
+		if (other && !otherTo) await bankPiece(tx, gymId, other.id, now)
 		// free both spots first: (room_id, spot_index) is unique
 		const oldRoom = p.roomId
 		await tx
@@ -366,6 +404,8 @@ export async function movePiece(
 				posX2: Math.round(spot.x * 2),
 				posZ2: Math.round(spot.z * 2),
 				status: "placed",
+				// out of storage: its bubble starts filling now
+				...(p.status === "stored" ? { collectedAt: now } : {}),
 			})
 			.where(eq(gymPieces.id, p.id))
 		await recalcRoomLevel(tx, roomId)
@@ -379,12 +419,13 @@ export async function storePiece(
 	gymId: number,
 	pieceId: number,
 ): Promise<void> {
-	await withGym(db, gymId, async (tx) => {
+	await withGym(db, gymId, async (tx, _gym, now) => {
 		const p = await pieceOf(tx, gymId, pieceId)
 		assertMovable(p)
 		if (p.status === "stored") return
 		if (!(await pieceRoomType(tx, p.upgradeKey)))
 			throw new BuildError(409, "This piece stays where it is")
+		await bankPiece(tx, gymId, p.id, now)
 		await tx
 			.update(gymPieces)
 			.set({
@@ -433,6 +474,8 @@ export async function upgradePiece(
 		const u = upgradeInfo(p.itemKey, p.tier)
 		if (!u) throw new BuildError(409, "Already at max tier")
 		await spend(tx, gym, u.cost)
+		// no coins while the work is on; its bubble is paid out first
+		await bankPiece(tx, gymId, p.id, now)
 		await tx
 			.update(gymPieces)
 			.set({ status: "upgrading" })
@@ -451,12 +494,14 @@ export async function upgradePiece(
 	})
 }
 
-/** Finishes a job now for coins scaled to its remaining time. `maxCost`
- * (what the player saw) guards against paying more than shown. */
-export async function finishJobNow(
+/** Speeds a job up with Sweat: "hour" takes one hour off for 1 Sweat,
+ * "finish" ends it now for ceil(remaining hours) Sweat. `maxCost` (what the
+ * player saw) guards against paying more than shown. */
+export async function sweatJob(
 	db: Db,
 	gymId: number,
 	jobId: number,
+	mode: "hour" | "finish",
 	maxCost?: number,
 ): Promise<{ cost: number }> {
 	return withGym(db, gymId, async (tx, gym, now) => {
@@ -466,14 +511,23 @@ export async function finishJobNow(
 			.where(and(eq(gymJobs.id, jobId), eq(gymJobs.gymId, gymId)))
 		if (!j) throw new BuildError(404, "Job not found")
 		if (j.status !== "active") return { cost: 0 }
-		const cost = finishCost(j.endsAt.getTime() - now.getTime())
+		const left = j.endsAt.getTime() - now.getTime()
+		const cost = mode === "finish" ? finishCost(left) : 1
 		if (maxCost != null && cost > maxCost)
-			throw new BuildError(409, `It costs ${cost} now`)
-		await spend(tx, gym, cost)
-		await tx
-			.update(gymJobs)
-			.set({ endsAt: now, cost: j.cost + cost })
-			.where(eq(gymJobs.id, j.id))
+			throw new BuildError(409, `It costs ${cost} Sweat now`)
+		await spendCurrency(tx, gym, "sweat", cost)
+		const cut = hoursMs(ECONOMY.sweat.hoursPerSweat)
+		const endsAt =
+			mode === "finish"
+				? now
+				: new Date(
+						Math.max(
+							now.getTime(),
+							j.startedAt.getTime(),
+							j.endsAt.getTime() - cut,
+						),
+					)
+		await tx.update(gymJobs).set({ endsAt }).where(eq(gymJobs.id, j.id))
 		await settleJobs(tx, gymId, now)
 		return { cost }
 	})

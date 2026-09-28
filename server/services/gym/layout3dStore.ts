@@ -36,6 +36,7 @@ import {
 	userGymUpgrades,
 } from "../../db/schema.js"
 import { settleJobs } from "./build3dJobs.js"
+import { incomeState } from "./income3d.js"
 import {
 	type LayoutPlan,
 	lobbyOnlyPlan,
@@ -268,6 +269,8 @@ export async function ensureGymLayout(gymId: number, db: Db): Promise<void> {
 						: {
 								starterCoinsAt: new Date(),
 								coins: sql`${userGyms.coins} + ${ECONOMY.starterCoins}`,
+								sweat: sql`${userGyms.sweat} + ${ECONOMY.starterSweat}`,
+								greens: sql`${userGyms.greens} + ${ECONOMY.starterGreens}`,
 							}),
 				})
 				.where(eq(userGyms.id, gymId))
@@ -301,7 +304,12 @@ export async function getGymLayoutDto(
 ): Promise<GymLayoutDto> {
 	const now = new Date()
 	const [gym] = await db
-		.select({ coins: userGyms.coins, plotsBought: userGyms.plotsBought })
+		.select({
+			coins: userGyms.coins,
+			plotsBought: userGyms.plotsBought,
+			sweat: userGyms.sweat,
+			greens: userGyms.greens,
+		})
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
 	const rooms = await db
@@ -382,9 +390,15 @@ export async function getGymLayoutDto(
 				.where(and(eq(gymRooms.id, r.id), lt(gymRooms.level, lv)))
 	}
 
+	const income = await incomeState(db, gymId, now)
+
 	return {
 		gymId,
 		coins: gym?.coins ?? 0,
+		sweat: gym?.sweat ?? 0,
+		greens: gym?.greens ?? 0,
+		income: income.sources,
+		kitchen: income.kitchen,
 		serverNow: now.toISOString(),
 		plots: plots.map((p) => ({
 			px: p.px,

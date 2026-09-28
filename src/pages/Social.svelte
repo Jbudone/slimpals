@@ -7,6 +7,9 @@ import { api } from "../lib/api.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
 import { page } from "../router.svelte.js"
 
+/** `embedded`: shown inside the Social hub (no page title or padding). */
+let { embedded = false }: { embedded?: boolean } = $props()
+
 type NewBadge = { key: string; name: string; tier: string; earnedAt: string }
 
 const EMOJIS = ["❤️", "😂", "💪", "🔥", "😭"] as const
@@ -166,8 +169,8 @@ function timeAgo(iso: string) {
 onMount(loadFeed)
 </script>
 
-<div class="social-page">
-	<h1>The pals</h1>
+<div class="social-page" class:embedded>
+	{#if !embedded}<h1>The pals</h1>{/if}
 
 	<div class="composer-row">
 		<button class="composer-btn" type="button" onclick={() => page("/weight")}>
@@ -296,6 +299,11 @@ onMount(loadFeed)
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);
+}
+
+.social-page.embedded {
+	padding: 0;
+	width: 100%;
 }
 
 h1 {

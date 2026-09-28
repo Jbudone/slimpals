@@ -10,9 +10,11 @@
 
 ## Key paths
 - `src/` — Svelte frontend (components, pages, stores, lib)
-- `src/pages/` — Top-level page components (Dashboard, Gym, Admin, Weight, Food, etc.)
-- `src/components/gym/` — Phaser game layer (PhaserGym, GymUI, NpcDialog, NpcSprite, scenes/)
-- `src/components/gym3d/` — beta three.js gym (Gym3D.svelte, app.ts, engine/, equipment/, people/, world/)
+- `src/pages/` — Top-level pages: Home (the gym), Today, Progress (Weight/Food/Gym levels), SocialHub
+  (Feed/Challenges/Tournaments/Badges), Settings, Admin
+- `src/components/home/` — gym home shell: Hud, TodayDrawer, TodayList, LevelUp, icons; state in
+  `src/lib/wallet.svelte.ts` (HUD numbers) and `src/lib/today.svelte.ts` (tasks); reward chips in `src/lib/fly.ts`
+- `src/components/gym3d/` — the three.js gym (Gym3D.svelte, app.ts, NpcDialog, engine/, equipment/, people/, world/)
 - `server/routes/` — Express API routes
 - `server/services/` — Business logic
 - `server/db/schema.ts` — Drizzle schema (source of truth for DB shape)
@@ -45,26 +47,35 @@ autologin would make the login/register/logout flow untestable. That means ports
 free — stop any manually-running `npm run dev` first. A `mobile-chromium` project (Pixel 7) runs only
 `e2e/gym3d-*.spec.ts`. Specs that call the AI (food photo analysis, NPC dialog) need a real `GEMINI_API_KEY`.
 
-## Canvas / Phaser notes
-The gym feature uses Phaser 3 rendered into a `<canvas>`. Standard DOM tools don't apply inside the canvas. For canvas testing:
-- Use screenshot comparison (before/after) as the primary verification method
-- Canvas clicks require pixel coordinates, not CSS selectors
-- Phaser scene state can be inspected via browser console: `window.game?.scene?.getScene('GymScene')`
-- NPC dialog (`NpcDialog.svelte`) may be a DOM overlay or canvas-drawn — check which
+## Canvas notes
+The gym renders with three.js into a `<canvas>`; standard DOM tools don't apply inside it. Drive and
+inspect it through `window.gym3d` (below), use pixel taps from `screenAt`/`screenOf`, and verify with
+screenshots. Labels, bubbles, sheets and `NpcDialog` are DOM overlays.
 
-## 3D gym (beta)
-`src/components/gym3d/` renders the gym with three.js instead of Phaser. It is off by default and is
-turned on per device with `?gym3d=1` (sticks in localStorage `sp:gym3d`; `?gym3d=0` turns it off) or
-Settings > Beta. `Gym.svelte` loads it with a dynamic import and falls back to Phaser if WebGL2 or loading fails.
+## Gym home (3D gym)
+The 3D gym is home (`/`, `src/pages/Home.svelte`): full screen under the fixed HUD, with a coach line, the
+Today drawer (peeks above the tab bar) and "Place new gear" for pending upgrades. Tabs: Gym · Today ·
+Progress · Social (`/gym` and `/gym/canvas` redirect to `/`). Home stays mounted on other tabs (hidden, so
+the renderer pauses); `Gym3D.svelte` is loaded with a dynamic import. No WebGL2 (or a failed load) shows a
+friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Layout comes from `GET /api/gym/layout` (tables `gym_rooms`/`gym_plots`/`gym_pieces`, seeded lazily
   from unlocked upgrades by `server/services/gym/layout3d*.ts`; room/spot tables in `shared/gym3d/rooms.ts`).
 - People follow `/api/gym/sim-state` (polled every 30s); tap a person for a name chip, Talk opens `NpcDialog`.
-- Building (slice 2): coins (`user_gyms.coins`, +1 per gym XP, 1500 starter), For Sale lots, timed jobs
+- Building (slice 2): coins (`user_gyms.coins`, 1500 starter), For Sale lots, timed jobs
   (`gym_jobs`, settled lazily on read), spots, upgrades and paint. All numbers live in `ECONOMY`
   (`shared/gym3d/economy.ts`); lots in `shared/gym3d/lots.ts`. Endpoints `POST /api/gym/layout/...`
-  (`lots/:id/buy`, `rooms/:id/type|paint`, `pieces/:id/move|store|rotate|upgrade`, `jobs/:id/finish`)
-  lock the gym row and return the whole layout; logic in `server/services/gym/build3d*.ts`. Check-ins and
-  mission completions call `cutActiveJobs` (-1h). Admin grants coins (`POST /admin/users/:id/gym/coins`).
+  (`lots/:id/buy`, `rooms/:id/type|paint`, `pieces/:id/move|store|rotate|upgrade`, `jobs/:id/sweat|finish`)
+  lock the gym row and return the whole layout; logic in `server/services/gym/build3d*.ts`.
+- Economy (gym home): Sweat (exercise tasks) speeds jobs up (1 Sweat = -1h; finish = ceil(hours left));
+  Greens (diet tasks, meal photos per meal type, a daily weigh-in) run the Slim Kitchen (menu items,
+  rush hour). Missions have `kind` (exercise|diet|other, guessed from the title). Awards are paid once per
+  activity through `gym_rewards` (unique gym+source, `server/services/gym/rewards.ts`). Coins are idle
+  income: machines, the reception desk and the kitchen fill capped bubbles computed lazily from their
+  collected times (`server/services/gym/income3d.ts`; `POST /gym/layout/income/collect`,
+  `kitchen/menu/:item`, `kitchen/rush`); `GET /gym/layout?open=1` may carry `welcomeBack`; `GET /gym/wallet`
+  feeds the HUD. Gym XP no longer gives coins and check-ins no longer cut jobs (`gym_activity_cuts` is legacy).
+  Admin grants coins/Sweat/Greens (`POST /admin/users/:id/gym/coins|sweat|greens`) and can simulate time
+  away (`POST /admin/users/:id/gym/away {hours}`).
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus
@@ -73,10 +84,12 @@ Settings > Beta. `Gym.svelte` loads it with a dynamic import and falls back to P
   Upgrade claims play in place (`Gym3DApp.claimCeremony`, no remount); lines in `shared/gym3d/celebrations.ts`.
   Admin sets a test event with `POST /admin/users/:id/gym/today-event`.
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
-  screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey) }`;
+  screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey),
+  coinsWaiting(), coinBubbles(), collectAll(), kitchen() }`;
   `stats()` gives rooms, pieces, people, drawCalls, geometries, textures, quality, fps, lots, pads, jobs, coins,
-  says, event, classes, classPeople, heroes. It is cleared on unmount. `e2e/gym3d-life.spec.ts` covers events,
-  classes, the chip, bubbles, the lineup and the claim ceremony.
+  sweat, greens, bubbles, says, event, classes, classPeople, heroes. It is cleared on unmount.
+  `e2e/gym3d-life.spec.ts` covers events, classes, the chip, bubbles, the lineup and the claim ceremony;
+  `e2e/gym3d-home.spec.ts` the HUD, drawer ticks, coin bubbles, Welcome back, the kitchen and the tabs.
   `e2e/gym3d-build.spec.ts` buys, finishes, types, moves and upgrades (`GYM3D_SHOTS=<dir>` saves screenshots).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
@@ -90,7 +103,8 @@ Features often touch multiple systems. Always check during scoping:
 - Checkins/streak (`server/routes/checkins.ts`) — does it count as an activity?
 - Challenges/sprints (`server/routes/challenges.ts`, `sprints.ts`) — does it affect objectives?
 - Social feed (`server/routes/social.ts`) — should it post an event?
-- NPC memory (Phaser scene state) — does it update NPC relationships?
+- NPC memory (`user_gym_npc_relationships`, NpcDialog) — does it update NPC relationships?
+- Gym economy (`shared/gym3d/economy.ts`) — should it pay Sweat or Greens (via `payReward`)?
 - Tournaments (`server/routes/tournaments.ts`) — does it affect eligibility?
 
 ---

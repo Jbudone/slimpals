@@ -7,11 +7,21 @@ import {
 	type UnlockedUpgrade,
 } from "../../server/services/gym/layout3d.js"
 import {
+	accrued,
+	deskRate,
 	ECONOMY,
 	finishCost,
+	guessMissionKind,
+	KITCHEN_MENU,
+	kitchenItemsOn,
+	kitchenMaskWith,
+	kitchenRate,
 	levelFromPoints,
 	levelProgress,
+	machineCap,
+	machineRate,
 	plotPrice,
+	taskReward,
 	upgradeInfo,
 } from "../../shared/gym3d/economy.js"
 import {
@@ -69,13 +79,14 @@ describe("economy", () => {
 		expect(upgradeInfo("mystery", 1)?.cost).toBe(240)
 	})
 
-	it("finishing now costs coins scaled to the remaining time", () => {
+	it("finishing now costs one Sweat per hour left, rounded up", () => {
 		expect(finishCost(0)).toBe(0)
 		expect(finishCost(-5)).toBe(0)
-		expect(finishCost(60_000)).toBe(10) // minimum
-		expect(finishCost(4 * HOUR)).toBe(160)
-		expect(finishCost(3.5 * HOUR)).toBe(140)
-		expect(finishCost(1 * HOUR + 1)).toBe(41)
+		expect(finishCost(60_000)).toBe(1) // minimum
+		expect(finishCost(4 * HOUR)).toBe(4)
+		expect(finishCost(3.5 * HOUR)).toBe(4)
+		expect(finishCost(3 * HOUR + 500)).toBe(3) // a second of drift is free
+		expect(finishCost(3 * HOUR + 5000)).toBe(4)
 	})
 
 	it("room level comes from points (prototype thresholds)", () => {
@@ -222,5 +233,82 @@ describe("placing unlocks after seeding", () => {
 		expect(roomTypeFor(byKey(["amenity_sauna"])[0])).toBe("recovery")
 		expect(roomTypeFor(byKey(["staff_reception"])[0])).toBeNull()
 		expect(roomTypeFor(byKey(["decor_plants"])[0])).toBeNull()
+	})
+})
+
+describe("gym home economy", () => {
+	it("missions pay Sweat (exercise) or Greens (diet) by difficulty", () => {
+		expect(taskReward("exercise", "daily", "hard")).toEqual({
+			sweat: 3,
+			greens: 0,
+		})
+		expect(taskReward("diet", "daily", "easy")).toEqual({ sweat: 0, greens: 1 })
+		expect(taskReward("diet", "weekly", "medium")).toEqual({
+			sweat: 0,
+			greens: 4,
+		})
+		expect(taskReward("other", "weekly", "hard")).toEqual({
+			sweat: 0,
+			greens: 0,
+		})
+	})
+
+	it("guesses a mission's kind from word starts in its title", () => {
+		expect(guessMissionKind("30-minute workout")).toBe("exercise")
+		expect(guessMissionKind("10-minute walk")).toBe("exercise")
+		expect(guessMissionKind("Run 5 times")).toBe("exercise")
+		expect(guessMissionKind("Snap a meal")).toBe("diet")
+		expect(guessMissionKind("Drink 2 L of water")).toBe("diet")
+		expect(guessMissionKind("Log your weight")).toBe("diet")
+		expect(guessMissionKind("Hit your calorie target")).toBe("diet")
+		// "breakfast" is not "fast", "grow" is not "row", "prune" is not "run"
+		expect(guessMissionKind("Grow tomatoes")).toBe("other")
+		expect(guessMissionKind("Prune the roses")).toBe("other")
+		expect(guessMissionKind("Read 20 pages")).toBe("other")
+		expect(guessMissionKind("Walk after breakfast")).toBe("exercise")
+	})
+
+	it("accrues whole coins over time, never above the cap", () => {
+		const t0 = 1_000_000_000_000
+		expect(accrued(4, 32, t0, t0 + 3 * HOUR)).toBe(12)
+		expect(accrued(4, 32, t0, t0 + 2.9 * HOUR)).toBe(11)
+		expect(accrued(4, 32, t0, t0 + 20 * HOUR)).toBe(32)
+		expect(accrued(4, 32, t0, t0 - HOUR)).toBe(0)
+		expect(accrued(0, 32, t0, t0 + HOUR)).toBe(0)
+		// a boost window doubles the rate only where it overlaps
+		const boost = { startMs: t0 + HOUR, endMs: t0 + 3 * HOUR, mult: 2 }
+		expect(accrued(8, 999, t0, t0 + 4 * HOUR, boost)).toBe(48)
+		expect(accrued(8, 999, t0 + 2 * HOUR, t0 + 4 * HOUR, boost)).toBe(24)
+		expect(accrued(8, 999, t0 + 3 * HOUR, t0 + 4 * HOUR, boost)).toBe(8)
+	})
+
+	it("machines earn more at higher tiers; the desk grows with rooms", () => {
+		expect(machineRate(1)).toBeLessThan(machineRate(2))
+		expect(machineRate(2)).toBeLessThan(machineRate(3))
+		expect(machineCap(3)).toBeGreaterThan(machineCap(1))
+		// caps hold several hours, so a day away fills them
+		for (const t of [1, 2, 3])
+			expect(machineCap(t) / machineRate(t)).toBeGreaterThanOrEqual(6)
+		expect(deskRate(0)).toBe(6)
+		expect(deskRate(3)).toBe(12)
+	})
+
+	it("kitchen menu bits: the first item is always on", () => {
+		expect(kitchenItemsOn(0)).toEqual(["green"])
+		expect(kitchenItemsOn(1)).toEqual(["green"])
+		const m = kitchenMaskWith(1, "salad")
+		expect(kitchenItemsOn(m)).toEqual(["green", "salad"])
+		expect(kitchenRate(m)).toBe(8 + 12)
+		const all = KITCHEN_MENU.reduce((a, x) => kitchenMaskWith(a, x.key), 1)
+		expect(kitchenItemsOn(all)).toHaveLength(KITCHEN_MENU.length)
+		// every locked item costs Greens, cheapest first
+		const costs = KITCHEN_MENU.slice(1).map((x) => x.cost)
+		expect(costs.every((c) => c > 0)).toBe(true)
+		expect([...costs].sort((a, b) => a - b)).toEqual(costs)
+	})
+
+	it("starter Sweat covers a first speed-up", () => {
+		expect(ECONOMY.starterSweat).toBeGreaterThanOrEqual(1)
+		expect(ECONOMY.starterGreens).toBeGreaterThanOrEqual(KITCHEN_MENU[1].cost)
 	})
 })

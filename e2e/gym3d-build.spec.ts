@@ -5,11 +5,17 @@ import {
 	request as pwRequest,
 	test,
 } from "@playwright/test"
-import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
+import {
+	AUTH_ORIGIN,
+	expectNoOverlap,
+	expectUncovered,
+	mintInviteCode,
+	registerUser,
+} from "./helpers.js"
 
-// 3D gym building (gym3d slice 2) on a phone: buy a For Sale plot, finish the
-// construction with coins, choose the room type, move a piece with
-// tap-move-tap, and upgrade it (coins granted by an admin). The canvas is
+// 3D gym building on a phone: buy a For Sale plot, speed the construction
+// up with Sweat (one hour, then finish), choose the room type, move a piece
+// with tap-move-tap, and upgrade it (coins and Sweat granted by an admin). The canvas is
 // driven through window.gym3d (screen points of world positions) and real
 // pointer taps. Set GYM3D_SHOTS=<dir> to save screenshots of each step.
 
@@ -100,7 +106,7 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	const pageErrors: string[] = []
 	page.on("pageerror", (err) => pageErrors.push(err.message))
 
-	await page.goto("/gym/canvas?gym3d=1")
+	await page.goto("/")
 	await waitReady(page)
 	await page.waitForTimeout(800)
 	await shot(page, "01-start")
@@ -109,9 +115,10 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	let L = await layoutOf(page)
 	expect(L.coins).toBeGreaterThanOrEqual(1500)
 	const coins0 = L.coins
-	await expect(page.getByTestId("gym3d-coins")).toContainText(
+	await expect(page.getByTestId("hud-coins")).toHaveText(
 		coins0.toLocaleString("en-US"),
 	)
+	expect(L.sweat).toBe(3)
 	const lot = L.lots
 		.filter((l) => l.shape === "normal")
 		.sort((a, b) => a.price - b.price)[0]
@@ -126,6 +133,7 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 		"data-sheet",
 		"lot",
 	)
+	await expectUncovered(page, "gym3d-buy")
 	await shot(page, "02-lot-sheet")
 	await page.getByTestId("gym3d-buy").click()
 	await expect(page.locator(".g3d-bub")).toHaveCount(1)
@@ -136,12 +144,56 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	await page.waitForTimeout(900)
 	await shot(page, "03-building")
 
-	// ── finish with coins (timer bubble button) ──
+	// ── Sweat: one hour off (timer bubble), then finish ──
+	const grantSweat = await admin.post(`/api/admin/users/${userId}/gym/sweat`, {
+		headers: { Origin: AUTH_ORIGIN },
+		data: { amount: 20 },
+	})
+	expect(grantSweat.ok()).toBe(true)
+	await page.reload()
+	await waitReady(page)
+	L = await layoutOf(page)
+	expect(L.sweat).toBe(23)
+	await expect(page.getByTestId("hud-sweat")).toHaveText("23")
+	const end0 = Date.parse(L.jobs.find((j) => j.id === job?.id)?.endsAt ?? "")
+	await page.locator(".g3d-bub [data-testid=job-sweat]").click()
+	// the coach says it, and the bubble keeps clear of the timer card
+	await expect(page.getByTestId("gym3d-tip")).toContainText("Sweat spent")
+	await expectNoOverlap(page, "[data-testid=gym3d-tip]", ".g3d-bub")
+	// pan the plot up under the coach: its timer card stays below the coach's
+	// bubble (pinned there) instead of sliding under it
+	for (const dz of [0, 6, 12]) {
+		await page.evaluate(({ x, z }) => window.gym3d?.panTo(x, z), {
+			x: cell.px * 9 + 4.5,
+			z: cell.pz * 6 + 3 + dz,
+		})
+		await page.waitForTimeout(700)
+		// the coach's bubble (the tip first fades, then the coach's own line)
+		await expect(page.getByTestId("gym3d-tip")).toHaveCount(0, {
+			timeout: 10_000,
+		})
+		// (re)open it so its 7s timer does not run out mid-check
+		if (await page.getByTestId("coach-say").isVisible())
+			await page.getByTestId("coach").click()
+		await page.getByTestId("coach").click()
+		await expect(page.getByTestId("coach-say")).toBeVisible()
+		await expectNoOverlap(page, "[data-testid=coach-say]", ".g3d-bub")
+	}
+	await expect(page.locator(".g3d-bub")).toHaveClass(/pin/)
+	await expect.poll(async () => (await layoutOf(page)).sweat).toBe(22)
+	L = await layoutOf(page)
+	const end1 = Date.parse(L.jobs.find((j) => j.id === job?.id)?.endsAt ?? "")
+	expect(end0 - end1).toBeGreaterThan(3_500_000)
+	await expect(page.getByTestId("hud-sweat")).toHaveText("22")
+	await expectUncovered(page, "job-sweat")
+	await shot(page, "03b-sweat-hour")
 	const coins1 = L.coins
 	await page.locator(".g3d-bub .g3d-fin").click()
 	await expect(page.locator(".g3d-bub")).toHaveCount(0)
 	L = await layoutOf(page)
-	expect(L.coins).toBeLessThan(coins1)
+	// Sweat finishes jobs now; coins are left alone
+	expect(L.coins).toBe(coins1)
+	expect(L.sweat).toBeLessThan(22)
 	expect(L.jobs.find((j) => j.id === job?.id)?.status).toBe("done")
 	await page.waitForTimeout(1300)
 	await shot(page, "04-ribbon")
@@ -183,12 +235,27 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	expect(piece).toBeTruthy()
 	if (!piece) return
 	await page.getByRole("button", { name: "Close" }).click()
-	await tapWorld(page, piece.x, 0.6, piece.z)
+	// a member may be using the machine: a tap on them names them instead,
+	// so try a few points on the piece
+	for (const [dx, dy, dz] of [
+		[0, 0.6, 0],
+		[0.5, 0.3, 0.4],
+		[-0.5, 0.3, -0.4],
+		[0.6, 0.2, -0.3],
+	]) {
+		await tapWorld(page, piece.x + dx, dy, piece.z + dz)
+		const on = await page
+			.getByTestId("gym3d-sheet")
+			.getAttribute("data-sheet", { timeout: 1500 })
+			.catch(() => null)
+		if (on === "piece") break
+	}
 	await shot(page, "07a-piece-tapped")
 	await expect(page.getByTestId("gym3d-sheet")).toHaveAttribute(
 		"data-sheet",
 		"piece",
 	)
+	await expectUncovered(page, "gym3d-move")
 	await shot(page, "07-piece-sheet")
 	await page.getByTestId("gym3d-move").click()
 	await expect(page.locator(".g3d-banner")).toBeVisible()

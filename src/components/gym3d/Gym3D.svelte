@@ -1,8 +1,10 @@
 <script lang="ts">
 import { onDestroy, onMount } from "svelte"
 import {
+	ECONOMY,
 	FLOOR_TINTS,
 	finishCost,
+	KITCHEN_MENU,
 	levelProgress,
 	upgradeInfo,
 	WALL_COLORS,
@@ -16,8 +18,9 @@ import {
 } from "../../../shared/gym3d/rooms"
 import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
 import { api } from "../../lib/api"
-import { page } from "../../router.svelte"
-import { Gym3DApp, type JobAction, type Selection } from "./app"
+import { centerOf, flyChip } from "../../lib/fly"
+import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
+import { bankAt, Gym3DApp, type JobAction, type Selection } from "./app"
 import { fmtLeft, jobLeft } from "./world/build"
 import { roomLabel } from "./world/world"
 
@@ -31,9 +34,30 @@ type Props = {
 	claim?: { key: string; n: number } | null
 	/** The claim ceremony is over (or could not run). */
 	onClaimDone?: () => void
+	/** Screen space the app's HUD covers at the top. */
+	insetTop?: number
+	/** Screen space covered at the bottom (tab bar + Today drawer peek). */
+	insetBottom?: number
+	/** Every new layout (the HUD shows its balances). */
+	onLayout?: (l: GymLayoutDto) => void
+	/** A bottom sheet opened or closed (Home tucks the Today drawer away). */
+	onSheet?: (open: boolean) => void
+	/** Short feedback ("Sweat spent...") for the host to show (Home puts it
+	 * in the coach's bubble); without it the gym shows its own tip. */
+	onTip?: (text: string, kind: "info" | "error") => void
 }
 
-let { onNpcClick, onFallback, claim = null, onClaimDone }: Props = $props()
+let {
+	onNpcClick,
+	onFallback,
+	claim = null,
+	onClaimDone,
+	insetTop = 0,
+	insetBottom = 0,
+	onLayout,
+	onSheet,
+	onTip,
+}: Props = $props()
 
 const TYPES: EquipmentRoomType[] = [
 	"cardio",
@@ -54,11 +78,10 @@ const FLOOR_NAMES: Record<string, string> = {
 
 let host: HTMLDivElement
 let chipEl = $state<HTMLDivElement | null>(null)
-let hudEl = $state<HTMLDivElement | null>(null)
 let sheetH = $state(0)
-/** Pixels of the gym hidden under the app's bottom tab bar (or below the
- * screen): sheets and banners sit above them. */
-let hidden = $state(0)
+/** Pixels of the gym hidden under the tab bar and the drawer's peek:
+ * sheets and banners sit above them. */
+const hidden = $derived(insetBottom)
 let app: Gym3DApp | null = null
 let destroyed = false
 let loading = $state(true)
@@ -72,8 +95,12 @@ let pickType = $state<EquipmentRoomType | null>(null)
 let bump = $state(0)
 let clock = $state(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
+let waiting = $state(0)
+let welcome = $state<NonNullable<GymLayoutDto["welcomeBack"]> | null>(null)
 
 const coins = $derived(layout?.coins ?? 0)
+const sweat = $derived(layout?.sweat ?? 0)
+const greens = $derived(layout?.greens ?? 0)
 
 const room = $derived.by(() => {
 	const s = selection
@@ -126,6 +153,7 @@ const job = $derived.by((): GymJobDto | null => {
 const sheet = $derived.by(() => {
 	const s = selection
 	if (!s || moving) return null
+	if (s.kind === "kitchen") return "kitchen"
 	if (s.kind === "lot") return lot ? "lot" : null
 	if (s.kind === "job") return job ? "job" : null
 	if (s.kind === "spot") return room ? "spot" : null
@@ -146,21 +174,20 @@ $effect(() => {
 })
 
 $effect(() => {
-	const top = hudEl?.offsetHeight ?? 0
-	const bottom = (sheet ? sheetH : 0) + hidden
-	app?.setInsets(top + 8, bottom)
+	onSheet?.(!!sheet || !!moving)
 })
 
-function measureHidden() {
-	if (!host) return
-	const r = host.getBoundingClientRect()
-	const nav = document.querySelector(".bottom-tab-bar")
-	const navTop = nav ? nav.getBoundingClientRect().top : window.innerHeight
-	const vis = Math.min(window.innerHeight, navTop)
-	hidden = Math.max(0, Math.min(r.height * 0.6, Math.round(r.bottom - vis)))
-}
+$effect(() => {
+	const bottom = (sheet ? sheetH : 0) + hidden
+	const top = insetTop
+	if (ready) app?.setInsets(top + 8, bottom)
+})
 
 function say(text: string, kind: "info" | "error" = "info") {
+	if (onTip) {
+		onTip(text, kind)
+		return
+	}
 	tip = { text, kind }
 	if (tipTimer) clearTimeout(tipTimer)
 	tipTimer = setTimeout(() => {
@@ -171,6 +198,7 @@ function say(text: string, kind: "info" | "error" = "info") {
 function setLayout(next: GymLayoutDto) {
 	if (layout && next.coins !== layout.coins) bump++
 	layout = next
+	onLayout?.(next)
 }
 
 /** Posts a build action; the server answers with the whole new layout. */
@@ -221,24 +249,116 @@ async function buyLot() {
 	say(`Construction started: about ${l.hours}h`)
 }
 
+function noSweat(need: number) {
+	say(
+		`Not enough Sweat: you need ${need}. Tick a workout task in Today to earn some.`,
+		"error",
+	)
+}
+
+/** Spends Sweat on a job: one hour off, or finish it now. */
 async function finishJob(jobId: number, cost: number) {
-	if (cost > coins) {
-		say(`Not enough coins: you need ${cost}`, "error")
-		return
-	}
+	if (cost > sweat) return noSweat(cost)
 	app?.bounceJob(jobId)
-	// allow a few seconds of drift; the server never charges more than this
-	const next = await act(`jobs/${jobId}/finish`, { maxCost: cost + 2 })
+	// allow a little drift; the server never charges more than this
+	const next = await act(`jobs/${jobId}/finish`, { maxCost: cost })
 	if (next) close()
 }
 
-function logWorkout() {
-	page("/")
+async function sweatHour(jobId: number) {
+	if (sweat < 1) return noSweat(1)
+	app?.bounceJob(jobId)
+	const next = await act(`jobs/${jobId}/sweat`)
+	if (next) {
+		const j = next.jobs.find((q) => q.id === jobId)
+		say(
+			j?.status === "active"
+				? `Sweat spent: one hour off. ${fmtLeft(jobLeft(j, app?.now() ?? Date.now()))} left.`
+				: "Sweat spent: done!",
+		)
+	}
 }
 
 function onJobAction(jobId: number, action: JobAction, cost: number) {
-	if (action === "workout") logWorkout()
+	if (action === "sweat") void sweatHour(jobId)
 	else void finishJob(jobId, cost)
+}
+
+/** Coin bubbles tapped: the coins fly to the HUD. The bubbles are already
+ * empty on screen; the server's answer is the truth. */
+async function collect(keys: string[], from: HTMLElement | null) {
+	const pt = from ? centerOf(from) : { x: innerWidth / 2, y: innerHeight / 2 }
+	try {
+		const next = await api.post<GymLayoutDto>("/gym/layout/income/collect", {
+			keys,
+		})
+		if (destroyed || !app) return
+		const got = next.collected ?? 0
+		if (got > 0) {
+			const n = Math.min(4, Math.max(1, Math.round(got / 25)))
+			const each = Math.round(got / n)
+			const fl: Promise<void>[] = []
+			for (let i = 0; i < n; i++)
+				fl.push(
+					flyChip(
+						"co",
+						chipHtml("co", i === 0 ? got - each * (n - 1) : each),
+						pt,
+						i * 90,
+					),
+				)
+			await Promise.all(fl)
+		}
+		if (destroyed || !app) return
+		app.applyLayout(next)
+		setLayout(next)
+	} catch (e) {
+		say(e instanceof Error ? e.message : "Could not collect", "error")
+		try {
+			if (app) setLayout(await app.reload())
+		} catch {
+			// keep what we have
+		}
+	}
+}
+
+function collectAll() {
+	app?.collect()
+	welcome = null
+}
+
+async function unlockItem(key: string) {
+	const next = await act(`kitchen/menu/${key}`)
+	if (next) {
+		const m = KITCHEN_MENU.find((q) => q.key === key)
+		say(`${m?.name ?? "New item"} is on the menu!`)
+	}
+}
+
+async function rushHour() {
+	if (greens < ECONOMY.income.kitchen.rush.greens) {
+		say("You need a Green for rush hour. Tick a food task in Today.", "error")
+		return
+	}
+	const next = await act("kitchen/rush")
+	if (next)
+		say(
+			`Rush hour! Sales x${ECONOMY.income.kitchen.rush.mult} for ${ECONOMY.income.kitchen.rush.hours}h.`,
+		)
+}
+
+function onTaskDone(e: Event) {
+	const kind = (e as CustomEvent<{ kind?: string }>).detail?.kind ?? "other"
+	app?.cheer(kind)
+	// Sweat / Greens changed on the server: read the layout again once the
+	// reward chips have landed in the HUD
+	setTimeout(() => {
+		if (destroyed || !app) return
+		app
+			.reload()
+			.then((l) => setLayout(l))
+			.catch(() => {})
+	}, 1600)
 }
 
 async function chooseType() {
@@ -380,6 +500,7 @@ onMount(() => {
 				.catch(() => {})
 		},
 		onHint: (t) => say(t),
+		onCollect: (keys, from) => void collect(keys, from),
 	})
 		.then((a) => {
 			if (destroyed) {
@@ -388,9 +509,10 @@ onMount(() => {
 			}
 			app = a
 			app.setChipElement(chipEl)
-			layout = a.layout
+			setLayout(a.layout)
+			welcome = a.layout.welcomeBack ?? null
 			loading = false
-			app.setInsets((hudEl?.offsetHeight ?? 0) + 8, 0)
+			app.setInsets(insetTop + 8, hidden)
 			window.gym3d = {
 				ready: true,
 				stats: () => a.stats(),
@@ -408,6 +530,10 @@ onMount(() => {
 				},
 				claiming: () => a.claimActive,
 				portrait: (k) => a.portraitOf(k),
+				coinsWaiting: () => a.coinsWaiting(),
+				coinBubbles: () => a.coinBubbles(),
+				collectAll: () => a.collect(),
+				kitchen: () => a.kitchenScreen(),
 			}
 			ready = true
 		})
@@ -418,10 +544,9 @@ onMount(() => {
 		})
 	clockTimer = setInterval(() => {
 		clock = Date.now()
+		waiting = app?.coinsWaiting() ?? 0
 	}, 1000)
-	measureHidden()
-	window.addEventListener("scroll", measureHidden, { passive: true })
-	window.addEventListener("resize", measureHidden)
+	window.addEventListener("sp:task-done", onTaskDone)
 })
 
 onDestroy(() => {
@@ -432,10 +557,8 @@ onDestroy(() => {
 	app = null
 	if (tipTimer) clearTimeout(tipTimer)
 	if (clockTimer) clearInterval(clockTimer)
-	if (typeof window !== "undefined") {
-		window.removeEventListener("scroll", measureHidden)
-		window.removeEventListener("resize", measureHidden)
-	}
+	if (typeof window !== "undefined")
+		window.removeEventListener("sp:task-done", onTaskDone)
 	if (typeof window !== "undefined") window.gym3d = undefined
 })
 
@@ -470,20 +593,41 @@ const jobView = $derived.by(() => {
 	const left = jobLeft(j, app.now())
 	return { j, left, cost: finishCost(left) }
 })
+
+const kitchenView = $derived.by(() => {
+	const k = layout?.kitchen
+	if (!k || !app) return null
+	void clock
+	const now = app.now()
+	const rushEnd = k.rushEndsAt ? Date.parse(k.rushEndsAt) : 0
+	const rush = rushEnd > now
+	const src = layout?.income.find((q) => q.key === "kitchen")
+	return {
+		k,
+		rush,
+		rushLeft: rush ? rushEnd - now : 0,
+		rate: rush ? k.rate * ECONOMY.income.kitchen.rush.mult : k.rate,
+		bank: src
+			? bankAt(src, Date.parse(layout?.serverNow ?? "") || now, now)
+			: 0,
+	}
+})
 </script>
 
 <div class="g3d" bind:this={host} data-testid="gym3d">
 	{#if loading}
 		<p class="g3d-loading">Building your gym...</p>
 	{/if}
-	{#if layout}
-		<div class="g3d-hud" bind:this={hudEl}>
-			{#key bump}
-				<div class="g3d-coins" class:bump={bump > 0} data-testid="gym3d-coins" aria-label="{coins} coins">
-					<span class="g3d-coin" aria-hidden="true"></span>{coins.toLocaleString("en-US")}
-				</div>
-			{/key}
-		</div>
+	{#if layout && waiting > 0 && !sheet && !moving}
+		<button
+			type="button"
+			class="g3d-collect"
+			style="bottom:{hidden + 12}px"
+			onclick={collectAll}
+			data-testid="collect-all"
+		>
+			<span class="ic">{@html COIN_SVG}</span>Collect all <b>{waiting.toLocaleString("en-US")}</b>
+		</button>
 	{/if}
 	{#if moving}
 		<div class="g3d-banner" role="status" style="bottom:{hidden + 12}px">
@@ -492,7 +636,13 @@ const jobView = $derived.by(() => {
 		</div>
 	{/if}
 	{#if tip}
-		<div class="g3d-tip" class:err={tip.kind === "error"} role="status" data-testid="gym3d-tip">
+		<div
+			class="g3d-tip"
+			class:err={tip.kind === "error"}
+			style="top:{insetTop + 8}px"
+			role="status"
+			data-testid="gym3d-tip"
+		>
 			{tip.text}
 		</div>
 	{/if}
@@ -527,6 +677,24 @@ const jobView = $derived.by(() => {
 		</div>
 	{/if}
 
+	{#if welcome && !loading}
+		<div class="g3d-welcome" role="dialog" aria-label="Welcome back" data-testid="welcome-back">
+			<h3>Welcome back!</h3>
+			<p class="sub">While you were away ({welcome.hours}h), your gym kept busy:</p>
+			<ul>
+				{#if welcome.members}<li><b>{welcome.members}</b> members came in</li>{/if}
+				{#if welcome.sales}<li><b>{welcome.sales}</b> juices sold at the Slim Kitchen</li>{/if}
+				{#if welcome.builds}<li><b>{welcome.builds}</b> build{welcome.builds === 1 ? "" : "s"} finished</li>{/if}
+			</ul>
+			<div class="row">
+				<button type="button" class="g3d-btn" onclick={() => (welcome = null)}>Later</button>
+				<button type="button" class="g3d-btn primary" onclick={collectAll} data-testid="welcome-collect">
+					Collect <span class="cur">{@html COIN_SVG}</span>{welcome.coins.toLocaleString("en-US")}
+				</button>
+			</div>
+		</div>
+	{/if}
+
 	{#if sheet}
 		<div
 			class="g3d-sheet"
@@ -555,7 +723,7 @@ const jobView = $derived.by(() => {
 						{coins < lot.price ? `Need ${lot.price - coins} more` : "Buy and build"}
 					</button>
 				</div>
-				<p class="hint">Coins come with gym XP: check in, log meals and finish missions.</p>
+				<p class="hint">Coins pile up by themselves: busy machines, the front desk and the Slim Kitchen fill coin bubbles. Tap them to collect.</p>
 
 			{:else if sheet === "job" && jobView}
 				{@const jv = jobView}
@@ -564,15 +732,76 @@ const jobView = $derived.by(() => {
 				<div class="row">
 					<button
 						type="button"
+						class="g3d-btn"
+						disabled={busy}
+						onclick={() => sweatHour(jv.j.id)}
+						data-testid="gym3d-sweat"
+					>
+						<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
+					</button>
+					<button
+						type="button"
 						class="g3d-btn primary"
 						disabled={busy}
 						onclick={() => finishJob(jv.j.id, jv.cost)}
 						data-testid="gym3d-finish"
 					>
-						Finish now <span class="g3d-coin"></span>{jv.cost}
+						Finish now <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
 					</button>
-					<button type="button" class="g3d-btn" onclick={logWorkout}>Log a workout: −1h</button>
 				</div>
+				<p class="hint">You have {sweat} Sweat. Every workout task you tick in Today earns more.</p>
+
+			{:else if sheet === "kitchen" && kitchenView}
+				{@const kv = kitchenView}
+				<h3>Slim Kitchen</h3>
+				<p class="sub">Your juice bar. Greens from food tasks grow the menu.</p>
+				<div class="kstats">
+					<div><small>Sales/h</small><b data-testid="kitchen-rate"><span class="cur">{@html COIN_SVG}</span>{kv.rate}</b></div>
+					<div><small>Waiting</small><b>{kv.bank}/{kv.k.cap}</b></div>
+					<div><small>Rush hour</small><b>{kv.rush ? fmtLeft(kv.rushLeft) : "Off"}</b></div>
+				</div>
+				<ul class="menu">
+					{#each KITCHEN_MENU as m (m.key)}
+						{@const on = kv.k.menu.includes(m.key)}
+						<li class:on>
+							<span><b>{m.name}</b><small>+{m.rate} coins/h</small></span>
+							{#if on}
+								<span class="onl">On the menu</span>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									disabled={busy || greens < m.cost}
+									onclick={() => unlockItem(m.key)}
+									data-testid="kitchen-add-{m.key}"
+								>
+									Add <span class="cur">{@html GREENS_SVG}</span>{m.cost}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<div class="row">
+					<button
+						type="button"
+						class="g3d-btn"
+						disabled={busy || kv.rush}
+						onclick={rushHour}
+						data-testid="kitchen-rush"
+					>
+						{#if kv.rush}Rush hour on{:else}Rush hour <span class="cur">{@html GREENS_SVG}</span>{ECONOMY.income.kitchen.rush.greens} · x{ECONOMY.income.kitchen.rush.mult} for {ECONOMY.income.kitchen.rush.hours}h{/if}
+					</button>
+					<button
+						type="button"
+						class="g3d-btn primary"
+						disabled={kv.bank < 1}
+						onclick={() => app?.collect(["kitchen"])}
+						data-testid="kitchen-collect"
+					>
+						Collect <span class="cur">{@html COIN_SVG}</span>{kv.bank}
+					</button>
+				</div>
+				<p class="hint">You have {greens} Greens. Tick a food task in Today to earn more.</p>
 
 			{:else if sheet === "type" && room}
 				<h3>What should this room be?</h3>
@@ -707,14 +936,22 @@ const jobView = $derived.by(() => {
 					<div class="row">
 						<button
 							type="button"
+							class="g3d-btn"
+							disabled={busy}
+							onclick={() => sweatHour(jv.j.id)}
+							data-testid="gym3d-sweat"
+						>
+							<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
+						</button>
+						<button
+							type="button"
 							class="g3d-btn primary"
 							disabled={busy}
 							onclick={() => finishJob(jv.j.id, jv.cost)}
 							data-testid="gym3d-finish"
 						>
-							Finish now <span class="g3d-coin"></span>{jv.cost}
+							Finish now <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
 						</button>
-						<button type="button" class="g3d-btn" onclick={logWorkout}>Log a workout: −1h</button>
 					</div>
 				{:else}
 					<div class="acts">
@@ -747,10 +984,9 @@ const jobView = $derived.by(() => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	/* in flow like the 2D gym (which is min 400px); fill a phone screen
-	   below the gym header when there is room */
-	min-height: max(400px, calc(100dvh - 250px));
 	overflow: hidden;
+	/* clip: a focused label must not scroll the gym sideways */
+	overflow: clip;
 	background: #f2c9b4;
 	-webkit-user-select: none;
 	user-select: none;
@@ -771,38 +1007,6 @@ const jobView = $derived.by(() => {
 	font-size: 0.9rem;
 }
 
-.g3d-hud {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	z-index: 5;
-	pointer-events: none;
-}
-
-.g3d-coins {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 12px 5px 7px;
-	border: 2px solid var(--ink);
-	border-radius: 999px;
-	background: #fff7ea;
-	box-shadow: 0 3px 0 var(--ink);
-	font-weight: 900;
-	font-size: 15px;
-	font-variant-numeric: tabular-nums;
-}
-
-.g3d-coins.bump {
-	animation: g3d-bump 0.45s ease-out;
-}
-
-@keyframes g3d-bump {
-	30% {
-		transform: scale(1.18);
-	}
-}
-
 .g3d :global(.g3d-coin) {
 	display: inline-block;
 	width: 1em;
@@ -812,6 +1016,140 @@ const jobView = $derived.by(() => {
 	box-shadow: inset 0 0 0 2px #b27a1c;
 	vertical-align: -0.15em;
 	margin-right: 3px;
+}
+
+.g3d .cur {
+	display: inline-flex;
+	vertical-align: -0.2em;
+	margin: 0 2px;
+}
+
+.g3d .cur :global(svg) {
+	width: 1.1em;
+	height: 1.1em;
+}
+
+.g3d-collect {
+	position: absolute;
+	left: 12px;
+	z-index: 6;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 7px 14px 7px 8px;
+	border: 2px solid var(--ink);
+	border-radius: 999px;
+	background: #fff7ea;
+	box-shadow: 0 3px 0 var(--ink);
+	color: var(--ink);
+	font: 800 14px system-ui, sans-serif;
+	cursor: pointer;
+	animation: g3d-in 0.25s ease-out;
+}
+
+.g3d-collect .ic :global(svg) {
+	display: block;
+	width: 22px;
+	height: 22px;
+}
+
+.g3d-collect b {
+	font-variant-numeric: tabular-nums;
+}
+
+.g3d-welcome {
+	position: absolute;
+	left: 50%;
+	top: 46%;
+	transform: translate(-50%, -50%);
+	z-index: 8;
+	width: min(330px, calc(100% - 32px));
+	box-sizing: border-box;
+	padding: 18px 18px 16px;
+	border: 2px solid var(--ink);
+	border-radius: 20px;
+	background: #fff7ea;
+	box-shadow: 0 5px 0 var(--ink);
+	animation: g3d-in 0.3s ease-out;
+}
+
+.g3d-welcome h3 {
+	margin: 0 0 4px;
+	font-size: 22px;
+}
+
+.g3d-welcome ul {
+	margin: 10px 0 14px;
+	padding-left: 18px;
+	font-weight: 600;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.kstats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 6px;
+	margin: 8px 0;
+}
+
+.kstats div {
+	padding: 7px 8px;
+	border-radius: 12px;
+	background: #fdf1e0;
+	text-align: center;
+}
+
+.kstats small {
+	display: block;
+	font-size: 11px;
+	font-weight: 700;
+	opacity: 0.7;
+}
+
+.kstats b {
+	font-size: 16px;
+}
+
+.menu {
+	list-style: none;
+	margin: 0 0 10px;
+	padding: 0;
+	display: grid;
+	gap: 6px;
+}
+
+.menu li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 6px 6px 10px;
+	border-radius: 12px;
+	border: 1.5px dashed #d9c3a6;
+}
+
+.menu li.on {
+	border-style: solid;
+	border-color: #7ac943;
+	background: #f1fbe9;
+}
+
+.menu li > span:first-child {
+	display: flex;
+	flex-direction: column;
+}
+
+.menu small {
+	font-size: 12px;
+	opacity: 0.75;
+}
+
+.menu .onl {
+	font-size: 12px;
+	font-weight: 800;
+	color: #3f7c44;
+	padding-right: 6px;
 }
 
 .g3d-banner,
@@ -840,8 +1178,8 @@ const jobView = $derived.by(() => {
 
 .g3d-tip {
 	top: 8px;
-	left: 8px;
-	max-width: calc(100% - 150px);
+	left: 70px;
+	max-width: calc(100% - 140px);
 	padding: 7px 11px;
 	pointer-events: none;
 	background: #fff7ea;
@@ -1321,7 +1659,68 @@ const jobView = $derived.by(() => {
 }
 
 .g3d :global(.g3d-bb .g3d-wk) {
-	background: #dff5f1;
+	background: #e3f1ff;
+}
+
+.g3d :global(.g3d-bb button) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+}
+
+.g3d :global(.g3d-bb svg) {
+	width: 15px;
+	height: 15px;
+	flex: none;
+}
+
+/* coin bubbles (idle income): a tappable coin + count over the source */
+.g3d :global(.g3d-cb) {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	min-width: 44px;
+	min-height: 34px;
+	padding: 3px 9px 3px 4px;
+	border: 2px solid var(--ink);
+	border-radius: 999px;
+	background: #fff7ea;
+	box-shadow: 0 2px 0 var(--ink);
+	color: var(--ink);
+	font: 800 13px system-ui, sans-serif;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	margin-bottom: 6px;
+	/* over speech bubbles: coins are what the player taps */
+	z-index: 4;
+	animation: g3d-float 2.4s ease-in-out infinite;
+}
+
+.g3d :global(.g3d-cb svg) {
+	width: 22px;
+	height: 22px;
+	flex: none;
+}
+
+.g3d :global(.g3d-cb.full) {
+	background: #ffe07a;
+}
+
+.g3d :global(.g3d-cb-kitchen) {
+	background: #eaf8dd;
+}
+
+@keyframes g3d-float {
+	50% {
+		margin-bottom: 10px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.g3d :global(.g3d-cb) {
+		animation: none;
+	}
 }
 
 /* speech bubbles (world/life.ts): pooled, moved by transform only */

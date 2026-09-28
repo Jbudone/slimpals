@@ -11,6 +11,7 @@ import {
 	foodLogs,
 	gymNpcDailyState,
 	gymNpcs,
+	gymPieces,
 	gymUpgradesCatalog,
 	reactions,
 	sessions,
@@ -998,6 +999,8 @@ export function createAdminRouter(aiService: AIService) {
 				level: gym.level,
 				xp: gym.xp,
 				coins: gym.coins,
+				sweat: gym.sweat,
+				greens: gym.greens,
 				pendingUpgradeKeys: gym.pendingUpgradeKeys,
 			},
 			upgrades,
@@ -1101,31 +1104,85 @@ export function createAdminRouter(aiService: AIService) {
 		res.json({ success: true })
 	})
 
-	// 3D gym coins (gym3d slice 2): grant (or, negative, take back) coins;
-	// the balance never drops below 0.
-	adminRouter.post("/admin/users/:id/gym/coins", async (req, res) => {
-		const amount = Number((req.body as { amount?: unknown })?.amount)
-		if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1e6) {
-			res.status(400).json({ error: "amount must be a non-zero integer" })
+	// 3D gym currencies: grant (or, negative, take back) coins (slice 2),
+	// Sweat or Greens (gym home); a balance never drops below 0. Each answers
+	// { coins | sweat | greens: <new balance> }.
+	const COLS = {
+		coins: userGyms.coins,
+		sweat: userGyms.sweat,
+		greens: userGyms.greens,
+	} as const
+	for (const what of ["coins", "sweat", "greens"] as const) {
+		adminRouter.post(`/admin/users/:id/gym/${what}`, async (req, res) => {
+			const amount = Number((req.body as { amount?: unknown })?.amount)
+			if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1e6) {
+				res.status(400).json({ error: "amount must be a non-zero integer" })
+				return
+			}
+			const [gym] = await db
+				.select({ id: userGyms.id })
+				.from(userGyms)
+				.where(eq(userGyms.userId, String(req.params.id)))
+			if (!gym) {
+				res.status(404).json({ error: "User has no gym" })
+				return
+			}
+			const col = COLS[what]
+			await db
+				.update(userGyms)
+				.set({ [what]: sql`GREATEST(0, ${col} + ${amount})` })
+				.where(eq(userGyms.id, gym.id))
+			const [row] = await db
+				.select({ n: col })
+				.from(userGyms)
+				.where(eq(userGyms.id, gym.id))
+			res.json({ [what]: row?.n ?? 0 })
+		})
+	}
+
+	// Test tool (gym home): moves the gym's idle-income clocks and its last
+	// open back by `hours`, as if the player had been away that long. Coin
+	// bubbles fill (up to their caps), the next open shows "Welcome back",
+	// and a running rush hour ends that much sooner. Answers { hours }.
+	adminRouter.post("/admin/users/:id/gym/away", async (req, res) => {
+		const hours = Number((req.body as { hours?: unknown })?.hours)
+		if (!Number.isFinite(hours) || hours <= 0 || hours > 24 * 30) {
+			res.status(400).json({ error: "hours must be between 0 and 720" })
 			return
 		}
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, req.params.id))
+			.where(eq(userGyms.userId, String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
 		}
+		const secs = Math.round(hours * 3600)
+		const back = (col: unknown) =>
+			sql`DATE_SUB(${col}, INTERVAL ${secs} SECOND)`
 		await db
 			.update(userGyms)
-			.set({ coins: sql`GREATEST(0, ${userGyms.coins} + ${amount})` })
+			.set({
+				deskCollectedAt: back(
+					sql`COALESCE(${userGyms.deskCollectedAt}, ${userGyms.createdAt})`,
+				),
+				kitchenCollectedAt: back(
+					sql`COALESCE(${userGyms.kitchenCollectedAt}, ${userGyms.createdAt})`,
+				),
+				lastOpenAt: back(sql`COALESCE(${userGyms.lastOpenAt}, NOW())`),
+				kitchenRushEndsAt: back(userGyms.kitchenRushEndsAt),
+			})
 			.where(eq(userGyms.id, gym.id))
-		const [row] = await db
-			.select({ coins: userGyms.coins })
-			.from(userGyms)
-			.where(eq(userGyms.id, gym.id))
-		res.json({ coins: row?.coins ?? 0 })
+		await db
+			.update(gymPieces)
+			.set({
+				collectedAt: back(
+					sql`COALESCE(${gymPieces.collectedAt}, ${gymPieces.createdAt})`,
+				),
+			})
+			.where(eq(gymPieces.gymId, gym.id))
+		res.json({ hours })
 	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
