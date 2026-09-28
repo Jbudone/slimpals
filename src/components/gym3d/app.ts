@@ -2,12 +2,20 @@
 // tap picking and drag / pinch camera. Everything it creates is freed by
 // dispose(), so mounting and unmounting repeatedly does not leak.
 import * as T from "three"
+import { celebrationFor } from "../../../shared/gym3d/celebrations"
 import {
 	finishCost,
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
 import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
+import {
+	getRelationshipStage,
+	getStageLabel,
+	moodInfo,
+	moodSpeed,
+} from "../../../shared/gym3d/npcInfo"
+import { firstName } from "../../../shared/gym3d/npcLines"
 import {
 	type EquipmentRoomType,
 	PD,
@@ -17,8 +25,11 @@ import {
 } from "../../../shared/gym3d/rooms"
 import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
 import { AssetCache } from "./engine/assets"
+import { batchMesh, mulberry32, type Part, pBox } from "./engine/helpers"
 import { GymRenderer, hasWebGL2 } from "./engine/renderer"
+import { CAST, castHomes, outfitFor } from "./people/cast"
 import { People } from "./people/members"
+import { disposeRig, makeRig } from "./people/rig"
 import { ambientCap, assignTargets, type PieceIn } from "./world/assignTargets"
 import { BlobShadows } from "./world/blobShadows"
 import {
@@ -28,6 +39,7 @@ import {
 	jobProgress,
 	type PadRef,
 } from "./world/build"
+import { floorStation, Happenings } from "./world/happenings"
 import {
 	badgeAnchor,
 	type Label,
@@ -35,11 +47,16 @@ import {
 	type LabelLayer as LabelLayerT,
 	roomBadge,
 } from "./world/labels"
+import { Bubbles, Life } from "./world/life"
 import {
+	activeEvent,
 	loadLayout,
+	loadLines,
 	loadRoster,
-	loadSimNpcs,
+	loadSim,
 	type NpcRosterEntry,
+	type SimState,
+	simNpcsIn,
 } from "./world/loadLayout"
 import { bindWorld, isBound, unbindWorld } from "./world/state"
 import type { Person, Piece } from "./world/types"
@@ -47,8 +64,27 @@ import { GymWorld, type PickInfo } from "./world/world"
 
 export const POLL_INTERVAL = 30000
 
+/** What the tap chip shows about a person. */
+export type PersonInfo = {
+	/** Their job or who they are ("Head trainer", "Member"). */
+	title: string | null
+	/** "😄 Energized" (named NPCs). */
+	mood: string | null
+	/** What they are doing right now. */
+	doing: string | null
+	/** "Gym Buddy · 55" (named NPCs). */
+	relation: string | null
+	hero: boolean
+}
+
 export type Selection =
-	| { kind: "person"; key: string; name: string; npcKey: string | null }
+	| {
+			kind: "person"
+			key: string
+			name: string
+			npcKey: string | null
+			info: PersonInfo
+	  }
 	| { kind: "piece"; id: number; name: string }
 	| { kind: "lot"; lotId: string }
 	| {
@@ -78,6 +114,12 @@ export type Gym3DStats = {
 	pads: number
 	jobs: number
 	coins: number
+	/** Speech bubbles on screen now. */
+	says: number
+	event: string
+	classes: number
+	classPeople: number
+	heroes: number
 }
 
 export type JobAction = "finish" | "workout"
@@ -147,6 +189,8 @@ export class Gym3DApp {
 	private sel: Selection | null = null
 	private chip: HTMLElement | null = null
 	private chipPt = { x: 0, y: 0 }
+	private chipW = 0
+	private chipH = 0
 	private ray = new T.Raycaster()
 	private ndc = new T.Vector2()
 	private pointers = new Map<
@@ -181,6 +225,24 @@ export class Gym3DApp {
 		timer: ReturnType<typeof setTimeout> | null
 	} | null = null
 	private pollSoon: ReturnType<typeof setTimeout> | null = null
+	private says: Bubbles
+	private life: Life
+	private hap: Happenings
+	private sim: SimState | null = null
+	/** An upgrade claim in progress: workers, a progress bubble, taps help. */
+	private claiming: {
+		key: string
+		piece: Piece | null
+		x: number
+		z: number
+		size: number
+		k: number
+		L: Label
+		bar: HTMLElement
+		crate: T.Mesh | null
+		done: () => void
+	} | null = null
+	private clock = 0
 
 	/** Builds the gym. Throws (the caller falls back to the 2D gym) when
 	 * WebGL2 is missing or the build fails. */
@@ -191,6 +253,12 @@ export class Gym3DApp {
 			loadRoster().catch(() => []),
 		])
 		const app = new Gym3DApp(host, layout, roster, opts)
+		// bubble lines are a nicety: the built-in ones do without them
+		loadLines()
+			.then((l) => {
+				if (!app.disposed) app.life.setLines(l)
+			})
+			.catch(() => {})
 		try {
 			await app.pollSim(true)
 		} catch {
@@ -213,6 +281,12 @@ export class Gym3DApp {
 			this.people = new People(this.world)
 			this.labels = new LabelLayer(host)
 			this.build = new BuildLayer(this.world)
+			this.hap = new Happenings(
+				this.world,
+				this.people,
+				this.labels,
+				this.build,
+			)
 		} catch (e) {
 			this.r.dispose()
 			unbindWorld()
@@ -240,6 +314,17 @@ export class Gym3DApp {
 		}
 		this.people.cap = ambientCap(this.r.lvl)
 		this.people.seedMembers()
+		this.says = new Bubbles(this.labels.root)
+		this.people.onRemove = (p) => this.says.forget(p)
+		const calm =
+			typeof window !== "undefined" &&
+			!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+		this.life = new Life(
+			this.says,
+			() => this.people.people,
+			mulberry32((Date.now() & 0xffff) + 7),
+			calm,
+		)
 		this.bindInput()
 		this.r.start((dt) => this.frame(dt))
 		this.pollTimer = setInterval(() => {
@@ -305,8 +390,20 @@ export class Gym3DApp {
 	}
 
 	private async pollSim(first: boolean): Promise<void> {
-		const npcs = await loadSimNpcs(this.roster)
+		const [sim, roster] = await Promise.all([
+			loadSim(),
+			// names and relationship levels change as the member plays
+			first ? this.roster : loadRoster().catch(() => this.roster),
+		])
 		if (this.disposed) return
+		this.sim = sim
+		this.roster = roster
+		const npcs = simNpcsIn(sim, roster)
+		const ev = activeEvent(sim)
+		const host =
+			ev?.npcKey && npcs.some((n) => n.npcKey === ev.npcKey && n.isPresent)
+				? ev.npcKey
+				: null
 		bindWorld(this.world.ctx)
 		const pieces: PieceIn[] = this.world.pieces.map((p) => ({
 			id: p.id,
@@ -321,7 +418,25 @@ export class Gym3DApp {
 			name: r.name,
 			role: r.role,
 		}))
-		this.people.applyNpcs(views, assignTargets(npcs, pieces), first)
+		this.people.applyNpcs(
+			views,
+			assignTargets(npcs, pieces, { homes: castHomes(), eventHost: host }),
+			first,
+		)
+		const bySim = new Map(sim.npcs.map((n) => [n.npcKey, n]))
+		for (const p of this.people.people)
+			if (p.kind === "npc" && p.npcKey)
+				p.speed = moodSpeed(bySim.get(p.npcKey)?.mood ?? 50)
+		this.hap.setEvent(ev)
+		this.hap.setClasses(sim.activeClasses)
+		this.hap.syncHeroes(
+			new Set(
+				sim.npcs
+					.filter((n) => n.isHeroVisit && n.isPresent)
+					.map((n) => n.npcKey),
+			),
+		)
+		this.life.setSim(sim.npcs, roster)
 		this.syncChip()
 	}
 
@@ -358,8 +473,15 @@ export class Gym3DApp {
 			this.tick1 = 0
 			this.updateBubbles(now)
 		}
+		this.clock += dt
+		if (this.claiming) this.claimTick(dt)
+		this.hap.frame(dt)
+		this.life.tick(dt, this.clock)
 		this.r.render(this.world.scene)
 		this.labels.update(this.r)
+		const { w, h } = this.r.size
+		this.says.top = this.labels.insets.top
+		this.says.frame(this.clock, (v) => this.r.toScreen(v, _s), w, h)
 		this.placeChip()
 	}
 
@@ -392,6 +514,7 @@ export class Gym3DApp {
 		this.endMove(false)
 		const diff = this.world.applyLayout(next)
 		this.people.layoutChanged(diff.removed)
+		this.hap.layoutChanged()
 		this.build.sync(next, this.now())
 		this.rebuildBadges()
 		this.syncBubbles()
@@ -599,6 +722,139 @@ export class Gym3DApp {
 		for (const j of fresh.slice(-3)) this.celebrate(j, null)
 	}
 
+	// ── upgrade claim (the 2D gym's build ceremony, in 3D) ─────────────────
+
+	/** The upgrade `key` was just claimed: reload the layout, hide the new
+	 * piece, let a crew build it (taps speed them up), then drop it onto
+	 * its spot with confetti and a line from Marcus (or whoever is near).
+	 * Gear with no free spot goes to storage: a crate drops in the lobby. */
+	async claimCeremony(key: string, done: () => void): Promise<void> {
+		if (this.disposed) return
+		this.endClaim()
+		let next: GymLayoutDto | null = null
+		try {
+			next = await loadLayout()
+		} catch {
+			// the claim went through; the view just catches up later
+		}
+		if (this.disposed) return
+		if (next) this.applyLayout(next)
+		bindWorld(this.world.ctx)
+		const piece = this.world.pieces.find((p) => p.upgradeKey === key) ?? null
+		const lb = this.world.lobby
+		const x = piece?.x ?? lb.x0 + 6.6
+		const z = piece?.z ?? lb.z0 + 4.2
+		const size = piece ? Math.max(1, piece.size) : 1
+		if (piece) piece.root.visible = false
+		this.select(null)
+		this.panTo(x, z)
+		this.build.startClaim(x, z, size)
+		const el = document.createElement("div")
+		el.className = "g3d-bub"
+		el.dataset.testid = "gym3d-claim"
+		const t = document.createElement("div")
+		t.className = "g3d-left"
+		t.textContent = piece ? `Building ${piece.name}` : "Unpacking new gear"
+		const pb = document.createElement("div")
+		pb.className = "g3d-pbar"
+		const bar = document.createElement("i")
+		pb.appendChild(bar)
+		el.append(t, pb)
+		const a = new T.Vector3(x, piece?.kind === "decor" ? 1.8 : 2.3, z)
+		const L = this.labels.add(el, () => a, { clamp: true })
+		this.life.paused = true
+		this.claiming = { key, piece, x, z, size, k: 0, L, bar, crate: null, done }
+	}
+
+	/** Progress on its own (about 8s), faster with taps. */
+	private claimTick(dt: number): void {
+		const c = this.claiming
+		if (!c) return
+		c.k = Math.min(1, c.k + dt / 8)
+		c.bar.style.width = `${Math.round(c.k * 100)}%`
+		if (c.k >= 1) this.claimLand(c)
+	}
+
+	private claimLand(c: NonNullable<Gym3DApp["claiming"]>): void {
+		this.claiming = null
+		this.labels.remove(c.L)
+		this.build.endClaim()
+		const obj: T.Object3D = c.piece ? c.piece.root : this.dropCrate(c)
+		obj.visible = true
+		const y0 = obj.position.y
+		this.build.tween(
+			0.75,
+			(k) => {
+				// fall, then a little bounce
+				const f =
+					k < 0.6
+						? 1 - (k / 0.6) ** 2
+						: Math.abs(Math.sin((k - 0.6) * 7.8)) * 0.12 * (1 - k)
+				obj.position.y = y0 + f * 5
+			},
+			() => {
+				obj.position.y = y0
+				this.r.dirtyShadow()
+				this.build.dustAt(c.x, 0.15, c.z, 12, c.size * 0.6)
+				this.build.confetti(c.x, 1.6, c.z, 90)
+				this.celebrationLine(c.key, c.x, c.z)
+				this.life.paused = false
+				if (c.crate) {
+					const m = c.crate
+					c.crate = null
+					setTimeout(() => {
+						if (this.disposed) return
+						this.build.dustAt(c.x, 0.3, c.z, 8, 0.5)
+						m.removeFromParent()
+						this.assets.release(m.geometry)
+					}, 3500)
+				}
+				c.done()
+			},
+		)
+	}
+
+	private dropCrate(c: NonNullable<Gym3DApp["claiming"]>): T.Mesh {
+		const parts: Part[] = []
+		pBox(parts, 0.8, 0.7, 0.8, "#c8955a", 0, 0.35, 0)
+		pBox(parts, 0.82, 0.08, 0.2, "#e8d4a8", 0, 0.71, 0)
+		pBox(parts, 0.2, 0.08, 0.82, "#e8d4a8", 0, 0.71, 0)
+		pBox(parts, 0.84, 0.06, 0.84, "#8a5a3a", 0, 0.03, 0)
+		const m = batchMesh(parts, this.world.scene, { static: false })
+		m.position.set(c.x, 0, c.z)
+		c.crate = m
+		return m
+	}
+
+	/** The claim's celebration line, from Marcus if he is in, else the
+	 * named NPC nearest the new piece. */
+	private celebrationLine(key: string, x: number, z: number): void {
+		const named = this.people.people.filter((p) => p.npcKey && !p.leaving)
+		const who =
+			named.find((p) => p.npcKey === "trainer_marcus") ??
+			named.sort(
+				(a, b) =>
+					Math.hypot(a.rig.root.position.x - x, a.rig.root.position.z - z) -
+					Math.hypot(b.rig.root.position.x - x, b.rig.root.position.z - z),
+			)[0]
+		if (who) this.life.sayNow(who, celebrationFor(key), this.clock, 4.5)
+	}
+
+	private endClaim(): void {
+		const c = this.claiming
+		if (!c) return
+		this.claiming = null
+		this.labels.remove(c.L)
+		this.build.endClaim()
+		if (c.piece) c.piece.root.visible = true
+		this.life.paused = false
+		c.done()
+	}
+
+	get claimActive(): boolean {
+		return !!this.claiming
+	}
+
 	/** Screen space the HUD (top) and an open sheet (bottom) cover. */
 	setInsets(top: number, bottom: number): void {
 		this.labels.insets = { top, bottom }
@@ -750,6 +1006,7 @@ export class Gym3DApp {
 
 	setChipElement(el: HTMLElement | null): void {
 		this.chip = el
+		this.chipW = 0
 		this.placeChip()
 	}
 
@@ -772,8 +1029,17 @@ export class Gym3DApp {
 		if (!a) return
 		const p = this.r.toScreen(a, this.chipPt)
 		const { w, h } = this.r.size
-		const x = Math.min(Math.max(p.x, 70), w - 70)
-		const y = Math.min(Math.max(p.y, 60), h - 8)
+		// measured once per selection (the chip's text changes with it)
+		if (!this.chipW) {
+			this.chipW = el.offsetWidth || 140
+			this.chipH = el.offsetHeight || 40
+		}
+		const hw = this.chipW / 2 + 6
+		const x = Math.min(Math.max(p.x, hw), w - hw)
+		const y = Math.min(
+			Math.max(p.y, this.labels.insets.top + this.chipH + 12),
+			h - 8,
+		)
 		el.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0) translate(-50%,-100%)`
 	}
 
@@ -783,17 +1049,74 @@ export class Gym3DApp {
 			this.select(null)
 		else if (this.sel?.kind === "person") {
 			const p = this.people.find(this.sel.key)
-			if (p && p.name !== this.sel.name) this.select(this.selectionOf(p))
+			const next = p && this.selectionOf(p)
+			if (next && JSON.stringify(next) !== JSON.stringify(this.sel))
+				this.select(next)
 		}
 	}
 
 	private selectionOf(p: Person): Selection {
-		return { kind: "person", key: p.key, name: p.name, npcKey: p.npcKey }
+		return {
+			kind: "person",
+			key: p.key,
+			name: p.name,
+			npcKey: p.npcKey,
+			info: this.infoOf(p),
+		}
+	}
+
+	infoByKey(key: string): PersonInfo | null {
+		const p = this.people.find(key)
+		return p ? this.infoOf(p) : null
+	}
+
+	/** Title, mood, activity and relationship for the tap chip. */
+	infoOf(p: Person): PersonInfo {
+		const sim = p.npcKey
+			? this.sim?.npcs.find((n) => n.npcKey === p.npcKey)
+			: null
+		const ros = p.npcKey ? this.roster.find((r) => r.key === p.npcKey) : null
+		const title = p.npcKey
+			? (CAST[p.npcKey]?.title ?? ros?.role ?? null)
+			: p.kind === "extra"
+				? p.note
+					? p.name === "Instructor"
+						? `${p.note} instructor`
+						: `In the ${p.note}`
+					: null
+				: p.kind === "staff"
+					? p.name === "Swimmer"
+						? "Member"
+						: "Staff"
+					: "Member"
+		let doing: string | null = null
+		const ev = this.sim && activeEvent(this.sim)
+		if (p.station?.label === "hosting today's event" && ev)
+			doing = `Hosting: ${ev.title}`
+		else if (sim?.chatEventWith) {
+			const other = this.roster.find((r) => r.key === sim.chatEventWith)
+			doing = `Chatting with ${firstName(other?.name ?? "a friend")}`
+		} else if (p.state === "use" && p.station) doing = cap(p.station.label)
+		else if (p.leaving) doing = "Heading home"
+		else if (p.state === "walk") doing = "On the move"
+		else if (p.npcKey) doing = "Hanging out in the lobby"
+		const lvl = ros?.relationshipLevel
+		return {
+			title,
+			mood: sim?.mood != null ? moodText(sim.mood) : null,
+			doing,
+			relation:
+				p.npcKey && lvl != null
+					? `${getStageLabel(getRelationshipStage(lvl))} · ${lvl}`
+					: null,
+			hero: !!sim?.isHeroVisit,
+		}
 	}
 
 	/** Sets the selection (the UI closes a sheet with null). */
 	select(s: Selection | null): void {
 		this.sel = s
+		this.chipW = 0
 		this.opts.onSelect(s)
 	}
 
@@ -914,6 +1237,13 @@ export class Gym3DApp {
 	}
 
 	tapAt(x: number, y: number): Selection | null {
+		if (this.claiming) {
+			// every tap helps the crew build
+			const c = this.claiming
+			c.k = Math.min(1, c.k + 0.08)
+			this.build.dustAt(c.x, 0.3, c.z, 5, c.size * 0.4)
+			return null
+		}
 		if (this.moving) {
 			const t = this.targetAt(x, y)
 			const p = this.moving.piece
@@ -963,6 +1293,115 @@ export class Gym3DApp {
 	upgradeOf(pieceId: number): ReturnType<typeof upgradeInfo> {
 		const p = this.world.pieces.find((q) => q.id === pieceId)
 		return p ? upgradeInfo(p.itemKey, p.tier) : null
+	}
+
+	private portraits = new Map<string, string>()
+	private lineupSet: { people: Person[]; labels: Label[] } | null = null
+
+	/** Tooling: every cast look in two rows on the pavement, name tags on,
+	 * the camera close. `false` clears it. Returns the cast keys. */
+	lineup(on = true): string[] {
+		bindWorld(this.world.ctx)
+		if (this.lineupSet) {
+			for (const p of this.lineupSet.people) this.people.remove(p)
+			for (const L of this.lineupSet.labels) this.labels.remove(L)
+			this.lineupSet = null
+		}
+		if (!on) return []
+		const keys = Object.keys(CAST)
+		const set = { people: [] as Person[], labels: [] as Label[] }
+		const per = Math.ceil(keys.length / 2)
+		// left of the door, clear of the event spot on its right
+		const cx = this.world.doorX - 4
+		const x0 = cx - (per - 1) * 0.6
+		const fz = this.world.frontZ
+		keys.forEach((k, i) => {
+			const row = i < per ? 0 : 1
+			const col = i % per
+			const x = x0 + col * 1.2 + row * 0.6
+			const z = fz + 1.9 + row * 1.5
+			const name = this.roster.find((r) => r.key === k)?.name ?? CAST[k].name
+			const p = this.people.addExtra({
+				key: `lineup:${k}`,
+				name,
+				out: outfitFor(k),
+				st: floorStation(x, z, Math.PI / 4, "idle", "lining up"),
+			})
+			set.people.push(p)
+			const el = document.createElement("div")
+			el.className = "g3d-name"
+			el.textContent = firstName(name)
+			const v = new T.Vector3(x, 1.62, z)
+			set.labels.push(this.labels.add(el, () => v))
+		})
+		this.lineupSet = set
+		this.select(null)
+		const t = this.r.target
+		t.set(cx + 0.3, 0, fz + 2.6)
+		this.r.zoom = 2.2
+		this.r.placeCam()
+		return keys
+	}
+
+	/** A head-and-shoulders picture of a named NPC's 3D look (data URL),
+	 * so the dialog shows the same person the gym does. Rendered once per
+	 * NPC into a small offscreen target and cached as a string. */
+	portraitOf(npcKey: string): string | null {
+		const hit = this.portraits.get(npcKey)
+		if (hit) return hit
+		if (this.disposed || typeof document === "undefined") return null
+		const S = 192
+		bindWorld(this.world.ctx)
+		const scene = new T.Scene()
+		scene.background = new T.Color("#fde7d6")
+		const hemi = new T.HemisphereLight(0xfff4ea, 0xb07a6a, 0.8 * Math.PI)
+		const key = new T.DirectionalLight(0xffffff, 0.6 * Math.PI)
+		key.position.set(2, 3, 3)
+		scene.add(hemi, key)
+		const rig = makeRig(outfitFor(npcKey))
+		scene.add(rig.root)
+		rig.root.rotation.y = -0.35
+		rig.root.updateMatrixWorld(true)
+		const cam = new T.PerspectiveCamera(24, 1, 0.1, 20)
+		const hy = rig.neck.getWorldPosition(_f).y + rig.headY
+		cam.position.set(0, hy + 0.02, 2.3)
+		cam.lookAt(0, hy - 0.12, 0)
+		const rt = new T.WebGLRenderTarget(S, S)
+		const rd = this.r.renderer
+		let url: string | null = null
+		try {
+			const prev = rd.getRenderTarget()
+			rd.setRenderTarget(rt)
+			rd.render(scene, cam)
+			const px = new Uint8Array(S * S * 4)
+			rd.readRenderTargetPixels(rt, 0, 0, S, S, px)
+			rd.setRenderTarget(prev)
+			const c = document.createElement("canvas")
+			c.width = S
+			c.height = S
+			const g = c.getContext("2d")
+			if (g) {
+				const img = g.createImageData(S, S)
+				// WebGL rows run bottom-up
+				for (let y = 0; y < S; y++)
+					img.data.set(
+						px.subarray((S - 1 - y) * S * 4, (S - y) * S * 4),
+						y * S * 4,
+					)
+				g.putImageData(img, 0, 0)
+				url = c.toDataURL("image/png")
+			}
+		} catch {
+			url = null
+		} finally {
+			disposeRig(rig)
+			rt.dispose()
+			hemi.dispose()
+			key.dispose()
+			this.r.dirtyShadow()
+		}
+		if (url) this.portraits.set(npcKey, url)
+		return url
 	}
 
 	/** Screen point (inside the host) of a person, for tests and tooling. */
@@ -1151,6 +1590,8 @@ export class Gym3DApp {
 			pads: this.build.pads.length,
 			jobs: this.world.layout.jobs.filter((j) => j.status === "active").length,
 			coins: this.world.layout.coins,
+			says: this.says.active,
+			...this.hap.stats(),
 		}
 	}
 
@@ -1163,13 +1604,19 @@ export class Gym3DApp {
 		this.pollSoon = null
 		if (this.press?.timer) clearTimeout(this.press.timer)
 		this.press = null
+		this.claiming = null
+		this.lineupSet = null
 		for (const [t, type, fn] of this.listeners) t.removeEventListener(type, fn)
 		this.listeners = []
 		this.pointers.clear()
 		this.chip = null
 		this.r.dispose()
-		this.labels.dispose()
 		bindWorld(this.world.ctx)
+		this.life.clear()
+		this.hap.dispose()
+		this.says.dispose()
+		this.labels.dispose()
+		this.people.onRemove = null
 		this.people.dispose()
 		this.build.dispose()
 		this.blobs.dispose()
@@ -1189,6 +1636,16 @@ export class Gym3DApp {
 	}
 }
 
+function cap(s: string): string {
+	return s ? s[0].toUpperCase() + s.slice(1) : s
+}
+
+function moodText(m: number): string {
+	const i = moodInfo(m)
+	return `${i.emoji} ${i.word}`
+}
+
+const _s = { x: 0, y: 0 }
 const _v = new T.Vector3()
 const _a = new T.Vector3()
 const _f = new T.Vector3()

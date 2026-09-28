@@ -107,7 +107,7 @@ export const RT: Record<EquipmentRoomType, RoomTypeDef> = {
 		desc: "Smoothies and water",
 		layout: "grid",
 		basic: ["amenity_juice", "amenity_water"],
-		premium: ["staff_nutrition"],
+		premium: ["staff_nutrition", "staff_ownership_suite"],
 	},
 }
 
@@ -206,6 +206,7 @@ export function roomName(type: string): string {
 export const ITEM_SIZE: Readonly<Record<string, number>> = {
 	boxing_ring: 3,
 	swimming_lap_pool: 3,
+	staff_manager_office: 1.5,
 }
 export const DECOR_SIZE = 0.5
 
@@ -298,6 +299,13 @@ export const LOBBY_FIXTURES: readonly { key: string; x: number; z: number }[] =
 		{ key: "staff_reception", x: 7, z: 2.5 },
 		{ key: "amenity_lockers", x: 1.5, z: 1 },
 	]
+
+/** Offices built into the lobby once unlocked (a compact desk nook in the
+ * back-right corner, behind reception; clear of the doorways, the decor
+ * places and the path to the side door). x/z relative to the lobby corner. */
+export const LOBBY_OFFICES: readonly { key: string; x: number; z: number }[] = [
+	{ key: "staff_manager_office", x: 8, z: 1 },
+]
 
 /** Extra 2 x 2 places in the lobby for staff pieces that have no room. */
 export const LOBBY_EXTRA_SPOTS: readonly { x: number; z: number }[] = [

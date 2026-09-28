@@ -58,6 +58,7 @@ export const ECONOMY = {
 			staff_physio: 720,
 			staff_nutrition: 480,
 			staff_trainer: 650,
+			staff_ownership_suite: 1200,
 		} as Readonly<Record<string, number>>,
 		defaultGearValue: 400,
 	},

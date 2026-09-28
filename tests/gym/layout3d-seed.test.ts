@@ -83,7 +83,12 @@ describe("deriveInitialLayout", () => {
 			expectRoom(k, "boxing")
 		for (const k of ["swimming_lap_pool", "swimming_poolside_loungers"])
 			expectRoom(k, "pool")
-		for (const k of ["amenity_juice", "amenity_water", "staff_nutrition"])
+		for (const k of [
+			"amenity_juice",
+			"amenity_water",
+			"staff_nutrition",
+			"staff_ownership_suite",
+		])
 			expectRoom(k, "juice")
 		for (const k of [
 			"amenity_sauna",
@@ -96,6 +101,7 @@ describe("deriveInitialLayout", () => {
 			"staff_reception",
 			"amenity_lockers",
 			"staff_assistant_trainer",
+			"staff_manager_office",
 		])
 			expectRoom(k, "lobby")
 		for (const k of Object.keys(DECOR_ITEM)) {
@@ -103,10 +109,8 @@ describe("deriveInitialLayout", () => {
 			expect(piece?.kind, k).toBe("decor")
 			expect(piece?.itemKey).toBe(DECOR_ITEM[k])
 		}
-		expect(plan.unplaced.sort()).toEqual([
-			"staff_manager_office",
-			"staff_ownership_suite",
-		])
+		// slice 3: the offices have homes, nothing is left unplaced
+		expect(plan.unplaced).toEqual([])
 	})
 
 	it("creates rooms in the fixed order on lobby-connected cells", () => {

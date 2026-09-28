@@ -32,6 +32,7 @@ import type { AuthRequest } from "../middleware/requireAuth.js"
 import type {
 	AIService,
 	ChallengeGoal,
+	GymEventData,
 	SprintTask,
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
@@ -828,6 +829,61 @@ export function createAdminRouter(aiService: AIService) {
 			.where(eq(userGyms.id, gym.id))
 
 		res.json({ hourOverride: hour ?? null })
+	})
+
+	// Sets (or clears, with { event: null }) the gym's event of the day, for
+	// testing the in-gym event visuals without waiting for the AI content job.
+	adminRouter.post("/admin/users/:id/gym/today-event", async (req, res) => {
+		const { id } = req.params
+		const { event } = req.body as { event?: unknown }
+		if (event !== null) {
+			const e = event as Partial<GymEventData> | undefined
+			const types = [
+				"competition",
+				"class",
+				"delivery",
+				"special_guest",
+				"maintenance",
+			]
+			const hours = e?.activeHours
+			if (
+				!e ||
+				!types.includes(e.type as string) ||
+				typeof e.title !== "string" ||
+				!e.title.trim() ||
+				!Array.isArray(hours) ||
+				hours.length !== 2 ||
+				!hours.every((h) => Number.isInteger(h) && h >= 0 && h <= 24) ||
+				hours[0] >= hours[1] ||
+				(e.npcKey != null && typeof e.npcKey !== "string")
+			) {
+				res.status(400).json({
+					error:
+						"event needs type, title and activeHours [start, end] (0-24), or null",
+				})
+				return
+			}
+		}
+		const gym = await getOrCreateGym(id, db)
+		const e = event as GymEventData | null
+		const data: GymEventData | null = e
+			? {
+					type: e.type,
+					title: e.title.trim().slice(0, 80),
+					description: String(e.description ?? "").slice(0, 200),
+					npcKey: e.npcKey ?? null,
+					activeHours: [e.activeHours[0], e.activeHours[1]],
+					effects: {
+						allNpcMoodBonus: Number(e.effects?.allNpcMoodBonus) || 0,
+						xpMultiplier: Number(e.effects?.xpMultiplier) || 1,
+					},
+				}
+			: null
+		await db
+			.update(userGyms)
+			.set({ todayEventData: data })
+			.where(eq(userGyms.id, gym.id))
+		res.json({ todayEvent: data })
 	})
 
 	adminRouter.get(

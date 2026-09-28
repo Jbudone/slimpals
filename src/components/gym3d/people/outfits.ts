@@ -1,5 +1,6 @@
 // Outfits for the rounded toon people. Random ones come from a seeded RNG so a
-// member looks the same every frame they exist; named NPCs get fixed outfits.
+// member looks the same every frame they exist; named NPCs get fixed outfits
+// from the cast (cast.ts).
 import { hashString, mulberry32, type Rng } from "../engine/helpers"
 
 export const SKIN = [
@@ -47,6 +48,8 @@ export type HairStyle =
 	| "pony"
 	| "curly"
 	| "buzz"
+	/** Two space buns (named NPCs only, not in the random pool). */
+	| "buns"
 export const HAIRSTYLES: readonly HairStyle[] = [
 	"short",
 	"long",
@@ -71,6 +74,10 @@ export type TeeKind =
 	| "avo"
 	| "num"
 	| "gymrat"
+	// named-cast prints, not in the random pool
+	| "staff"
+	| "titan"
+	| "sparks"
 export const TEES: readonly TeeKind[] = [
 	"bolt",
 	"heart",
@@ -122,6 +129,11 @@ export type Acc =
 	| "headphones"
 	| "wristband"
 	| "socks"
+	// named-cast extras, not in the random pool
+	| "headset"
+	| "whistle"
+	| "lanyard"
+	| "earrings"
 export const ACC_SETS: readonly (readonly Acc[])[] = [
 	[],
 	["glasses"],
@@ -147,6 +159,7 @@ export type Outfit = {
 	tee: TeeKind | null
 	tats: Tat[]
 	acc: Acc[]
+	freckles: boolean
 }
 
 function pickR<X>(a: readonly X[], rng: Rng): X {
@@ -170,6 +183,7 @@ export function randOutfit(rng: Rng): Outfit {
 		tee: rng() < 0.55 ? pickR(TEES, rng) : null,
 		tats: rng() < 0.4 ? [...pickR(TAT_SETS.slice(1), rng)] : [],
 		acc: rng() < 0.45 ? [...pickR(ACC_SETS.slice(1), rng)] : [],
+		freckles: false,
 	}
 }
 
@@ -178,169 +192,14 @@ export function seededOutfit(seed: string): Outfit {
 	return randOutfit(mulberry32(hashString(seed)))
 }
 
-const base = (o: Partial<Outfit>): Outfit => ({
-	skin: "#e8b48e",
-	hair: "#2c1f1b",
-	style: "short",
-	top: "#3aa89a",
-	bottom: "#2c2f36",
-	shoes: "#ffffff",
-	sleeves: true,
-	shorts: false,
-	band: null,
-	build: "avg",
-	beard: false,
-	lashes: false,
-	tee: null,
-	tats: [],
-	acc: [],
-	...o,
-})
-
-/** Fixed looks for the named NPCs, so Lisa is always Lisa. */
-export const NAMED_OUTFITS: Readonly<Record<string, Outfit>> = {
-	trainer_marcus: base({
-		skin: "#9a633f",
-		style: "buzz",
-		top: "#3aa89a",
-		bottom: "#1f4f4a",
-		build: "strong",
-		sleeves: false,
-		acc: ["wristband"],
-		band: "#f2c14a",
-	}),
-	receptionist_lisa: base({
-		skin: "#f6d2b4",
-		hair: "#a0643a",
-		style: "pony",
-		top: "#3aa89a",
-		bottom: "#3a4a6a",
-		lashes: true,
-		band: "#e8743b",
-	}),
-	regular_derek: base({
-		skin: "#e8b48e",
-		hair: "#5a3a26",
-		style: "short",
-		top: "#2c2f36",
-		bottom: "#5a5f6a",
-		build: "strong",
-		sleeves: false,
-		shorts: true,
-		tee: "swole",
-		tats: [
-			{ k: "sleeve", w: "upR" },
-			{ k: "sleeve", w: "armR" },
-		],
-	}),
-	regular_priya: base({
-		skin: "#c98a5e",
-		hair: "#2c1f1b",
-		style: "long",
-		top: "#9b6bc4",
-		bottom: "#2c2f36",
-		build: "fit",
-		lashes: true,
-		acc: ["headphones", "wristband"],
-		band: "#f2c14a",
-	}),
-	regular_tom: base({
-		skin: "#f6d2b4",
-		hair: "#c9573a",
-		style: "cap",
-		band: "#4a78c8",
-		top: "#f2c14a",
-		bottom: "#3a4a6a",
-		build: "soft",
-		beard: true,
-		shorts: true,
-		tee: "avo",
-	}),
-	regular_elena: base({
-		skin: "#e8b48e",
-		hair: "#e8c46a",
-		style: "bun",
-		top: "#d4463a",
-		bottom: "#2c2f36",
-		lashes: true,
-		sleeves: false,
-		acc: ["socks", "wristband"],
-		shorts: true,
-		band: "#3aa89a",
-	}),
-	specialist_coach: base({
-		skin: "#6e4428",
-		style: "bald",
-		top: "#3aa89a",
-		bottom: "#1f3a5a",
-		build: "fit",
-		beard: true,
-		acc: ["glasses"],
-	}),
-	specialist_nutritionist: base({
-		skin: "#f6d2b4",
-		hair: "#1f2a44",
-		style: "long",
-		top: "#ffffff",
-		bottom: "#3a4a6a",
-		lashes: true,
-		acc: ["glasses"],
-	}),
-	trainer_jordan: base({
-		skin: "#c98a5e",
-		hair: "#2c1f1b",
-		style: "curly",
-		top: "#3aa89a",
-		bottom: "#2c2f36",
-		build: "fit",
-		shorts: true,
-		band: "#e8743b",
-	}),
-	manager_alex: base({
-		skin: "#e8b48e",
-		hair: "#5a3a26",
-		style: "short",
-		top: "#4a78c8",
-		bottom: "#2c2f36",
-		acc: ["glasses"],
-	}),
-	hero_bodybuilder_rex: base({
-		skin: "#c98a5e",
-		style: "bald",
-		top: "#d4463a",
-		bottom: "#2c2f36",
-		build: "strong",
-		sleeves: false,
-		shorts: true,
-		beard: true,
-		acc: ["shades", "chain"],
-		tats: [{ k: "anchor", w: "armL" }],
-	}),
-	hero_influencer_maya: base({
-		skin: "#e8b48e",
-		hair: "#e8c46a",
-		style: "long",
-		top: "#ff6fae",
-		bottom: "#ffffff",
-		build: "fit",
-		lashes: true,
-		sleeves: false,
-		tee: "heart",
-		acc: ["headphones"],
-		band: "#ff6fae",
-	}),
-}
-
-export function outfitFor(npcKey: string): Outfit {
-	const o = NAMED_OUTFITS[npcKey]
-	return o ? structuredClone(o) : seededOutfit(npcKey)
-}
+/** The staff uniform colours (anonymous staff and every named staff member). */
+export const STAFF_UNIFORM = { top: "#2f9e8f", bottom: "#1f4f4a" } as const
 
 /** Staff uniform: teal top, plain, sleeves and long trousers. */
 export function staffOutfit(seed: string): Outfit {
 	const out = seededOutfit(seed)
-	out.top = "#3aa89a"
-	out.bottom = "#1f4f4a"
+	out.top = STAFF_UNIFORM.top
+	out.bottom = STAFF_UNIFORM.bottom
 	out.tee = null
 	out.tats = []
 	out.acc = []

@@ -118,7 +118,10 @@ export type Piece = {
 	deco?: T.Group
 }
 
-export type PersonKind = "npc" | "staff" | "member"
+/** npc: named, from the sim; staff: anonymous on staff stations (and
+ * swimmers); member: ambient crowd; extra: class groups and the cast
+ * lineup (fixed on a floor station, no AI). */
+export type PersonKind = "npc" | "staff" | "member" | "extra"
 
 export type Person = {
 	/** Identity across polls: npc:<key>, staff:<piece>:<i>, member:<n>. */
@@ -148,4 +151,10 @@ export type Person = {
 	home: { x: number; z: number; face: number } | null
 	/** Marked for removal (walking out of the door). */
 	leaving: boolean
+	/** Pose used instead of the station's (a hero flexing on the stage). */
+	poseAs?: PoseName | null
+	/** Walk speed factor (mood). */
+	speed?: number
+	/** Extra chip line (the class a member is in). */
+	note?: string | null
 }

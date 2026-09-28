@@ -129,6 +129,7 @@ describe("GET /api/gym/layout", () => {
 			"amenity_lockers",
 			"cardio_treadmill",
 			"decor_posters",
+			"staff_manager_office",
 			"staff_reception",
 			"weights_dumbbells",
 		])
@@ -140,9 +141,13 @@ describe("GET /api/gym/layout", () => {
 		expect(
 			first.pieces.find((p) => p.upgradeKey === "decor_posters")?.kind,
 		).toBe("decor")
-		expect(first.unplaced).toEqual([
-			{ key: "staff_manager_office", name: "Manager's Office" },
-		])
+		// slice 3: the manager's office is built into the lobby
+		const office = first.pieces.find(
+			(p) => p.upgradeKey === "staff_manager_office",
+		)
+		expect(office?.roomId).toBe(lobby.id)
+		expect(office?.name).toBe("Manager's Office")
+		expect(first.unplaced).toEqual([])
 
 		const db = await getTestDb()
 		const [gym] = await db.select().from(userGyms).where(eq(userGyms.id, gymId))
@@ -156,7 +161,7 @@ describe("GET /api/gym/layout", () => {
 			.select()
 			.from(gymPieces)
 			.where(eq(gymPieces.gymId, gymId))
-		expect(rows).toHaveLength(5)
+		expect(rows).toHaveLength(6)
 	})
 
 	it("does not double-seed when first reads race each other", async () => {

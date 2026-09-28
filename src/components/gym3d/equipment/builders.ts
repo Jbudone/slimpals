@@ -1609,6 +1609,119 @@ export const EQUIP: Readonly<Record<string, Builder>> = {
 		})
 		return g
 	},
+	// A compact office nook for the lobby's back corner (1.5 x 1.5): the
+	// manager's desk, a filing cabinet and a goals board. Kept for Alex.
+	staff_manager_office() {
+		const g = group()
+		eqRug(1.4, 1.4, "#cdd6e4", 0, 0, g)
+		eqDesk(g, 1.0, C.wood, C.woodD, -0.05, 0.12)
+		eqPic(
+			0.62,
+			0.14,
+			eqSign("MANAGER", "#4a78c8", "#fff7ea", 256, 58),
+			-0.05,
+			0.42,
+			0.382,
+			g,
+		)
+		box(0.34, 0.24, 0.03, C.screen, -0.25, 0.72, 0.0, g)
+		box(0.05, 0.14, 0.05, C.steelD, -0.25, 0.63, 0.02, g)
+		box(0.2, 0.02, 0.26, "#fff7ea", 0.2, 0.6, 0.12, g)
+		box(0.2, 0.03, 0.26, "#c98b56", 0.2, 0.585, 0.12, g)
+		cyl(0.04, 0.08, "#e8743b", 0.36, 0.63, 0.25, g, 10)
+		eqChair(g, -0.05, -0.38, "#2c2f36", 0, true)
+		// filing cabinet and a goals board against the wall
+		box(0.36, 0.72, 0.4, "#9aa3b4", 0.5, 0.36, -0.42, g)
+		for (const y of [0.2, 0.45, 0.66])
+			box(0.2, 0.03, 0.02, C.steelD, 0.5, y, -0.215, g)
+		const board = eqPic(
+			0.7,
+			0.46,
+			canvasTex(
+				192,
+				128,
+				(c, w, h) => {
+					c.fillStyle = "#fff7ea"
+					c.fillRect(0, 0, w, h)
+					c.strokeStyle = "#3a2622"
+					c.lineWidth = 6
+					c.strokeRect(3, 3, w - 6, h - 6)
+					c.fillStyle = "#3a2622"
+					c.font = `800 22px ${DISPLAY_FONT}`
+					c.textAlign = "left"
+					c.fillText("GOALS", 14, 30)
+					const bars = [0.45, 0.62, 0.8, 0.95]
+					bars.forEach((k, i) => {
+						c.fillStyle = ["#3aa89a", "#f2c14a", "#e8743b", "#4a78c8"][i]
+						const bh = k * 70
+						c.fillRect(20 + i * 40, h - 14 - bh, 26, bh)
+					})
+				},
+				"goalsBoard",
+			),
+			-0.35,
+			1.05,
+			-0.6,
+			g,
+		)
+		void board
+		for (const sx of [-0.66, -0.04])
+			box(0.04, 1.3, 0.04, C.steelD, sx, 0.65, -0.62, g)
+		wst(g, -0.05, 0, -0.38, 0, {
+			pose: "seated",
+			work: true,
+			label: "running the gym from the office",
+			staff: true,
+		})
+		return g
+	},
+	// The owner's lounge suite: velvet sofa, a gold-trimmed desk and the
+	// owner's (your) tall chair. Members drop by for the sofa.
+	staff_ownership_suite() {
+		const g = group()
+		eqRug(1.9, 1.9, "#7a2e3f", 0, 0, g)
+		eqRug(1.6, 1.6, "#a8434f", 0, 0, g, 0.01)
+		// desk with gold trim
+		box(1.25, 0.06, 0.55, "#4a2c22", 0, 0.58, -0.45, g)
+		box(1.28, 0.03, 0.58, "#e8b83a", 0, 0.545, -0.45, g)
+		for (const sx of [-0.55, 0.55])
+			box(0.12, 0.54, 0.5, "#5a3426", sx, 0.27, -0.45, g)
+		box(1.0, 0.32, 0.03, "#5a3426", 0, 0.37, -0.2, g)
+		eqPic(
+			0.5,
+			0.13,
+			eqSign("OWNER", "#e8b83a", "#4a2c22", 256, 64),
+			0,
+			0.4,
+			-0.183,
+			g,
+		)
+		// trophy and laptop on the desk
+		cyl(0.06, 0.03, "#4a2c22", -0.4, 0.625, -0.5, g, 10)
+		cyl(0.02, 0.1, "#e8b83a", -0.4, 0.68, -0.5, g, 6)
+		cyl(0.06, 0.08, "#e8b83a", -0.4, 0.76, -0.5, g, 10)
+		box(0.36, 0.02, 0.24, "#c8ccd4", 0.25, 0.62, -0.45, g)
+		box(0.36, 0.22, 0.02, "#2c2f36", 0.25, 0.73, -0.57, g)
+		eqChair(g, 0, -0.85, "#5a2a2a", 0, true)
+		// velvet sofa facing the desk
+		box(1.3, 0.2, 0.5, "#8a3a6a", 0, 0.2, 0.55, g)
+		box(1.3, 0.1, 0.44, "#a04a7c", 0, 0.34, 0.53, g)
+		box(1.34, 0.45, 0.14, "#8a3a6a", 0, 0.42, 0.82, g)
+		for (const sx of [-0.66, 0.66])
+			box(0.12, 0.3, 0.52, "#7a2e5a", sx, 0.3, 0.57, g)
+		plant(-0.82, -0.82, 0.6, g)
+		plant(0.82, 0.85, 0.5, g)
+		wst(g, -0.3, 0.04, 0.5, Math.PI, {
+			pose: "seated",
+			label: "lounging in the owner's suite",
+		})
+		wst(g, 0.3, 0.04, 0.5, Math.PI, {
+			pose: "seated",
+			talk: true,
+			label: "chatting in the owner's suite",
+		})
+		return g
+	},
 	staff_massage() {
 		const g = group()
 		eqRug(1.9, 1.9, "#d9c2a8", 0, 0, g)

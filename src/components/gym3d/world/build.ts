@@ -127,6 +127,7 @@ export class BuildLayer {
 	private overlayG = new T.Group()
 	private markG = new T.Group()
 	private sites = new Map<number, Site>()
+	private claimCrew: Worker[] = []
 	private tweens: ((dt: number) => boolean)[] = []
 	private padOpenMat: T.MeshBasicMaterial
 	private markMat: T.MeshBasicMaterial
@@ -696,6 +697,27 @@ export class BuildLayer {
 		)
 	}
 
+	/** Upgrade claim (slice 3): two workers hammer at a spot until
+	 * endClaim(); the piece itself drops in afterwards. */
+	startClaim(x: number, z: number, size: number): void {
+		this.endClaim()
+		const h = size / 2 + 0.45
+		this.claimCrew = [
+			makeWorker("worker:claim:0", x - h, z + 0.35, Math.PI / 2),
+			makeWorker("worker:claim:1", x + 0.35, z + h, Math.PI),
+		]
+		this.dustAt(x, 0.2, z, 8, size * 0.5)
+	}
+
+	endClaim(): void {
+		for (const wk of this.claimCrew) {
+			const p = wk.rig.root.position
+			this.dustAt(p.x, 0.4, p.z, 6, 0.3)
+			disposeRig(wk.rig)
+		}
+		this.claimCrew = []
+	}
+
 	/** Timer bubble anchors of the running jobs. */
 	siteAnchors(): { jobId: number; x: number; y: number; z: number }[] {
 		return [...this.sites.values()].map((s) => ({
@@ -932,6 +954,26 @@ export class BuildLayer {
 
 	// ── per frame ────────────────────────────────────────────────────────
 
+	private hammer(wk: Worker, dt: number): void {
+		const r = wk.rig
+		wk.t += dt
+		resetPose(r)
+		POSES.hammer(r, wk.t, null)
+		const c = (wk.t * 1.4) % 1
+		if (c < wk.c) {
+			r.root.updateMatrixWorld(true)
+			r.armR.hand.getWorldPosition(this.tmpP)
+			this.dustAt(
+				this.tmpP.x,
+				Math.max(0.1, this.tmpP.y - 0.1),
+				this.tmpP.z,
+				2,
+				0.12,
+			)
+		}
+		wk.c = c
+	}
+
 	frame(dt: number, now: number, frameN: number): void {
 		this.t += dt
 		const t = this.t
@@ -945,26 +987,9 @@ export class BuildLayer {
 			this.padOpenMat.opacity = 0.62 + 0.3 * Math.sin(t * 3.2)
 			this.markMat.opacity = 0.7 + 0.25 * Math.sin(t * 6)
 		}
+		for (const wk of this.claimCrew) this.hammer(wk, dt)
 		for (const s of this.sites.values()) {
-			for (const wk of s.workers) {
-				const r = wk.rig
-				wk.t += dt
-				resetPose(r)
-				POSES.hammer(r, wk.t, null)
-				const c = (wk.t * 1.4) % 1
-				if (c < wk.c) {
-					r.root.updateMatrixWorld(true)
-					r.armR.hand.getWorldPosition(this.tmpP)
-					this.dustAt(
-						this.tmpP.x,
-						Math.max(0.1, this.tmpP.y - 0.1),
-						this.tmpP.z,
-						2,
-						0.12,
-					)
-				}
-				wk.c = c
-			}
+			for (const wk of s.workers) this.hammer(wk, dt)
 			if (this.rng() < dt * 1.5)
 				this.dustAt(
 					s.x + (this.rng() - 0.5) * s.w,
@@ -1044,10 +1069,17 @@ export class BuildLayer {
 	}
 
 	get busy(): boolean {
-		return this.sites.size > 0 || this.tweens.length > 0 || this.conf.length > 0
+		return (
+			this.sites.size > 0 ||
+			this.tweens.length > 0 ||
+			this.conf.length > 0 ||
+			this.claimCrew.length > 0
+		)
 	}
 
 	dispose(): void {
+		for (const wk of this.claimCrew) disposeRig(wk.rig)
+		this.claimCrew = []
 		for (const s of this.sites.values())
 			for (const wk of s.workers) disposeRig(wk.rig)
 		this.sites.clear()

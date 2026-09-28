@@ -22,13 +22,18 @@ import { fmtLeft, jobLeft } from "./world/build"
 import { roomLabel } from "./world/world"
 
 type Props = {
-	/** Opens the NPC dialog for a named NPC. */
-	onNpcClick?: (npcKey: string) => void
+	/** Opens the NPC dialog for a named NPC (with the 3D look's picture). */
+	onNpcClick?: (npcKey: string, portrait: string | null) => void
 	/** The 3D gym could not start (no WebGL2, load or build failure). */
 	onFallback?: (reason: string) => void
+	/** An upgrade that was just claimed: its build ceremony plays in place.
+	 * `n` changes for every claim. */
+	claim?: { key: string; n: number } | null
+	/** The claim ceremony is over (or could not run). */
+	onClaimDone?: () => void
 }
 
-let { onNpcClick, onFallback }: Props = $props()
+let { onNpcClick, onFallback, claim = null, onClaimDone }: Props = $props()
 
 const TYPES: EquipmentRoomType[] = [
 	"cardio",
@@ -396,7 +401,15 @@ onMount(() => {
 				screenAt: (x, y, z) => a.screenAt(x, y, z),
 				moveTargets: () => a.moveTargets(),
 				panTo: (x, z) => a.panTo(x, z),
+				lineup: (on) => a.lineup(on),
+				info: (key) => {
+					const p = a.personKeys().includes(key)
+					return p ? a.infoByKey(key) : null
+				},
+				claiming: () => a.claimActive,
+				portrait: (k) => a.portraitOf(k),
 			}
+			ready = true
 		})
 		.catch((e: unknown) => {
 			if (destroyed) return
@@ -413,6 +426,8 @@ onMount(() => {
 
 onDestroy(() => {
 	destroyed = true
+	// a claim ceremony cut short still ends (the claim itself is saved)
+	if (app?.claimActive) onClaimDone?.()
 	app?.dispose()
 	app = null
 	if (tipTimer) clearTimeout(tipTimer)
@@ -426,8 +441,27 @@ onDestroy(() => {
 
 function talk() {
 	if (selection?.kind === "person" && selection.npcKey)
-		onNpcClick?.(selection.npcKey)
+		onNpcClick?.(selection.npcKey, app?.portraitOf(selection.npcKey) ?? null)
 }
+
+let claimSeen = 0
+let ready = $state(false)
+$effect(() => {
+	const c = claim
+	if (!ready || !c || c.n === claimSeen) return
+	claimSeen = c.n
+	const a = app
+	if (!a) {
+		onClaimDone?.()
+		return
+	}
+	a.claimCeremony(c.key, () => {
+		if (!destroyed) {
+			layout = a.layout
+			onClaimDone?.()
+		}
+	}).catch(() => onClaimDone?.())
+})
 
 const jobView = $derived.by(() => {
 	const j = job
@@ -463,10 +497,32 @@ const jobView = $derived.by(() => {
 		</div>
 	{/if}
 	{#if selection?.kind === "person"}
-		<div class="g3d-chip" bind:this={chipEl} role="status">
-			<span class="g3d-chip-name">{selection.name}</span>
-			{#if selection.npcKey}
-				<button type="button" class="g3d-talk" onclick={talk}>Talk</button>
+		{@const info = selection.info}
+		<div
+			class="g3d-chip"
+			class:rich={!!(info.mood || info.doing || info.relation)}
+			bind:this={chipEl}
+			role="status"
+			data-testid="gym3d-chip"
+		>
+			<div class="g3d-chip-head">
+				<span class="g3d-chip-name">{selection.name}</span>
+				{#if info.hero}<span class="g3d-chip-hero">★ Visiting</span>{/if}
+				{#if selection.npcKey}
+					<button type="button" class="g3d-talk" onclick={talk} data-testid="gym3d-talk"
+						>Talk</button
+					>
+				{/if}
+			</div>
+			{#if info.title}<div class="g3d-chip-title">{info.title}</div>{/if}
+			{#if info.mood || info.doing}
+				<div class="g3d-chip-row" data-testid="gym3d-chip-doing">
+					{#if info.mood}<span class="g3d-chip-mood">{info.mood}</span>{/if}
+					{#if info.doing}<span>{info.doing}</span>{/if}
+				</div>
+			{/if}
+			{#if info.relation}
+				<div class="g3d-chip-row rel" data-testid="gym3d-chip-rel">♥ {info.relation}</div>
 			{/if}
 		</div>
 	{/if}
@@ -811,8 +867,8 @@ const jobView = $derived.by(() => {
 	top: 0;
 	z-index: 4;
 	display: flex;
-	align-items: center;
-	gap: 8px;
+	flex-direction: column;
+	gap: 2px;
 	padding: 5px 6px 5px 12px;
 	border: 2px solid var(--ink);
 	border-radius: 999px;
@@ -823,10 +879,67 @@ const jobView = $derived.by(() => {
 	white-space: nowrap;
 	margin-bottom: 8px;
 	will-change: transform;
+	max-width: min(270px, calc(100vw - 32px));
+	box-sizing: border-box;
+}
+
+.g3d-chip.rich {
+	border-radius: 14px;
+	padding: 6px 8px 7px 12px;
+}
+
+.g3d-chip-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .g3d-chip-name {
-	padding-right: 6px;
+	padding-right: 2px;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.g3d-chip-head > :not(.g3d-chip-name) {
+	flex: none;
+}
+
+.g3d-chip-hero {
+	background: #f2c14a;
+	border: 1.5px solid var(--ink);
+	border-radius: 999px;
+	padding: 0 6px;
+	font-size: 10px;
+}
+
+.g3d-chip-title {
+	font-size: 11px;
+	font-weight: 700;
+	color: #3aa89a;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-top: -2px;
+}
+
+.g3d-chip-row {
+	display: flex;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #3b3f4a;
+	white-space: normal;
+	line-height: 1.25;
+}
+
+.g3d-chip-mood {
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.g3d-chip-row.rel {
+	color: #c8323a;
 }
 
 .g3d-talk {
@@ -1209,5 +1322,89 @@ const jobView = $derived.by(() => {
 
 .g3d :global(.g3d-bb .g3d-wk) {
 	background: #dff5f1;
+}
+
+/* speech bubbles (world/life.ts): pooled, moved by transform only */
+.g3d :global(.g3d-say) {
+	z-index: 3;
+	max-width: 190px;
+	padding: 5px 9px 6px;
+	border: 2px solid var(--ink);
+	border-radius: 12px;
+	background: #fffdf7;
+	box-shadow: 0 2px 0 var(--ink);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.25;
+	color: #23262e;
+	pointer-events: none;
+	contain: layout paint;
+}
+
+.g3d :global(.g3d-say::after) {
+	content: "";
+	position: absolute;
+	left: calc(50% - 5px);
+	bottom: -7px;
+	width: 8px;
+	height: 8px;
+	background: #fffdf7;
+	border-right: 2px solid var(--ink);
+	border-bottom: 2px solid var(--ink);
+	transform: rotate(45deg);
+}
+
+.g3d :global(.g3d-say b) {
+	display: block;
+	font-size: 10px;
+	font-weight: 800;
+	color: #e8743b;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* today's event, classes and visiting heroes (world/happenings.ts) */
+.g3d :global(.g3d-evt),
+.g3d :global(.g3d-class),
+.g3d :global(.g3d-hero) {
+	z-index: 2;
+	white-space: nowrap;
+	border: 2px solid var(--ink);
+	border-radius: 999px;
+	font-weight: 800;
+	font-size: 12px;
+	padding: 3px 10px;
+	box-shadow: 0 2px 0 var(--ink);
+	pointer-events: none;
+	transform-origin: 50% 100%;
+}
+
+.g3d :global(.g3d-evt) {
+	background: #f2c14a;
+	color: #23262e;
+}
+
+.g3d :global(.g3d-class) {
+	background: #9b6bc4;
+	color: #fff;
+}
+
+.g3d :global(.g3d-name) {
+	z-index: 2;
+	white-space: nowrap;
+	background: #fff;
+	border: 2px solid var(--ink);
+	border-radius: 8px;
+	padding: 1px 6px;
+	font-size: 11px;
+	font-weight: 800;
+	pointer-events: none;
+}
+
+.g3d :global(.g3d-hero) {
+	background: #23262e;
+	color: #ffd75e;
+	font-size: 10px;
+	padding: 1px 7px;
 }
 </style>

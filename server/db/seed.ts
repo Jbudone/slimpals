@@ -841,7 +841,7 @@ type NpcRow = {
 	heroVisitDurationDays?: number
 }
 
-const NPC_CATALOG: NpcRow[] = [
+export const NPC_CATALOG: NpcRow[] = [
 	{
 		key: "trainer_marcus",
 		name: "Marcus",
@@ -1312,7 +1312,7 @@ type ClassRow = {
 // open before its prerequisite room could plausibly exist — the actual
 // enforcement is server/routes/gym.ts checking the room category is
 // unlocked, this is just a sane authoring convention on top of that.
-const CLASS_CATALOG: ClassRow[] = [
+export const CLASS_CATALOG: ClassRow[] = [
 	{
 		key: "boxing_6pm_class",
 		name: "6pm Boxing Class",

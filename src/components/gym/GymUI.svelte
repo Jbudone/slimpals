@@ -69,7 +69,7 @@ const progressPercent = $derived(
 	{#if ceremonyActive}
 		<div class="ceremony-hint">
 			<span class="hint-icon">🔨</span>
-			<span>Click anywhere in the gym to help build!</span>
+			<span>Tap the gym to help build!</span>
 		</div>
 	{:else}
 		<div class="gym-header">
