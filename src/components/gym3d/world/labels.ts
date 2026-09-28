@@ -35,7 +35,7 @@ export class LabelLayer {
 		d.className = "g3d-labels"
 		d.setAttribute("aria-hidden", "false")
 		d.style.cssText =
-			"position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2"
+			"position:absolute;inset:0;pointer-events:none;overflow:hidden;overflow:clip;z-index:2"
 		host.appendChild(d)
 		this.root = d
 	}

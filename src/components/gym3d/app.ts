@@ -23,7 +23,11 @@ import {
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
-import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
+import type {
+	GymIncomeSourceDto,
+	GymJobDto,
+	GymLayoutDto,
+} from "../../../shared/types"
 import { AssetCache } from "./engine/assets"
 import { batchMesh, mulberry32, type Part, pBox } from "./engine/helpers"
 import { GymRenderer, hasWebGL2 } from "./engine/renderer"
@@ -40,6 +44,7 @@ import {
 	type PadRef,
 } from "./world/build"
 import { floorStation, Happenings } from "./world/happenings"
+import { Kitchen } from "./world/kitchen"
 import {
 	badgeAnchor,
 	type Label,
@@ -97,6 +102,7 @@ export type Selection =
 	  }
 	| { kind: "room"; roomId: number; paint?: boolean }
 	| { kind: "job"; jobId: number }
+	| { kind: "kitchen" }
 
 export type Gym3DStats = {
 	rooms: number
@@ -120,9 +126,14 @@ export type Gym3DStats = {
 	classes: number
 	classPeople: number
 	heroes: number
+	/** Coin bubbles showing now. */
+	bubbles: number
+	sweat: number
+	greens: number
 }
 
-export type JobAction = "finish" | "workout"
+/** "sweat": spend 1 Sweat for an hour off; "finish": spend `cost` Sweat. */
+export type JobAction = "sweat" | "finish"
 
 export type AppOpts = {
 	onSelect: (s: Selection | null) => void
@@ -138,6 +149,9 @@ export type AppOpts = {
 	onJobDue?: () => void
 	/** A short hint for the player. */
 	onHint?: (text: string) => void
+	/** Coin bubbles tapped (income source keys); `from` is where the coins
+	 * fly from. The UI posts the collect and applies the answer. */
+	onCollect?: (keys: string[], from: HTMLElement | null) => void
 }
 
 function newRoomBadge(): HTMLButtonElement {
@@ -173,6 +187,36 @@ type Bubble = {
 	left: HTMLElement
 	cost: HTMLElement
 	shown: string
+}
+
+/** A coin bubble: one per room (its machines together), the reception
+ * desk and the kitchen. */
+type CoinBubble = {
+	L: Label
+	kind: GymIncomeSourceDto["kind"]
+	srcs: GymIncomeSourceDto[]
+	/** Server time (ms) the banks were read at. */
+	at: number
+	v: T.Vector3
+	n: HTMLElement
+	shown: number
+	full: boolean
+}
+
+const SWEAT_ICON =
+	'<svg class="g3d-sw" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c3.6 4.6 6.5 8.3 6.5 12a6.5 6.5 0 0 1-13 0c0-3.7 2.9-7.4 6.5-12z" fill="#3fa9f5"/><path d="M9 14.5a3 3 0 0 0 3 3" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>'
+
+const COIN_SVG =
+	'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#f5b82e"/><circle cx="12" cy="12" r="7" fill="#ffd45c"/><path d="M12 8v8M9.5 10.5c0-1.4 5-1.4 5 0s-5 1.6-5 3 5 1.4 5 0" stroke="#b9791a" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>'
+
+/** Coins a source holds at `now`, from what the server said at `at`. */
+export function bankAt(
+	src: GymIncomeSourceDto,
+	at: number,
+	now: number,
+): number {
+	const h = Math.max(0, now - at) / 3_600_000
+	return Math.min(src.cap, Math.floor(src.bank + src.rate * h))
 }
 
 export class Gym3DApp {
@@ -243,13 +287,15 @@ export class Gym3DApp {
 		done: () => void
 	} | null = null
 	private clock = 0
+	private kitchen: Kitchen
+	private coinBubs = new Map<string, CoinBubble>()
 
 	/** Builds the gym. Throws (the caller falls back to the 2D gym) when
 	 * WebGL2 is missing or the build fails. */
 	static async create(host: HTMLElement, opts: AppOpts): Promise<Gym3DApp> {
 		if (!hasWebGL2()) throw new Error("WebGL2 unavailable")
 		const [layout, roster] = await Promise.all([
-			loadLayout(),
+			loadLayout(true),
 			loadRoster().catch(() => []),
 		])
 		const app = new Gym3DApp(host, layout, roster, opts)
@@ -287,6 +333,11 @@ export class Gym3DApp {
 				this.labels,
 				this.build,
 			)
+			this.kitchen = new Kitchen(this.world)
+			this.world.pickables.push(this.kitchen.hit)
+			this.world.extraBlockers.push(...this.kitchen.blockers())
+			this.world.paths.invalidate()
+			this.kitchen.setMenu(layout.kitchen?.menu ?? [])
 		} catch (e) {
 			this.r.dispose()
 			unbindWorld()
@@ -297,6 +348,7 @@ export class Gym3DApp {
 		this.build.sync(layout, this.now())
 		this.rebuildBadges()
 		this.syncBubbles()
+		this.syncCoins()
 		this.celebrateUnseen(layout)
 		this.fitView()
 		this.bounds = {
@@ -472,7 +524,9 @@ export class Gym3DApp {
 		if (this.tick1 >= 0.5) {
 			this.tick1 = 0
 			this.updateBubbles(now)
+			this.updateCoins(now)
 		}
+		this.kitchen.frame(dt)
 		this.clock += dt
 		if (this.claiming) this.claimTick(dt)
 		this.hap.frame(dt)
@@ -518,6 +572,8 @@ export class Gym3DApp {
 		this.build.sync(next, this.now())
 		this.rebuildBadges()
 		this.syncBubbles()
+		this.kitchen.setMenu(next.kitchen?.menu ?? [])
+		this.syncCoins()
 		for (const j of finished) this.celebrate(j, rects.get(j.id) ?? null)
 		this.dueAsked = false
 		this.r.dirtyShadow()
@@ -611,19 +667,20 @@ export class Gym3DApp {
 			left.className = "g3d-left"
 			const row = document.createElement("span")
 			row.className = "g3d-bb"
+			const sw = document.createElement("button")
+			sw.type = "button"
+			sw.className = "g3d-wk"
+			sw.dataset.testid = "job-sweat"
+			sw.innerHTML = `${SWEAT_ICON}<span>1 · −1h</span>`
 			const fin = document.createElement("button")
 			fin.type = "button"
 			fin.className = "g3d-fin"
-			const coin = document.createElement("span")
-			coin.className = "g3d-coin"
-			coin.setAttribute("aria-hidden", "true")
+			fin.dataset.testid = "job-finish"
 			const cost = document.createElement("span")
-			fin.append("Finish ", coin, cost)
-			const wk = document.createElement("button")
-			wk.type = "button"
-			wk.className = "g3d-wk"
-			wk.textContent = "Log a workout: −1h"
-			row.append(fin, wk)
+			fin.append("Finish ")
+			fin.insertAdjacentHTML("beforeend", SWEAT_ICON)
+			fin.append(cost)
+			row.append(sw, fin)
 			el.append(title, bar, left, row)
 			const id = j.id
 			fin.addEventListener("click", (e) => {
@@ -636,9 +693,9 @@ export class Gym3DApp {
 						finishCost(jobLeft(b.job, this.now())),
 					)
 			})
-			wk.addEventListener("click", (e) => {
+			sw.addEventListener("click", (e) => {
 				e.stopPropagation()
-				this.opts.onJobAction?.(id, "workout", 0)
+				this.opts.onJobAction?.(id, "sweat", 1)
 			})
 			const L = this.labels.add(el, () => v, { clamp: true })
 			this.bubbles.set(j.id, {
@@ -673,6 +730,175 @@ export class Gym3DApp {
 			this.dueAsked = true
 			this.opts.onJobDue?.()
 		}
+	}
+
+	// ── idle coins (gym home) ───────────────────────────────────────────────
+
+	/** Which bubble a source shows in: machines by room. */
+	private coinGroup(src: GymIncomeSourceDto): string | null {
+		if (src.kind !== "machine") return src.kind
+		const p = this.world.layout.pieces.find((q) => q.id === src.pieceId)
+		return p?.roomId != null ? `room:${p.roomId}` : null
+	}
+
+	private coinAnchor(group: string, out: T.Vector3): T.Vector3 | null {
+		if (group === "kitchen") return out.copy(this.kitchen.anchor())
+		if (group === "desk") {
+			const d = this.world.pieces.find((p) => p.itemKey === "staff_reception")
+			const lb = this.world.lobby
+			return out.set(d?.x ?? lb.x0 + 7, 2.3, d?.z ?? lb.z0 + 2.5)
+		}
+		const id = Number(group.slice(5))
+		const r = this.world.rooms.find((q) => q.id === id)
+		return r ? out.set(r.cx, 2.4, r.cz + 0.6) : null
+	}
+
+	private coinSum(b: CoinBubble, now: number): { bank: number; cap: number } {
+		let bank = 0
+		let cap = 0
+		for (const s of b.srcs) {
+			bank += bankAt(s, b.at, now)
+			cap += s.cap
+		}
+		return { bank, cap }
+	}
+
+	/** Coin bubbles (shown once they hold a coin), from the layout. */
+	private syncCoins(): void {
+		const lay = this.world.layout
+		const at = Date.parse(lay.serverNow) || this.now()
+		const groups = new Map<string, GymIncomeSourceDto[]>()
+		for (const s of lay.income ?? []) {
+			const g = this.coinGroup(s)
+			if (!g) continue
+			const list = groups.get(g)
+			if (list) list.push(s)
+			else groups.set(g, [s])
+		}
+		for (const [k, b] of this.coinBubs) {
+			const srcs = groups.get(k)
+			if (srcs && this.coinAnchor(k, b.v)) {
+				b.srcs = srcs
+				b.at = at
+				b.shown = -1
+				continue
+			}
+			this.labels.remove(b.L)
+			this.coinBubs.delete(k)
+		}
+		for (const [k, srcs] of groups) {
+			if (this.coinBubs.has(k)) continue
+			const v = this.coinAnchor(k, new T.Vector3())
+			if (!v) continue
+			const kind = srcs[0].kind
+			const el = document.createElement("button")
+			el.type = "button"
+			el.className = `g3d-cb g3d-cb-${kind}`
+			el.dataset.income = k
+			el.dataset.testid = "coin-bubble"
+			el.setAttribute("aria-label", "Collect coins")
+			el.innerHTML = COIN_SVG
+			const n = document.createElement("b")
+			el.append(n)
+			el.addEventListener("click", (e) => {
+				e.stopPropagation()
+				this.collect([k])
+			})
+			const L = this.labels.add(el, () => v)
+			el.style.pointerEvents = "auto"
+			this.coinBubs.set(k, { L, kind, srcs, at, v, n, shown: -1, full: false })
+		}
+		this.updateCoins(this.now())
+	}
+
+	private updateCoins(now: number): void {
+		for (const b of this.coinBubs.values()) {
+			const { bank, cap } = this.coinSum(b, now)
+			if (bank === b.shown) continue
+			b.shown = bank
+			b.n.textContent = String(bank)
+			b.L.el.style.display = bank >= 1 ? "" : "none"
+			const full = bank >= cap
+			if (full !== b.full) {
+				b.full = full
+				b.L.el.classList.toggle("full", full)
+			}
+		}
+	}
+
+	/** Coins waiting in every bubble now. */
+	coinsWaiting(): number {
+		const now = this.now()
+		let n = 0
+		for (const b of this.coinBubs.values()) n += this.coinSum(b, now).bank
+		return n
+	}
+
+	/** Coin bubbles on screen (tests): key, coins and screen point. */
+	coinBubbles(): { key: string; coins: number; x: number; y: number }[] {
+		const now = this.now()
+		return [...this.coinBubs.entries()]
+			.map(([key, b]) => ({
+				key,
+				coins: this.coinSum(b, now).bank,
+				...this.r.toScreen(b.v, { x: 0, y: 0 }),
+			}))
+			.filter((b) => b.coins >= 1)
+	}
+
+	/** Empties the given bubbles at once (the server's answer follows) and
+	 * asks the UI to collect them; no keys = every bubble. */
+	collect(keys?: string[]): void {
+		const now = this.now()
+		const pick = keys ?? [...this.coinBubs.keys()]
+		let from: HTMLElement | null = null
+		const got: string[] = []
+		const hit: CoinBubble[] = []
+		for (const k of pick) {
+			const b = this.coinBubs.get(k)
+			if (!b || this.coinSum(b, now).bank < 1) continue
+			hit.push(b)
+			for (const s of b.srcs) got.push(s.key)
+			from ??= b.L.el
+			this.build.confetti(b.v.x, b.v.y, b.v.z, 10)
+			if (b.kind === "kitchen") this.kitchen.bounce()
+		}
+		if (!got.length) return
+		this.opts.onCollect?.(got, from)
+		for (const b of hit) {
+			b.srcs = b.srcs.map((s) => ({ ...s, bank: 0 }))
+			b.at = now
+			b.shown = -1
+		}
+		this.updateCoins(now)
+	}
+
+	/** Screen point of the kitchen kiosk (tests). */
+	kitchenScreen(): { x: number; y: number } {
+		return this.screenAt(this.kitchen.x, 1.2, this.kitchen.z)
+	}
+
+	/** A member cheers a ticked task (Today drawer). */
+	cheer(kind: string): void {
+		const ps = this.people.people.filter((p) => !p.leaving)
+		if (!ps.length) return
+		const who = ps[Math.floor(Math.random() * ps.length)]
+		const lines =
+			kind === "diet"
+				? [
+						"Greens! The kitchen loves you.",
+						"Healthy choice, boss!",
+						"That's the good stuff.",
+					]
+				: kind === "exercise"
+					? ["Sweat pays off!", "Look at you go!", "That's how it's done!"]
+					: ["Nice one, boss!", "One more done!", "Keep it rolling!"]
+		this.life.sayNow(
+			who,
+			lines[Math.floor(Math.random() * lines.length)],
+			this.clock,
+			3.2,
+		)
 	}
 
 	/** Ribbon cutting + confetti for a finished job; toast via onJobDone. */
@@ -1199,6 +1425,8 @@ export class Gym3DApp {
 					}
 					return { kind: "job", jobId: info.jobId }
 				}
+				case "kitchen":
+					return { kind: "kitchen" }
 				case "floor":
 					return { kind: "room", roomId: info.roomId }
 				case "wall": {
@@ -1590,6 +1818,9 @@ export class Gym3DApp {
 			pads: this.build.pads.length,
 			jobs: this.world.layout.jobs.filter((j) => j.status === "active").length,
 			coins: this.world.layout.coins,
+			sweat: this.world.layout.sweat,
+			greens: this.world.layout.greens,
+			bubbles: [...this.coinBubs.values()].filter((b) => b.shown >= 1).length,
 			says: this.says.active,
 			...this.hap.stats(),
 		}
@@ -1614,6 +1845,8 @@ export class Gym3DApp {
 		bindWorld(this.world.ctx)
 		this.life.clear()
 		this.hap.dispose()
+		this.coinBubs.clear()
+		this.kitchen.dispose()
 		this.says.dispose()
 		this.labels.dispose()
 		this.people.onRemove = null

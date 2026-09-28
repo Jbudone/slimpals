@@ -4,8 +4,9 @@ export {}
 
 declare global {
 	interface Window {
-		game?: import("phaser").Game
-		/** Set while the beta 3D gym is mounted (for e2e checks and tooling). */
+		/** Dev only: remounts the Home gym (e2e leak checks). */
+		spRemountGym?: () => void
+		/** Set while the 3D gym is mounted (for e2e checks and tooling). */
 		gym3d?: {
 			ready: boolean
 			stats(): import("./components/gym3d/app").Gym3DStats
@@ -33,6 +34,14 @@ declare global {
 			portrait(npcKey: string): string | null
 			/** An upgrade claim ceremony is running. */
 			claiming(): boolean
+			/** Coins waiting in every coin bubble now. */
+			coinsWaiting(): number
+			/** Coin bubbles holding coins: key (room:<id>, desk, kitchen), coins and screen point. */
+			coinBubbles(): { key: string; coins: number; x: number; y: number }[]
+			/** Taps "Collect all". */
+			collectAll(): void
+			/** Screen point of the Slim Kitchen kiosk. */
+			kitchen(): { x: number; y: number }
 		}
 	}
 }

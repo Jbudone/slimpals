@@ -1,7 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import AvatarMenu from "./components/AvatarMenu.svelte"
 import BottomTabBar from "./components/BottomTabBar.svelte"
-import Header from "./components/Header.svelte"
+import Hud from "./components/home/Hud.svelte"
+import LevelUp from "./components/home/LevelUp.svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
@@ -10,15 +12,15 @@ import {
 	stopImpersonating,
 	userProfile,
 } from "./lib/user.svelte.js"
+import { loadWallet } from "./lib/wallet.svelte.js"
 import Admin from "./pages/Admin.svelte"
-import Compete from "./pages/Compete.svelte"
-import Dashboard from "./pages/Dashboard.svelte"
-import Gym from "./pages/Gym.svelte"
+import Home from "./pages/Home.svelte"
 import Login from "./pages/Login.svelte"
 import Progress from "./pages/Progress.svelte"
 import Register from "./pages/Register.svelte"
 import Settings from "./pages/Settings.svelte"
-import Social from "./pages/Social.svelte"
+import SocialHub from "./pages/SocialHub.svelte"
+import Today from "./pages/Today.svelte"
 import { initRouter, nav, page } from "./router.svelte.js"
 
 let currentPath = $derived(nav.path)
@@ -32,6 +34,17 @@ onMount(async () => {
 
 	if (authState.user) {
 		await fetchUserProfile()
+		loadCheckinStatus()
+	}
+})
+
+// The HUD's numbers load with the session (and again after a login).
+let walletFor: string | null = null
+$effect(() => {
+	const id = authState.user?.id ?? null
+	if (id && id !== walletFor) {
+		walletFor = id
+		void loadWallet()
 		loadCheckinStatus()
 	}
 })
@@ -77,27 +90,21 @@ async function handleStopImpersonating() {
 			</button>
 		</div>
 	{/if}
-	<div class="app-shell">
-		<Header />
+	<div class="app-shell" class:home={currentPath === "/"}>
+		<Hud />
+		<div class="acct"><AvatarMenu /></div>
+		<Home active={currentPath === "/"} />
 		<main class="app-content">
-			{#if currentPath === "/"}
-				<Dashboard />
-			{:else if currentPath === "/weight" || currentPath === "/food"}
+			{#if currentPath === "/today"}
+				<Today />
+			{:else if currentPath === "/weight" || currentPath === "/food" || currentPath === "/upgrades"}
 				<Progress />
-			{:else if currentPath === "/social"}
-				<Social />
-			{:else if currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges" || currentPath === "/gym"}
-				<Compete />
-			{:else if currentPath === "/gym/canvas"}
-				<Gym />
+			{:else if currentPath === "/social" || currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges"}
+				<SocialHub />
 			{:else if currentPath === "/settings"}
 				<Settings />
 			{:else if currentPath === "/admin"}
 				<Admin />
-			{:else if import.meta.env.DEV && currentPath === "/gym-sprites"}
-				{#await import("./pages/GymSprites.svelte") then { default: GymSprites }}
-					<GymSprites />
-				{/await}
 			{:else if import.meta.env.DEV && currentPath === "/ui-kit"}
 				{#await import("./pages/UiKit.svelte") then { default: UiKit }}
 					<UiKit />
@@ -109,6 +116,7 @@ async function handleStopImpersonating() {
 			{/if}
 			<Toast />
 		</main>
+		<LevelUp />
 		<BottomTabBar />
 	</div>
 {/if}
@@ -124,6 +132,11 @@ async function handleStopImpersonating() {
 }
 
 .impersonation-banner {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: var(--tab-h);
+	z-index: 40;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -151,12 +164,42 @@ async function handleStopImpersonating() {
 }
 
 .app-shell {
-	display: flex;
-	flex-direction: column;
 	min-height: 100vh;
+	min-height: 100dvh;
+	padding-top: var(--hud-h);
+	padding-bottom: var(--tab-h);
+	box-sizing: border-box;
+}
+
+.app-shell.home {
+	/* the gym is fixed full screen; nothing scrolls behind it */
+	height: 100dvh;
+	overflow: hidden;
 }
 
 .app-content {
-	flex: 1;
+	position: relative;
+	/* a too-wide page must not widen the phone viewport (the fixed HUD
+	   and tab bar would slide off screen) */
+	overflow-x: clip;
+}
+
+/* account menu (Settings, Admin): top right, under the HUD */
+.acct {
+	position: fixed;
+	top: calc(var(--hud-h) + 6px);
+	right: 10px;
+	z-index: 29;
+}
+
+.acct :global(.avatar-trigger) {
+	border-radius: 50%;
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.acct :global(.ui-avatar) {
+	background: #17301f;
+	color: #9af0b9;
+	box-shadow: 0 0 0 2px #34c973;
 }
 </style>

@@ -5,21 +5,12 @@ import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
 import { logout } from "../lib/auth.svelte.js"
 import { checkinState } from "../lib/checkin.svelte.js"
-import { readGym3dFlag, setGym3dFlag } from "../lib/gym3dFlag.js"
 import {
 	type UserProfile,
 	updateCoachPersonality,
 	userProfile,
 } from "../lib/user.svelte.js"
 import { page } from "../router.svelte.js"
-
-// Beta 3D gym: a per-device switch (saved in this browser only).
-let gym3dOn = $state(readGym3dFlag(""))
-
-function toggleGym3d() {
-	gym3dOn = !gym3dOn
-	setGym3dFlag(gym3dOn)
-}
 
 async function handleLogout() {
 	await logout()
@@ -435,30 +426,6 @@ onMount(() => {
 			</ul>
 		</section>
 	{/if}
-
-	<section class="section">
-		<h2>Beta</h2>
-		<p class="section-desc">Try features that are still being built. Saved on this device only.</p>
-		<ul class="toggle-list">
-			<li class="toggle-row">
-				<div class="toggle-info">
-					<span class="toggle-label">Beta: 3D gym</span>
-					<span class="toggle-desc">Show your gym in 3D on the Gym page</span>
-				</div>
-				<button
-					type="button"
-					class="toggle-switch"
-					class:on={gym3dOn}
-					onclick={toggleGym3d}
-					role="switch"
-					aria-checked={gym3dOn}
-					aria-label="Toggle beta 3D gym"
-				>
-					<span class="toggle-knob"></span>
-				</button>
-			</li>
-		</ul>
-	</section>
 
 	<section class="section">
 		<h2>Apple Health Import</h2>

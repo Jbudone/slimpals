@@ -7,6 +7,7 @@ import Card from "../components/ui/Card.svelte"
 import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
+import { claimAsk } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
 
 type UpgradeItem = {
@@ -84,16 +85,13 @@ async function loadGym() {
 	}
 }
 
-async function claim(key: string) {
+/** Claims on the Gym tab, where the crew builds it in place. */
+function claim(key: string) {
 	if (claiming) return
 	claiming = key
-	try {
-		gymData = await api.post<GymResponse>("/gym/claim-upgrade", { key })
-	} catch {
-		error = "Failed to claim upgrade"
-	} finally {
-		claiming = null
-	}
+	claimAsk.key = key
+	claimAsk.n++
+	page("/")
 }
 
 onMount(loadGym)
@@ -134,7 +132,7 @@ onMount(loadGym)
 					<span class="visit-title">Visit your gym</span>
 					<span class="visit-sub">See your gym come to life — NPCs, equipment, and more</span>
 				</div>
-				<Button onclick={() => page("/gym/canvas")}>Visit</Button>
+				<Button onclick={() => page("/")}>Visit</Button>
 			</div>
 		</Card>
 

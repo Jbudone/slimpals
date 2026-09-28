@@ -258,9 +258,13 @@ let gymUpgradesGym = $state<{
 	level: number
 	xp: number
 	coins: number
+	sweat?: number
+	greens?: number
 	pendingUpgradeKeys: string[]
 } | null>(null)
 let gymCoinsGrant = $state(500)
+let gymSweatGrant = $state(5)
+let gymGreensGrant = $state(5)
 let gymCoinsStatus = $state<{ text: string; ok: boolean } | null>(null)
 let gymUpgradesLoading = $state(false)
 let gymUpgradesError = $state<string | null>(null)
@@ -832,6 +836,8 @@ async function loadGymUpgrades(userId: string) {
 				level: number
 				xp: number
 				coins: number
+				sweat?: number
+				greens?: number
 				pendingUpgradeKeys: string[]
 			} | null
 			upgrades: AdminGymUpgrade[]
@@ -854,6 +860,48 @@ async function grantGymCoins(userId: string, amount: number) {
 		)
 		if (gymUpgradesGym) gymUpgradesGym = { ...gymUpgradesGym, coins: r.coins }
 		gymCoinsStatus = { text: `Balance: ${r.coins} coins`, ok: true }
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+/** Sweat (exercise) or Greens (diet) for the gym home economy. */
+async function grantGymCurrency(
+	userId: string,
+	what: "sweat" | "greens",
+	amount: number,
+) {
+	gymCoinsStatus = null
+	try {
+		const r = await api.post<Record<string, number>>(
+			`/admin/users/${userId}/gym/${what}`,
+			{ amount },
+		)
+		if (gymUpgradesGym) gymUpgradesGym = { ...gymUpgradesGym, [what]: r[what] }
+		gymCoinsStatus = {
+			text: `Balance: ${r[what]} ${what === "sweat" ? "Sweat" : "Greens"}`,
+			ok: true,
+		}
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+/** Test tool: as if the player had been away (bubbles fill, Welcome back). */
+async function simulateGymAway(userId: string, hours: number) {
+	gymCoinsStatus = null
+	try {
+		await api.post(`/admin/users/${userId}/gym/away`, { hours })
+		gymCoinsStatus = {
+			text: `Moved the gym's clocks back ${hours}h: coin bubbles filled, Welcome back shows on the next open.`,
+			ok: true,
+		}
 	} catch (e) {
 		gymCoinsStatus = {
 			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
@@ -1578,7 +1626,9 @@ onMount(async () => {
 																Level {gymUpgradesGym.level} · {gymUpgradesGym.xp} XP ·
 																<span data-testid="admin-gym-coins"
 																	>{gymUpgradesGym.coins} coins</span
-																>
+																> ·
+																<span data-testid="admin-gym-sweat">{gymUpgradesGym.sweat ?? 0} Sweat</span> ·
+																<span data-testid="admin-gym-greens">{gymUpgradesGym.greens ?? 0} Greens</span>
 															</p>
 															<div class="field-row">
 																<label class="progression-slider-label">
@@ -1596,6 +1646,53 @@ onMount(async () => {
 																	onclick={() => grantGymCoins(user.id, gymCoinsGrant)}
 																>
 																	Grant coins
+																</button>
+															</div>
+															<div class="field-row">
+																<label class="progression-slider-label">
+																	Grant Sweat
+																	<input
+																		type="number"
+																		step="1"
+																		bind:value={gymSweatGrant}
+																		aria-label="Sweat to grant"
+																	/>
+																</label>
+																<button
+																	class="btn primary sm"
+																	disabled={!gymSweatGrant}
+																	onclick={() => grantGymCurrency(user.id, "sweat", gymSweatGrant)}
+																	data-testid="admin-grant-sweat"
+																>
+																	Grant Sweat
+																</button>
+															</div>
+															<div class="field-row">
+																<label class="progression-slider-label">
+																	Grant Greens
+																	<input
+																		type="number"
+																		step="1"
+																		bind:value={gymGreensGrant}
+																		aria-label="Greens to grant"
+																	/>
+																</label>
+																<button
+																	class="btn primary sm"
+																	disabled={!gymGreensGrant}
+																	onclick={() => grantGymCurrency(user.id, "greens", gymGreensGrant)}
+																	data-testid="admin-grant-greens"
+																>
+																	Grant Greens
+																</button>
+															</div>
+															<div class="field-row">
+																<button
+																	class="btn sm"
+																	onclick={() => simulateGymAway(user.id, 6)}
+																	data-testid="admin-gym-away"
+																>
+																	Simulate 6h away
 																</button>
 															</div>
 															{#if gymCoinsStatus}

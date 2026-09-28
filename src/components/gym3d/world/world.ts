@@ -69,6 +69,8 @@ export type PickInfo =
 	| { kind: "lot"; lotId: string }
 	| { kind: "pad"; roomId: number; spot: number }
 	| { kind: "job"; jobId: number }
+	| { kind: "kitchen" }
+	| { kind: "coin"; key: string }
 
 /** What a layout change did to the pieces (people on removed stations
  * need to move on). */
@@ -445,8 +447,14 @@ export class GymWorld implements NavSource {
 			this.plotRoom.get(pkey(Math.floor(x / PW), Math.floor(z / PD))) ?? null
 		)
 	}
+	/** Fixtures outside the rooms (the Slim Kitchen kiosk) that people
+	 * walk around. */
+	readonly extraBlockers: { x: number; z: number; s: number }[] = []
 	blockers(): { x: number; z: number; s: number }[] {
-		return this.pieces.map((p) => ({ x: p.x, z: p.z, s: p.size }))
+		return [
+			...this.pieces.map((p) => ({ x: p.x, z: p.z, s: p.size })),
+			...this.extraBlockers,
+		]
 	}
 	walls(): WallSeg[] {
 		return this.wallSegs

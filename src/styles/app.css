@@ -160,6 +160,10 @@
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
 	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
 	--shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.28);
+
+	/* gym home shell: the fixed HUD on top and the tab bar at the bottom */
+	--tab-h: calc(62px + env(safe-area-inset-bottom, 0px));
+	--hud-h: calc(env(safe-area-inset-top, 0px) + 70px);
 }
 
 /* ── Base styles ───────────────────────────────────────────── */
@@ -169,4 +173,78 @@ body {
 	color: var(--color-text);
 	font-family: system-ui, -apple-system, sans-serif;
 	margin: 0;
+}
+
+/* ── Flying rewards (src/lib/fly.ts) ───────────────────────── */
+
+#fly-layer {
+	position: fixed;
+	inset: 0;
+	z-index: 70;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+#fly-layer .fchip {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 4px 10px 4px 6px;
+	border-radius: 999px;
+	font:
+		800 15px / 1 ui-rounded,
+		system-ui,
+		sans-serif;
+	white-space: nowrap;
+	color: #fff;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+	will-change: transform;
+}
+
+#fly-layer .fchip svg {
+	width: 18px;
+	height: 18px;
+}
+
+#fly-layer .fchip.xp {
+	background: #34c973;
+	padding-left: 10px;
+}
+
+#fly-layer .fchip.sw {
+	background: #1f6fb8;
+}
+
+#fly-layer .fchip.gr {
+	background: #3f8a2c;
+}
+
+#fly-layer .fchip.co {
+	background: #fff7ea;
+	color: #7a5210;
+	border: 2px solid #e0b24a;
+}
+
+#fly-layer .fchip.st {
+	background: #ff8a3d;
+}
+
+#fly-layer .burst {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+}
+
+#fly-layer .conf {
+	position: absolute;
+	top: -12px;
+	width: 8px;
+	height: 12px;
+	border-radius: 2px;
 }

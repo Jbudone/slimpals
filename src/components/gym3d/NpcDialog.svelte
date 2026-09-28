@@ -185,7 +185,7 @@ $effect(() => {
 
 <style>
 .dialog-overlay {
-	position: absolute;
+	position: fixed;
 	inset: 0;
 	background: rgba(0, 0, 0, 0.6);
 	display: flex;

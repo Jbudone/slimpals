@@ -23,7 +23,7 @@ import { toasts } from "../lib/toast.svelte.js"
 <style>
 .toast-stack {
 	position: fixed;
-	bottom: 1.5rem;
+	bottom: calc(var(--tab-h) + 1rem);
 	right: 1.5rem;
 	display: flex;
 	flex-direction: column;

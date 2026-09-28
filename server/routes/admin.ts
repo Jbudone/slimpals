@@ -11,6 +11,7 @@ import {
 	foodLogs,
 	gymNpcDailyState,
 	gymNpcs,
+	gymPieces,
 	gymUpgradesCatalog,
 	reactions,
 	sessions,
@@ -1138,6 +1139,51 @@ export function createAdminRouter(aiService: AIService) {
 			res.json({ [what]: row?.n ?? 0 })
 		})
 	}
+
+	// Test tool (gym home): moves the gym's idle-income clocks and its last
+	// open back by `hours`, as if the player had been away that long. Coin
+	// bubbles fill (up to their caps), the next open shows "Welcome back",
+	// and a running rush hour ends that much sooner. Answers { hours }.
+	adminRouter.post("/admin/users/:id/gym/away", async (req, res) => {
+		const hours = Number((req.body as { hours?: unknown })?.hours)
+		if (!Number.isFinite(hours) || hours <= 0 || hours > 24 * 30) {
+			res.status(400).json({ error: "hours must be between 0 and 720" })
+			return
+		}
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		const secs = Math.round(hours * 3600)
+		const back = (col: unknown) =>
+			sql`DATE_SUB(${col}, INTERVAL ${secs} SECOND)`
+		await db
+			.update(userGyms)
+			.set({
+				deskCollectedAt: back(
+					sql`COALESCE(${userGyms.deskCollectedAt}, ${userGyms.createdAt})`,
+				),
+				kitchenCollectedAt: back(
+					sql`COALESCE(${userGyms.kitchenCollectedAt}, ${userGyms.createdAt})`,
+				),
+				lastOpenAt: back(sql`COALESCE(${userGyms.lastOpenAt}, NOW())`),
+				kitchenRushEndsAt: back(userGyms.kitchenRushEndsAt),
+			})
+			.where(eq(userGyms.id, gym.id))
+		await db
+			.update(gymPieces)
+			.set({
+				collectedAt: back(
+					sql`COALESCE(${gymPieces.collectedAt}, ${gymPieces.createdAt})`,
+				),
+			})
+			.where(eq(gymPieces.gymId, gym.id))
+		res.json({ hours })
+	})
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db

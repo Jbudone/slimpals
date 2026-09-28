@@ -1,9 +1,13 @@
 <script lang="ts">
+// The Today tab: the day's tasks (check-in, daily and weekly missions, with
+// add / edit / archive), the coach's weekly note, the streak, what you are
+// in the running for and the gym's day. Weight and food tiles live on
+// Progress.
 import { Dumbbell, Trophy } from "@lucide/svelte"
 import { onMount } from "svelte"
 import type { CoachPersonality } from "../../shared/types.js"
 import GymActivityCard from "../components/GymActivityCard.svelte"
-import MissionsCard from "../components/MissionsCard.svelte"
+import TodayList from "../components/home/TodayList.svelte"
 import Avatar from "../components/ui/Avatar.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
@@ -11,14 +15,10 @@ import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 import { authState } from "../lib/auth.svelte.js"
-import {
-	checkinState,
-	loadCheckinStatus,
-	submitCheckin,
-} from "../lib/checkin.svelte.js"
-import { showBadgeToast } from "../lib/toast.svelte.js"
+import { checkinState, loadCheckinStatus } from "../lib/checkin.svelte.js"
+import { loadToday } from "../lib/today.svelte.js"
 import { TOURNAMENT_TYPE_UNITS } from "../lib/tournamentLabels.js"
-import { userProfile } from "../lib/user.svelte.js"
+import { claimAsk } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
 
 type GymDailySummary = {
@@ -30,16 +30,6 @@ type GymDailySummary = {
 	xpToNextLevel: number
 	xpIntoLevel: number
 	xpForLevel: number
-}
-
-type WeightEntry = { id: number; weightKg: number; recordedAt: string }
-
-type WeightSummary = { latestKg: number; changeKg: number | null }
-
-type FoodLog = {
-	id: number
-	aiAnalysis: { macros: { calories: number } } | null
-	loggedAt: string
 }
 
 type TournamentListItem = {
@@ -89,12 +79,8 @@ const COACH_NAMES: Record<CoachPersonality, string> = {
 }
 
 let loading = $state(true)
-let checkingIn = $state(false)
-let checkinDone = $state(false)
 let inspiration = $state<WeeklyInspiration>(null)
 let gymSummary = $state<GymDailySummary | null>(null)
-let weightSummary = $state<WeightSummary | null>(null)
-let foodTodayCalories = $state<number | null>(null)
 let tournamentStanding = $state<TournamentStanding | null>(null)
 let challengeCurrent = $state<ChallengeCurrent>(null)
 
@@ -118,39 +104,6 @@ async function loadGymSummary() {
 		gymSummary = await api.get<GymDailySummary>("/gym/daily-summary")
 	} catch {
 		// ignore — gym card stays hidden if not unlocked
-	}
-}
-
-async function loadWeightSummary() {
-	try {
-		const entries = await api.get<WeightEntry[]>("/weight")
-		if (entries.length === 0) return
-		const latestKg = entries[entries.length - 1].weightKg
-		const changeKg = entries.length > 1 ? latestKg - entries[0].weightKg : null
-		weightSummary = { latestKg, changeKg }
-	} catch {
-		// ignore — tile stays hidden
-	}
-}
-
-function isToday(iso: string): boolean {
-	const d = new Date(iso)
-	const now = new Date()
-	return (
-		d.getFullYear() === now.getFullYear() &&
-		d.getMonth() === now.getMonth() &&
-		d.getDate() === now.getDate()
-	)
-}
-
-async function loadFoodToday() {
-	try {
-		const logs = await api.get<FoodLog[]>("/food/logs")
-		foodTodayCalories = logs
-			.filter((l) => isToday(l.loggedAt))
-			.reduce((sum, l) => sum + (l.aiAnalysis?.macros.calories ?? 0), 0)
-	} catch {
-		// ignore — tile stays hidden
 	}
 }
 
@@ -206,17 +159,10 @@ async function loadChallengeCurrent() {
 	}
 }
 
-async function handleCheckin() {
-	checkingIn = true
-	try {
-		const res = await submitCheckin()
-		checkinDone = true
-		if (res.newBadges?.length) {
-			for (const b of res.newBadges) showBadgeToast(b)
-		}
-	} finally {
-		checkingIn = false
-	}
+/** Home plays the claim build for the next unlocked upgrade. */
+function placeUpgrade() {
+	claimAsk.n++
+	page("/")
 }
 
 function nextMilestone(streak: number): number | null {
@@ -237,33 +183,16 @@ onMount(() => {
 	})
 	loadInspiration()
 	loadGymSummary()
-	loadWeightSummary()
-	loadFoodToday()
+	void loadToday()
 	loadTournamentStanding()
 	loadChallengeCurrent()
 })
 </script>
 
 <div class="dashboard">
-	<h1>Dashboard</h1>
+	<h1>Today</h1>
 
-	{#if gymSummary}
-		<Card padding="md">
-			<div class="level-bar-header">
-				<span class="level-bar-label">Level {gymSummary.level}</span>
-				<span class="level-bar-xp">
-					{gymSummary.xpIntoLevel} / {gymSummary.xpForLevel} XP
-				</span>
-			</div>
-			<ProgressBar value={gymSummary.xpIntoLevel} max={gymSummary.xpForLevel} />
-		</Card>
-	{/if}
-
-	<MissionsCard
-		onXpChange={(gym) => {
-			if (gymSummary) gymSummary = { ...gymSummary, ...gym }
-		}}
-	/>
+	<div class="tasks"><TodayList editable /></div>
 
 	{#if inspiration}
 		<section class="card inspiration-card">
@@ -304,18 +233,11 @@ onMount(() => {
 						{/if}
 					</div>
 
-					{#if !status.checkedInToday}
-						<p class="streak-subtext">
-							Check in before midnight or the streak resets.
-						</p>
-						<Button onclick={handleCheckin} disabled={checkingIn}>
-							{checkingIn ? "Checking in…" : "Check in now"}
-						</Button>
-					{:else}
-						<p class="streak-subtext">
-							{checkinDone ? "Checked in! Keep it up." : "You've checked in today."}
-						</p>
-					{/if}
+					<p class="streak-subtext">
+						{status.checkedInToday
+							? "You've checked in today."
+							: "Check in above before midnight or the streak resets."}
+					</p>
 
 					{#if status.streakCount > 0}
 						{@const next = nextMilestone(status.streakCount)}
@@ -328,45 +250,6 @@ onMount(() => {
 				</div>
 			</div>
 		</Card>
-	{/if}
-
-	{#if weightSummary || foodTodayCalories !== null}
-		<div class="tile-row">
-			{#if weightSummary}
-				<Card padding="md">
-					<span class="tile-label">Weight</span>
-					<span class="tile-value">{weightSummary.latestKg} <span class="tile-unit">kg</span></span>
-					{#if weightSummary.changeKg !== null}
-						<span class="tile-sub" class:tile-sub-good={weightSummary.changeKg < 0}>
-							{weightSummary.changeKg > 0 ? "+" : ""}{weightSummary.changeKg.toFixed(1)} kg total
-						</span>
-					{/if}
-				</Card>
-			{/if}
-			{#if foodTodayCalories !== null}
-				<Card padding="md">
-					<span class="tile-label">Eaten Today</span>
-					<span class="tile-value">
-						{foodTodayCalories}
-						{#if userProfile.data?.dailyCalorieGoal}
-							<span class="tile-unit">/ {userProfile.data.dailyCalorieGoal}</span>
-						{/if}
-					</span>
-					{#if userProfile.data?.dailyCalorieGoal}
-						<ProgressBar
-							variant="linear"
-							value={foodTodayCalories}
-							max={userProfile.data.dailyCalorieGoal}
-						/>
-					{/if}
-				</Card>
-			{/if}
-		</div>
-
-		<div class="tile-actions">
-			<Button variant="secondary" onclick={() => page("/weight")}>Log weight</Button>
-			<Button variant="secondary" onclick={() => page("/food")}>Snap a meal</Button>
-		</div>
 	{/if}
 
 	{#if tournamentStanding || (challengeCurrent?.joined ?? false) || (gymSummary?.pendingUpgrades.length ?? 0) > 0}
@@ -418,8 +301,9 @@ onMount(() => {
 						<span class="running-title running-title-accent">
 							{gymSummary.pendingUpgrades.length} gym upgrade{gymSummary.pendingUpgrades.length === 1 ? "" : "s"} ready
 						</span>
-						<span class="running-subtext">Spend your streak points</span>
+						<span class="running-subtext">Place it in your gym</span>
 					</div>
+					<Button variant="secondary" onclick={placeUpgrade}>Place</Button>
 				</div>
 			{/if}
 		</Card>
@@ -437,7 +321,7 @@ onMount(() => {
 .dashboard {
 	max-width: 480px;
 	margin: 0 auto;
-	padding: 2rem 1.5rem;
+	padding: 1.5rem 1rem 2rem;
 	display: flex;
 	flex-direction: column;
 	gap: 1.5rem;
@@ -458,26 +342,6 @@ h1 {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
-}
-
-.level-bar-header {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--space-3);
-	margin-bottom: 0.5rem;
-}
-
-.level-bar-label {
-	font-family: var(--font-display);
-	font-weight: var(--font-weight-semibold);
-	font-size: var(--font-size-lg);
-	color: var(--color-text);
-}
-
-.level-bar-xp {
-	font-size: var(--font-size-sm);
-	color: var(--color-text-muted);
 }
 
 .streak-body {
@@ -541,58 +405,6 @@ h1 {
 	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
 	margin: 0;
-}
-
-/* Weight / Eaten Today tiles */
-.tile-row {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--space-4);
-}
-
-.tile-label {
-	display: block;
-	font-size: var(--font-size-xs);
-	color: var(--color-text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	margin-bottom: var(--space-2);
-}
-
-.tile-value {
-	display: block;
-	font-family: var(--font-display);
-	font-size: var(--font-size-xl);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text);
-}
-
-.tile-unit {
-	font-family: var(--font-sans);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-normal);
-	color: var(--color-text-muted);
-}
-
-.tile-sub {
-	display: block;
-	margin-top: var(--space-2);
-	font-size: var(--font-size-xs);
-	color: var(--color-text-muted);
-}
-
-.tile-sub-good {
-	color: var(--color-success);
-}
-
-.tile-actions {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--space-3);
-}
-
-.tile-actions :global(.ui-button) {
-	width: 100%;
 }
 
 /* In the running */
