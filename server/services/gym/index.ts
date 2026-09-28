@@ -1,6 +1,5 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
-import { ECONOMY } from "../../../shared/gym3d/economy.js"
 import type * as schema from "../../db/schema.js"
 import {
 	gymUpgradesCatalog,
@@ -24,6 +23,10 @@ export type Gym = {
 	lastGymVisitDate: Date | null
 	createdAt: Date
 	simulatedHourOverride: number | null
+	/** 3D gym currencies (see ECONOMY in shared/gym3d/economy.ts). */
+	coins: number
+	sweat: number
+	greens: number
 }
 
 /** The gym's effective "now" for schedule-dependent logic, honoring an
@@ -266,16 +269,14 @@ export async function awardGymXp(
 
 	const updatedPending = [...currentPending, ...actualNewPending]
 
-	// Real tasks drive the 3D gym too: every XP award (or retraction) moves
-	// the coin balance by the same amount, atomically and never below 0.
-	const coinDelta = Math.round(amount * ECONOMY.coinsPerXp)
+	// Coins are the gym's own idle income now (ECONOMY.income); tasks pay
+	// XP here and Sweat / Greens through rewards.ts.
 	await db
 		.update(userGyms)
 		.set({
 			xp: newXp,
 			level: newLevel,
 			pendingUpgradeKeys: updatedPending,
-			coins: sql`GREATEST(0, ${userGyms.coins} + ${coinDelta})`,
 		})
 		.where(eq(userGyms.id, gym.id))
 

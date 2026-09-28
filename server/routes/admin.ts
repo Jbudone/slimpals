@@ -998,6 +998,8 @@ export function createAdminRouter(aiService: AIService) {
 				level: gym.level,
 				xp: gym.xp,
 				coins: gym.coins,
+				sweat: gym.sweat,
+				greens: gym.greens,
 				pendingUpgradeKeys: gym.pendingUpgradeKeys,
 			},
 			upgrades,
@@ -1101,32 +1103,41 @@ export function createAdminRouter(aiService: AIService) {
 		res.json({ success: true })
 	})
 
-	// 3D gym coins (gym3d slice 2): grant (or, negative, take back) coins;
-	// the balance never drops below 0.
-	adminRouter.post("/admin/users/:id/gym/coins", async (req, res) => {
-		const amount = Number((req.body as { amount?: unknown })?.amount)
-		if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1e6) {
-			res.status(400).json({ error: "amount must be a non-zero integer" })
-			return
-		}
-		const [gym] = await db
-			.select({ id: userGyms.id })
-			.from(userGyms)
-			.where(eq(userGyms.userId, req.params.id))
-		if (!gym) {
-			res.status(404).json({ error: "User has no gym" })
-			return
-		}
-		await db
-			.update(userGyms)
-			.set({ coins: sql`GREATEST(0, ${userGyms.coins} + ${amount})` })
-			.where(eq(userGyms.id, gym.id))
-		const [row] = await db
-			.select({ coins: userGyms.coins })
-			.from(userGyms)
-			.where(eq(userGyms.id, gym.id))
-		res.json({ coins: row?.coins ?? 0 })
-	})
+	// 3D gym currencies: grant (or, negative, take back) coins (slice 2),
+	// Sweat or Greens (gym home); a balance never drops below 0. Each answers
+	// { coins | sweat | greens: <new balance> }.
+	const COLS = {
+		coins: userGyms.coins,
+		sweat: userGyms.sweat,
+		greens: userGyms.greens,
+	} as const
+	for (const what of ["coins", "sweat", "greens"] as const) {
+		adminRouter.post(`/admin/users/:id/gym/${what}`, async (req, res) => {
+			const amount = Number((req.body as { amount?: unknown })?.amount)
+			if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 1e6) {
+				res.status(400).json({ error: "amount must be a non-zero integer" })
+				return
+			}
+			const [gym] = await db
+				.select({ id: userGyms.id })
+				.from(userGyms)
+				.where(eq(userGyms.userId, String(req.params.id)))
+			if (!gym) {
+				res.status(404).json({ error: "User has no gym" })
+				return
+			}
+			const col = COLS[what]
+			await db
+				.update(userGyms)
+				.set({ [what]: sql`GREATEST(0, ${col} + ${amount})` })
+				.where(eq(userGyms.id, gym.id))
+			const [row] = await db
+				.select({ n: col })
+				.from(userGyms)
+				.where(eq(userGyms.id, gym.id))
+			res.json({ [what]: row?.n ?? 0 })
+		})
+	}
 
 	adminRouter.get("/admin/tournaments", async (_req, res) => {
 		const rows = await db

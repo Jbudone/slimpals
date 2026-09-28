@@ -92,6 +92,11 @@ async function setCoins(gymId: number, coins: number) {
 	await db.update(userGyms).set({ coins }).where(eq(userGyms.id, gymId))
 }
 
+async function setSweat(gymId: number, sweat: number) {
+	const db = await getTestDb()
+	await db.update(userGyms).set({ sweat }).where(eq(userGyms.id, gymId))
+}
+
 /** Pretends every active job's time is up. */
 async function expireJobs(gymId: number) {
 	const db = await getTestDb()
@@ -156,17 +161,18 @@ describe("coins", () => {
 		expect((await getLayout(cookie)).coins).toBe(1500)
 	})
 
-	it("every gym XP award grants the same coins (a check-in: 15)", async () => {
+	it("gym XP no longer grants coins (coins are idle income now)", async () => {
 		const { cookie } = await setup([])
-		await request(app).post("/api/checkins").set("Cookie", cookie).send({})
+		await request(app)
+			.post("/api/checkins")
+			.set("Cookie", cookie)
+			.send({})
+			.expect(201)
 		const l = await getLayout(cookie)
-		// 15 XP for the check-in plus 10 per badge it earned
-		expect(l.coins).toBeGreaterThanOrEqual(1515)
-		const [gym] = await (await getTestDb())
-			.select()
-			.from(userGyms)
-			.where(eq(userGyms.id, l.gymId))
-		expect(l.coins - 1500).toBe(gym.xp)
+		expect(l.coins).toBe(1500)
+		// starter Sweat and Greens come with the starter coins
+		expect(l.sweat).toBe(3)
+		expect(l.greens).toBe(2)
 	})
 })
 
@@ -290,65 +296,82 @@ describe("construction jobs", () => {
 		await post(cookie, `/rooms/${room.id}/type`, { type: "cardio" }).expect(409)
 	})
 
-	it("finish now costs coins scaled to the time left", async () => {
-		const { cookie } = await setup([])
+	it("finish now costs Sweat: one per hour left, rounded up", async () => {
+		const { cookie, gymId } = await setup([])
 		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
 			.body as GymLayoutDto
 		const job = b.jobs[0]
-		// 4h left: 160 coins; a stale price the player saw is refused
+		await setSweat(gymId, 10)
+		// 4h left: 4 Sweat; a stale price the player saw is refused
 		const low = await post(cookie, `/jobs/${job.id}/finish`, {
-			maxCost: 100,
+			maxCost: 3,
 		}).expect(409)
-		expect(low.body.error).toMatch(/costs 160/)
+		expect(low.body.error).toMatch(/costs 4 Sweat/)
 		const done = (
-			await post(cookie, `/jobs/${job.id}/finish`, { maxCost: 160 }).expect(200)
+			await post(cookie, `/jobs/${job.id}/finish`, { maxCost: 4 }).expect(200)
 		).body as GymLayoutDto
-		expect(done.coins).toBe(300 - 160)
+		expect(done.sweat).toBe(6)
+		// coins are not touched by speed-ups
+		expect(done.coins).toBe(300)
 		expect(done.jobs[0].status).toBe("done")
 		expect(done.plots.every((p) => p.state === "owned")).toBe(true)
 		// finishing again is a no-op
 		const again = (await post(cookie, `/jobs/${job.id}/finish`).expect(200))
 			.body as GymLayoutDto
-		expect(again.coins).toBe(140)
+		expect(again.sweat).toBe(6)
 	})
 
-	it("finish now is refused without the coins", async () => {
+	it("1 Sweat takes an hour off; the last hour finishes the job", async () => {
 		const { cookie, gymId } = await setup([])
 		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
 			.body as GymLayoutDto
-		await setCoins(gymId, 20)
-		const r = await post(cookie, `/jobs/${b.jobs[0].id}/finish`).expect(409)
-		expect(r.body.error).toMatch(/Not enough coins/)
-		expect((await getLayout(cookie)).jobs[0].status).toBe("active")
+		const job0 = b.jobs[0]
+		await setSweat(gymId, 5)
+		const one = (await post(cookie, `/jobs/${job0.id}/sweat`).expect(200))
+			.body as GymLayoutDto
+		expect(one.sweat).toBe(4)
+		const j1 = one.jobs.find((j) => j.id === job0.id)
+		expect(Date.parse(job0.endsAt) - Date.parse(j1?.endsAt ?? "")).toBe(
+			3_600_000,
+		)
+		// 40 minutes left: one more Sweat ends it
+		const db = await getTestDb()
+		await db
+			.update(gymJobs)
+			.set({ endsAt: new Date(Date.now() + 40 * 60_000) })
+			.where(eq(gymJobs.gymId, gymId))
+		const two = (await post(cookie, `/jobs/${job0.id}/sweat`).expect(200))
+			.body as GymLayoutDto
+		expect(two.sweat).toBe(3)
+		expect(two.jobs.find((j) => j.id === job0.id)?.status).toBe("done")
+		expect(two.plots.every((p) => p.state === "owned")).toBe(true)
 	})
 
-	it("a check-in takes an hour off every active job", async () => {
+	it("speed-ups are refused without the Sweat", async () => {
+		const { cookie, gymId } = await setup([])
+		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
+			.body as GymLayoutDto
+		await setSweat(gymId, 0)
+		const r = await post(cookie, `/jobs/${b.jobs[0].id}/sweat`).expect(409)
+		expect(r.body.error).toMatch(/Not enough Sweat/)
+		await setSweat(gymId, 3)
+		const f = await post(cookie, `/jobs/${b.jobs[0].id}/finish`).expect(409)
+		expect(f.body.error).toMatch(/Not enough Sweat \(4 needed/)
+		const l = await getLayout(cookie)
+		expect(l.jobs[0].status).toBe("active")
+		expect(l.sweat).toBe(3)
+	})
+
+	it("check-ins and missions no longer cut job time by themselves", async () => {
 		const { cookie } = await setup([])
 		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
 			.body as GymLayoutDto
-		const before = Date.parse(b.jobs[0].endsAt)
+		const before = b.jobs[0].endsAt
 		await request(app)
 			.post("/api/checkins")
 			.set("Cookie", cookie)
 			.send({})
 			.expect(201)
-		const after = Date.parse((await getLayout(cookie)).jobs[0].endsAt)
-		expect(before - after).toBe(3_600_000)
-		// a second check-in the same day changes nothing
-		await request(app).post("/api/checkins").set("Cookie", cookie).send({})
-		expect(Date.parse((await getLayout(cookie)).jobs[0].endsAt)).toBe(after)
-	})
-
-	it("a completed mission takes an hour off too, and can finish a job", async () => {
-		const { cookie, gymId } = await setup([])
-		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
-			.body as GymLayoutDto
-		// only 30 minutes left
-		const db = await getTestDb()
-		await db
-			.update(gymJobs)
-			.set({ endsAt: new Date(Date.now() + 30 * 60_000) })
-			.where(eq(gymJobs.gymId, gymId))
 		const m = await request(app)
 			.post("/api/missions")
 			.set("Cookie", cookie)
@@ -358,40 +381,7 @@ describe("construction jobs", () => {
 			.post(`/api/missions/${m.body.id}/complete`)
 			.set("Cookie", cookie)
 			.expect(200)
-		const l = await getLayout(cookie)
-		expect(l.jobs.find((j) => j.id === b.jobs[0].id)?.status).toBe("done")
-		expect(l.plots.every((p) => p.state === "owned")).toBe(true)
-	})
-
-	it("toggling a mission complete three times cuts only one hour", async () => {
-		const { cookie } = await setup([])
-		const b = (await post(cookie, "/lots/normal:0,2/buy").expect(200))
-			.body as GymLayoutDto
-		const job0 = b.jobs[0]
-		const len = (j: { startedAt: string; endsAt: string }) =>
-			Date.parse(j.endsAt) - Date.parse(j.startedAt)
-		expect(len(job0)).toBe(4 * 3_600_000)
-		const m = await request(app)
-			.post("/api/missions")
-			.set("Cookie", cookie)
-			.send({ title: "Walk", cadence: "daily", difficulty: "easy" })
-			.expect(201)
-		for (let i = 0; i < 3; i++) {
-			await request(app)
-				.post(`/api/missions/${m.body.id}/complete`)
-				.set("Cookie", cookie)
-				.expect(200)
-			if (i < 2)
-				await request(app)
-					.post(`/api/missions/${m.body.id}/uncomplete`)
-					.set("Cookie", cookie)
-					.expect(200)
-		}
-		const l = await getLayout(cookie)
-		const job = l.jobs.find((j) => j.id === job0.id)
-		expect(job?.status).toBe("active")
-		// one hour off, not three; un-completing refunded nothing
-		expect(len(job ?? job0)).toBe(3 * 3_600_000)
+		expect((await getLayout(cookie)).jobs[0].endsAt).toBe(before)
 	})
 })
 

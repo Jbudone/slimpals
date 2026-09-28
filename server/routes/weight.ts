@@ -5,6 +5,7 @@ import { socialPosts, users, weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
+import { dayKey, payReward, weightReward } from "../services/gym/rewards.js"
 import { ensureCheckin } from "./checkins.js"
 
 const USER_COLORS = [
@@ -64,6 +65,8 @@ weightRouter.post("/weight", async (req, res) => {
 		.where(eq(weightEntries.id, inserted.id))
 
 	await ensureCheckin(userId)
+	// logging your weight is a diet task: 1 Green, once per day
+	const paid = await payReward(userId, `weight:${dayKey()}`, weightReward(), db)
 
 	const newBadges = []
 
@@ -153,7 +156,11 @@ weightRouter.post("/weight", async (req, res) => {
 		}
 	}
 
-	res.status(201).json({ ...entryPayload(row), newBadges })
+	res.status(201).json({
+		...entryPayload(row),
+		newBadges,
+		rewards: { xp: 0, ...paid },
+	})
 })
 
 weightRouter.get("/weight", async (req, res) => {

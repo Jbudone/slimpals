@@ -7,6 +7,7 @@ import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { awardGymXp } from "../services/gym/index.js"
+import { dayKey, mealReward, payReward } from "../services/gym/rewards.js"
 import { createStorageService } from "../services/storage/index.js"
 
 function startOfDayUtc(d: Date = new Date()): Date {
@@ -140,6 +141,13 @@ export function createFoodRouter(aiService: AIService) {
 			gymXp += 10
 		}
 		await awardGymXp(userId, gymXp, "food_log", db)
+		// a meal photo is a diet task: Greens, once per meal type and day
+		const paid = await payReward(
+			userId,
+			`meal:${dayKey(today)}:${row.mealType}`,
+			mealReward(),
+			db,
+		)
 
 		const [user] = await db
 			.select({
@@ -185,6 +193,7 @@ export function createFoodRouter(aiService: AIService) {
 			mealType: row.mealType,
 			loggedAt: row.loggedAt,
 			newBadges,
+			rewards: { xp: gymXp, ...paid },
 		})
 	})
 

@@ -1,18 +1,10 @@
 // Construction jobs of the 3D gym (gym3d slice 2). A job runs until its
 // ends_at; there is no worker: every read or write of the gym settles the
-// jobs that are due (lazy completion). Real activity (a check-in, a finished
-// mission) takes time off every active job.
+// jobs that are due (lazy completion). Sweat speeds a job up (build3d.ts).
 import { and, eq, isNotNull, lte, sql } from "drizzle-orm"
-import { ECONOMY, levelFromPoints } from "../../../shared/gym3d/economy.js"
-import {
-	gymActivityCuts,
-	gymJobs,
-	gymPieces,
-	gymPlots,
-	gymRooms,
-	userGyms,
-} from "../../db/schema.js"
-import type { Conn, Db } from "./layout3dStore.js"
+import { levelFromPoints } from "../../../shared/gym3d/economy.js"
+import { gymJobs, gymPieces, gymPlots, gymRooms } from "../../db/schema.js"
+import type { Conn } from "./layout3dStore.js"
 
 /** Raises a room's level to what its pieces' tiers earn (never lowers it:
  * nothing is ever lost). Returns the new level. */
@@ -80,45 +72,12 @@ export async function settleJobs(
 				.set({
 					tier: Math.max(p.tier, j.targetTier ?? p.tier),
 					status: p.status === "upgrading" ? "placed" : p.status,
+					// its coin bubble starts filling again when the work is done
+					collectedAt: j.endsAt,
 				})
 				.where(eq(gymPieces.id, p.id))
 			if (p.roomId != null) await recalcRoomLevel(conn, p.roomId)
 		}
 	}
 	return n
-}
-
-/** Real activity was logged: take `hours` off every active job of the
- * user's gym (they finish on the next read once their time is up).
- * Returns how many jobs were sped up. */
-/** Takes `hours` off every active job of the user's gym for one real
- * activity. `source` names that activity (see gymActivityCuts); an activity
- * already recorded cuts nothing, so undoing and redoing it never repeats
- * the cut (and undoing it refunds nothing). Returns the jobs cut. */
-export async function cutActiveJobs(
-	userId: string,
-	db: Db,
-	source: string,
-	hours: number = ECONOMY.activityCutHours,
-): Promise<number> {
-	const [gym] = await db
-		.select({ id: userGyms.id })
-		.from(userGyms)
-		.where(eq(userGyms.userId, userId))
-	if (!gym) return 0
-	return db.transaction(async (tx) => {
-		const [claim] = await tx
-			.insert(gymActivityCuts)
-			.ignore()
-			.values({ gymId: gym.id, source: source.slice(0, 64) })
-		if (!claim.affectedRows) return 0
-		const secs = Math.round(hours * 3600)
-		const [res] = await tx
-			.update(gymJobs)
-			.set({
-				endsAt: sql`GREATEST(${gymJobs.startedAt}, ${gymJobs.endsAt} - INTERVAL ${secs} SECOND)`,
-			})
-			.where(and(eq(gymJobs.gymId, gym.id), eq(gymJobs.status, "active")))
-		return res.affectedRows ?? 0
-	})
 }

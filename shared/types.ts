@@ -163,8 +163,50 @@ export type GymJobDto = {
 	finishedAt: string | null
 }
 
+/** One coin bubble: a placed machine, the reception desk or the kitchen. */
+export type GymIncomeSourceDto = {
+	/** `piece:<id>`, `desk` or `kitchen`. */
+	key: string
+	kind: "machine" | "desk" | "kitchen"
+	pieceId: number | null
+	/** Whole coins waiting now (serverNow). */
+	bank: number
+	cap: number
+	/** Coins per hour right now (rush hour included). */
+	rate: number
+}
+
+export type GymKitchenDto = {
+	/** Menu item keys that are on (KITCHEN_MENU order). */
+	menu: string[]
+	/** Coins per hour without rush hour. */
+	rate: number
+	rushEndsAt: string | null
+	bank: number
+	cap: number
+}
+
+/** Shown on open after a long absence. */
+export type GymWelcomeBackDto = {
+	hours: number
+	coins: number
+	builds: number
+	members: number
+	sales: number
+}
+
 export type GymLayoutDto = {
 	gymId: number
+	/** Sweat (exercise tasks) and Greens (diet tasks), gym home. */
+	sweat: number
+	greens: number
+	/** Idle income: every coin bubble with coins in it (or a cap to fill). */
+	income: GymIncomeSourceDto[]
+	kitchen: GymKitchenDto
+	/** Only on the first read after a long absence (GET ?open=1). */
+	welcomeBack?: GymWelcomeBackDto | null
+	/** Coins just collected (income/collect answers). */
+	collected?: number
 	plots: GymLayoutPlotDto[]
 	rooms: GymLayoutRoomDto[]
 	pieces: GymLayoutPieceDto[]
