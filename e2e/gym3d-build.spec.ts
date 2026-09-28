@@ -7,9 +7,9 @@ import {
 } from "@playwright/test"
 import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
 
-// 3D gym building (gym3d slice 2) on a phone: buy a For Sale plot, finish the
-// construction with coins, choose the room type, move a piece with
-// tap-move-tap, and upgrade it (coins granted by an admin). The canvas is
+// 3D gym building on a phone: buy a For Sale plot, speed the construction
+// up with Sweat (one hour, then finish), choose the room type, move a piece
+// with tap-move-tap, and upgrade it (coins and Sweat granted by an admin). The canvas is
 // driven through window.gym3d (screen points of world positions) and real
 // pointer taps. Set GYM3D_SHOTS=<dir> to save screenshots of each step.
 
@@ -100,7 +100,7 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	const pageErrors: string[] = []
 	page.on("pageerror", (err) => pageErrors.push(err.message))
 
-	await page.goto("/gym/canvas?gym3d=1")
+	await page.goto("/")
 	await waitReady(page)
 	await page.waitForTimeout(800)
 	await shot(page, "01-start")
@@ -109,9 +109,10 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	let L = await layoutOf(page)
 	expect(L.coins).toBeGreaterThanOrEqual(1500)
 	const coins0 = L.coins
-	await expect(page.getByTestId("gym3d-coins")).toContainText(
+	await expect(page.getByTestId("hud-coins")).toHaveText(
 		coins0.toLocaleString("en-US"),
 	)
+	expect(L.sweat).toBe(3)
 	const lot = L.lots
 		.filter((l) => l.shape === "normal")
 		.sort((a, b) => a.price - b.price)[0]
@@ -136,12 +137,32 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	await page.waitForTimeout(900)
 	await shot(page, "03-building")
 
-	// ── finish with coins (timer bubble button) ──
+	// ── Sweat: one hour off (timer bubble), then finish ──
+	const grantSweat = await admin.post(`/api/admin/users/${userId}/gym/sweat`, {
+		headers: { Origin: AUTH_ORIGIN },
+		data: { amount: 20 },
+	})
+	expect(grantSweat.ok()).toBe(true)
+	await page.reload()
+	await waitReady(page)
+	L = await layoutOf(page)
+	expect(L.sweat).toBe(23)
+	await expect(page.getByTestId("hud-sweat")).toHaveText("23")
+	const end0 = Date.parse(L.jobs.find((j) => j.id === job?.id)?.endsAt ?? "")
+	await page.locator(".g3d-bub [data-testid=job-sweat]").click()
+	await expect.poll(async () => (await layoutOf(page)).sweat).toBe(22)
+	L = await layoutOf(page)
+	const end1 = Date.parse(L.jobs.find((j) => j.id === job?.id)?.endsAt ?? "")
+	expect(end0 - end1).toBeGreaterThan(3_500_000)
+	await expect(page.getByTestId("hud-sweat")).toHaveText("22")
+	await shot(page, "03b-sweat-hour")
 	const coins1 = L.coins
 	await page.locator(".g3d-bub .g3d-fin").click()
 	await expect(page.locator(".g3d-bub")).toHaveCount(0)
 	L = await layoutOf(page)
-	expect(L.coins).toBeLessThan(coins1)
+	// Sweat finishes jobs now; coins are left alone
+	expect(L.coins).toBe(coins1)
+	expect(L.sweat).toBeLessThan(22)
 	expect(L.jobs.find((j) => j.id === job?.id)?.status).toBe("done")
 	await page.waitForTimeout(1300)
 	await shot(page, "04-ribbon")

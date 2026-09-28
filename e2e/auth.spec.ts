@@ -29,9 +29,12 @@ test("register with invite code, logout, and log back in", async ({
 	await freshPage.getByLabel("Invite code").fill(inviteCode)
 	await freshPage.getByRole("button", { name: /create account/i }).click()
 
-	await expect(
-		freshPage.getByRole("heading", { name: "Dashboard" }),
-	).toBeVisible()
+	// home is the gym, with the HUD on top
+	await expect(freshPage.getByTestId("hud")).toBeVisible()
+	await expect(freshPage.getByTestId("tab-gym")).toHaveAttribute(
+		"aria-current",
+		"page",
+	)
 
 	// Sign out lives on the Settings page, not the top-nav — the bottom
 	// tab bar (gh-73) replaced the nav that used to have it directly, and
@@ -47,9 +50,12 @@ test("register with invite code, logout, and log back in", async ({
 	await freshPage.getByLabel("Password").fill("E2ePassword1!")
 	await freshPage.getByRole("button", { name: "Sign in" }).click()
 
-	await expect(
-		freshPage.getByRole("heading", { name: "Dashboard" }),
-	).toBeVisible()
+	// home is the gym, with the HUD on top
+	await expect(freshPage.getByTestId("hud")).toBeVisible()
+	await expect(freshPage.getByTestId("tab-gym")).toHaveAttribute(
+		"aria-current",
+		"page",
+	)
 
 	await context.close()
 })

@@ -1,17 +1,17 @@
 import { expect, type Page, test } from "@playwright/test"
 import { mintInviteCode, registerUser } from "./helpers.js"
 
-// Beta 3D gym (three.js, behind ?gym3d=1 / Settings). Smoke only: it boots,
-// shows the gym, a tap names a person, nothing errors, and mounting it again
-// and again does not leak WebGL contexts or grow GPU memory. See CLAUDE.md's
-// canvas notes: the canvas is checked through window.gym3d, not the DOM.
+// The 3D gym is home (three.js at /). Smoke only: it boots under the HUD,
+// a tap names a person, nothing errors, it pauses on other tabs, and
+// mounting it again and again does not leak WebGL contexts or grow GPU
+// memory. The canvas is checked through window.gym3d, not the DOM.
 
 const DRAW_CALL_BUDGET = 250
 
 // Counts WebGL2 contexts created and lost (forceContextLoss on dispose fires
 // webglcontextlost), so a remount that forgets to free its renderer shows up.
-// Only webgl2: Phaser (in the main bundle) probes a plain webgl context at
-// import time and never frees it; three.js always asks for webgl2.
+// Only webgl2 (three.js always asks for it; Home's WebGL2 probe frees its
+// context at once, so it counts as made and lost).
 const COUNT_CONTEXTS = () => {
 	const w = window as unknown as { __gl: { made: number; lost: number } }
 	w.__gl = { made: 0, lost: 0 }
@@ -31,14 +31,6 @@ const COUNT_CONTEXTS = () => {
 		}
 		return ctx
 	} as typeof orig
-}
-
-/** Client-side navigation through the app's router (no page reload). */
-async function clientNav(page: Page, path: string) {
-	await page.evaluate((p) => {
-		history.pushState(null, "", p)
-		dispatchEvent(new PopStateEvent("popstate", { state: null }))
-	}, path)
 }
 
 async function newUserPage(
@@ -91,20 +83,25 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	browser,
 }, testInfo) => {
 	test.setTimeout(120_000)
-	const { context, page, name, consoleErrors, pageErrors } = await newUserPage(
+	const { context, page, consoleErrors, pageErrors } = await newUserPage(
 		request,
 		browser,
 		"smoke",
 		testInfo.project.use,
 	)
 
-	await page.goto("/gym/canvas?gym3d=1")
-	await expect(
-		page.locator(".gym-name", { hasText: `${name}'s Gym` }),
-	).toBeVisible()
+	await page.goto("/")
 	await waitReady(page)
-	// the 2D gym is not mounted alongside
-	await expect(page.locator(".phaser-container")).toHaveCount(0)
+	// the HUD is on top and the Today drawer peeks above the tabs
+	await expect(page.getByTestId("hud")).toBeVisible()
+	await expect(page.getByTestId("hud-coins")).toHaveText("1,500")
+	await expect(page.getByTestId("hud-sweat")).toHaveText("3")
+	await expect(page.getByTestId("hud-greens")).toHaveText("2")
+	await expect(page.getByTestId("drawer-count")).toBeVisible()
+	await expect(page.getByTestId("tab-gym")).toHaveAttribute(
+		"aria-current",
+		"page",
+	)
 
 	// let a few frames render, then read the renderer's own counters
 	await page.waitForTimeout(1500)
@@ -134,16 +131,25 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	await expect(page.locator(".g3d-chip")).toBeVisible()
 	await expect(page.locator(".g3d-chip-name")).not.toHaveText("")
 
-	// navigate away and back three times: every mount builds the same gym,
-	// every unmount frees its WebGL context and clears window.gym3d
+	// the gym stays mounted on other tabs, hidden, and stops rendering
+	await page.getByTestId("tab-today").click()
+	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
+	await expect
+		.poll(() => page.evaluate(() => window.gym3d?.stats().running))
+		.toBe(false)
+	await page.getByTestId("tab-gym").click()
+	await expect
+		.poll(() => page.evaluate(() => window.gym3d?.stats().running))
+		.toBe(true)
+
+	// remount three times: every mount builds the same gym, every unmount
+	// frees its WebGL context
 	const first = {
 		geometries: stats?.geometries ?? 0,
 		textures: stats?.textures ?? 0,
 	}
 	for (let i = 0; i < 3; i++) {
-		await clientNav(page, "/")
-		await expect(page.locator("[data-testid=gym3d]")).toHaveCount(0)
-		expect(await page.evaluate(() => window.gym3d === undefined)).toBe(true)
+		await page.evaluate(() => window.spRemountGym?.())
 		// context loss events arrive asynchronously
 		await expect
 			.poll(() =>
@@ -154,9 +160,7 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 					return g.made - g.lost
 				}),
 			)
-			.toBe(0)
-
-		await clientNav(page, "/gym/canvas")
+			.toBeLessThanOrEqual(1)
 		await waitReady(page)
 		await page.waitForTimeout(1500)
 		const s = await page.evaluate(() => window.gym3d?.stats())
@@ -177,21 +181,34 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	await context.close()
 })
 
-test("?gym3d=0 turns the 3D gym off again and shows the 2D gym", async ({
+test("old gym links go home, and no WebGL2 shows a friendly card", async ({
 	request,
 	browser,
 }, testInfo) => {
 	const { context, page, pageErrors } = await newUserPage(
 		request,
 		browser,
-		"off",
+		"nogl",
 		testInfo.project.use,
 	)
-	await page.addInitScript(() => localStorage.setItem("sp:gym3d", "1"))
-	await page.goto("/gym/canvas?gym3d=0")
-	await expect(page.locator(".phaser-container canvas")).toBeVisible()
+	await page.addInitScript(() => {
+		const orig = HTMLCanvasElement.prototype.getContext
+		HTMLCanvasElement.prototype.getContext = function (
+			this: HTMLCanvasElement,
+			type: string,
+			...rest: unknown[]
+		) {
+			if (type === "webgl2") return null
+			return (orig as (...a: unknown[]) => unknown).call(this, type, ...rest)
+		} as typeof orig
+	})
+	await page.goto("/gym/canvas")
+	await expect(page).toHaveURL(/\/$/)
+	await expect(page.getByTestId("gym-fallback")).toBeVisible()
 	await expect(page.locator("[data-testid=gym3d]")).toHaveCount(0)
-	expect(await page.evaluate(() => localStorage.getItem("sp:gym3d"))).toBe("0")
+	// the day's tasks still work without the gym
+	await page.getByTestId("drawer-head").click()
+	await expect(page.getByTestId("checkin-card")).toBeVisible()
 	expect(pageErrors).toEqual([])
 	await context.close()
 })
