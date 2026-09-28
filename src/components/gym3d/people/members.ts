@@ -14,7 +14,7 @@ import type { Assignment } from "../world/assignTargets"
 import { ctx } from "../world/state"
 import type { Person, PersonKind, Station } from "../world/types"
 import type { GymWorld } from "../world/world"
-import { outfitFor } from "./cast"
+import { CAST, outfitFor, RESERVED_STATIONS } from "./cast"
 import { type Outfit, randOutfit, staffOutfit, swimOutfit } from "./outfits"
 import { POSES, poseOf } from "./poses"
 import { disposeRig, makeRig, resetPose } from "./rig"
@@ -93,7 +93,11 @@ export class People {
 		return p
 	}
 
+	/** Called for each person removed (speech bubbles let go of them). */
+	onRemove: ((p: Person) => void) | null = null
+
 	remove(p: Person): void {
+		this.onRemove?.(p)
 		this.release(p)
 		disposeRig(p.rig)
 		const i = this.people.indexOf(p)
@@ -115,6 +119,9 @@ export class People {
 
 	private fillFixed(st: Station): void {
 		if (st.busy) return
+		// kept for its named NPC (the manager's desk)
+		const uk = st.piece?.upgradeKey
+		if (uk && RESERVED_STATIONS.has(uk) && poseOf(st) !== "swim") return
 		const swim = poseOf(st) === "swim"
 		const k = this.stationKey(st)
 		const key = swim ? `swim:${k}` : `staff:${k}`
@@ -250,10 +257,12 @@ export class People {
 				p.name = v.name
 				p.role = v.role
 			}
-			if (a.target.kind === "station") {
+			if (a.target.kind === "station" || a.target.kind === "event") {
 				const t = a.target
-				const piece = this.w.pieces.find((q) => q.id === t.pieceId)
-				const st = piece?.stations[t.station]
+				const st =
+					t.kind === "event"
+						? this.eventStation()
+						: this.w.pieces.find((q) => q.id === t.pieceId)?.stations[t.station]
 				if (!st) continue
 				if (p.fixed === st) continue
 				// Whoever holds the station (ambient member or anonymous staff)
@@ -269,6 +278,9 @@ export class People {
 				this.release(p)
 				p.home = null
 				p.fixed = st
+				const home = CAST[a.npcKey]?.home
+				p.poseAs =
+					home?.pose && st.piece?.upgradeKey === home.key ? home.pose : null
 				if (first) {
 					p.rig.root.position.set(st.x, 0, st.z)
 					this.claimSnap(p, st)
@@ -279,6 +291,7 @@ export class People {
 				const old = p.fixed
 				this.release(p)
 				p.fixed = null
+				p.poseAs = null
 				p.home = h
 				if (old?.staff) this.fillFixed(old)
 				if (first) {
@@ -489,14 +502,14 @@ export class People {
 				// arrive() may have switched the state
 				const now = p.state as Person["state"]
 				if (now === "use" && p.station)
-					POSES[poseOf(p.station)](r, p.t, p.station)
+					POSES[p.poseAs ?? poseOf(p.station)](r, p.t, p.station)
 				else POSES.idle(r, p.t, null)
 				return
 			}
 			const dx = tgt[0] - pos.x
 			const dz = tgt[1] - pos.z
 			const d = Math.hypot(dx, dz)
-			const sp = 1.6 * dt
+			const sp = 1.6 * dt * (p.speed ?? 1)
 			if (d <= sp) {
 				pos.x = tgt[0]
 				pos.z = tgt[1]
@@ -519,7 +532,7 @@ export class People {
 				return
 			}
 			if (!lite) {
-				POSES[poseOf(st)](r, p.t, st)
+				POSES[p.poseAs ?? poseOf(st)](r, p.t, st)
 				if (st.tick) {
 					r.root.updateMatrixWorld(true)
 					st.tick(p, p.t, dt)
@@ -560,6 +573,59 @@ export class People {
 				this.chooseNext(m)
 			}
 		}
+	}
+
+	// ── extras: class groups, the cast lineup ─────────────────────────────
+
+	/** A person fixed on a station of their own (a floor station with no
+	 * piece), doing its pose until removed. */
+	addExtra(o: {
+		key: string
+		name: string
+		out: Outfit
+		st: Station
+		note?: string | null
+		npcKey?: string | null
+		role?: string | null
+	}): Person {
+		const old = this.find(o.key)
+		if (old) this.remove(old)
+		const p = this.add({
+			key: o.key,
+			kind: "extra",
+			name: o.name,
+			npcKey: o.npcKey ?? null,
+			role: o.role ?? null,
+			out: o.out,
+			x: o.st.x,
+			z: o.st.z,
+		})
+		p.note = o.note ?? null
+		p.fixed = o.st
+		this.claimSnap(p, o.st)
+		return p
+	}
+
+	/** Where today's event host stands: a floor spot by the entrance. */
+	private eventSt: Station | null = null
+	private eventStation(): Station {
+		const s = this.w.eventSpot()
+		const e = this.eventSt
+		if (e && e.x === s.x && e.z === s.z) return e
+		this.eventSt = {
+			x: s.x,
+			y: 0,
+			z: s.z,
+			face: s.face,
+			lx: s.x,
+			lz: s.z,
+			lface: s.face,
+			label: "hosting today's event",
+			pose: "coach",
+			busy: null,
+			piece: null,
+		}
+		return this.eventSt
 	}
 
 	pickables(): T.Object3D[] {

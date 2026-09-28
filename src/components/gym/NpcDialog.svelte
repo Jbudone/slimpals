@@ -4,9 +4,12 @@ import { api } from "../../lib/api.js"
 type Props = {
 	npcKey: string
 	onClose: () => void
+	/** A picture that wins over the NPC's portrait art (the 3D gym passes
+	 * its render of the same look). */
+	portrait?: string | null
 }
 
-let { npcKey, onClose }: Props = $props()
+let { npcKey, onClose, portrait = null }: Props = $props()
 
 type NpcDetail = {
 	npc: { key: string; name: string; role: string; portraitUrl: string | null }
@@ -87,10 +90,11 @@ function getPortraitUrl(
 }
 
 let portraitSrc = $derived(
-	getPortraitUrl(
-		detail?.npc.portraitUrl ?? null,
-		result?.dialog.portraitVariant,
-	),
+	portrait ??
+		getPortraitUrl(
+			detail?.npc.portraitUrl ?? null,
+			result?.dialog.portraitVariant,
+		),
 )
 let portraitFailedSrc = $state<string | null>(null)
 

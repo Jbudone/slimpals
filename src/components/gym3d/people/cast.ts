@@ -12,6 +12,8 @@ import {
 } from "./outfits"
 
 export type CastEntry = {
+	/** Short name (the roster's full name wins where it is known). */
+	name: string
 	/** Shown under the name in the tap chip. */
 	title: string
 	/** Wears the staff uniform. */
@@ -58,6 +60,7 @@ const staff = (o: Partial<Outfit>, tee: TeeKind = "staff"): Outfit =>
 /** Every seeded NPC (server/db/seed.ts), keyed by NPC key. */
 export const CAST: Readonly<Record<string, CastEntry>> = {
 	trainer_marcus: {
+		name: "Marcus",
 		title: "Head trainer",
 		staff: true,
 		look: staff({
@@ -80,6 +83,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	receptionist_lisa: {
+		name: "Lisa",
 		// fresh look (the old pixel Lisa was retired): space buns, freckles,
 		// a big smile and a front-desk headset
 		title: "Front desk",
@@ -103,6 +107,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	regular_derek: {
+		name: "Derek",
 		title: "Regular",
 		staff: false,
 		look: base({
@@ -123,6 +128,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		lines: ["...", "One more set.", "Cardio? No thanks.", "(nods)"],
 	},
 	regular_priya: {
+		name: "Priya",
 		title: "Regular",
 		staff: false,
 		look: base({
@@ -144,6 +150,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	regular_tom: {
+		name: "Tom",
 		title: "Regular",
 		staff: false,
 		look: base({
@@ -166,6 +173,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	regular_elena: {
+		name: "Elena",
 		title: "Regular",
 		staff: false,
 		look: base({
@@ -189,6 +197,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	specialist_coach: {
+		name: "Coach Rivera",
 		title: "Group coach",
 		staff: true,
 		look: staff({
@@ -208,6 +217,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	specialist_nutritionist: {
+		name: "Dr. Kim",
 		title: "Nutritionist",
 		staff: true,
 		look: staff({
@@ -227,6 +237,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	trainer_jordan: {
+		name: "Jordan",
 		title: "Assistant trainer",
 		staff: true,
 		look: staff({
@@ -247,6 +258,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	manager_alex: {
+		name: "Alex",
 		title: "Gym manager",
 		staff: true,
 		look: staff({
@@ -265,6 +277,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	hero_bodybuilder_rex: {
+		name: "Rex",
 		title: "Visiting hero",
 		staff: false,
 		look: base({
@@ -293,6 +306,7 @@ export const CAST: Readonly<Record<string, CastEntry>> = {
 		],
 	},
 	hero_influencer_maya: {
+		name: "Maya",
 		title: "Visiting hero",
 		staff: false,
 		look: base({

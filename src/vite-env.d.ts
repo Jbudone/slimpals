@@ -25,6 +25,14 @@ declare global {
 			panTo(x: number, z: number): void
 			/** Where the piece being moved can go (move mode), in screen px. */
 			moveTargets(): { roomId: number; spot: number; x: number; y: number }[]
+			/** Every cast look lined up on the pavement (false clears it). */
+			lineup(on?: boolean): string[]
+			/** What the tap chip would show for a person by key. */
+			info(key: string): import("./components/gym3d/app").PersonInfo | null
+			/** The dialog picture of a named NPC's 3D look (data URL). */
+			portrait(npcKey: string): string | null
+			/** An upgrade claim ceremony is running. */
+			claiming(): boolean
 		}
 	}
 }

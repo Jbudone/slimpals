@@ -513,11 +513,20 @@ export function createGymRouter(aiService: AIService) {
 			.filter((c) => isClassActiveNow(c, simTime.getHours(), simTime.getDay()))
 			.map((c) => ({ key: c.key, name: c.name, category: c.category }))
 
+		// on right now by the sim's own clock (the 3D gym draws it)
+		const simHour = simTime.getHours()
+		const eventActive =
+			!!todayEvent &&
+			Array.isArray(todayEvent.activeHours) &&
+			todayEvent.activeHours[0] <= simHour &&
+			simHour < todayEvent.activeHours[1]
+
 		res.json({
 			simTime: simTime.toISOString(),
 			npcs,
 			gymId: gym.id,
 			todayEvent: gymRow?.todayEventData ?? null,
+			eventActive,
 			hourOverride: gym.simulatedHourOverride,
 			activeClasses,
 		})

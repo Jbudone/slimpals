@@ -129,4 +129,117 @@ describe("assignTargets", () => {
 	it("ambient cap follows the quality level", () => {
 		expect([0, 1, 2, 3, 4].map(ambientCap)).toEqual([6, 6, 4, 4, 2])
 	})
+
+	describe("homes and the event host (slice 3)", () => {
+		const OFFICE: PieceIn = {
+			id: 20,
+			upgradeKey: "staff_manager_office",
+			stations: [{ staff: true, swim: false }],
+		}
+		const STAGE: PieceIn = {
+			id: 21,
+			upgradeKey: "hero_spotlight_stage",
+			stations: [{ staff: false, swim: false }],
+		}
+		const homes = {
+			manager_alex: { key: "staff_manager_office", always: true },
+			hero_bodybuilder_rex: { key: "hero_spotlight_stage", always: true },
+			hero_influencer_maya: { key: "hero_spotlight_stage", always: true },
+			trainer_jordan: { key: "staff_trainer" },
+		}
+
+		it("sends the manager to the office even when the sim picked the desk, leaving the desk to Lisa", () => {
+			const a = assignTargets(
+				[
+					npc("manager_alex", "manager", "staff_reception"),
+					npc("receptionist_lisa", "receptionist", "staff_reception"),
+				],
+				[...PIECES, OFFICE],
+				{ homes },
+			)
+			expect(a.find((x) => x.npcKey === "manager_alex")?.target).toEqual({
+				kind: "station",
+				pieceId: 20,
+				station: 0,
+			})
+			expect(a.find((x) => x.npcKey === "receptionist_lisa")?.target).toEqual({
+				kind: "station",
+				pieceId: 1,
+				station: 0,
+			})
+		})
+
+		it("puts a visiting hero on the spotlight stage; a second hero falls back", () => {
+			const a = assignTargets(
+				[
+					npc("hero_bodybuilder_rex", "hero", "weights_smith"),
+					npc("hero_influencer_maya", "hero", "cardio_treadmill"),
+				],
+				[...PIECES, STAGE],
+				{ homes },
+			)
+			expect(a[0].target).toEqual({ kind: "station", pieceId: 21, station: 0 })
+			expect(a[1].target).toEqual({ kind: "station", pieceId: 2, station: 0 })
+		})
+
+		it("uses the sim's pick while a home's piece does not exist", () => {
+			const a = assignTargets(
+				[npc("hero_bodybuilder_rex", "hero", "cardio_treadmill")],
+				PIECES,
+				{ homes },
+			)
+			expect(a[0].target).toEqual({ kind: "station", pieceId: 2, station: 0 })
+		})
+
+		it("uses a non-always home only when the sim has nothing for them", () => {
+			const trainer: PieceIn = {
+				id: 22,
+				upgradeKey: "staff_trainer",
+				stations: [{ staff: true, swim: false }],
+			}
+			const busy = assignTargets(
+				[npc("trainer_jordan", "trainer", "cardio_treadmill")],
+				[...PIECES, trainer],
+				{ homes },
+			)
+			expect(busy[0].target).toEqual({
+				kind: "station",
+				pieceId: 2,
+				station: 0,
+			})
+			const free = assignTargets(
+				[npc("trainer_jordan", "trainer", null)],
+				[...PIECES, trainer],
+				{ homes },
+			)
+			expect(free[0].target).toEqual({
+				kind: "station",
+				pieceId: 22,
+				station: 0,
+			})
+		})
+
+		it("sends the event host to the event spot, in sim order", () => {
+			const a = assignTargets(
+				[
+					npc("regular_tom", "regular"),
+					npc("trainer_marcus", "trainer", "cardio_treadmill"),
+				],
+				PIECES,
+				{ eventHost: "trainer_marcus" },
+			)
+			expect(a.map((x) => x.npcKey)).toEqual(["regular_tom", "trainer_marcus"])
+			expect(a[1].target).toEqual({ kind: "event" })
+			expect(a[0].target).toEqual({ kind: "lobby", slot: 0 })
+		})
+
+		it("ignores an event host who is not in", () => {
+			const a = assignTargets(
+				[npc("trainer_marcus", "trainer", null, false)],
+				PIECES,
+				{ eventHost: "trainer_marcus" },
+			)
+			expect(a).toEqual([])
+		})
+	})
 })

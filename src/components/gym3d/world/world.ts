@@ -829,6 +829,12 @@ export class GymWorld implements NavSource {
 		}
 	}
 
+	/** Where today's event happens: on the pavement to the right of the
+	 * entrance (the lobby is full of furniture), facing the camera. */
+	eventSpot(): { x: number; z: number; face: number } {
+		return { x: this.doorX + 2.9, z: this.frontZ + 1.25, face: Math.PI / 4 }
+	}
+
 	get spawn(): { x: number; z: number } {
 		return { x: this.doorX, z: this.frontZ + 2.3 }
 	}

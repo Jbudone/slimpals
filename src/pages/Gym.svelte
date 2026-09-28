@@ -41,6 +41,7 @@ let loading = $state(true)
 let error = $state<string | null>(null)
 let claiming = $state(false)
 let dialogNpcKey = $state<string | null>(null)
+let dialogPortrait = $state<string | null>(null)
 let ceremonyUpgradeKey = $state<string | null>(null)
 let ceremonyActive = $state(false)
 let upgradeCompleteToast = $state(false)
@@ -49,7 +50,8 @@ let upgradeCompleteToast = $state(false)
 // stays out of the main bundle; any failure falls back to the 2D gym.
 const start3d = readGym3dFlag()
 let use3d = $state(start3d)
-let layoutRev = $state(0)
+/** The upgrade just claimed in the 3D gym: its ceremony plays in place. */
+let claim3d = $state<{ key: string; n: number } | null>(null)
 type Gym3DComponent = typeof import("../components/gym3d/Gym3D.svelte").default
 let Gym3D = $state<Gym3DComponent | null>(null)
 if (start3d)
@@ -63,6 +65,7 @@ if (start3d)
 
 function handle3dFallback() {
 	use3d = false
+	if (ceremonyActive) end3dClaim()
 }
 
 async function loadGym() {
@@ -87,9 +90,35 @@ function claimNext() {
 	dialogNpcKey = null
 	ceremonyUpgradeKey = nextKey
 	ceremonyActive = true
-	// The 3D gym has no claim ceremony yet: claim straight away and rebuild
-	// the 3D view from the new layout.
-	if (use3d) void handleCeremonyComplete()
+	// The 3D gym claims first, then plays the build in place (the new
+	// piece drops onto its spot) without remounting.
+	if (use3d) void claim3dNow(nextKey)
+}
+
+function showToast() {
+	upgradeCompleteToast = true
+	setTimeout(() => {
+		upgradeCompleteToast = false
+	}, 3000)
+}
+
+async function claim3dNow(key: string) {
+	claiming = true
+	try {
+		gymData = await api.post<GymResponse>("/gym/claim-upgrade", { key })
+		claim3d = { key, n: (claim3d?.n ?? 0) + 1 }
+	} catch {
+		error = "Failed to claim upgrade"
+		end3dClaim()
+	} finally {
+		claiming = false
+	}
+}
+
+function end3dClaim() {
+	if (ceremonyActive && ceremonyUpgradeKey) showToast()
+	ceremonyUpgradeKey = null
+	ceremonyActive = false
 }
 
 async function handleCeremonyComplete() {
@@ -98,11 +127,7 @@ async function handleCeremonyComplete() {
 	claiming = true
 	try {
 		gymData = await api.post<GymResponse>("/gym/claim-upgrade", { key })
-		layoutRev++
-		upgradeCompleteToast = true
-		setTimeout(() => {
-			upgradeCompleteToast = false
-		}, 3000)
+		showToast()
 	} catch {
 		error = "Failed to claim upgrade"
 	} finally {
@@ -112,12 +137,14 @@ async function handleCeremonyComplete() {
 	}
 }
 
-function handleNpcClick(npcKey: string) {
+function handleNpcClick(npcKey: string, portrait: string | null = null) {
 	dialogNpcKey = npcKey
+	dialogPortrait = portrait
 }
 
 function closeDialog() {
 	dialogNpcKey = null
+	dialogPortrait = null
 }
 
 onMount(loadGym)
@@ -142,9 +169,12 @@ onMount(loadGym)
 		<div class="canvas-area">
 			{#if use3d}
 				{#if Gym3D}
-					{#key layoutRev}
-						<Gym3D onNpcClick={handleNpcClick} onFallback={handle3dFallback} />
-					{/key}
+					<Gym3D
+						onNpcClick={handleNpcClick}
+						onFallback={handle3dFallback}
+						claim={claim3d}
+						onClaimDone={end3dClaim}
+					/>
 				{:else}
 					<p class="muted center">Loading 3D gym...</p>
 				{/if}
@@ -158,7 +188,7 @@ onMount(loadGym)
 				/>
 			{/if}
 			{#if dialogNpcKey}
-				<NpcDialog npcKey={dialogNpcKey} onClose={closeDialog} />
+				<NpcDialog npcKey={dialogNpcKey} onClose={closeDialog} portrait={dialogPortrait} />
 			{/if}
 			{#if upgradeCompleteToast}
 				<div class="upgrade-toast">Upgrade Complete! 🎉</div>

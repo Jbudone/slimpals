@@ -71,8 +71,9 @@ describe("3D gym cast (named NPC looks)", () => {
 			expect(pooled).not.toContain(a)
 	})
 
-	it("has signature lines and a title for everyone", () => {
+	it("has a name, signature lines and a title for everyone", () => {
 		for (const [k, c] of Object.entries(CAST)) {
+			expect(c.name.length, k).toBeGreaterThan(0)
 			expect(c.title.length, k).toBeGreaterThan(0)
 			expect(c.lines.length, k).toBeGreaterThanOrEqual(3)
 			for (const l of c.lines) expect(l.length, k).toBeLessThanOrEqual(90)
