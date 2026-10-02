@@ -74,7 +74,8 @@ async function setup(
 	expect(prog.ok()).toBe(true)
 	const context = await browser.newContext({
 		baseURL,
-		viewport: use.viewport,
+		// phones: the 390x844 the gym is designed for
+		viewport: use.isMobile ? { width: 390, height: 844 } : use.viewport,
 		deviceScaleFactor: use.deviceScaleFactor,
 		isMobile: use.isMobile,
 		hasTouch: use.hasTouch,
@@ -364,5 +365,271 @@ test("3D gym: claiming an upgrade builds it in place", async ({
 	).toBe(1)
 	await page.waitForTimeout(1200)
 	await shot(page, "09-claim-done")
+	expect(errors).toEqual([])
+})
+
+type Box = {
+	kind: string
+	x: number
+	y: number
+	w: number
+	h: number
+	text: string
+}
+
+function overlapping(bs: Box[]): string | null {
+	for (let i = 0; i < bs.length; i++)
+		for (let j = i + 1; j < bs.length; j++) {
+			const a = bs[i]
+			const b = bs[j]
+			if (
+				a.x < b.x + b.w &&
+				b.x < a.x + a.w &&
+				a.y < b.y + b.h &&
+				b.y < a.y + a.h
+			)
+				return `${a.kind} "${a.text}" over ${b.kind} "${b.text}"`
+		}
+	return null
+}
+
+const bubblesNow = (page: Page) =>
+	page.evaluate(() => (window.gym3d?.bubbles() ?? []) as Box[])
+
+/** A canvas point (CSS px in the gym) clear of bubbles and people. */
+async function emptySpot(page: Page): Promise<{ x: number; y: number }> {
+	const pt = await page.evaluate(() => {
+		const g = window.gym3d
+		const host = document.querySelector("[data-testid=gym3d]")
+		if (!g || !host) return null
+		const r = host.getBoundingClientRect()
+		const people = g
+			.people()
+			.map((k) => g.screenOf(k))
+			.filter((p): p is { x: number; y: number } => !!p)
+		const bs = g.bubbles()
+		for (let y = r.height * 0.3; y < r.height * 0.7; y += 23)
+			for (let x = 40; x < r.width - 40; x += 29) {
+				const hit = document.elementFromPoint(r.left + x, r.top + y)
+				if (hit?.tagName !== "CANVAS") continue
+				if (people.some((p) => Math.hypot(p.x - x, p.y - y) < 70)) continue
+				if (
+					bs.some(
+						(b) =>
+							x > b.x - 20 &&
+							x < b.x + b.w + 20 &&
+							y > b.y - 20 &&
+							y < b.y + b.h + 20,
+					)
+				)
+					continue
+				return { x, y }
+			}
+		return null
+	})
+	if (!pt) throw new Error("no empty spot on the gym")
+	return pt
+}
+
+const hasLine = async (page: Page, text: string) =>
+	(await bubblesNow(page)).some((b) => b.text.includes(text))
+
+test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		700,
+		"bub",
+	)
+	const hdr = { headers: { Origin: AUTH_ORIGIN } }
+	// 6pm: the named cast is in (Marcus, Tom, Jordan...)
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				...hdr,
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	// coins waiting in every bubble too
+	expect(
+		(
+			await admin.post(`/api/admin/users/${userId}/gym/away`, {
+				...hdr,
+				data: { hours: 6 },
+			})
+		).ok(),
+	).toBe(true)
+	const errors: string[] = []
+	page.on("pageerror", (e) => errors.push(e.message))
+	await page.goto("/")
+	await waitReady(page)
+	if (await page.getByTestId("welcome-back").count())
+		await page.getByRole("button", { name: "Later" }).click()
+	await page.waitForTimeout(800)
+	const gym = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!gym) throw new Error("no gym")
+	const phone = gym.width < 520
+	const touch = !!testInfo.project.use.hasTouch
+
+	// ── many lines at once, crowded with coin bubbles: none overlap ──
+	const onScreen = await page.evaluate(
+		([w, h]) => {
+			const g = window.gym3d
+			if (!g) return []
+			return g.people().filter((k) => {
+				const p = g.screenOf(k)
+				return p && p.x > 40 && p.x < w - 40 && p.y > 200 && p.y < h - 200
+			})
+		},
+		[gym.width, gym.height] as const,
+	)
+	expect(onScreen.length).toBeGreaterThanOrEqual(3)
+	await page.evaluate((keys) => {
+		keys.slice(0, 5).forEach((k, i) => {
+			window.gym3d?.say(k, `Busy line number ${i + 1}!`)
+		})
+	}, onScreen)
+	const kinds = new Set<string>()
+	for (let i = 0; i < 10; i++) {
+		const bs = await bubblesNow(page)
+		expect(overlapping(bs)).toBeNull()
+		for (const b of bs) {
+			kinds.add(b.kind)
+			// on screen, below the HUD
+			expect(b.x).toBeGreaterThanOrEqual(0)
+			expect(b.x + b.w).toBeLessThanOrEqual(gym.width + 0.5)
+			expect(b.y).toBeGreaterThan(40)
+		}
+		const talk = bs.filter((b) => b.kind === "speech" || b.kind === "ambient")
+		expect(talk.length).toBeLessThanOrEqual(phone ? 2 : 3)
+		await page.waitForTimeout(200)
+	}
+	expect(kinds.has("speech")).toBe(true)
+	expect(kinds.has("coin")).toBe(true)
+	await shot(page, "10-bubbles-crowd")
+
+	// ── a short tap pops a line (and selects nothing) ──
+	await page.waitForTimeout(6500) // the busy lines run out
+	const key = onScreen[0]
+	await page.evaluate((k) => window.gym3d?.say(k, "Pop me!"), key)
+	await expect.poll(() => hasLine(page, "Pop me!")).toBe(true)
+	await page.waitForTimeout(250) // the entry animation settles
+	const pop = (await bubblesNow(page)).find((b) => b.text.includes("Pop me!"))
+	if (!pop) throw new Error("no line to pop")
+	await shot(page, "11-before-pop")
+	const px = gym.x + pop.x + pop.w / 2
+	const py = gym.y + pop.y + pop.h / 2
+	if (touch) await page.touchscreen.tap(px, py)
+	else await page.mouse.click(px, py)
+	await page.waitForTimeout(90)
+	await shot(page, "12-popping")
+	await expect
+		.poll(() => hasLine(page, "Pop me!"), { timeout: 4000 })
+		.toBe(false)
+	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
+	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
+
+	// ── a drag that starts on a bubble pans the camera ──
+	await page.evaluate((k) => window.gym3d?.say(k, "Drag from me"), key)
+	await expect.poll(() => hasLine(page, "Drag from me")).toBe(true)
+	await page.waitForTimeout(250)
+	const dragB = (await bubblesNow(page)).find((b) =>
+		b.text.includes("Drag from me"),
+	)
+	if (!dragB) throw new Error("no line to drag")
+	const before = await page.evaluate(() => window.gym3d?.screenAt(13, 0, 10))
+	const sx = gym.x + dragB.x + dragB.w / 2
+	const sy = gym.y + dragB.y + dragB.h / 2
+	await page.mouse.move(sx, sy)
+	await page.mouse.down()
+	await page.mouse.move(sx + 20, sy + 40, { steps: 4 })
+	await page.mouse.move(sx + 40, sy + 120, { steps: 8 })
+	await page.mouse.up()
+	const after = await page.evaluate(() => window.gym3d?.screenAt(13, 0, 10))
+	if (!before || !after) throw new Error("no screen point")
+	expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(60)
+	// the drag did not pop it (or tap anything under it)
+	expect(
+		(await page.evaluate(() => window.gym3d?.stats()))?.says,
+	).toBeGreaterThan(0)
+	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
+	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
+	await page.evaluate(() => window.gym3d?.panTo(13, 10))
+	await page.waitForTimeout(700)
+
+	// ── the tap chip is a stat card: labeled rows, never body weight ──
+	const npcOnScreen = async () =>
+		page.evaluate(
+			([w, h]) => {
+				const g = window.gym3d
+				if (!g) return null
+				return (
+					g.people().find((k) => {
+						const p = g.screenOf(k)
+						return (
+							k.startsWith("npc:") &&
+							p &&
+							p.x > 50 &&
+							p.x < w - 50 &&
+							p.y > 260 &&
+							p.y < h - 220
+						)
+					}) ?? null
+				)
+			},
+			[gym.width, gym.height] as const,
+		)
+	const npc = (await npcOnScreen()) ?? "npc:receptionist_lisa"
+	const chip = page.getByTestId("gym3d-chip")
+	await tapPerson(page, npc)
+	await expect(chip).toBeVisible()
+	await expect(chip.locator("dt", { hasText: "Role" })).toBeVisible()
+	await expect(chip.locator("dt", { hasText: "Doing" })).toBeVisible()
+	// named NPCs (Talk) show the relationship too
+	if (await chip.getByTestId("gym3d-talk").count())
+		await expect(chip.locator("dt", { hasText: "Bond" })).toBeVisible()
+	expect(await chip.textContent()).not.toMatch(/\b(kg|lbs?|weight)\b/i)
+	await page.waitForTimeout(300)
+	const withChip = await bubblesNow(page)
+	expect(withChip.some((b) => b.kind === "info")).toBe(true)
+	expect(overlapping(withChip)).toBeNull()
+	await shot(page, "13-stat-card")
+
+	// a tap outside closes it, and only that (no sheet opens)
+	const out = await emptySpot(page)
+	if (touch) await page.touchscreen.tap(gym.x + out.x, gym.y + out.y)
+	else await page.mouse.click(gym.x + out.x, gym.y + out.y)
+	await expect(chip).toHaveCount(0)
+	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
+
+	// a pan closes it
+	const npc2 = (await npcOnScreen()) ?? npc
+	await tapPerson(page, npc2)
+	await expect(chip).toBeVisible()
+	const from = await emptySpot(page)
+	await page.mouse.move(gym.x + from.x, gym.y + from.y)
+	await page.mouse.down()
+	await page.mouse.move(gym.x + from.x - 50, gym.y + from.y + 20, {
+		steps: 6,
+	})
+	await page.mouse.up()
+	await expect(chip).toHaveCount(0)
+	await page.evaluate(() => window.gym3d?.panTo(13, 10))
+	await page.waitForTimeout(700)
+
+	// and it closes by itself after a while
+	const npc3 = (await npcOnScreen()) ?? npc
+	await tapPerson(page, npc3)
+	await expect(chip).toBeVisible()
+	await expect(chip).toHaveCount(0, { timeout: 25_000 })
+
+	const perf = await page.evaluate(() => window.gym3d?.stats())
+	console.log("gym3d bubbles stats", JSON.stringify(perf))
 	expect(errors).toEqual([])
 })
