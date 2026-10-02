@@ -150,6 +150,32 @@ type AdminSocialPost = {
 
 type VersionInfo = { gitSha: string; buildTime: string }
 
+type ScheduledJobRun = {
+	period: string
+	status: "running" | "ok" | "failed"
+	attempts: number
+	trigger: "schedule" | "manual"
+	startedAt: string
+	finishedAt: string | null
+	result: unknown
+	error: string | null
+}
+
+type ScheduledJobStatus = {
+	key: string
+	label: string
+	schedule: string
+	period: string
+	lastRun: ScheduledJobRun | null
+	nextDueAt: string | null
+}
+
+type SchedulerInfo = {
+	enabled: boolean
+	running: boolean
+	jobs: ScheduledJobStatus[]
+}
+
 let users = $state<AdminUser[]>([])
 let allBadges = $state<Badge[]>([])
 let loading = $state(true)
@@ -157,6 +183,11 @@ let versionInfo = $state<VersionInfo | null>(null)
 let loadError = $state<string | null>(null)
 
 let tournaments = $state<AdminTournamentSummary[]>([])
+
+let scheduler = $state<SchedulerInfo | null>(null)
+let schedulerError = $state<string | null>(null)
+let schedulerRunning = $state<string | null>(null)
+let schedulerStatus = $state<{ text: string; ok: boolean } | null>(null)
 let expandedTournamentId = $state<number | null>(null)
 let tournamentDetail = $state<AdminTournamentDetail | null>(null)
 let tournamentDetailLoading = $state(false)
@@ -317,6 +348,42 @@ async function load() {
 	} finally {
 		loading = false
 	}
+}
+
+async function loadScheduler() {
+	schedulerError = null
+	try {
+		scheduler = await api.get<SchedulerInfo>("/admin/scheduler")
+	} catch (e) {
+		schedulerError = e instanceof Error ? e.message : "Failed to load"
+	}
+}
+
+async function runScheduledJob(key: string, label: string) {
+	if (!confirm(`Run "${label}" now? It may call the AI for every user.`)) return
+	schedulerRunning = key
+	schedulerStatus = null
+	try {
+		const r = await api.post<
+			{ status: "ok"; result: unknown } | { status: "failed"; error: string }
+		>(`/admin/scheduler/${key}/run`)
+		schedulerStatus =
+			r.status === "ok"
+				? { text: `${label}: ${JSON.stringify(r.result)}`, ok: true }
+				: { text: `${label} failed: ${r.error}`, ok: false }
+	} catch (e) {
+		schedulerStatus = {
+			text: `${label}: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	} finally {
+		schedulerRunning = null
+		await loadScheduler()
+	}
+}
+
+function fmtWhen(iso: string | null): string {
+	return iso ? new Date(iso).toLocaleString() : "—"
 }
 
 async function viewTournament(id: number) {
@@ -1143,6 +1210,7 @@ async function runSeed(path: string, body: object, msg: string) {
 }
 
 onMount(load)
+onMount(loadScheduler)
 onMount(async () => {
 	try {
 		versionInfo = await api.get<VersionInfo>("/health")
@@ -1915,6 +1983,84 @@ onMount(async () => {
 					{/each}
 				</tbody>
 			</table>
+		</section>
+		<section class="card">
+			<h2>Scheduled jobs</h2>
+			{#if schedulerError}
+				<p class="error-text">{schedulerError}</p>
+			{:else if !scheduler}
+				<p class="muted">Loading…</p>
+			{:else}
+				<p class="muted challenge-generate-note">
+					{#if scheduler.enabled}
+						Scheduler is on: it checks every minute and runs each job once per
+						period.
+					{:else}
+						Scheduler is off on this server (on by default in production; set
+						SCHEDULER_ENABLED=1 to force it on). "Run now" still works.
+					{/if}
+				</p>
+				<table class="user-table">
+					<thead>
+						<tr>
+							<th>Job</th>
+							<th>Schedule</th>
+							<th>Last run</th>
+							<th>Result</th>
+							<th>Next due</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each scheduler.jobs as job (job.key)}
+							<tr>
+								<td>{job.label}</td>
+								<td class="muted">{job.schedule}</td>
+								<td>
+									{#if job.lastRun}
+										{fmtWhen(job.lastRun.startedAt)}
+										<span class="muted">
+											({job.lastRun.trigger}, {job.lastRun.period})
+										</span>
+									{:else}
+										<span class="muted">never</span>
+									{/if}
+								</td>
+								<td class="mono">
+									{#if job.lastRun?.status === "failed"}
+										<span class="status-msg fail">
+											failed ×{job.lastRun.attempts}: {job.lastRun.error}
+										</span>
+									{:else if job.lastRun?.status === "running"}
+										running…
+									{:else if job.lastRun}
+										{JSON.stringify(job.lastRun.result)}
+									{/if}
+								</td>
+								<td class="muted">{fmtWhen(job.nextDueAt)}</td>
+								<td>
+									<button
+										class="btn outline sm"
+										disabled={schedulerRunning !== null}
+										onclick={() => runScheduledJob(job.key, job.label)}
+									>
+										{schedulerRunning === job.key ? "Running…" : "Run now"}
+									</button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+				{#if schedulerStatus}
+					<p
+						class="status-msg"
+						class:ok={schedulerStatus.ok}
+						class:fail={!schedulerStatus.ok}
+					>
+						{schedulerStatus.text}
+					</p>
+				{/if}
+			{/if}
 		</section>
 		<section class="card">
 			<h2>Tournaments ({tournaments.length})</h2>

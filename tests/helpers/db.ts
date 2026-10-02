@@ -147,6 +147,7 @@ export async function truncateAll() {
 			"gym_upgrades_catalog",
 			"gym_classes",
 			"challenges",
+			"scheduled_job_runs",
 		]
 		for (const t of tables) {
 			await conn.query(`TRUNCATE TABLE \`${t}\``)

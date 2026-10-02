@@ -29,6 +29,8 @@ services:
       BUNNYCDN_STORAGE_ZONE: ${BUNNYCDN_STORAGE_ZONE:-}
       BUNNYCDN_CDN_URL: ${BUNNYCDN_CDN_URL:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://${DOMAIN:-localhost}}
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-}
+      CRON_SECRET: ${CRON_SECRET:-}
     volumes:
       - uploads:/app/uploads
     depends_on:

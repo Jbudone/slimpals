@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte } from "drizzle-orm"
+import { and, asc, desc, eq } from "drizzle-orm"
 import { type Request, type Response, Router } from "express"
 import { db } from "../db/index.js"
 import {
@@ -16,6 +16,7 @@ import {
 } from "../db/schema.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService } from "../services/ai/index.js"
 import {
 	BuildError,
@@ -31,7 +32,7 @@ import {
 import {
 	appendMemoryEvent,
 	generateContentForUser,
-	processContentBatch,
+	generateNightlyGymContent,
 } from "../services/gym/content.js"
 import {
 	computeRelationshipGain,
@@ -824,24 +825,15 @@ export function createGymRouter(aiService: AIService) {
 		res.json(result)
 	})
 
-	// Cron: generate content for all active users (protected by CRON_SECRET header)
-	router.post("/gym/cron/generate-content", async (req, res) => {
-		const cronSecret = process.env.CRON_SECRET
-		if (!cronSecret || req.headers["x-cron-secret"] !== cronSecret) {
-			res.status(401).json({ error: "Unauthorized" })
-			return
-		}
-
-		const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-		const activeGyms = await db
-			.select({ userId: userGyms.userId })
-			.from(userGyms)
-			.where(gte(userGyms.createdAt, sevenDaysAgo))
-
-		const userIds = activeGyms.map((g) => g.userId)
-		const result = await processContentBatch(userIds, aiService, db)
-		res.json({ ...result, total: userIds.length })
-	})
+	// Cron: generate content for all active users (open route, X-Cron-Secret).
+	// The in-process scheduler calls generateNightlyGymContent directly.
+	router.post(
+		"/gym/cron/generate-content",
+		requireCronSecret,
+		async (_req, res) => {
+			res.json(await generateNightlyGymContent(aiService, db))
+		},
+	)
 
 	// Internal: append a memory event for all NPCs with relationship >= 25
 	router.post("/gym/memory-event", async (req, res) => {

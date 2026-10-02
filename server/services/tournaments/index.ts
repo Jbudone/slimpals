@@ -131,10 +131,11 @@ export async function computeScore(
 	}
 }
 
+/** Returns true if this call resolved it (false: not found / already resolved). */
 export async function resolveTournament(
 	tournamentId: number,
 	aiService: AIService,
-): Promise<void> {
+): Promise<boolean> {
 	const [tournament] = await db
 		.select()
 		.from(tournaments)
@@ -142,13 +143,18 @@ export async function resolveTournament(
 			and(eq(tournaments.id, tournamentId), isNull(tournaments.resolvedAt)),
 		)
 
-	if (!tournament) return
+	if (!tournament) return false
 
-	// Mark as resolving immediately to prevent race conditions
-	await db
+	// Claim the resolution atomically: only the caller that flips resolvedAt
+	// from NULL goes on, so the scheduler, a leaderboard view and an admin
+	// force-resolve racing each other cannot pick (and badge) a winner twice.
+	const [claim] = await db
 		.update(tournaments)
 		.set({ resolvedAt: new Date() })
-		.where(eq(tournaments.id, tournamentId))
+		.where(
+			and(eq(tournaments.id, tournamentId), isNull(tournaments.resolvedAt)),
+		)
+	if (!claim.affectedRows) return false
 
 	const participants = await db
 		.select({
@@ -158,7 +164,7 @@ export async function resolveTournament(
 		.from(tournamentParticipants)
 		.where(eq(tournamentParticipants.tournamentId, tournamentId))
 
-	if (participants.length === 0) return
+	if (participants.length === 0) return true
 
 	const scores: { userId: string; score: number; joinedAt: Date }[] = []
 	for (const p of participants) {
@@ -179,7 +185,7 @@ export async function resolveTournament(
 	})
 	const winner = scores[0]
 
-	if (!winner || winner.score === 0) return
+	if (!winner || winner.score === 0) return true
 
 	const [winnerUser] = await db
 		.select({ name: users.name, coachPersonality: users.coachPersonality })
@@ -216,4 +222,35 @@ export async function resolveTournament(
 		},
 		db,
 	)
+
+	return true
+}
+
+/**
+ * Resolves every tournament whose end date has passed and that nobody has
+ * resolved yet (run by the scheduler, so results no longer wait for someone
+ * to open the leaderboard). Safe to run concurrently: resolveTournament
+ * claims each one atomically, and `resolved` counts only this call's wins.
+ */
+export async function resolveDueTournaments(
+	aiService: AIService,
+	now: Date = new Date(),
+): Promise<{ resolved: number; failed: number }> {
+	const due = await db
+		.select({ id: tournaments.id })
+		.from(tournaments)
+		.where(and(isNull(tournaments.resolvedAt), lt(tournaments.endDate, now)))
+		.orderBy(asc(tournaments.endDate))
+
+	let resolved = 0
+	let failed = 0
+	for (const { id } of due) {
+		try {
+			if (await resolveTournament(id, aiService)) resolved++
+		} catch (err) {
+			failed++
+			console.error(`[tournaments] resolve ${id} failed:`, err)
+		}
+	}
+	return { resolved, failed }
 }
