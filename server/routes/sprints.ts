@@ -3,6 +3,7 @@ import { Router } from "express"
 import { db } from "../db/index.js"
 import { sprints } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, SprintTask } from "../services/ai/index.js"
 import { awardGymXp } from "../services/gym/index.js"
 import {
@@ -106,7 +107,8 @@ export function createSprintsRouter(aiService: AIService) {
 		})
 	})
 
-	router.post("/sprints/generate", async (_req, res) => {
+	// Cron-style (open route, X-Cron-Secret); the scheduler calls the service.
+	router.post("/sprints/generate", requireCronSecret, async (_req, res) => {
 		const { generated, weekStart } = await generateSprintsForAllUsers(
 			aiService,
 			db,

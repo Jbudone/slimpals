@@ -3,6 +3,7 @@ import { Router } from "express"
 import { db } from "../db/index.js"
 import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
@@ -279,7 +280,8 @@ export function createChallengesRouter(aiService: AIService) {
 		})
 	})
 
-	router.post("/challenges/generate", async (_req, res) => {
+	// Cron-style (open route, X-Cron-Secret); the scheduler calls the service.
+	router.post("/challenges/generate", requireCronSecret, async (_req, res) => {
 		const now = new Date()
 		const month = now.getUTCMonth() + 1
 		const year = now.getUTCFullYear()

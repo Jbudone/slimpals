@@ -39,6 +39,9 @@ const stubAI: AIService = {
 	generateNpcDialogs: async () => [],
 }
 
+const CRON_SECRET = "test-cron-secret"
+process.env.CRON_SECRET = CRON_SECRET
+
 const { createApp } = await import("../../server/app.js")
 const app = createApp({ aiService: stubAI })
 
@@ -92,12 +95,12 @@ afterAll(async () => {
 
 describe("POST /api/inspiration/generate", () => {
 	it("creates a weekly_inspirations row for each user", async () => {
-		const cookieA = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
 		const _cookieB = await registerAndLogin("b@sp.test", "Bob", "INVITE-B")
 
 		const res = await request(app)
 			.post("/api/inspiration/generate")
-			.set("Cookie", cookieA)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.status).toBe(200)
 		// admin + Alice + Bob = 3 users
@@ -110,20 +113,22 @@ describe("POST /api/inspiration/generate", () => {
 	})
 
 	it("does not duplicate messages if called twice for the same week", async () => {
-		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
 
-		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		const res = await request(app)
 			.post("/api/inspiration/generate")
-			.set("Cookie", cookie)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.status).toBe(200)
 		expect(res.body.generated).toBe(0)
 	})
 
 	it("passes user stats to the AI service", async () => {
-		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
 		const db = await getTestDb()
 
 		const [alice] = await db
@@ -150,7 +155,9 @@ describe("POST /api/inspiration/generate", () => {
 			loggedAt: lastWeek,
 		})
 
-		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		const aliceCall = allInspirationCalls.find((c) => c.userName === "Alice")
 		expect(aliceCall).toBeDefined()
@@ -167,7 +174,9 @@ describe("POST /api/inspiration/generate", () => {
 			.set("Cookie", cookie)
 			.send({ coachPersonality: "roaster" })
 
-		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		// The last call should be for Alice with "roaster" personality
 		// (admin is generated first with "friendly", then Alice with "roaster")
@@ -202,7 +211,9 @@ describe("GET /api/inspiration/weekly", () => {
 		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
 
 		// Generate
-		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		// Fetch
 		const res = await request(app)
@@ -223,7 +234,9 @@ describe("GET /api/inspiration/weekly", () => {
 			.set("Cookie", cookie)
 			.send({ coachPersonality: "bro" })
 
-		await request(app).post("/api/inspiration/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		const res = await request(app)
 			.get("/api/inspiration/weekly")
@@ -239,9 +252,20 @@ describe("GET /api/inspiration/weekly", () => {
 	})
 })
 
-describe("POST /api/inspiration/generate — no auth required", () => {
-	it("succeeds without auth (cron-style endpoint)", async () => {
-		const res = await request(app).post("/api/inspiration/generate")
+describe("POST /api/inspiration/generate — cron secret, no session", () => {
+	it("succeeds with the cron secret and no session", async () => {
+		const res = await request(app)
+			.post("/api/inspiration/generate")
+			.set("x-cron-secret", CRON_SECRET)
 		expect(res.status).toBe(200)
+	})
+
+	it("rejects a request without the cron secret, even with a session", async () => {
+		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		const res = await request(app)
+			.post("/api/inspiration/generate")
+			.set("Cookie", cookie)
+		expect(res.status).toBe(401)
+		expect(allInspirationCalls).toHaveLength(0)
 	})
 })
