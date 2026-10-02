@@ -31,7 +31,12 @@ import { createTournamentsRouter } from "./routes/tournaments.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
 import { type AIService, GeminiAIService } from "./services/ai/index.js"
+import type { Scheduler } from "./services/scheduler/index.js"
+import { createAppScheduler } from "./services/scheduler/jobs.js"
 
+// Cron-style generation endpoints: no session, but each one requires the
+// X-Cron-Secret header (requireCronSecret; fails closed without CRON_SECRET).
+// Production runs these through the in-process scheduler instead.
 const OPEN_ROUTES = new Set([
 	"POST:/api/challenges/generate",
 	"POST:/api/sprints/generate",
@@ -44,8 +49,13 @@ const CLIENT_DIR =
 		? path.resolve(import.meta.dirname, "../../client")
 		: ""
 
-export function createApp(deps: { aiService?: AIService } = {}) {
+export function createApp(
+	deps: { aiService?: AIService; scheduler?: Scheduler } = {},
+) {
 	const aiService = deps.aiService ?? new GeminiAIService()
+	// Built here (no timers until start()) so the admin panel can show and
+	// trigger jobs; server/index.ts starts it when SCHEDULER_ENABLED.
+	const scheduler = deps.scheduler ?? createAppScheduler(aiService, db)
 	const app = express()
 
 	seedBadges(db).catch((err) => console.error("Badge seed failed:", err))
@@ -107,7 +117,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api/auth", toNodeHandler(auth))
 
 	// All /api/* routes beyond auth require a valid session,
-	// except cron-style generation endpoints
+	// except cron-style generation endpoints (secret-checked in their routers)
 	app.use("/api", (req, res, next) => {
 		if (OPEN_ROUTES.has(`${req.method}:${req.baseUrl}${req.path}`)) {
 			next()
@@ -135,7 +145,7 @@ export function createApp(deps: { aiService?: AIService } = {}) {
 	app.use("/api", createSprintsRouter(aiService))
 	app.use("/api", appleHealthRouter)
 	app.use("/api", createImpersonationRouter())
-	app.use("/api", createAdminRouter(aiService))
+	app.use("/api", createAdminRouter(aiService, scheduler))
 	app.use("/api", createContentTuningRouter(aiService))
 
 	if (CLIENT_DIR) {

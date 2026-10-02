@@ -50,6 +50,9 @@ const stubAI: AIService = {
 	generateNpcDialogs: async () => [],
 }
 
+const CRON_SECRET = "test-cron-secret"
+process.env.CRON_SECRET = CRON_SECRET
+
 const { createApp } = await import("../../server/app.js")
 const app = createApp({ aiService: stubAI })
 
@@ -239,11 +242,11 @@ describe("PATCH /api/sprints/:id/tasks", () => {
 
 describe("POST /api/sprints/generate", () => {
 	it("generates sprints for all users", async () => {
-		const { cookie } = await registerAndLogin()
+		await registerAndLogin()
 
 		const res = await request(app)
 			.post("/api/sprints/generate")
-			.set("Cookie", cookie)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.status).toBe(200)
 		expect(res.body.generated).toBeGreaterThanOrEqual(1)
@@ -251,13 +254,15 @@ describe("POST /api/sprints/generate", () => {
 	})
 
 	it("does not duplicate sprints for the same week", async () => {
-		const { cookie } = await registerAndLogin()
+		await registerAndLogin()
 
-		await request(app).post("/api/sprints/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/sprints/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		const res = await request(app)
 			.post("/api/sprints/generate")
-			.set("Cookie", cookie)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.body.generated).toBe(0)
 	})
@@ -265,7 +270,9 @@ describe("POST /api/sprints/generate", () => {
 	it("generated sprint appears in GET /api/sprints/current", async () => {
 		const { cookie } = await registerAndLogin()
 
-		await request(app).post("/api/sprints/generate").set("Cookie", cookie)
+		await request(app)
+			.post("/api/sprints/generate")
+			.set("x-cron-secret", CRON_SECRET)
 
 		const res = await request(app)
 			.get("/api/sprints/current")

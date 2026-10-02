@@ -12,10 +12,10 @@ For each area, trigger real generation (not synthetic/hand-written examples) and
 
 | Area | How to trigger | What to judge |
 |---|---|---|
-| Challenge | `POST /api/challenges/generate` (admin/dev account) | Does the title/theme/goals read as a coherent, achievable monthly challenge? Tone consistent with the app's supportive voice? |
-| Sprint | `POST /api/sprints/generate` | Are weekly tasks small and achievable? Tone consistent with challenges? |
+| Challenge | `POST /api/admin/challenges/generate` (admin account), or `POST /api/challenges/generate` with the `X-Cron-Secret` header | Does the title/theme/goals read as a coherent, achievable monthly challenge? Tone consistent with the app's supportive voice? |
+| Sprint | `POST /api/admin/sprints/generate` (admin account), or `POST /api/sprints/generate` with `X-Cron-Secret` | Are weekly tasks small and achievable? Tone consistent with challenges? |
 | NPC dialog | `POST /api/gym/generate-dialogs` then `POST /api/gym/npc/interact` | Does the response match the NPC's stated personality/quirks (`server/db/seed.ts`)? |
-| Tournament victory message | Create a tournament with an already-past window (admin account), seed a real score, `GET /api/tournaments/:id/leaderboard` to trigger lazy resolution | Does the tone fit the moment? Does it scale sensibly regardless of how many people actually competed? |
+| Tournament victory message | Create a tournament with an already-past window (admin account), seed a real score, `GET /api/tournaments/:id/leaderboard` (or Admin → Scheduled jobs → Resolve ended tournaments → Run now) to resolve it | Does the tone fit the moment? Does it scale sensibly regardless of how many people actually competed? |
 
 ## Section 2 — Timing-dependent UX
 

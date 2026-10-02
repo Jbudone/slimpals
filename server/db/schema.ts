@@ -622,3 +622,27 @@ export const stepRecords = mysqlTable("step_records", {
 		.default("apple_health"),
 	recordedAt: timestamp("recorded_at").notNull(),
 })
+
+/** One row per scheduled job per period (server/services/scheduler). The
+ * unique (job, period) row is the claim that keeps a restart, a double tick
+ * or a second instance from running the same month/week/day twice, and it
+ * is the last-run record the admin panel shows. `attempts` goes up on every
+ * claim, so it doubles as the compare-and-swap token for retries. */
+export const scheduledJobRuns = mysqlTable(
+	"scheduled_job_runs",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		job: varchar("job", { length: 64 }).notNull(),
+		period: varchar("period", { length: 32 }).notNull(),
+		status: mysqlEnum("status", ["running", "ok", "failed"]).notNull(),
+		attempts: int("attempts").notNull().default(1),
+		trigger: mysqlEnum("trigger", ["schedule", "manual"])
+			.notNull()
+			.default("schedule"),
+		startedAt: timestamp("started_at").notNull(),
+		finishedAt: timestamp("finished_at"),
+		result: json("result"),
+		error: text("error"),
+	},
+	(t) => [unique("scheduled_job_runs_job_period_uq").on(t.job, t.period)],
+)

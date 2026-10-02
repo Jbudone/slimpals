@@ -101,6 +101,19 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
 
+## Scheduled jobs
+No external cron: `server/index.ts` starts an in-process scheduler (`server/services/scheduler/`) that ticks
+every minute when `SCHEDULER_ENABLED` is on (unset = on only with `NODE_ENV=production`; `1`/`0` force it;
+Playwright sets `0`, Vitest never starts it). Jobs (`scheduler/jobs.ts`, all UTC): monthly challenge (1st,
+00:05), weekly sprints (Mon 00:05), weekly inspiration (Mon 00:10), nightly gym content + NPC dialog for gyms
+active in the last 7 days (00:20, `findActiveGymUserIds`), tournament auto-resolve (every 15 min). Each run is
+claimed per period in `scheduled_job_runs` (unique job+period), so restarts/double ticks never rerun a period;
+failures retry after 1h, max 3 tries. Admin → "Scheduled jobs" shows last run/next due and "Run now"
+(`GET /admin/scheduler`, `POST /admin/scheduler/:job/run`). The cron-style endpoints
+(`POST /api/challenges/generate`, `/sprints/generate`, `/inspiration/generate`, `/gym/cron/generate-content`)
+skip session auth but require `X-Cron-Secret` = `CRON_SECRET` (`server/middleware/requireCronSecret.ts`;
+unset = always 401). The scheduler calls the services directly and does not need `CRON_SECRET`.
+
 ## Admin panel
 `src/pages/Admin.svelte` — manages users and badges. Any new entity, badge, user state, or content type introduced by a feature should be considered for admin panel support. Always check during issue scoping.
 

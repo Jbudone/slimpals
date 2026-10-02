@@ -58,6 +58,9 @@ const stubAI: AIService = {
 	generateNpcDialogs: async () => [],
 }
 
+const CRON_SECRET = "test-cron-secret"
+process.env.CRON_SECRET = CRON_SECRET
+
 const { createApp } = await import("../../server/app.js")
 const app = createApp({ aiService: stubAI })
 
@@ -340,11 +343,11 @@ describe("PATCH /api/challenges/:id/progress", () => {
 
 describe("POST /api/challenges/generate", () => {
 	it("generates a challenge with goals via AI", async () => {
-		const cookie = await registerAndLogin()
+		await registerAndLogin()
 
 		const res = await request(app)
 			.post("/api/challenges/generate")
-			.set("Cookie", cookie)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.status).toBe(201)
 		expect(res.body.title).toContain("Test Challenge")
@@ -356,11 +359,11 @@ describe("POST /api/challenges/generate", () => {
 
 	it("returns 409 if challenge already exists for the month", async () => {
 		await seedChallenge()
-		const cookie = await registerAndLogin()
+		await registerAndLogin()
 
 		const res = await request(app)
 			.post("/api/challenges/generate")
-			.set("Cookie", cookie)
+			.set("x-cron-secret", CRON_SECRET)
 
 		expect(res.status).toBe(409)
 	})

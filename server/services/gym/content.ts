@@ -1,10 +1,11 @@
-import { and, desc, eq, gte } from "drizzle-orm"
+import { and, asc, desc, eq, exists, gte, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
 import {
 	badges,
 	dailyCheckins,
 	gymNpcs,
+	sessions,
 	userBadges,
 	userGymNpcRelationships,
 	userGyms,
@@ -285,6 +286,72 @@ export async function generateContentForUser(
 	}
 
 	return { dialogs: generatedDialogs, event, portraits: generatedPortraits }
+}
+
+/** How far back the nightly content job looks for signs of life. */
+export const ACTIVE_GYM_WINDOW_DAYS = 7
+
+/**
+ * Users whose gym should get fresh nightly content: anyone active in the
+ * last `days` days — opened the gym home, visited the gym, checked in or
+ * used a login session — plus gyms created in that window. (It used to be
+ * only gyms *created* in the last week, so long-time users never got any.)
+ */
+export async function findActiveGymUserIds(
+	db: Db,
+	now: Date = new Date(),
+	days: number = ACTIVE_GYM_WINDOW_DAYS,
+): Promise<string[]> {
+	const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+	const rows = await db
+		.select({ userId: userGyms.userId })
+		.from(userGyms)
+		.where(
+			or(
+				gte(userGyms.createdAt, since),
+				gte(userGyms.lastOpenAt, since),
+				gte(userGyms.lastGymVisitDate, since),
+				exists(
+					db
+						.select({ one: sql`1` })
+						.from(dailyCheckins)
+						.where(
+							and(
+								eq(dailyCheckins.userId, userGyms.userId),
+								gte(dailyCheckins.date, since),
+							),
+						),
+				),
+				exists(
+					db
+						.select({ one: sql`1` })
+						.from(sessions)
+						.where(
+							and(
+								eq(sessions.userId, userGyms.userId),
+								gte(sessions.updatedAt, since),
+							),
+						),
+				),
+			),
+		)
+		.orderBy(asc(userGyms.id))
+	return rows.map((r) => r.userId)
+}
+
+/**
+ * The nightly gym job: dialog batches, today's event and stage portraits for
+ * every active gym. Dialog batches skip NPCs that still have an unexpired
+ * batch; the scheduler runs this once per UTC day (scheduled_job_runs).
+ */
+export async function generateNightlyGymContent(
+	aiService: AIService,
+	db: Db,
+	now: Date = new Date(),
+): Promise<{ processed: number; skipped: number; total: number }> {
+	const userIds = await findActiveGymUserIds(db, now)
+	const result = await processContentBatch(userIds, aiService, db)
+	return { ...result, total: userIds.length }
 }
 
 export async function processContentBatch(

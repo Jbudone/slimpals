@@ -53,6 +53,8 @@ import {
 import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
 import { resetGymLayout } from "../services/gym/layout3dStore.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
+import type { Scheduler } from "../services/scheduler/index.js"
+import { isSchedulerEnabled } from "../services/scheduler/schedule.js"
 import {
 	generateSprintForUser,
 	generateSprintsForAllUsers,
@@ -111,9 +113,32 @@ function getMondayOfWeek(d: Date = new Date()): Date {
 	return date
 }
 
-export function createAdminRouter(aiService: AIService) {
+export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 	const adminRouter = Router()
 	adminRouter.use(requireAdmin)
+
+	// Scheduled jobs (gh-122): last run + next due per job, and "Run now".
+	adminRouter.get("/admin/scheduler", async (_req, res) => {
+		res.json({
+			enabled: isSchedulerEnabled(),
+			running: scheduler.running,
+			jobs: await scheduler.status(),
+		})
+	})
+
+	adminRouter.post("/admin/scheduler/:job/run", async (req, res) => {
+		const key = String(req.params.job)
+		if (!scheduler.jobs.some((j) => j.key === key)) {
+			res.status(404).json({ error: "Unknown job" })
+			return
+		}
+		const run = await scheduler.runNow(key)
+		if (run.status === "busy") {
+			res.status(409).json({ error: "That job is already running" })
+			return
+		}
+		res.json(run)
+	})
 
 	adminRouter.get("/admin/users", async (_req, res) => {
 		const rows = await db

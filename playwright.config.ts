@@ -26,6 +26,8 @@ export default defineConfig({
 		reuseExistingServer: false,
 		env: {
 			DEV_AUTOLOGIN_EMAIL: "",
+			// Never let the in-process scheduler generate content mid-run.
+			SCHEDULER_ENABLED: "0",
 		},
 	},
 	projects: [
