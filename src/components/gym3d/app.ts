@@ -69,7 +69,7 @@ import { GymWorld, type PickInfo } from "./world/world"
 
 export const POLL_INTERVAL = 30000
 /** Seconds the tap chip stays open on its own. */
-export const CHIP_TTL = 12
+export const CHIP_TTL = 15
 
 /** What the tap chip shows about a person. */
 export type PersonInfo = {

@@ -34,6 +34,9 @@ type Slot = {
 	until: number
 	/** Bursting (tapped) or fading out (expired). */
 	ending: "pop" | "fade" | null
+	/** When (performance.now ms) a pop or fade is over: wall time, so a
+	 * slow frame rate does not leave a burst bubble hanging. */
+	endAt: number
 	player: boolean
 	anim: Animation | null
 	pt: T.Vector3
@@ -76,6 +79,7 @@ export class Bubbles {
 				p: null,
 				until: 0,
 				ending: null,
+				endAt: 0,
 				player: false,
 				anim: null,
 				pt,
@@ -161,7 +165,7 @@ export class Bubbles {
 		if (!s.p || s.ending === "pop") return
 		this.stopAnim(s)
 		s.ending = "pop"
-		s.until = this.now + POP_S
+		s.endAt = performance.now() + POP_S * 1000
 		s.anim = s.L.el.animate?.(
 			this.calm
 				? [{ opacity: 1 }, { opacity: 0 }]
@@ -209,12 +213,16 @@ export class Bubbles {
 		for (const s of this.slots) {
 			const p = s.p
 			if (!p) continue
-			if (now > s.until || (p.leaving && s.ending !== "pop")) {
-				if (s.ending || p.leaving) this.release(s)
+			if (s.ending) {
+				if (performance.now() > s.endAt) this.release(s)
+				continue
+			}
+			if (now > s.until || p.leaving) {
+				if (p.leaving) this.release(s)
 				else {
 					// time is up: fade out, then let the slot go
 					s.ending = "fade"
-					s.until = now + FADE_S
+					s.endAt = performance.now() + FADE_S * 1000
 					s.anim = s.L.el.animate?.([{ opacity: 1 }, { opacity: 0 }], {
 						duration: FADE_S * 1000,
 						fill: "forwards",

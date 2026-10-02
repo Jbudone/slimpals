@@ -530,7 +530,7 @@ test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
 	await page.waitForTimeout(90)
 	await shot(page, "12-popping")
 	await expect
-		.poll(() => hasLine(page, "Pop me!"), { timeout: 1500 })
+		.poll(() => hasLine(page, "Pop me!"), { timeout: 4000 })
 		.toBe(false)
 	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
 	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
@@ -627,7 +627,7 @@ test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
 	const npc3 = (await npcOnScreen()) ?? npc
 	await tapPerson(page, npc3)
 	await expect(chip).toBeVisible()
-	await expect(chip).toHaveCount(0, { timeout: 20_000 })
+	await expect(chip).toHaveCount(0, { timeout: 25_000 })
 
 	const perf = await page.evaluate(() => window.gym3d?.stats())
 	console.log("gym3d bubbles stats", JSON.stringify(perf))

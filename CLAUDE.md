@@ -83,12 +83,19 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   entrance, `eventActive` from sim-state), active classes (a synced group in the class's room) and hero tags.
   Upgrade claims play in place (`Gym3DApp.claimCeremony`, no remount); lines in `shared/gym3d/celebrations.ts`.
   Admin sets a test event with `POST /admin/users/:id/gym/today-event`.
+- Bubbles: every overlay over the canvas (tap chip, timer/claim cards, coin bubbles, speech + ambient lines) is a
+  managed label in `world/labels.ts`, placed each frame by `world/bubbleLayout.ts` (pure, unit-tested): priority
+  chip > timers > coins > player-caused lines > NPC lines > ambient, no overlap (slide up/aside or hide), clamped
+  between `setInsets` top/bottom, capped (2 lines on a phone). Input listens on the gym host: a drag that starts on
+  a bubble pans, only a short tap reaches it. Tapping a line pops it; the tap chip is a stat card (Role, Mood,
+  Doing, Bond; never body weight) closing on a tap outside, a pan or after `CHIP_TTL`.
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
   screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey),
-  coinsWaiting(), coinBubbles(), collectAll(), kitchen() }`;
+  coinsWaiting(), coinBubbles(), collectAll(), kitchen(), bubbles(), say(key, text) }`;
   `stats()` gives rooms, pieces, people, drawCalls, geometries, textures, quality, fps, lots, pads, jobs, coins,
   sweat, greens, bubbles, says, event, classes, classPeople, heroes. It is cleared on unmount.
-  `e2e/gym3d-life.spec.ts` covers events, classes, the chip, bubbles, the lineup and the claim ceremony;
+  `e2e/gym3d-life.spec.ts` covers events, classes, the chip, bubbles (no overlap, tap to pop, pan
+  from a bubble, the chip closing), the lineup and the claim ceremony;
   `e2e/gym3d-home.spec.ts` the HUD, drawer ticks, coin bubbles, Welcome back, the kitchen and the tabs.
   `e2e/gym3d-build.spec.ts` buys, finishes, types, moves and upgrades (`GYM3D_SHOTS=<dir>` saves screenshots).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
