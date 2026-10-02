@@ -1,9 +1,11 @@
 // Life in the 3D gym: short speech bubbles over people's heads. A few pooled
-// DOM bubbles (never more than POOL at a time) are moved with a transform
-// each frame and measured once per line, so they cost no layout per frame.
-// A scheduler picks who talks: named NPCs mostly (lines from the server's
-// dialog data, their cast lines, their role), the crowd now and then, and
-// two NPCs near each other (or chatting in the sim) exchange a line.
+// DOM bubbles (never more than POOL at a time) live in the label layer, which
+// places them with the other bubbles (no overlap, on screen, capped); each is
+// measured once per line, so they cost no layout per frame. Tapping a bubble
+// pops it; lines also expire. A scheduler picks who talks: named NPCs mostly
+// (lines from the server's dialog data, their cast lines, their role), the
+// crowd now and then (ambient lines, drawn as thoughts), and two NPCs near
+// each other (or chatting in the sim) exchange a line.
 import * as T from "three"
 import {
 	firstName,
@@ -14,68 +16,93 @@ import {
 	relationOf,
 } from "../../../../shared/gym3d/npcLines"
 import { CAST } from "../people/cast"
+import { PLAYER_BOOST } from "./bubbleLayout"
+import type { Label, LabelLayer } from "./labels"
 import type { NpcLines, SimNpc } from "./loadLayout"
 import type { Person } from "./types"
 
 const POOL = 3
+/** Seconds a popped bubble takes to burst, and an expiring one to fade. */
+const POP_S = 0.22
+const FADE_S = 0.25
 
 type Slot = {
-	el: HTMLDivElement
+	L: Label
 	who: HTMLElement
 	text: HTMLElement
 	p: Person | null
 	until: number
-	w: number
-	h: number
-	sx: number
-	sy: number
-	vis: boolean
+	/** Bursting (tapped) or fading out (expired). */
+	ending: "pop" | "fade" | null
+	player: boolean
+	anim: Animation | null
+	pt: T.Vector3
 }
 
 export class Bubbles {
 	private slots: Slot[] = []
-	private pt = new T.Vector3()
-	/** Screen space kept free at the top (HUD). */
-	top = 0
+	/** Seconds now (the caller's clock), for taps between frames. */
+	private now = 0
 
-	constructor(root: HTMLElement) {
+	constructor(
+		private layer: LabelLayer,
+		private calm = false,
+	) {
 		for (let i = 0; i < POOL; i++) {
 			const el = document.createElement("div")
 			el.className = "g3d-say"
 			el.setAttribute("role", "status")
-			el.style.cssText =
-				"position:absolute;left:0;top:0;visibility:hidden;will-change:transform"
+			el.dataset.testid = "gym3d-say"
 			const who = document.createElement("b")
 			const text = document.createElement("span")
 			el.append(who, text)
-			root.appendChild(el)
-			this.slots.push({
+			const pt = new T.Vector3()
+			const slot = {} as Slot
+			const L = layer.add(
 				el,
+				() => {
+					const p = slot.p
+					if (!p) return null
+					const r = p.rig.root.position
+					return pt.set(r.x, r.y + 1.72, r.z)
+				},
+				{ bubble: "speech", tail: 7 },
+			)
+			L.off = true
+			Object.assign(slot, {
+				L,
 				who,
 				text,
 				p: null,
 				until: 0,
-				w: 0,
-				h: 0,
-				sx: Number.NaN,
-				sy: Number.NaN,
-				vis: false,
+				ending: null,
+				player: false,
+				anim: null,
+				pt,
 			})
+			// a short tap pops it (a drag that starts here pans: app.ts)
+			el.addEventListener("click", (e) => {
+				e.stopPropagation()
+				this.pop(slot)
+			})
+			this.slots.push(slot)
 		}
 	}
 
 	get active(): number {
 		let n = 0
-		for (const s of this.slots) if (s.p) n++
+		for (const s of this.slots) if (s.p && !s.ending) n++
 		return n
 	}
 
 	speaking(p: Person): boolean {
-		return this.slots.some((s) => s.p === p)
+		return this.slots.some((s) => s.p === p && !s.ending)
 	}
 
-	/** Shows `text` over `p` for `dur` seconds. Takes the oldest bubble when
-	 * all are busy and `force` is set; else returns false. */
+	/** Shows `text` over `p` for `dur` seconds. When all bubbles are busy and
+	 * `force` is set, takes the oldest (an ambient one before a line the
+	 * player caused); else returns false. `player`: the player caused it
+	 * (outranks ambient chatter on screen). */
 	say(
 		p: Person,
 		text: string,
@@ -83,22 +110,43 @@ export class Bubbles {
 		now: number,
 		dur = 3.6,
 		force = false,
+		player = false,
 	): boolean {
-		let s = this.slots.find((q) => q.p === p) ?? this.slots.find((q) => !q.p)
-		if (!s && force)
-			s = this.slots.reduce((a, b) => (a.until < b.until ? a : b))
+		this.now = now
+		let s =
+			this.slots.find((q) => q.p === p) ??
+			this.slots.find((q) => !q.p) ??
+			this.slots.find((q) => q.ending)
+		if (!s && force) {
+			const pool = player
+				? this.slots
+				: this.slots.filter((q) => !q.player).length
+					? this.slots.filter((q) => !q.player)
+					: this.slots
+			s = pool.reduce((a, b) => (a.until < b.until ? a : b))
+		}
 		if (!s) return false
+		this.stopAnim(s)
 		s.p = p
 		s.until = now + dur
+		s.ending = null
+		s.player = player
 		s.who.textContent = name ?? ""
 		s.who.style.display = name ? "" : "none"
 		s.text.textContent = text
-		s.el.classList.toggle("npc", !!name)
-		// one measure per line (not per frame)
-		s.w = s.el.offsetWidth
-		s.h = s.el.offsetHeight
-		s.sx = Number.NaN
-		s.el.animate?.(
+		const L = s.L
+		// named people (and anyone cheering the player) speak; the crowd's
+		// own chatter reads as thoughts
+		L.bubble = name || player ? "speech" : "ambient"
+		L.boost = player ? PLAYER_BOOST : 0
+		L.el.classList.toggle("npc", !!name)
+		L.el.classList.toggle("amb", L.bubble === "ambient")
+		L.el.dataset.kind = L.bubble
+		L.off = false
+		L.ox = 0
+		L.oy = 0
+		this.layer.remeasure(L)
+		s.anim = L.el.animate?.(
 			[
 				{ opacity: 0, translate: "0 6px" },
 				{ opacity: 1, translate: "0 0" },
@@ -108,68 +156,79 @@ export class Bubbles {
 		return true
 	}
 
+	/** Bursts a bubble (tapped). */
+	private pop(s: Slot): void {
+		if (!s.p || s.ending === "pop") return
+		this.stopAnim(s)
+		s.ending = "pop"
+		s.until = this.now + POP_S
+		s.anim = s.L.el.animate?.(
+			this.calm
+				? [{ opacity: 1 }, { opacity: 0 }]
+				: [
+						{ opacity: 1, scale: "1" },
+						{ opacity: 1, scale: "1.18", offset: 0.35 },
+						{ opacity: 0, scale: "0.4" },
+					],
+			{ duration: POP_S * 1000, easing: "ease-out", fill: "forwards" },
+		)
+	}
+
+	/** Pops the bubble over a person (tests, tooling). */
+	popOf(p: Person): boolean {
+		const s = this.slots.find((q) => q.p === p && !q.ending)
+		if (!s) return false
+		this.pop(s)
+		return true
+	}
+
 	/** Drops bubbles of people that are gone. */
 	forget(p: Person): void {
-		for (const s of this.slots) if (s.p === p) this.hide(s)
+		for (const s of this.slots) if (s.p === p) this.release(s)
 	}
 
-	private hide(s: Slot): void {
+	private stopAnim(s: Slot): void {
+		s.anim?.cancel()
+		s.anim = null
+	}
+
+	private release(s: Slot): void {
+		this.stopAnim(s)
 		s.p = null
-		if (s.vis) {
-			s.el.style.visibility = "hidden"
-			s.vis = false
-		}
+		s.ending = null
+		s.player = false
+		s.L.off = true
+		s.L.el.style.visibility = "hidden"
+		s.L.vis = false
 	}
 
-	frame(
-		now: number,
-		toScreen: (v: T.Vector3) => { x: number; y: number },
-		w: number,
-		h: number,
-		/** Screen boxes kept clear (timer cards): a bubble there waits. */
-		blocked?: (x0: number, y0: number, x1: number, y1: number) => boolean,
-	): void {
+	/** Ends lines whose time is up (a short fade) and bubbles of people
+	 * leaving. The label layer places what is left. */
+	frame(now: number): void {
+		this.now = now
 		for (const s of this.slots) {
 			const p = s.p
 			if (!p) continue
-			if (now > s.until || p.leaving) {
-				this.hide(s)
-				continue
-			}
-			const r = p.rig.root.position
-			const sp = toScreen(this.pt.set(r.x, r.y + 1.72, r.z))
-			const on = sp.x > -40 && sp.x < w + 40 && sp.y > 0 && sp.y < h + 60
-			if (!on) {
-				if (s.vis) {
-					s.el.style.visibility = "hidden"
-					s.vis = false
+			if (now > s.until || (p.leaving && s.ending !== "pop")) {
+				if (s.ending || p.leaving) this.release(s)
+				else {
+					// time is up: fade out, then let the slot go
+					s.ending = "fade"
+					s.until = now + FADE_S
+					s.anim = s.L.el.animate?.([{ opacity: 1 }, { opacity: 0 }], {
+						duration: FADE_S * 1000,
+						fill: "forwards",
+					})
 				}
-				continue
-			}
-			const hw = s.w / 2
-			const x = Math.round(Math.min(Math.max(sp.x, hw + 6), w - hw - 6))
-			const y = Math.round(Math.max(sp.y, this.top + s.h + 4))
-			if (blocked?.(x - hw, y - s.h, x + hw, y)) {
-				if (s.vis) {
-					s.el.style.visibility = "hidden"
-					s.vis = false
-				}
-				continue
-			}
-			if (x !== s.sx || y !== s.sy) {
-				s.el.style.transform = `translate3d(${x - hw}px,${y - s.h}px,0)`
-				s.sx = x
-				s.sy = y
-			}
-			if (!s.vis) {
-				s.el.style.visibility = ""
-				s.vis = true
 			}
 		}
 	}
 
 	dispose(): void {
-		for (const s of this.slots) s.el.remove()
+		for (const s of this.slots) {
+			this.stopAnim(s)
+			this.layer.remove(s.L)
+		}
 		this.slots = []
 	}
 }
@@ -210,9 +269,10 @@ export class Life {
 		}
 	}
 
-	/** A line now (celebrations): skips the queue, takes a bubble. */
+	/** A line the player caused (a ticked task, a claim): skips the queue,
+	 * takes a bubble and outranks chatter on screen. */
 	sayNow(p: Person, text: string, now: number, dur = 4.2): void {
-		this.bubbles.say(p, text, this.nameOf(p), now, dur, true)
+		this.bubbles.say(p, text, this.nameOf(p), now, dur, true, true)
 	}
 
 	private nameOf(p: Person): string | null {

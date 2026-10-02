@@ -68,6 +68,8 @@ import type { Person, Piece } from "./world/types"
 import { GymWorld, type PickInfo } from "./world/world"
 
 export const POLL_INTERVAL = 30000
+/** Seconds the tap chip stays open on its own. */
+export const CHIP_TTL = 12
 
 /** What the tap chip shows about a person. */
 export type PersonInfo = {
@@ -79,6 +81,8 @@ export type PersonInfo = {
 	doing: string | null
 	/** "Gym Buddy · 55" (named NPCs). */
 	relation: string | null
+	/** Relationship level 0..100 (named NPCs), for the bar. */
+	bond: number | null
 	hero: boolean
 }
 
@@ -231,20 +235,32 @@ export class Gym3DApp {
 	private frameN = 0
 	private disposed = false
 	private sel: Selection | null = null
-	private chip: HTMLElement | null = null
-	private chipPt = { x: 0, y: 0 }
-	private chipW = 0
-	private chipH = 0
+	/** The tap chip (a Svelte node), placed with the other bubbles. */
+	private chipL: Label | null = null
+	/** When (performance.now ms; wall time, not the frame clock) the tap
+	 * chip closes by itself. */
+	private chipUntil = 0
+	/** A drag that started on a bubble ended: swallow its click. */
+	private noClickUntil = 0
 	private ray = new T.Raycaster()
 	private ndc = new T.Vector2()
 	private pointers = new Map<
 		number,
-		{ x: number; y: number; x0: number; y0: number; t0: number }
+		{
+			x: number
+			y: number
+			x0: number
+			y0: number
+			t0: number
+			/** Started on the canvas (not on a bubble). */
+			canvas: boolean
+			panning: boolean
+		}
 	>()
 	private pinch0 = 0
 	private zoom0 = 1
 	private bounds = { x0: 0, x1: 27, z0: 0, z1: 21 }
-	private listeners: [EventTarget, string, EventListener][] = []
+	private listeners: [EventTarget, string, EventListener, boolean][] = []
 	private build: BuildLayer
 	private badges: Label[] = []
 	private bubbles = new Map<number, Bubble>()
@@ -366,18 +382,18 @@ export class Gym3DApp {
 		}
 		this.people.cap = ambientCap(this.r.lvl)
 		this.people.seedMembers()
-		this.says = new Bubbles(this.labels.root)
-		this.people.onRemove = (p) => this.says.forget(p)
 		const calm =
 			typeof window !== "undefined" &&
 			!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+		this.says = new Bubbles(this.labels, calm)
+		this.people.onRemove = (p) => this.says.forget(p)
 		this.life = new Life(
 			this.says,
 			() => this.people.people,
 			mulberry32((Date.now() & 0xffff) + 7),
 			calm,
 		)
-		this.bindInput()
+		this.bindInput(host)
 		this.r.start((dt) => this.frame(dt))
 		this.pollTimer = setInterval(() => {
 			void this.pollSim(false).catch(() => {})
@@ -531,18 +547,12 @@ export class Gym3DApp {
 		if (this.claiming) this.claimTick(dt)
 		this.hap.frame(dt)
 		this.life.tick(dt, this.clock)
+		this.says.frame(this.clock)
+		// the tap chip closes by itself after a while
+		if (this.sel?.kind === "person" && performance.now() > this.chipUntil)
+			this.select(null)
 		this.r.render(this.world.scene)
 		this.labels.update(this.r)
-		const { w, h } = this.r.size
-		this.says.top = this.labels.insets.top
-		this.says.frame(
-			this.clock,
-			(v) => this.r.toScreen(v, _s),
-			w,
-			h,
-			(x0, y0, x1, y1) => this.labels.coversBox(x0, y0, x1, y1),
-		)
-		this.placeChip()
 	}
 
 	// ── layout changes ─────────────────────────────────────────────────────
@@ -703,7 +713,11 @@ export class Gym3DApp {
 				e.stopPropagation()
 				this.opts.onJobAction?.(id, "sweat", 1)
 			})
-			const L = this.labels.add(el, () => v, { clamp: true })
+			const L = this.labels.add(el, () => v, {
+				bubble: "timer",
+				edge: true,
+				tail: 10,
+			})
 			this.bubbles.set(j.id, {
 				L,
 				job: j,
@@ -810,8 +824,7 @@ export class Gym3DApp {
 				e.stopPropagation()
 				this.collect([k])
 			})
-			const L = this.labels.add(el, () => v)
-			el.style.pointerEvents = "auto"
+			const L = this.labels.add(el, () => v, { bubble: "coin", tail: 6 })
 			this.coinBubs.set(k, { L, kind, srcs, at, v, n, shown: -1, full: false })
 		}
 		this.updateCoins(this.now())
@@ -821,9 +834,12 @@ export class Gym3DApp {
 		for (const b of this.coinBubs.values()) {
 			const { bank, cap } = this.coinSum(b, now)
 			if (bank === b.shown) continue
+			// one more digit: measure again for the layout
+			if (String(bank).length !== String(b.shown).length)
+				this.labels.remeasure(b.L)
 			b.shown = bank
 			b.n.textContent = String(bank)
-			b.L.el.style.display = bank >= 1 ? "" : "none"
+			b.L.off = bank < 1
 			const full = bank >= cap
 			if (full !== b.full) {
 				b.full = full
@@ -993,7 +1009,13 @@ export class Gym3DApp {
 		pb.appendChild(bar)
 		el.append(t, pb)
 		const a = new T.Vector3(x, piece?.kind === "decor" ? 1.8 : 2.3, z)
-		const L = this.labels.add(el, () => a, { clamp: true })
+		// the player is watching this one: above timers and coins
+		const L = this.labels.add(el, () => a, {
+			bubble: "timer",
+			boost: 25,
+			edge: true,
+			tail: 10,
+		})
 		this.life.paused = true
 		this.claiming = { key, piece, x, z, size, k: 0, L, bar, crate: null, done }
 	}
@@ -1090,7 +1112,6 @@ export class Gym3DApp {
 	/** Screen space the HUD (top) and an open sheet (bottom) cover. */
 	setInsets(top: number, bottom: number): void {
 		this.labels.insets = { top, bottom }
-		for (const b of this.bubbles.values()) this.labels.remeasure(b.L)
 	}
 
 	// ── moving pieces ─────────────────────────────────────────────────────
@@ -1237,42 +1258,32 @@ export class Gym3DApp {
 	// ── selection / name chip ───────────────────────────────────────────────
 
 	setChipElement(el: HTMLElement | null): void {
-		this.chip = el
-		this.chipW = 0
-		this.placeChip()
+		if (this.chipL?.el === el) return
+		this.labels.remove(this.chipL)
+		this.chipL = null
+		if (!el || this.disposed) return
+		const v = new T.Vector3()
+		this.chipL = this.labels.add(
+			el,
+			() => {
+				const a = this.sel && this.anchorOf(this.sel)
+				return a ? v.copy(a) : null
+			},
+			{ bubble: "info", edge: true, tail: 8, adopt: false },
+		)
 	}
 
 	private anchorOf(s: Selection): T.Vector3 | null {
 		if (s.kind === "person") {
 			const p = this.people.find(s.key)
+			// just over the head: the card must not hide who it is about
 			return p
-				? _a.copy(p.rig.root.position).setY(p.rig.root.position.y + 1.45)
+				? _a.copy(p.rig.root.position).setY(p.rig.root.position.y + 1.8)
 				: null
 		}
 		if (s.kind !== "piece") return null
 		const pc = this.world.pieces.find((q) => q.id === s.id)
 		return pc ? _a.set(pc.x, pc.kind === "decor" ? 1.5 : 2.2, pc.z) : null
-	}
-
-	private placeChip(): void {
-		const el = this.chip
-		if (!el || !this.sel) return
-		const a = this.anchorOf(this.sel)
-		if (!a) return
-		const p = this.r.toScreen(a, this.chipPt)
-		const { w, h } = this.r.size
-		// measured once per selection (the chip's text changes with it)
-		if (!this.chipW) {
-			this.chipW = el.offsetWidth || 140
-			this.chipH = el.offsetHeight || 40
-		}
-		const hw = this.chipW / 2 + 6
-		const x = Math.min(Math.max(p.x, hw), w - hw)
-		const y = Math.min(
-			Math.max(p.y, this.labels.insets.top + this.chipH + 12),
-			h - 8,
-		)
-		el.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0) translate(-50%,-100%)`
 	}
 
 	/** Drops the selection when its person has left. */
@@ -1341,14 +1352,19 @@ export class Gym3DApp {
 				p.npcKey && lvl != null
 					? `${getStageLabel(getRelationshipStage(lvl))} · ${lvl}`
 					: null,
+			bond: p.npcKey && lvl != null ? Math.max(0, Math.min(100, lvl)) : null,
 			hero: !!sim?.isHeroVisit,
 		}
 	}
 
 	/** Sets the selection (the UI closes a sheet with null). */
 	select(s: Selection | null): void {
+		const prev = this.sel
 		this.sel = s
-		this.chipW = 0
+		if (s?.kind === "person" && (prev?.kind !== "person" || prev.key !== s.key))
+			this.chipUntil = performance.now() + CHIP_TTL * 1000
+		// the chip's text changes with the selection
+		if (this.chipL) this.labels.remeasure(this.chipL)
 		this.opts.onSelect(s)
 	}
 
@@ -1493,6 +1509,13 @@ export class Gym3DApp {
 			return null
 		}
 		const s = this.pickAt(x, y)
+		// an open tap chip: a tap elsewhere closes it (and does nothing
+		// else); a tap on another person shows theirs
+		if (this.sel?.kind === "person") {
+			const next = s?.kind === "person" && s.key !== this.sel.key ? s : null
+			this.select(next)
+			return next
+		}
 		this.select(s)
 		return s
 	}
@@ -1646,6 +1669,33 @@ export class Gym3DApp {
 		return { ...this.r.toScreen(_a, { x: 0, y: 0 }) }
 	}
 
+	/** Bubbles on screen now (tests): kind and box in CSS px inside the host. */
+	shownBubbles(): {
+		kind: string
+		x: number
+		y: number
+		w: number
+		h: number
+		text: string
+	}[] {
+		return this.labels.shown().map((b) => ({
+			kind: b.kind,
+			x: b.x,
+			y: b.y,
+			w: b.w,
+			h: b.h,
+			text: (b.el.textContent ?? "").trim().slice(0, 60),
+		}))
+	}
+
+	/** A line over a person as if the player caused it (tests, tooling). */
+	sayTo(key: string, text: string): boolean {
+		const p = this.people.find(key)
+		if (!p) return false
+		this.life.sayNow(p, text, this.clock, 6)
+		return true
+	}
+
 	personKeys(): string[] {
 		return this.people.people.map((p) => p.key)
 	}
@@ -1659,10 +1709,21 @@ export class Gym3DApp {
 		opt?: AddEventListenerOptions,
 	): void {
 		t.addEventListener(type, fn, opt)
-		this.listeners.push([t, type, fn])
+		this.listeners.push([t, type, fn, !!opt?.capture])
 	}
 
-	private bindInput(): void {
+	/** Input lands on the canvas or on a bubble over it (speech, coins,
+	 * timer cards, the tap chip); sheets, banners and buttons of the UI
+	 * keep their own. */
+	private overWorld(t: EventTarget | null, canvas: HTMLElement): boolean {
+		if (t === canvas) return true
+		if (!(t instanceof Node)) return false
+		return this.labels.root.contains(t) || !!this.chipL?.el.contains(t as Node)
+	}
+
+	/** Listens on the host, so a press that starts on a bubble still pans
+	 * the camera: only a short tap there reaches the bubble (its click). */
+	private bindInput(host: HTMLElement): void {
 		const el = this.r.renderer.domElement
 		const local = (ev: PointerEvent) => {
 			const b = el.getBoundingClientRect()
@@ -1672,8 +1733,13 @@ export class Gym3DApp {
 			if (this.press?.timer) clearTimeout(this.press.timer)
 			this.press = null
 		}
-		this.on(el, "pointerdown", (e) => {
+		this.on(host, "pointerdown", (e) => {
 			const ev = e as PointerEvent
+			if (!this.overWorld(ev.target, el)) return
+			const onCanvas = ev.target === el
+			// a hand on the tap chip keeps it open a while longer
+			if (this.chipL?.el.contains(ev.target as Node))
+				this.chipUntil = performance.now() + CHIP_TTL * 1000
 			const { x, y } = local(ev)
 			this.pointers.set(ev.pointerId, {
 				x,
@@ -1681,17 +1747,22 @@ export class Gym3DApp {
 				x0: x,
 				y0: y,
 				t0: performance.now(),
+				canvas: onCanvas,
+				panning: false,
 			})
-			el.setPointerCapture?.(ev.pointerId)
+			// on a bubble, capture only once it turns into a drag: a capture
+			// now would send the tap's click to the host, not the bubble
+			if (onCanvas) el.setPointerCapture?.(ev.pointerId)
 			if (this.pointers.size === 2) {
 				const [a, c] = [...this.pointers.values()]
 				this.pinch0 = Math.hypot(a.x - c.x, a.y - c.y)
 				this.zoom0 = this.r.zoom
 				cancelPress()
 				if (this.drag) this.endMove()
+				this.closeChip()
 				return
 			}
-			if (this.pointers.size > 1) return
+			if (this.pointers.size > 1 || !onCanvas) return
 			// a press on movable gear: drag it when it is already selected (or
 			// being moved), or after a short hold; a quick swipe still pans
 			const s = this.pickAt(x, y)
@@ -1717,7 +1788,7 @@ export class Gym3DApp {
 			}, 380)
 			this.press = press
 		})
-		this.on(el, "pointermove", (e) => {
+		this.on(host, "pointermove", (e) => {
 			const ev = e as PointerEvent
 			const pt = this.pointers.get(ev.pointerId)
 			if (!pt) return
@@ -1745,42 +1816,68 @@ export class Gym3DApp {
 					return
 				}
 			}
-			if (Math.hypot(x - pt.x0, y - pt.y0) > 6) this.pan(dx, dy)
+			if (Math.hypot(x - pt.x0, y - pt.y0) > 6) {
+				if (!pt.panning) {
+					pt.panning = true
+					// a drag from a bubble: the canvas takes the pointer over
+					if (!pt.canvas) el.setPointerCapture?.(ev.pointerId)
+					// panning away closes the tap chip
+					this.closeChip()
+				}
+				this.pan(dx, dy)
+			}
 		})
 		const up = (e: Event) => {
 			const ev = e as PointerEvent
 			const pt = this.pointers.get(ev.pointerId)
+			if (!pt) return
 			this.pointers.delete(ev.pointerId)
 			if (this.pointers.size < 2) this.pinch0 = 0
-			const wasPress = this.press
 			cancelPress()
 			if (this.drag) {
 				if (ev.type === "pointercancel") this.endMove()
 				else this.dragDrop()
 				return
 			}
-			if (!pt || ev.type === "pointercancel") return
+			if (ev.type === "pointercancel") return
 			const moved = Math.hypot(pt.x - pt.x0, pt.y - pt.y0)
-			if (
-				moved < 8 &&
-				performance.now() - pt.t0 < 600 &&
-				this.pointers.size === 0
-			)
-				this.tapAt(pt.x, pt.y)
-			void wasPress
+			const tap =
+				moved < 8 && performance.now() - pt.t0 < 600 && this.pointers.size === 0
+			// a drag that began on a bubble must not also tap it
+			if (!pt.canvas && (pt.panning || !tap))
+				this.noClickUntil = performance.now() + 400
+			// a short tap on a bubble is its own (its click handler)
+			if (tap && pt.canvas) this.tapAt(pt.x, pt.y)
 		}
-		this.on(el, "pointerup", up)
-		this.on(el, "pointercancel", up)
+		this.on(host, "pointerup", up)
+		this.on(host, "pointercancel", up)
 		this.on(
-			el,
+			host,
+			"click",
+			(e) => {
+				if (performance.now() > this.noClickUntil) return
+				if (!this.overWorld(e.target, el)) return
+				e.stopPropagation()
+				e.preventDefault()
+			},
+			{ capture: true },
+		)
+		this.on(
+			host,
 			"wheel",
 			(e) => {
 				const ev = e as WheelEvent
+				if (!this.overWorld(ev.target, el)) return
 				ev.preventDefault()
 				this.setZoom(this.r.zoom * (ev.deltaY > 0 ? 0.9 : 1.1))
 			},
 			{ passive: false },
 		)
+	}
+
+	/** Closes the tap chip (a pan, a pinch). */
+	private closeChip(): void {
+		if (this.sel?.kind === "person") this.select(null)
 	}
 
 	private setZoom(z: number): void {
@@ -1843,10 +1940,11 @@ export class Gym3DApp {
 		this.press = null
 		this.claiming = null
 		this.lineupSet = null
-		for (const [t, type, fn] of this.listeners) t.removeEventListener(type, fn)
+		for (const [t, type, fn, capture] of this.listeners)
+			t.removeEventListener(type, fn, capture)
 		this.listeners = []
 		this.pointers.clear()
-		this.chip = null
+		this.chipL = null
 		this.r.dispose()
 		bindWorld(this.world.ctx)
 		this.life.clear()
@@ -1884,7 +1982,6 @@ function moodText(m: number): string {
 	return `${i.emoji} ${i.word}`
 }
 
-const _s = { x: 0, y: 0 }
 const _v = new T.Vector3()
 const _a = new T.Vector3()
 const _f = new T.Vector3()

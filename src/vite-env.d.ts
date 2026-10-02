@@ -42,6 +42,17 @@ declare global {
 			collectAll(): void
 			/** Screen point of the Slim Kitchen kiosk. */
 			kitchen(): { x: number; y: number }
+			/** Bubbles on screen (chip, timers, coins, speech): kind and box. */
+			bubbles(): {
+				kind: string
+				x: number
+				y: number
+				w: number
+				h: number
+				text: string
+			}[]
+			/** A line over a person as if the player caused it. */
+			say(key: string, text: string): boolean
 		}
 	}
 }

@@ -534,6 +534,8 @@ onMount(() => {
 				coinBubbles: () => a.coinBubbles(),
 				collectAll: () => a.collect(),
 				kitchen: () => a.kitchenScreen(),
+				bubbles: () => a.shownBubbles(),
+				say: (key, text) => a.sayTo(key, text),
 			}
 			ready = true
 		})
@@ -648,11 +650,12 @@ const kitchenView = $derived.by(() => {
 	{/if}
 	{#if selection?.kind === "person"}
 		{@const info = selection.info}
+		<!-- a stat card, not a speech bubble: labeled rows (never body weight) -->
 		<div
 			class="g3d-chip"
-			class:rich={!!(info.mood || info.doing || info.relation)}
 			bind:this={chipEl}
-			role="status"
+			role="group"
+			aria-label="{selection.name}"
 			data-testid="gym3d-chip"
 		>
 			<div class="g3d-chip-head">
@@ -664,15 +667,29 @@ const kitchenView = $derived.by(() => {
 					>
 				{/if}
 			</div>
-			{#if info.title}<div class="g3d-chip-title">{info.title}</div>{/if}
-			{#if info.mood || info.doing}
-				<div class="g3d-chip-row" data-testid="gym3d-chip-doing">
-					{#if info.mood}<span class="g3d-chip-mood">{info.mood}</span>{/if}
-					{#if info.doing}<span>{info.doing}</span>{/if}
-				</div>
-			{/if}
-			{#if info.relation}
-				<div class="g3d-chip-row rel" data-testid="gym3d-chip-rel">♥ {info.relation}</div>
+			{#if info.title || info.mood || info.doing || info.relation}
+				<dl class="g3d-stats">
+					{#if info.title}
+						<div data-testid="gym3d-chip-title"><dt>Role</dt><dd>{info.title}</dd></div>
+					{/if}
+					{#if info.mood}
+						<div data-testid="gym3d-chip-mood"><dt>Mood</dt><dd>{info.mood}</dd></div>
+					{/if}
+					{#if info.doing}
+						<div data-testid="gym3d-chip-doing"><dt>Doing</dt><dd>{info.doing}</dd></div>
+					{/if}
+					{#if info.relation}
+						<div data-testid="gym3d-chip-rel">
+							<dt>Bond</dt>
+							<dd>
+								{info.relation}
+								{#if info.bond != null}
+									<span class="g3d-bond" aria-hidden="true"><i style="width:{info.bond}%"></i></span>
+								{/if}
+							</dd>
+						</div>
+					{/if}
+				</dl>
 			{/if}
 		</div>
 	{/if}
@@ -702,7 +719,7 @@ const kitchenView = $derived.by(() => {
 			bind:clientHeight={sheetH}
 			data-testid="gym3d-sheet"
 			data-sheet={sheet}
-			role="dialog"
+			role="group"
 			aria-label="Gym builder"
 		>
 			<button type="button" class="g3d-x" onclick={close} aria-label="Close">×</button>
@@ -1206,30 +1223,65 @@ const kitchenView = $derived.by(() => {
 	z-index: 4;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
-	padding: 5px 6px 5px 12px;
+	gap: 5px;
+	width: max-content;
+	min-width: 178px;
+	max-width: min(260px, calc(100vw - 32px));
+	padding: 7px 8px 8px 11px;
 	border: 2px solid var(--ink);
-	border-radius: 999px;
+	border-radius: 10px;
 	background: #fff;
 	box-shadow: 0 3px 0 var(--ink);
 	font-weight: 800;
 	font-size: 13px;
-	white-space: nowrap;
-	margin-bottom: 8px;
 	will-change: transform;
-	max-width: min(270px, calc(100vw - 32px));
 	box-sizing: border-box;
+	animation: g3d-card-in 0.16s ease-out;
 }
 
-.g3d-chip.rich {
-	border-radius: 14px;
-	padding: 6px 8px 7px 12px;
+/* a card, not a bubble: a coloured header strip, and a small pointer
+   down to the person (hidden when the card cannot sit right over them) */
+.g3d-chip::after {
+	content: "";
+	position: absolute;
+	left: calc(var(--tx, 50%) - 6px);
+	bottom: -7px;
+	width: 10px;
+	height: 10px;
+	background: #fff;
+	border-right: 2px solid var(--ink);
+	border-bottom: 2px solid var(--ink);
+	transform: rotate(45deg);
+}
+
+.g3d-chip:global(.pin)::after {
+	display: none;
+}
+
+.g3d-chip::before {
+	content: "";
+	position: absolute;
+	left: -2px;
+	right: -2px;
+	top: -2px;
+	height: 5px;
+	border-radius: 10px 10px 0 0;
+	background: #3aa89a;
+	border: 2px solid var(--ink);
+	border-bottom: 0;
+}
+
+@keyframes g3d-card-in {
+	from {
+		opacity: 0;
+	}
 }
 
 .g3d-chip-head {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	padding-top: 2px;
 }
 
 .g3d-chip-name {
@@ -1238,6 +1290,8 @@ const kitchenView = $derived.by(() => {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 14px;
 }
 
 .g3d-chip-head > :not(.g3d-chip-name) {
@@ -1252,32 +1306,56 @@ const kitchenView = $derived.by(() => {
 	font-size: 10px;
 }
 
-.g3d-chip-title {
-	font-size: 11px;
-	font-weight: 700;
-	color: #3aa89a;
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
-	margin-top: -2px;
+.g3d-stats {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	column-gap: 9px;
+	row-gap: 3px;
+	margin: 0;
+	padding-top: 5px;
+	border-top: 1.5px dashed #d9cbbd;
 }
 
-.g3d-chip-row {
-	display: flex;
-	gap: 6px;
-	font-size: 12px;
-	font-weight: 600;
-	color: #3b3f4a;
-	white-space: normal;
-	line-height: 1.25;
+.g3d-stats > div {
+	display: contents;
 }
 
-.g3d-chip-mood {
+.g3d-stats dt {
+	font-size: 10px;
 	font-weight: 800;
-	white-space: nowrap;
+	color: #8a7a70;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	line-height: 17px;
 }
 
-.g3d-chip-row.rel {
+.g3d-stats dd {
+	margin: 0;
+	min-width: 0;
+	font-size: 12px;
+	font-weight: 700;
+	color: #23262e;
+	line-height: 17px;
+	overflow-wrap: anywhere;
+}
+
+[data-testid="gym3d-chip-rel"] dd {
 	color: #c8323a;
+}
+
+.g3d-bond {
+	display: block;
+	height: 5px;
+	margin: 1px 0 2px;
+	border-radius: 3px;
+	background: #f6dcdc;
+	overflow: hidden;
+}
+
+.g3d-bond i {
+	display: block;
+	height: 100%;
+	background: #e0525a;
 }
 
 .g3d-talk {
@@ -1604,7 +1682,8 @@ const kitchenView = $derived.by(() => {
 .g3d :global(.g3d-bub::after) {
 	content: "";
 	position: absolute;
-	left: 50%;
+	/* --tx: the tail follows its anchor (world/labels.ts) */
+	left: var(--tx, 50%);
 	bottom: -8px;
 	width: 12px;
 	height: 12px;
@@ -1691,16 +1770,16 @@ const kitchenView = $derived.by(() => {
 	font: 800 13px system-ui, sans-serif;
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
-	margin-bottom: 6px;
 	/* over speech bubbles: coins are what the player taps */
 	z-index: 4;
-	animation: g3d-float 2.4s ease-in-out infinite;
 }
 
+/* the coin bobs inside a still bubble (the layout keeps the box put) */
 .g3d :global(.g3d-cb svg) {
 	width: 22px;
 	height: 22px;
 	flex: none;
+	animation: g3d-float 2.4s ease-in-out infinite;
 }
 
 .g3d :global(.g3d-cb.full) {
@@ -1713,12 +1792,12 @@ const kitchenView = $derived.by(() => {
 
 @keyframes g3d-float {
 	50% {
-		margin-bottom: 10px;
+		translate: 0 -3px;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.g3d :global(.g3d-cb) {
+	.g3d :global(.g3d-cb svg) {
 		animation: none;
 	}
 }
@@ -1736,14 +1815,16 @@ const kitchenView = $derived.by(() => {
 	font-weight: 600;
 	line-height: 1.25;
 	color: #23262e;
-	pointer-events: none;
-	contain: layout paint;
+	/* a short tap pops it; a drag pans (app.ts) */
+	pointer-events: auto;
+	cursor: pointer;
+	contain: layout;
 }
 
 .g3d :global(.g3d-say::after) {
 	content: "";
 	position: absolute;
-	left: calc(50% - 5px);
+	left: calc(var(--tx, 50%) - 5px);
 	bottom: -7px;
 	width: 8px;
 	height: 8px;
@@ -1751,6 +1832,32 @@ const kitchenView = $derived.by(() => {
 	border-right: 2px solid var(--ink);
 	border-bottom: 2px solid var(--ink);
 	transform: rotate(45deg);
+}
+
+.g3d :global(.g3d-say.pin::after) {
+	display: none;
+}
+
+/* ambient (the crowd): a thought, not a line said to the player */
+.g3d :global(.g3d-say.amb) {
+	border-style: dashed;
+	border-radius: 16px;
+	background: #f4f1ff;
+	color: #4a4560;
+	font-style: italic;
+	font-weight: 500;
+	box-shadow: none;
+}
+
+.g3d :global(.g3d-say.amb::after) {
+	left: calc(var(--tx, 50%) - 4px);
+	bottom: -9px;
+	width: 7px;
+	height: 7px;
+	border: 2px solid var(--ink);
+	border-radius: 50%;
+	background: #f4f1ff;
+	transform: none;
 }
 
 .g3d :global(.g3d-say b) {
