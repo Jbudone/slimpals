@@ -98,8 +98,17 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   migration 0023). `GET /api/gym/staff` lists the cards; `POST /api/gym/staff/:npcKey/train` locks the gym row, pays
   the waiting coin bubbles first (so the new rate only counts from then) and charges the coins (`server/services/gym/
   staff.ts`). UI: the tap chip of a staff NPC (`Gym3D.svelte`) shows level, perk, stat meters and Train. Not built
-  yet: hiring new staff, and admin tools for staff levels. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`,
-  e2e in `gym3d-life.spec.ts`.
+  yet: admin tools for staff levels. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`, e2e in
+  `gym3d-life.spec.ts`.
+- Hiring: any finished, typed room except the lobby takes up to `HIRE.perRoom` (2) hires: a coach, lifeguard,
+  therapist or barista (`shared/gym3d/hires.ts`: `HIRE_ROLES`, `hireCost` = 300 + 150 per hire already made in the
+  gym, `hireBonus` = +5% coins/hour for that room's machines at level 1, plus the training bonus per level). Rows live
+  in `gym_hires` (migration 0025). `POST /api/gym/layout/rooms/:roomId/hire` (`hires3d.ts`) validates the room and
+  charges under the gym row lock; the layout carries `hires` and `nextHireCost`. Hires show up in `GET /gym/staff`
+  as cards keyed `hire:<id>` and train through the same endpoint; `income3d.ts` adds their bonus to the room's
+  machines. The people system (`People.syncHires`) stands each hire at a post in their room (they walk in from
+  the door when new) with their role as the chip title; the intro line comes from `hireIntro`. UI: the room menu's
+  Staff page has the Hire button. The first hire pays the `hire-1` goal. e2e: `gym3d-life.spec.ts` ("hiring").
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus

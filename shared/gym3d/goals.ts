@@ -105,6 +105,12 @@ export const GOALS: readonly GoalDef[] = [
 		reward: { sweat: 0, greens: 2 },
 	},
 	{
+		id: "hire-1",
+		title: "Hire your first staff member",
+		progress: (s) => ({ value: Math.min(1, s.hires ?? 0), target: 1 }),
+		reward: { sweat: 1, greens: 1 },
+	},
+	{
 		id: "room-lv3",
 		title: "Take a room to level 3",
 		progress: (s) => ({ value: maxLevel(s), target: 3 }),

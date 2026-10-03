@@ -18,6 +18,7 @@ import {
 	machineCap,
 	machineRate,
 } from "../../../shared/gym3d/economy.js"
+import { hireBonus } from "../../../shared/gym3d/hires.js"
 import { areaMultiplier } from "../../../shared/gym3d/staff.js"
 import type {
 	GymIncomeSourceDto,
@@ -25,6 +26,7 @@ import type {
 	GymWelcomeBackDto,
 } from "../../../shared/types.js"
 import {
+	gymHires,
 	gymJobs,
 	gymPieces,
 	gymPlots,
@@ -152,6 +154,22 @@ export async function staffLevels(
 	return new Map(rows.map((r) => [r.npcKey, r.level]))
 }
 
+/** The coin bonus the hires of each room give its machines (room id to
+ * the sum of their bonuses). */
+export async function hireBonuses(
+	conn: Conn,
+	gymId: number,
+): Promise<Map<number, number>> {
+	const rows = await conn
+		.select({ roomId: gymHires.roomId, level: gymHires.level })
+		.from(gymHires)
+		.where(eq(gymHires.gymId, gymId))
+	const out = new Map<number, number>()
+	for (const r of rows)
+		out.set(r.roomId, (out.get(r.roomId) ?? 0) + hireBonus(r.level))
+	return out
+}
+
 /** Rate shown to the player: one decimal at most. */
 const shown = (n: number): number => Math.round(n * 10) / 10
 
@@ -176,12 +194,15 @@ export async function incomeState(
 	const rooms = await finishedRooms(conn, gymId)
 	const levels = await staffLevels(conn, gymId)
 	const roomTypes = await roomTypesOf(conn, gymId)
+	const hired = await hireBonuses(conn, gymId)
 	const deskMult = areaMultiplier("desk", levels)
 	const kitchenMult = areaMultiplier("kitchen", levels)
 	const sources: GymIncomeSourceDto[] = []
 	for (const p of pieces) {
 		if (!isEarningPiece(p)) continue
-		const mult = areaMultiplier(roomTypes.get(p.roomId as number) ?? "", levels)
+		const mult =
+			areaMultiplier(roomTypes.get(p.roomId as number) ?? "", levels) +
+			(hired.get(p.roomId as number) ?? 0)
 		sources.push({
 			key: `piece:${p.id}`,
 			kind: "machine",
@@ -297,7 +318,9 @@ export async function bankPiece(
 		.where(and(eq(gymPieces.id, pieceId), eq(gymPieces.gymId, gymId)))
 	if (!p) return 0
 	const roomType = (await roomTypesOf(tx, gymId)).get(p.roomId as number)
-	const mult = areaMultiplier(roomType ?? "", await staffLevels(tx, gymId))
+	const mult =
+		areaMultiplier(roomType ?? "", await staffLevels(tx, gymId)) +
+		((await hireBonuses(tx, gymId)).get(p.roomId as number) ?? 0)
 	const n = pieceBank(p, now.getTime(), mult)
 	await tx
 		.update(gymPieces)

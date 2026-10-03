@@ -215,6 +215,17 @@ export type GymStaffDto = {
 	available: boolean
 }
 
+/** A staff member hired for a room (see shared/gym3d/hires.ts). */
+export type GymHireDto = {
+	id: number
+	roomId: number
+	role: string
+	name: string
+	level: number
+	/** 0 or 1: which post in the room they stand at. */
+	post: number
+}
+
 /** The gym's star rating (see shared/gym3d/rating.ts). */
 export type GymRatingDto = {
 	score: number
@@ -243,6 +254,9 @@ export type GymGoalDto = {
 
 export type GymLayoutDto = {
 	gymId: number
+	/** Staff hired for rooms, and what the next hire costs. */
+	hires: GymHireDto[]
+	nextHireCost: number
 	/** Walls opened between rooms, and what the next one costs. */
 	openWalls: { px: number; pz: number; axis: "x" | "z" }[]
 	nextWallCost: number

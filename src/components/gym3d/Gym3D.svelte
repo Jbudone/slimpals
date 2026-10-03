@@ -18,6 +18,7 @@ import {
 	upgradeInfo,
 	WALL_COLORS,
 } from "../../../shared/gym3d/economy"
+import { HIRE, HIRE_ROLES, hireIntro } from "../../../shared/gym3d/hires"
 import { SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
 	type EquipmentRoomType,
@@ -383,6 +384,25 @@ const roomStaff = $derived.by(() => {
 	const r = room
 	return sheet === "room-staff" && r && app ? app.staffIn(r.id) : []
 })
+
+/** What this room can hire (null: nobody works in this kind of room) and
+ * who it has hired already. */
+const hireRole = $derived(room ? (HIRE_ROLES[room.type] ?? null) : null)
+const roomHires = $derived(
+	room && layout ? layout.hires.filter((h) => h.roomId === room.id) : [],
+)
+
+/** Hires a staff member for the room; they walk in and introduce themselves. */
+async function hireHere() {
+	const r = room
+	if (!r) return
+	const before = new Set(layout?.hires.map((h) => h.id))
+	const next = await act(`rooms/${r.id}/hire`)
+	const fresh = next?.hires.find((h) => !before.has(h.id))
+	if (!fresh) return
+	app?.sayTo(`hire:${fresh.id}`, hireIntro(r.type, fresh.name))
+	void loadStaff()
+}
 
 /** The walls this room shares with other finished rooms, open or not. */
 const roomWalls = $derived.by(() => {
@@ -874,8 +894,8 @@ const kitchenView = $derived.by(() => {
 					{/if}
 				</dl>
 			{/if}
-			{#if selection.npcKey && staff[selection.npcKey]?.available}
-				{@const card = staff[selection.npcKey]}
+			{#if staff[selection.npcKey ?? selection.key]?.available}
+				{@const card = staff[selection.npcKey ?? selection.key]}
 				{@const name = selection.name}
 				<div class="g3d-staff" data-testid="gym3d-staff-card">
 					<div class="g3d-staff-head">
@@ -1229,12 +1249,26 @@ const kitchenView = $derived.by(() => {
 							<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Open</button>
 						</li>
 					{/each}
-					<li class="locked">
-						<span><b>Hire staff</b></span>
-						<small>Coming soon</small>
-					</li>
+					{#if hireRole}
+						<li>
+							<span><b>Hire a {hireRole.role.toLowerCase()}</b><small class="earn">Makes this room's machines earn more</small></span>
+							{#if roomHires.length >= HIRE.perRoom}
+								<small>Full</small>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									disabled={busy || (layout?.coins ?? 0) < (layout?.nextHireCost ?? 0)}
+									onclick={hireHere}
+									data-testid="gym3d-hire"
+								>
+									Hire <span class="cur">{@html COIN_SVG}</span>{(layout?.nextHireCost ?? 0).toLocaleString("en-US")}
+								</button>
+							{/if}
+						</li>
+					{/if}
 				</ul>
-				{#if !roomStaff.length && !ri.staffGear.length}
+				{#if !roomStaff.length && !ri.staffGear.length && !hireRole}
 					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
 				{/if}
 

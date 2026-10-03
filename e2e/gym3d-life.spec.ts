@@ -32,8 +32,9 @@ async function shot(page: Page, name: string) {
 }
 
 async function waitReady(page: Page) {
+	// generous: a software renderer in CI-like boxes can take a while to boot
 	await expect(page.locator("[data-testid=gym3d] canvas")).toBeVisible({
-		timeout: 20_000,
+		timeout: 45_000,
 	})
 	await page.waitForFunction(() => window.gym3d?.ready === true, null, {
 		timeout: 30_000,
@@ -883,27 +884,15 @@ test("3D gym hustle: tapping a working member until they finish pays a small coi
 		.toBeGreaterThan(coins0)
 })
 
-test("3D gym walls: knocking out a wall between two rooms joins them and scores", async ({
-	request,
-	browser,
-}, testInfo) => {
-	test.setTimeout(180_000)
-	const { page } = await setup(request, browser, testInfo, 30, "walls")
-	await page.goto("/")
-	await waitReady(page)
-	const L0 = await page.evaluate(() => window.gym3d?.layout())
-	if (!L0) throw new Error("no layout")
-	expect(L0.openWalls).toEqual([])
-	const room = L0.rooms.find(
-		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
-	)
-	expect(room).toBeTruthy()
-	if (!room) return
+/** Taps a room's floor (a few points: a member may stand on one) until its
+ * menu opens. */
+async function openRoomMenu(
+	page: Page,
+	room: { cells: { px: number; pz: number }[] },
+) {
 	const cx = room.cells[0].px * PW + PW / 2
 	const cz = room.cells[0].pz * PD + PD / 2
 	const sheet = page.getByTestId("gym3d-sheet")
-
-	// tap the room's floor (a few points: a member may stand on one)
 	const box = await page.locator("[data-testid=gym3d]").boundingBox()
 	if (!box) throw new Error("no gym")
 	for (const [dx, dz] of [
@@ -929,6 +918,25 @@ test("3D gym walls: knocking out a wall between two rooms joins them and scores"
 		if (on === "room") break
 	}
 	await expect(sheet).toHaveAttribute("data-sheet", "room")
+}
+
+test("3D gym walls: knocking out a wall between two rooms joins them and scores", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "walls")
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	if (!L0) throw new Error("no layout")
+	expect(L0.openWalls).toEqual([])
+	const room = L0.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	expect(room).toBeTruthy()
+	if (!room) return
+	await openRoomMenu(page, room)
 	await page.getByTestId("room-walls").click()
 	await expect(page.getByTestId("room-walls-list")).toBeVisible()
 	await shot(page, "12-walls-menu")
@@ -946,4 +954,69 @@ test("3D gym walls: knocking out a wall between two rooms joins them and scores"
 	expect(L1?.coins).toBeLessThan(L0.coins)
 	await page.waitForTimeout(600)
 	await shot(page, "13-wall-open")
+})
+
+test("3D gym hiring: a hire walks in, stands in the room and can be trained", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "hire")
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	if (!L0) throw new Error("no layout")
+	expect(L0.hires).toEqual([])
+	const room = L0.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	expect(room).toBeTruthy()
+	if (!room) return
+
+	await openRoomMenu(page, room)
+	await page.getByTestId("room-staff").click()
+	await page.getByTestId("gym3d-hire").click()
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().hires.length)) ?? 0,
+		)
+		.toBe(1)
+	const L1 = await page.evaluate(() => window.gym3d?.layout())
+	const hired = L1?.hires[0]
+	expect(hired?.roomId).toBe(room.id)
+	expect(L1?.coins).toBeLessThan(L0.coins)
+	await shot(page, "14-hired")
+
+	// they are in the gym: tap them for the staff card, then train them
+	const key = `hire:${hired?.id}`
+	await expect
+		.poll(async () =>
+			page.evaluate((k) => (window.gym3d?.people() ?? []).includes(k), key),
+		)
+		.toBe(true)
+	await page.evaluate(() => window.gym3d?.lineup(false))
+	await page.getByRole("button", { name: "Close" }).click()
+	// walk in: wait for them to reach their post, then tap them
+	await page.waitForTimeout(6000)
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+	let card = false
+	for (let i = 0; i < 6 && !card; i++) {
+		const pt = await page.evaluate(
+			(k) => window.gym3d?.screenOf(k) ?? null,
+			key,
+		)
+		if (pt) await page.mouse.click(box.x + pt.x, box.y + pt.y)
+		card = await page
+			.getByTestId("gym3d-staff-card")
+			.isVisible()
+			.catch(() => false)
+		if (!card) await page.waitForTimeout(1500)
+	}
+	expect(card).toBe(true)
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 1")
+	await page.getByTestId("gym3d-train").click()
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 2")
+	await shot(page, "15-hire-trained")
 })

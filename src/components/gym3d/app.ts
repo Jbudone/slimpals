@@ -414,6 +414,7 @@ export class Gym3DApp {
 		}
 		this.people.cap = ambientCap(this.r.lvl)
 		this.people.seedMembers()
+		this.people.syncHires(layout.hires, layout.rooms, false)
 		const calm = this.calm
 		this.says = new Bubbles(this.labels, calm)
 		this.people.onRemove = (p) => this.says.forget(p)
@@ -616,6 +617,7 @@ export class Gym3DApp {
 		this.fx.endSquash()
 		const diff = this.world.applyLayout(next)
 		this.people.layoutChanged(diff.removed)
+		this.people.syncHires(next.hires, next.rooms, true)
 		this.hap.layoutChanged()
 		this.build.sync(next, this.now())
 		this.rebuildBadges()
@@ -1369,9 +1371,7 @@ export class Gym3DApp {
 						: `In the ${p.note}`
 					: null
 				: p.kind === "staff"
-					? p.name === "Swimmer"
-						? "Member"
-						: "Staff"
+					? (p.role ?? (p.name === "Swimmer" ? "Member" : "Staff"))
 					: "Member"
 		let doing: string | null = null
 		const ev = this.sim && activeEvent(this.sim)
