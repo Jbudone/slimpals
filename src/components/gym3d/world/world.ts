@@ -559,6 +559,23 @@ export class GymWorld implements NavSource {
 		pBox(parts, L, 0.06, APRON, C.walk, mx, -0.07, fz + APRON / 2)
 		pBox(parts, L, 0.1, 0.18, "#e8a88f", mx, -0.02, fz + APRON - 0.09)
 		pBox(parts, L, 0.05, 30, "#d9867a", mx, -0.12, fz + APRON + 15)
+		// the road across the street: asphalt, a dashed centre line and a
+		// zebra crossing from the curb in front of the door
+		const roadZ = fz + APRON + 3.3
+		pBox(parts, L, 0.06, 5, "#5d5663", mx, -0.06, roadZ)
+		for (let x = X0 + 1; x < X1 - 1; x += 3)
+			pBox(parts, 1.4, 0.02, 0.16, "#f4e9c8", x, -0.025, roadZ)
+		for (let i = -5; i <= 5; i++)
+			pBox(
+				parts,
+				0.38,
+				0.02,
+				5.8,
+				"#f7f1e4",
+				this.doorX + i * 0.72,
+				-0.02,
+				fz + APRON + 2.9,
+			)
 		const tree = (x: number, z: number, s: number) => {
 			pGeo(parts, cylGeo(0.12 * s, 1.0 * s, 6), C.woodD, x, 0.5 * s, z)
 			pGeo(
