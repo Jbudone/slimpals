@@ -2,6 +2,7 @@
 // tap picking and drag / pinch camera. Everything it creates is freed by
 // dispose(), so mounting and unmounting repeatedly does not leak.
 import * as T from "three"
+import type { BanterContext } from "../../../shared/gym3d/banter"
 import { celebrationFor } from "../../../shared/gym3d/celebrations"
 import {
 	ECONOMY,
@@ -424,11 +425,25 @@ export class Gym3DApp {
 			mulberry32((Date.now() & 0xffff) + 7),
 			calm,
 		)
+		this.life.banterContext = () => this.banterContext()
 		this.bindInput(host)
 		this.r.start((dt) => this.frame(dt))
 		this.pollTimer = setInterval(() => {
 			void this.pollSim(false).catch(() => {})
 		}, POLL_INTERVAL)
+	}
+
+	/** The gym as banter sees it: finished room types, placed gear, a crowd. */
+	private banterContext(): BanterContext {
+		const lay = this.world.layout
+		return {
+			rooms: lay.rooms.filter((r) => !r.building).map((r) => r.type),
+			gear: lay.pieces
+				.filter((p) => p.status === "placed")
+				.map((p) => p.itemKey),
+			crowded:
+				this.people.people.filter((p) => p.kind === "member").length >= 8,
+		}
 	}
 
 	/** Frames every built room (plus the entrance) in the view. */

@@ -7,6 +7,7 @@
 // crowd now and then (ambient lines, drawn as thoughts), and two NPCs near
 // each other (or chatting in the sim) exchange a line.
 import * as T from "three"
+import { type BanterContext, pickBanter } from "../../../../shared/gym3d/banter"
 import {
 	firstName,
 	pairLines,
@@ -254,6 +255,10 @@ export class Life {
 	private roles = new Map<string, string>()
 	/** Slower in reduced motion, and paused (e.g. during a ceremony). */
 	paused = false
+	/** What the gym holds now, for banter that fits it (none: no banter). */
+	banterContext: (() => BanterContext) | null = null
+	private banterTimer = 20
+	private banterSeen: string[] = []
 
 	constructor(
 		private bubbles: Bubbles,
@@ -357,8 +362,10 @@ export class Life {
 		this.timer -= dt
 		if (this.timer > 0) return
 		this.timer = (this.calm ? 9 : 3.2) + this.rng() * 3.5
+		this.banterTimer -= this.timer
 		if (this.bubbles.active >= 2 || this.pending.length) return
 		const ps = this.people()
+		if (this.banterTimer <= 0 && this.banter(ps, now)) return
 		if (this.rng() < 0.35) {
 			const pair = this.findPair(ps)
 			if (pair) {
@@ -400,6 +407,43 @@ export class Life {
 		if (!line) return
 		this.remember(who.key, line)
 		this.bubbles.say(who, line, this.nameOf(who), now)
+	}
+
+	/** Two people close together swap a scripted exchange that fits the gym
+	 * (rarely: one every minute or so). */
+	private banter(ps: readonly Person[], now: number): boolean {
+		const ctx = this.banterContext?.()
+		if (!ctx) return false
+		const near = ps.filter(
+			(p) => this.visible(p) && (p.kind !== "extra" || !!p.note),
+		)
+		const pairs: [Person, Person][] = []
+		for (let i = 0; i < near.length; i++)
+			for (let j = i + 1; j < near.length; j++) {
+				const a = near[i].rig.root.position
+				const b = near[j].rig.root.position
+				if (Math.hypot(a.x - b.x, a.z - b.z) < 2.5)
+					pairs.push([near[i], near[j]])
+			}
+		if (!pairs.length) return false
+		const b = pickBanter(ctx, this.banterSeen, this.rng)
+		if (!b) return false
+		const [x, y] = pairs[Math.floor(this.rng() * pairs.length) % pairs.length]
+		this.banterSeen.push(b.id)
+		if (this.banterSeen.length > 6) this.banterSeen.shift()
+		this.banterTimer = (this.calm ? 90 : 55) + this.rng() * 40
+		b.lines.forEach((text, i) => {
+			const p = i % 2 ? y : x
+			if (i === 0) this.bubbles.say(p, text, this.nameOf(p), now, 3.4)
+			else
+				this.pending.push({
+					at: now + i * 2.2,
+					p,
+					text,
+					name: this.nameOf(p),
+				})
+		})
+		return true
 	}
 
 	clear(): void {
