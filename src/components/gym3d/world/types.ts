@@ -155,6 +155,8 @@ export type Person = {
 	poseAs?: PoseName | null
 	/** Walk speed factor (mood). */
 	speed?: number
+	/** Workout speed factor while being hustled (decays back to 1). */
+	boost?: number
 	/** Extra chip line (the class a member is in). */
 	note?: string | null
 }

@@ -220,6 +220,27 @@ function say(text: string, kind: "info" | "error" = "info") {
 	}, 3200)
 }
 
+/** A member was hurried along until they finished: the server decides the
+ * small coin bonus (a toy: it shrinks through the day and stops at a cap). */
+async function hustleBonus(pieceId: number) {
+	if (!app) return
+	try {
+		const r = await api.post<{ paid: number; left: number }>(
+			`/gym/layout/hustle/${pieceId}`,
+			{},
+		)
+		if (destroyed || !app) return
+		if (r.paid > 0) {
+			say(`+${r.paid} coin${r.paid === 1 ? "" : "s"} for the push`)
+			setLayout(await app.reload())
+		} else {
+			say("Everyone is worn out for today. Come back tomorrow.")
+		}
+	} catch {
+		// the push still looked good; no bonus this time
+	}
+}
+
 /** A thumbnail of a piece of gear (drawn once, then cached by the app). */
 function gearPic(itemKey: string): string | null {
 	return app?.gearPreview(itemKey) ?? null
@@ -607,6 +628,7 @@ onMount(() => {
 			selection = s
 			pickType = null
 		},
+		onHustle: (pieceId) => void hustleBonus(pieceId),
 		onMoveTarget: (id, roomId, spot) => void onMoveTarget(id, roomId, spot),
 		onMoveEnd: () => {
 			moving = null

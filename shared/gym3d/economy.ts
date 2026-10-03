@@ -62,6 +62,22 @@ export const ECONOMY = {
 		/** Hours one Sweat takes off a job. */
 		hoursPerSweat: 1,
 	},
+	/** Tap-to-hustle: tapping a working member until they are done pays a
+	 * few coins, less as the day goes on, and nothing past the daily cap
+	 * (a toy, not an income). */
+	hustle: {
+		/** Taps on one member before they finish early. */
+		taps: 10,
+		/** Taps this close together (ms) on a working member are hustle
+		 * taps; a slower one is an ordinary tap (their machine's sheet). */
+		gapMs: 700,
+		/** Coins for the first bonuses of a day. */
+		coins: 3,
+		/** Bonuses per day, all together. */
+		dailyCap: 12,
+		/** Every this many bonuses a day, each pays one coin less. */
+		stepEvery: 4,
+	},
 	income: {
 		/** A placed, working machine: coins per hour and bubble cap by tier. */
 		machine: {
@@ -177,6 +193,14 @@ export function finishCost(remainingMs: number): number {
 	const h =
 		Math.max(0, remainingMs - 1000) / (HOUR * ECONOMY.sweat.hoursPerSweat)
 	return Math.max(1, Math.ceil(h))
+}
+
+/** Coins for the next hustle bonus when `used` were paid today (0 once the
+ * daily cap is reached). */
+export function hustleCoins(used: number): number {
+	const h = ECONOMY.hustle
+	if (used < 0 || used >= h.dailyCap) return 0
+	return Math.max(1, h.coins - Math.floor(used / h.stepEvery))
 }
 
 export function hoursMs(h: number): number {

@@ -43,6 +43,7 @@ import {
 	getRelationshipStage,
 	getStageLabel,
 } from "../services/gym/dialog.js"
+import { hustleBonus } from "../services/gym/hustle.js"
 import {
 	collectIncome,
 	openGym,
@@ -469,6 +470,22 @@ export function createGymRouter(aiService: AIService) {
 		"/gym/layout/kitchen/rush",
 		build((gymId) => startRushHour(db, gymId)),
 	)
+
+	// Tap-to-hustle bonus: a few coins when a member is hurried along.
+	router.post("/gym/layout/hustle/:pieceId", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		try {
+			res.json(await hustleBonus(db, gym.id, Number(req.params.pieceId)))
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
+	})
 
 	// Staff cards (gym home) and training them with coins.
 	router.get("/gym/staff", async (req, res) => {

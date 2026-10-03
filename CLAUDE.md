@@ -114,6 +114,12 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   around a room/lot) while selected, a squash, one pooled floor ripple, `navigator.vibrate(10)`; DOM badges and
   coin bubbles get `.g3d-tapped`. Reduced motion: marker only. A room tap opens the room action menu (info, Upgrade
   gear, Staff, Customize = paint + decor; `Selection.view`), never paint first.
+- Tap-to-hustle: taps in quick succession (`ECONOMY.hustle.gapMs`) on a member who is working out speed up their
+  reps and make them say a line (`shared/gym3d/hustleLines.ts`); after `ECONOMY.hustle.taps` they finish early and
+  the host asks `POST /api/gym/layout/hustle/:pieceId` (`server/services/gym/hustle.ts`) for a few coins. The server
+  decides: the piece must be a working machine, the daily count is claimed in `gym_rewards` (`hustle:<day>:<n>`),
+  the payout shrinks through the day (`hustleCoins`) and stops at `dailyCap`. The first tap is the usual one (their
+  machine's sheet, see `picking.ts`); the gesture is in `Gym3DApp.tapAt` (`rayWorker`, `hustleTap`).
 - Spot sheet (tap an empty pad): a locked spot says how many room points the room has of the points its level needs
   (`LV_TH`); an open one lists stored and still-locked gear with a picture each (`Gym3DApp.gearPreview` ->
   `World.previewGear`: built like a placed piece, drawn once offscreen, cached per key; the shared geometries stay in

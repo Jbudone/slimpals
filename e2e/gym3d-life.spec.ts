@@ -8,7 +8,12 @@ import {
 	test,
 } from "@playwright/test"
 import mysql from "mysql2/promise"
-import { type EquipmentRoomType, roomSpots } from "../shared/gym3d/rooms.js"
+import {
+	type EquipmentRoomType,
+	PD,
+	PW,
+	roomSpots,
+} from "../shared/gym3d/rooms.js"
 import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
 
 // 3D gym life (gym3d slice 3) on a phone: today's event by the entrance,
@@ -776,4 +781,104 @@ test("3D gym spots: a locked spot shows how close it is, an open one shows gear 
 		await expect(pics.first()).toBeVisible()
 		expect(await gpu()).toEqual(once)
 	}
+})
+
+test("3D gym hustle: tapping a working member until they finish pays a small coin bonus", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(240_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		30,
+		"hustle",
+	)
+	// 6pm: the gym is busy, so someone is working out
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	const L = await page.evaluate(() => window.gym3d?.layout())
+	if (!L) throw new Error("no layout")
+	const centers = L.rooms
+		.filter((r) => !r.building && r.type !== "empty")
+		.map((r) => ({
+			x: r.cells[0].px * PW + PW / 2,
+			z: r.cells[0].pz * PD + PD / 2,
+		}))
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+
+	// find a member who is working out and on screen
+	const findWorker = async (): Promise<string | null> => {
+		for (const c of centers) {
+			await page.evaluate(([a, b]) => window.gym3d?.panTo(a, b), [
+				c.x,
+				c.z,
+			] as const)
+			await page.waitForTimeout(500)
+			const key = await page.evaluate(
+				({ w, h }) => {
+					const g = window.gym3d
+					for (const k of g?.people() ?? []) {
+						if (!k.startsWith("member:")) continue
+						const doing = g?.info(k)?.doing ?? ""
+						if (!doing || /move|home/i.test(doing)) continue
+						const pt = g?.screenOf(k)
+						if (
+							pt &&
+							pt.x > 20 &&
+							pt.x < w - 20 &&
+							pt.y > 120 &&
+							pt.y < h - 160
+						)
+							return k
+					}
+					return null
+				},
+				{ w: box.width, h: box.height },
+			)
+			if (key) return key
+		}
+		return null
+	}
+	let who: string | null = null
+	for (let i = 0; i < 12 && !who; i++) {
+		who = await findWorker()
+		if (!who) await page.waitForTimeout(2500)
+	}
+	expect(who).toBeTruthy()
+	if (!who) return
+
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	// the first tap opens their machine; quick taps after it hurry them along
+	// (tapped through the gym's own hook, in one go, so the gaps between taps
+	// do not depend on how slowly a software renderer draws frames)
+	await page.evaluate(async (k) => {
+		const g = window.gym3d
+		for (let i = 0; i < 12; i++) {
+			const pt = g?.screenOf(k)
+			if (!pt) break
+			g?.tap(pt.x, pt.y)
+			await new Promise((r) => setTimeout(r, 100))
+		}
+	}, who)
+	await shot(page, "11-hustled")
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
+			{
+				timeout: 15_000,
+			},
+		)
+		.toBeGreaterThan(coins0)
 })

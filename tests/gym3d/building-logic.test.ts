@@ -12,6 +12,7 @@ import {
 	ECONOMY,
 	finishCost,
 	guessMissionKind,
+	hustleCoins,
 	KITCHEN_MENU,
 	kitchenItemsOn,
 	kitchenMaskWith,
@@ -310,5 +311,16 @@ describe("gym home economy", () => {
 	it("starter Sweat covers a first speed-up", () => {
 		expect(ECONOMY.starterSweat).toBeGreaterThanOrEqual(1)
 		expect(ECONOMY.starterGreens).toBeGreaterThanOrEqual(KITCHEN_MENU[1].cost)
+	})
+})
+
+describe("hustleCoins", () => {
+	it("pays less as the day goes on and nothing past the cap", () => {
+		const h = ECONOMY.hustle
+		expect(hustleCoins(0)).toBe(h.coins)
+		expect(hustleCoins(h.stepEvery)).toBe(h.coins - 1)
+		expect(hustleCoins(h.dailyCap - 1)).toBeGreaterThanOrEqual(1)
+		expect(hustleCoins(h.dailyCap)).toBe(0)
+		expect(hustleCoins(-1)).toBe(0)
 	})
 })
