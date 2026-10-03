@@ -53,6 +53,11 @@ declare global {
 			}[]
 			/** A line over a person as if the player caused it. */
 			say(key: string, text: string): boolean
+			/** What a tap at a canvas point would select, without selecting it. */
+			pick(
+				x: number,
+				y: number,
+			): import("./components/gym3d/app").Selection | null
 		}
 	}
 }

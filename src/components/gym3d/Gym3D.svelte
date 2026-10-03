@@ -1,4 +1,11 @@
 <script lang="ts">
+import {
+	ChevronLeft,
+	ChevronRight,
+	Dumbbell,
+	Paintbrush,
+	Users,
+} from "@lucide/svelte"
 import { onDestroy, onMount } from "svelte"
 import {
 	ECONOMY,
@@ -15,12 +22,19 @@ import {
 	FLOOR_STYLES,
 	PAINT,
 	RT,
+	roomSpots,
 } from "../../../shared/gym3d/rooms"
 import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
 import { api } from "../../lib/api"
 import { centerOf, flyChip } from "../../lib/fly"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
-import { bankAt, Gym3DApp, type JobAction, type Selection } from "./app"
+import {
+	bankAt,
+	Gym3DApp,
+	type JobAction,
+	type RoomView,
+	type Selection,
+} from "./app"
 import { fmtLeft, jobLeft } from "./world/build"
 import { roomLabel } from "./world/world"
 
@@ -162,7 +176,11 @@ const sheet = $derived.by(() => {
 		if (!room || room.type === "lobby") return null
 		if (room.building) return job ? "job" : null
 		if (room.type === "empty") return "type"
-		return s.paint ? "paint" : "room"
+		// the room menu first; paint and decor live under Customize
+		if (s.view === "customize") return "paint"
+		if (s.view === "gear") return "room-gear"
+		if (s.view === "staff") return "room-staff"
+		return "room"
 	}
 	return null
 })
@@ -228,6 +246,60 @@ async function act(path: string, body?: unknown): Promise<GymLayoutDto | null> {
 function close() {
 	app?.select(null)
 }
+
+/** Opens a page of the room menu (none: back to the menu). */
+function roomPage(view?: RoomView) {
+	const r = room
+	if (r)
+		app?.select(
+			view
+				? { kind: "room", roomId: r.id, view }
+				: { kind: "room", roomId: r.id },
+		)
+}
+
+/** A piece from the room menu: its sheet, with the camera on it. */
+function openPiece(p: GymLayoutDto["pieces"][number]) {
+	app?.panTo(p.x, p.z)
+	app?.select({ kind: "piece", id: p.id, name: p.name })
+}
+
+/** What the room menu shows: gear, free and locked spots, coin rate. */
+const roomInfo = $derived.by(() => {
+	const r = room
+	const s = selection
+	if (!r || !layout || s?.kind !== "room" || !(r.type in RT)) return null
+	const here = layout.pieces.filter(
+		(p) => p.roomId === r.id && p.status !== "stored",
+	)
+	const gear = here
+		.filter((p) => p.kind === "equipment" && p.roomType)
+		.sort((a, b) => (a.spotIndex ?? 0) - (b.spotIndex ?? 0))
+	const decor = here.filter((p) => p.kind === "decor")
+	const staffGear = gear.filter((p) => p.itemKey.startsWith("staff_"))
+	const spots = roomSpots(r.type as EquipmentRoomType, r.cells)
+	const taken = new Set(here.map((p) => p.spotIndex))
+	const free = spots.filter((q) => !taken.has(q.index))
+	const open = free.filter((q) => q.unlock <= r.level)
+	const locked = free.filter((q) => q.unlock > r.level)
+	const ids = new Set(here.map((p) => p.id))
+	const rate = layout.income
+		.filter(
+			(i) => i.kind === "machine" && i.pieceId != null && ids.has(i.pieceId),
+		)
+		.reduce((a, i) => a + i.rate, 0)
+	const nextUnlock = locked.length
+		? Math.min(...locked.map((q) => q.unlock))
+		: null
+	return { gear, decor, staffGear, spots, open, locked, rate, nextUnlock }
+})
+
+/** Who works in the room now (the Staff page), read once a second. */
+const roomStaff = $derived.by(() => {
+	void clock
+	const r = room
+	return sheet === "room-staff" && r && app ? app.staffIn(r.id) : []
+})
 
 async function buyLot() {
 	const l = lot
@@ -536,6 +608,7 @@ onMount(() => {
 				kitchen: () => a.kitchenScreen(),
 				bubbles: () => a.shownBubbles(),
 				say: (key, text) => a.sayTo(key, text),
+				pick: (x, y) => a.pickAt(x, y),
 			}
 			ready = true
 		})
@@ -851,23 +924,142 @@ const kitchenView = $derived.by(() => {
 					{pickType ? `Open the ${roomLabel(pickType, room.shape)}` : "Choose a type"}
 				</button>
 
-			{:else if sheet === "room" && room}
+			{:else if sheet === "room" && room && roomInfo}
 				{@const lp = levelProgress(room.level, room.points)}
+				{@const ri = roomInfo}
 				<h3>{roomLabel(room.type, room.shape)}</h3>
 				<p class="sub">
 					<span class="stars">{stars(room.level)}</span> Lv {room.level} · {room.points} points{#if lp.next != null}, {lp.next} for Lv {room.level + 1}{/if}
 				</p>
 				<div class="bar"><i style="width:{Math.round(lp.k * 100)}%"></i></div>
-				<p class="hint">Every piece scores its tier. Upgrade gear to level the room up and open bonus spots.</p>
-				<button
-					type="button"
-					class="g3d-btn wide"
-					onclick={() => app?.select({ kind: "room", roomId: room.id, paint: true })}
-					data-testid="gym3d-paint">Paint this room</button
+				<div class="kstats" data-testid="room-info">
+					<div><small>Gear</small><b>{ri.gear.length}/{ri.spots.length}</b></div>
+					<div><small>Coins/h</small><b><span class="cur">{@html COIN_SVG}</span>{ri.rate}</b></div>
+					<div>
+						<small>Bonus</small>
+						<b class="sm">{ri.nextUnlock != null ? `Spot at Lv ${ri.nextUnlock}` : "All open"}</b>
+					</div>
+				</div>
+				<ul class="rmenu" data-testid="room-menu">
+					<li>
+						<button type="button" class="rrow" onclick={() => roomPage("gear")} data-testid="room-gear">
+							<span class="ric"><Dumbbell size={20} /></span>
+							<span class="rtx"
+								><b>Upgrade gear</b><small
+									>{ri.gear.length} piece{ri.gear.length === 1 ? "" : "s"} · {ri.open.length} free spot{ri.open.length === 1 ? "" : "s"}</small
+								></span
+							>
+							<ChevronRight size={18} />
+						</button>
+					</li>
+					<li>
+						<button type="button" class="rrow" onclick={() => roomPage("staff")} data-testid="room-staff">
+							<span class="ric"><Users size={20} /></span>
+							<span class="rtx"><b>Staff</b><small>Who works here today</small></span>
+							<ChevronRight size={18} />
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							class="rrow"
+							onclick={() => roomPage("customize")}
+							data-testid="room-customize"
+						>
+							<span class="ric"><Paintbrush size={20} /></span>
+							<span class="rtx"><b>Customize</b><small>Paint and decor</small></span>
+							<ChevronRight size={18} />
+						</button>
+					</li>
+				</ul>
+
+			{:else if sheet === "room-gear" && room && roomInfo}
+				{@const ri = roomInfo}
+				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
+					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
 				>
+				<h3>Upgrade gear</h3>
+				<p class="sub">Every piece scores its tier. Upgrade gear to level the room up and open bonus spots.</p>
+				<ul class="gear" data-testid="room-gear-list">
+					{#each ri.gear as p (p.id)}
+						{@const u = upgradeInfo(p.itemKey, p.tier)}
+						<li>
+							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+							{#if p.status === "upgrading"}
+								<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Upgrading</button>
+							{:else if u}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									onclick={() => openPiece(p)}
+									data-testid="room-gear-piece"
+								>
+									Tier {u.toTier} <span class="g3d-coin"></span>{u.cost}
+								</button>
+							{:else}
+								<span class="max">Top tier</span>
+							{/if}
+						</li>
+					{/each}
+					{#each ri.open as q (q.index)}
+						<li>
+							<span><b>Empty spot</b> <small>{q.size} × {q.size}</small></span>
+							<button
+								type="button"
+								class="g3d-btn"
+								onclick={() =>
+									app?.select({
+										kind: "spot",
+										roomId: room.id,
+										spot: q.index,
+										size: q.size,
+										unlock: q.unlock,
+										open: true,
+									})}>Fill</button
+							>
+						</li>
+					{/each}
+					{#each ri.locked as q (q.index)}
+						<li class="locked">
+							<span><b>Bonus spot</b> <small>{q.size} × {q.size}</small></span>
+							<small>Opens at Lv {q.unlock}</small>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if sheet === "room-staff" && room && roomInfo}
+				{@const ri = roomInfo}
+				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
+					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
+				>
+				<h3>Staff</h3>
+				<ul class="gear" data-testid="room-staff-list">
+					{#each roomStaff as w (w.key)}
+						<li>
+							<span><b>{w.name}</b> <small>{w.title}</small></span>
+							<button type="button" class="g3d-btn" onclick={() => app?.selectPerson(w.key)}>Say hi</button>
+						</li>
+					{/each}
+					{#each ri.staffGear as p (p.id)}
+						<li>
+							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+							<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Open</button>
+						</li>
+					{/each}
+					<li class="locked">
+						<span><b>Hire staff</b></span>
+						<small>Coming soon</small>
+					</li>
+				</ul>
+				{#if !roomStaff.length && !ri.staffGear.length}
+					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
+				{/if}
 
 			{:else if sheet === "paint" && room}
-				<h3>Paint: {roomLabel(room.type, room.shape)}</h3>
+				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
+					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
+				>
+				<h3>Customize</h3>
 				<p class="lbl">Walls</p>
 				<div class="sws">
 					{#each WALL_COLORS as c (c)}
@@ -907,6 +1099,17 @@ const kitchenView = $derived.by(() => {
 						></button>
 					{/each}
 				</div>
+
+				<p class="lbl">Decor</p>
+				{#if roomInfo?.decor.length}
+					<ul class="gear">
+						{#each roomInfo.decor as p (p.id)}
+							<li><span><b>{p.name}</b></span></li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="hint" data-testid="room-decor-none">Decor you unlock with gym XP goes up in the lobby for now. Room decor is coming.</p>
+				{/if}
 
 			{:else if sheet === "spot" && spotInfo && room}
 				{@const si = spotInfo}
@@ -1613,6 +1816,116 @@ const kitchenView = $derived.by(() => {
 	opacity: 0.55;
 }
 
+.gear small {
+	font-size: 11px;
+	opacity: 0.7;
+}
+
+.kstats b.sm {
+	font-size: 13px;
+}
+
+/* the room action menu: one row per page */
+.rmenu {
+	list-style: none;
+	margin: 6px 0 0;
+	padding: 0;
+	display: grid;
+	gap: 6px;
+}
+
+.rrow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-height: 52px;
+	padding: 6px 10px;
+	border: 2px solid var(--ink);
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: 0 3px 0 var(--ink);
+	color: var(--ink);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.rrow:active {
+	transform: translateY(2px);
+	box-shadow: 0 1px 0 var(--ink);
+}
+
+.ric {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	background: #fdf1e0;
+	color: #e8743b;
+}
+
+.rtx {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.rtx b {
+	font-size: 14px;
+	font-weight: 800;
+}
+
+.rtx small {
+	font-size: 12px;
+	opacity: 0.7;
+}
+
+.g3d-back {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	min-height: 32px;
+	margin: -4px 0 2px -6px;
+	padding: 0 6px;
+	border: none;
+	background: none;
+	color: #e8743b;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+/* a quick squash on a tapped DOM label (room badge, coin bubble) */
+.g3d :global(.g3d-tapped) {
+	animation: g3d-tapped 0.32s ease-out;
+}
+
+@keyframes g3d-tapped {
+	0% {
+		scale: 1;
+	}
+	30% {
+		scale: 1.12 0.86;
+	}
+	60% {
+		scale: 0.95 1.06;
+	}
+	100% {
+		scale: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.g3d :global(.g3d-tapped) {
+		animation: none;
+	}
+}
+
 /* labels drawn by the app (room badges, timer bubbles) */
 .g3d :global(.g3d-badge) {
 	background: var(--ink);
@@ -1883,6 +2196,17 @@ const kitchenView = $derived.by(() => {
 	box-shadow: 0 2px 0 var(--ink);
 	pointer-events: none;
 	transform-origin: 50% 100%;
+}
+
+/* banners wrap rather than run off a phone screen (the bubble layout
+ * keeps them inside it) */
+.g3d :global(.g3d-evt),
+.g3d :global(.g3d-class) {
+	white-space: normal;
+	max-width: min(260px, calc(100vw - 32px));
+	text-align: center;
+	line-height: 1.25;
+	border-radius: 14px;
 }
 
 .g3d :global(.g3d-evt) {
