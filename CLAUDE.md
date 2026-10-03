@@ -138,6 +138,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   Doing, Bond; never body weight) closing on a tap outside, a pan or after `CHIP_TTL`. Event / class banners,
   hero and name tags are managed too (kind `tag`, below speech and above ambient, take no taps, not counted in the cap): on screen,
   clear of bubbles, banners wrap.
+- Ambient banter (gh-140, first slice): `shared/gym3d/banter.ts` holds short scripted exchanges (2-3 dry lines, no
+  exclamation marks) picked to fit the gym (`BanterContext`: finished room types, placed gear, a crowd): a missing pool,
+  sauna, ring or megaformer gets talked about, plain chatter is the fallback, recent ids are not repeated. `Life.banter`
+  plays one between two nearby people about once a minute as alternating bubbles through the normal bubble pool
+  (`app.banterContext()` feeds it). Not yet: the nightly AI batch, the "NPC banter" content-tuning type, relationships.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
