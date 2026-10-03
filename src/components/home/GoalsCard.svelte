@@ -89,7 +89,7 @@ onMount(() => {
 					type="button"
 					class="claim"
 					disabled={!track.canClaim}
-					onclick={() => void claimRewardStep()}
+					onclick={(e) => void claimRewardStep(e.currentTarget)}
 					data-testid="track-claim"
 				>
 					{track.canClaim ? "Take today's step" : "Come back tomorrow"}
