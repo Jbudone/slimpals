@@ -173,6 +173,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   prefer upgraded gear (`chooseNext` weights a free station 1 + 0.6 per tier above 1) and now and then say so on starting a
   set (`People.onUpgradedUse` -> `Life.gearReaction`, lines in `shared/gym3d/banter.ts` `GEAR_LINES`). A hand-built model per
   machine tier is still to do.
+- October ghost (#141, first slice): `shared/gym3d/ghost.ts` (`ghostSeason`: October only, `GHOST_LINES`: dry and supportive,
+  no exclamation marks). `Happenings.syncGhost` (called from the sim poll via `Gym3DApp.ghostOn`) floats a white "Ghost" extra
+  in the lobby and drifts it to the next lobby spot every 40 s; `Life` gives it ghost lines and the name "Ghost". `?ghost=1` /
+  `?ghost=0` force it on or off (tests, demos); `stats().ghost` is 1 while it is about. e2e: `gym3d-life.spec.ts` ("ghost").
+  Not yet: ghosts guarding the locker rooms or making early leavers stay, costumes, the costume contest.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
