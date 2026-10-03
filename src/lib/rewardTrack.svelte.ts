@@ -34,13 +34,13 @@ export async function claimRewardStep(): Promise<void> {
 }
 
 /** "+60 coins, +1 Sweat" for a step. */
-export function stepText(r: {
-	coins: number
-	sweat: number
-	greens: number
-}): string {
+export function stepText(
+	r: { coins: number; sweat: number; greens: number },
+	cosmeticName?: string,
+): string {
 	const parts = [`+${r.coins} coins`]
 	if (r.sweat) parts.push(`+${r.sweat} Sweat`)
 	if (r.greens) parts.push(`+${r.greens} Greens`)
+	if (cosmeticName) parts.push(cosmeticName)
 	return parts.join(", ")
 }

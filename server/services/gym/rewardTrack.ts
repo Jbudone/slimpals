@@ -3,7 +3,8 @@
 // claim is a marker row (`trackday:<YYYY-MM-DD>`), so a step pays once and
 // racing taps claim once. Themes and rewards are rules in
 // shared/gym3d/rewardTrack.ts.
-import { and, eq, gte, like, lt, or, sql } from "drizzle-orm"
+import { and, desc, eq, gte, like, lt, or, sql } from "drizzle-orm"
+import { COSMETICS, cosmeticOf } from "../../../shared/gym3d/cosmetics.js"
 import {
 	claimBlock,
 	daysInMonth,
@@ -11,8 +12,16 @@ import {
 	themeOf,
 	trackSteps,
 } from "../../../shared/gym3d/rewardTrack.js"
-import type { GymRewardTrackDto } from "../../../shared/types.js"
-import { dailyCheckins, gymRewards, userGyms } from "../../db/schema.js"
+import type {
+	GymCosmeticDto,
+	GymRewardTrackDto,
+} from "../../../shared/types.js"
+import {
+	dailyCheckins,
+	gymCosmetics,
+	gymRewards,
+	userGyms,
+} from "../../db/schema.js"
 import { BuildError, withGym } from "./build3d.js"
 import type { Db } from "./layout3dStore.js"
 import { dayKey } from "./rewards.js"
@@ -80,7 +89,13 @@ function toDto(s: Awaited<ReturnType<typeof state>>): GymRewardTrackDto {
 		checkedIn: s.checkedIn,
 		canClaim: block == null,
 		blockedReason: block,
-		steps: s.steps.map((st) => ({ ...st, claimed: st.n <= s.claimed })),
+		steps: s.steps.map((st) => ({
+			...st,
+			claimed: st.n <= s.claimed,
+			...(st.reward.cosmetic
+				? { cosmeticName: cosmeticOf(st.reward.cosmetic)?.name }
+				: {}),
+		})),
 	}
 }
 
@@ -129,12 +144,47 @@ export async function claimTrackStep(
 				greens: sql`${userGyms.greens} + ${step.reward.greens}`,
 			})
 			.where(eq(userGyms.id, gymId))
+		if (step.reward.cosmetic)
+			await tx
+				.insert(gymCosmetics)
+				.ignore()
+				.values({
+					gymId,
+					cosmeticKey: step.reward.cosmetic,
+					source: `track:${s.key}:${step.n}`,
+				})
 		s.claimed += 1
 		s.claimedToday = true
 		return {
 			track: toDto(s),
 			paid: { ...step, claimed: true },
 		}
+	})
+}
+
+/** The cosmetics a gym owns, newest first. */
+export async function listCosmetics(
+	db: Db,
+	gymId: number,
+): Promise<GymCosmeticDto[]> {
+	const rows = await db
+		.select()
+		.from(gymCosmetics)
+		.where(eq(gymCosmetics.gymId, gymId))
+		.orderBy(desc(gymCosmetics.id))
+	return rows.flatMap((r) => {
+		const def = COSMETICS.find((c) => c.key === r.cosmeticKey)
+		return def
+			? [
+					{
+						key: def.key,
+						name: def.name,
+						kind: def.kind,
+						from: def.from,
+						at: r.createdAt.toISOString(),
+					},
+				]
+			: []
 	})
 }
 

@@ -115,6 +115,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Admin: `POST /admin/users/:id/gym/track-step {step}` sets this month's progress without paying (0 resets;
   Admin's gym section). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
   #135), the dashboard/HUD placement, the claim animation, admin authoring of tracks, badges, feed.
+- Cosmetics inventory (#135, first slice): `gym_cosmetics` (migration 0027; one row per gym and key, source recorded)
+  holds what a gym owns besides gear; the catalog is `shared/gym3d/cosmetics.ts` (October's Jack-o'-lantern, Cobweb neon
+  and the coach's witch hat). The reward track grants them: its first three big steps of a month give that month's cosmetics
+  (`MONTH_COSMETICS` in `shared/gym3d/rewardTrack.ts`, granted in `claimTrackStep`). `GET /api/gym/cosmetics` lists them.
+  Not yet: placing owned decor in a room, wearing outfits, challenge/decor-reward sources (#124), an inventory screen.
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds

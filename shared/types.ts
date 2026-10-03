@@ -270,8 +270,20 @@ export type GymRewardTrackDto = {
 		n: number
 		milestone: boolean
 		claimed: boolean
-		reward: { coins: number; sweat: number; greens: number }
+		reward: { coins: number; sweat: number; greens: number; cosmetic?: string }
+		/** Name of the cosmetic the step gives, if any. */
+		cosmeticName?: string
 	}[]
+}
+
+/** A cosmetic a gym owns (shared/gym3d/cosmetics.ts). */
+export type GymCosmeticDto = {
+	key: string
+	name: string
+	kind: "decor" | "outfit"
+	from: string
+	/** ISO time it was granted. */
+	at: string
 }
 
 export type GymLayoutDto = {

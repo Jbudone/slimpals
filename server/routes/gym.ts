@@ -62,7 +62,11 @@ import {
 	getGymLayoutDto,
 } from "../services/gym/layout3dStore.js"
 import { buildNpcLines } from "../services/gym/npcLines.js"
-import { claimTrackStep, getRewardTrack } from "../services/gym/rewardTrack.js"
+import {
+	claimTrackStep,
+	getRewardTrack,
+	listCosmetics,
+} from "../services/gym/rewardTrack.js"
 import {
 	computeGymSimState,
 	type GymClass,
@@ -358,6 +362,11 @@ export function createGymRouter(aiService: AIService) {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		res.json(await getRewardTrack(db, gym.id, userId))
+	})
+	router.get("/gym/cosmetics", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json(await listCosmetics(db, gym.id))
 	})
 	router.post("/gym/reward-track/claim", async (req, res) => {
 		const userId = (req as AuthRequest).user.id
