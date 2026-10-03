@@ -4,7 +4,7 @@
 // gym row (SELECT ... FOR UPDATE), so two first reads racing each other
 // cannot both seed.
 
-import { and, asc, eq, gte, lt, lte, or, sql } from "drizzle-orm"
+import { and, asc, eq, gte, like, lt, lte, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import {
 	ECONOMY,
@@ -13,7 +13,17 @@ import {
 	plotHours,
 	plotPrice,
 } from "../../../shared/gym3d/economy.js"
+import {
+	GOAL_SOURCE,
+	GOALS,
+	GOALS_BASELINE_ID,
+	goalMet,
+	goalState,
+	goalsDto,
+	metGoalIds,
+} from "../../../shared/gym3d/goals.js"
 import { lotsForSale } from "../../../shared/gym3d/lots.js"
+import type { RatingInput } from "../../../shared/gym3d/rating.js"
 import {
 	isRoomType,
 	itemSize,
@@ -24,12 +34,14 @@ import type {
 	GymJobDto,
 	GymLayoutDto,
 	GymLayoutPieceDto,
+	GymLayoutRoomDto,
 } from "../../../shared/types.js"
 import type * as schema from "../../db/schema.js"
 import {
 	gymJobs,
 	gymPieces,
 	gymPlots,
+	gymRewards,
 	gymRooms,
 	gymUpgradesCatalog,
 	userGyms,
@@ -46,6 +58,7 @@ import {
 	roomTypeFor,
 	type UnlockedUpgrade,
 } from "./layout3d.js"
+import { markPaid, payGymReward } from "./rewards.js"
 
 export type Db = MySql2Database<typeof schema>
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0]
@@ -392,11 +405,78 @@ export async function getGymLayoutDto(
 
 	const income = await incomeState(db, gymId, now)
 
+	const roomDtos: GymLayoutRoomDto[] = rooms.map((r) => {
+		const d = PAINT[isRoomType(r.type) ? (r.type as RoomType) : "empty"]
+		const cells = plots.filter((p) => p.roomId === r.id)
+		return {
+			id: r.id,
+			type: r.type,
+			shape: r.shape,
+			level:
+				r.type === "lobby" || r.type === "empty"
+					? r.level
+					: (levels.get(r.id) ?? r.level),
+			points: pointsOf(r.id),
+			building: cells.some((p) => p.state !== "owned"),
+			layoutVersion: r.layoutVersion,
+			cells: cells.map((p) => ({ px: p.px, pz: p.pz })),
+			paint: {
+				wall: r.wallColor ?? d.wall,
+				floorStyle: r.floorStyle ?? d.floorStyle,
+				floorColor: r.floorColor ?? d.floorColor,
+			},
+		}
+	})
+
+	// Rating and goals read the layout; a goal that is newly met pays once.
+	const goalIn: RatingInput = {
+		rooms: roomDtos,
+		pieces: pieces.map((p) => ({
+			kind: p.kind === "decor" ? "decor" : "equipment",
+			itemKey: p.itemKey,
+			tier: p.tier,
+			status: p.status,
+		})),
+	}
+	const gs = goalState(goalIn)
+	const paidRows = await db
+		.select({ source: gymRewards.source })
+		.from(gymRewards)
+		.where(and(eq(gymRewards.gymId, gymId), like(gymRewards.source, "goal:%")))
+	const paid = new Set(paidRows.map((r) => r.source.slice("goal:".length)))
+	const goalsPaid: NonNullable<GymLayoutDto["goalsPaid"]> = []
+	let paidSweat = 0
+	let paidGreens = 0
+	if (!paid.has(GOALS_BASELINE_ID)) {
+		// first read with goals: what the gym already met starts out done
+		const met = metGoalIds(gs)
+		await markPaid(
+			gymId,
+			GOAL_SOURCE(GOALS_BASELINE_ID),
+			met.map(GOAL_SOURCE),
+			db,
+		)
+		paid.add(GOALS_BASELINE_ID)
+		for (const id of met) paid.add(id)
+	}
+	for (const g of GOALS) {
+		if (paid.has(g.id) || !goalMet(g, gs)) continue
+		const got = await payGymReward(gymId, GOAL_SOURCE(g.id), g.reward, db)
+		paid.add(g.id)
+		if (!got.sweat && !got.greens) continue
+		paidSweat += got.sweat
+		paidGreens += got.greens
+		goalsPaid.push({ id: g.id, title: g.title, reward: got })
+	}
+
 	return {
 		gymId,
 		coins: gym?.coins ?? 0,
-		sweat: gym?.sweat ?? 0,
-		greens: gym?.greens ?? 0,
+		sweat: (gym?.sweat ?? 0) + paidSweat,
+		greens: (gym?.greens ?? 0) + paidGreens,
+		rating: gs.rating,
+		goals: goalsDto(gs, paid),
+		...(goalsPaid.length ? { goalsPaid } : {}),
 		income: income.sources,
 		kitchen: income.kitchen,
 		serverNow: now.toISOString(),
@@ -407,28 +487,7 @@ export async function getGymLayoutDto(
 			lotShape: p.lotShape,
 			roomId: p.roomId,
 		})),
-		rooms: rooms.map((r) => {
-			const d = PAINT[isRoomType(r.type) ? (r.type as RoomType) : "empty"]
-			const cells = plots.filter((p) => p.roomId === r.id)
-			return {
-				id: r.id,
-				type: r.type,
-				shape: r.shape,
-				level:
-					r.type === "lobby" || r.type === "empty"
-						? r.level
-						: (levels.get(r.id) ?? r.level),
-				points: pointsOf(r.id),
-				building: cells.some((p) => p.state !== "owned"),
-				layoutVersion: r.layoutVersion,
-				cells: cells.map((p) => ({ px: p.px, pz: p.pz })),
-				paint: {
-					wall: r.wallColor ?? d.wall,
-					floorStyle: r.floorStyle ?? d.floorStyle,
-					floorColor: r.floorColor ?? d.floorColor,
-				},
-			}
-		}),
+		rooms: roomDtos,
 		pieces: pieces.map(
 			(p): GymLayoutPieceDto => ({
 				id: p.id,

@@ -76,6 +76,14 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   feeds the HUD. Gym XP no longer gives coins and check-ins no longer cut jobs (`gym_activity_cuts` is legacy).
   Admin grants coins/Sweat/Greens (`POST /admin/users/:id/gym/coins|sweat|greens`) and can simulate time
   away (`POST /admin/users/:id/gym/away {hours}`).
+- Rating and goals: the gym's 1-5 star rating is a pure score of the layout (`shared/gym3d/rating.ts`: room
+  levels, room-type variety, decor, staff pieces, rooms of 2+ plots; open walls will join when built). The rolling
+  goals queue is `shared/gym3d/goals.ts` (fixed order, each pays Sweat/Greens once). Both ride on `GET /gym/layout`
+  (`rating`, `goals`, and `goalsPaid` for goals reached by that read) and are settled in `getGymLayoutDto`
+  (`layout3dStore.ts`) through `gym_rewards` (`goal:<id>`; `payGymReward` takes the gym row lock first so racing
+  reads pay once). The first read of a gym writes `goal:_start` and marks what it already meets as done without
+  paying. UI: `GoalsCard.svelte` (star button under the HUD) fed by `src/lib/goals.svelte.ts`. Tests:
+  `tests/gym3d/rating-goals.test.ts` (pure), `goals-route.test.ts` (DB).
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus
