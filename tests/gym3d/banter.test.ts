@@ -3,6 +3,8 @@ import {
 	BANTER,
 	type BanterContext,
 	banterFor,
+	GEAR_LINES,
+	gearLine,
 	pickBanter,
 } from "../../shared/gym3d/banter.js"
 
@@ -55,5 +57,13 @@ describe("ambient banter", () => {
 		const first = pickBanter(full, [], () => 0)
 		const next = pickBanter(full, [first?.id ?? ""], () => 0)
 		expect(next?.id).not.toBe(first?.id)
+	})
+
+	it("members only comment on upgraded gear, in the same dry style", () => {
+		expect(gearLine(1, () => 0)).toBeNull()
+		expect(gearLine(2, () => 0)).toBe(GEAR_LINES[2][0])
+		expect(gearLine(3, () => 0.99)).toBe(GEAR_LINES[3][2])
+		for (const l of [...GEAR_LINES[2], ...GEAR_LINES[3]])
+			expect(l).not.toContain("!")
 	})
 })

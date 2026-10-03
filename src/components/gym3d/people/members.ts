@@ -99,6 +99,8 @@ export class People {
 
 	/** Called for each person removed (speech bubbles let go of them). */
 	onRemove: ((p: Person) => void) | null = null
+	/** A member started a set on upgraded gear (tier 2 or 3). */
+	onUpgradedUse: ((p: Person, tier: number) => void) | null = null
 
 	remove(p: Person): void {
 		this.onRemove?.(p)
@@ -451,6 +453,8 @@ export class People {
 		r.position.set(st.x, st.y || 0, st.z)
 		r.rotation.y = st.face || 0
 		if (st.sync != null) p.t = st.sync
+		const tier = st.piece?.tier ?? 1
+		if (tier >= 2 && p.kind === "member") this.onUpgradedUse?.(p, tier)
 	}
 
 	private release(p: Person): void {
@@ -484,8 +488,18 @@ export class People {
 			this.leave(p)
 			return
 		}
+		// upgraded gear draws members: a tier 2 machine is 1.6 times as likely
+		// to be picked as a basic one, tier 3 2.2 times
+		const weight = (s: Station) =>
+			1 + 0.6 * Math.max(0, (s.piece?.tier ?? 1) - 1)
 		for (let k = 0; k < 4 && fr.length; k++) {
-			const st = fr.splice(Math.floor(this.rng() * fr.length), 1)[0]
+			let r = this.rng() * fr.reduce((a, s) => a + weight(s), 0)
+			let i = 0
+			for (; i < fr.length - 1; i++) {
+				r -= weight(fr[i])
+				if (r < 0) break
+			}
+			const st = fr.splice(i, 1)[0]
 			if (this.claim(p, st)) return
 		}
 		p.state = "idle"

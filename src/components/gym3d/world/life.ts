@@ -7,7 +7,11 @@
 // crowd now and then (ambient lines, drawn as thoughts), and two NPCs near
 // each other (or chatting in the sim) exchange a line.
 import * as T from "three"
-import { type BanterContext, pickBanter } from "../../../../shared/gym3d/banter"
+import {
+	type BanterContext,
+	gearLine,
+	pickBanter,
+} from "../../../../shared/gym3d/banter"
 import {
 	firstName,
 	pairLines,
@@ -298,6 +302,18 @@ export class Life {
 		r.push(line)
 		if (r.length > 4) r.shift()
 		this.recent.set(key, r)
+	}
+
+	/** A member started a set on upgraded gear: now and then they say so
+	 * (at most one such line every 20 s, and never over a busy bubble pool). */
+	private lastGear = -1e9
+	gearReaction(p: Person, tier: number, now: number): void {
+		if (this.paused || now - this.lastGear < 20 || this.rng() > 0.4) return
+		if (this.bubbles.active >= 2 || !this.visible(p)) return
+		const line = gearLine(tier, this.rng)
+		if (!line) return
+		this.lastGear = now
+		this.bubbles.say(p, line, this.nameOf(p), now, 3.2)
 	}
 
 	/** One line for a person, or null. */
