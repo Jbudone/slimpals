@@ -54,6 +54,8 @@ export function classRoomType(category: string): string | null {
 			return "cardio"
 		case "weights":
 			return "weights"
+		case "court":
+			return "court"
 		case "amenities":
 			return "recovery"
 		default:

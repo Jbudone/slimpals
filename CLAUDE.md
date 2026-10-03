@@ -100,6 +100,10 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   in `members.ts` `startUse` and `step`), adds `VIBE.bonus` (+4%) to its machines' coins in `income3d.ts`, and
   scores `VIBE.scorePoints` per room with a vibe (up to 3 rooms) in the star rating. e2e: `gym3d-life.spec.ts`
   ("customize").
+- Sports court (gh-130): the seventh room type, `court` (`RT.court`, grid layout; gear `court_hoop` and `court_pickle`,
+  catalog category `court`, 9000/10000 XP). It is a content addition: seeded upgrades, `KEY_ROOM` in `layout3d.ts`, builders in
+  `equipment/builders.ts`, `ROOM_ORDER`, `PICKABLE_TYPES`, hires (Court coach) and the room picker. Staffed bonuses are the
+  existing hires and staff training.
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds

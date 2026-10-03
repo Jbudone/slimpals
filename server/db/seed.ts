@@ -474,6 +474,28 @@ export const GYM_UPGRADES: UpgradeRow[] = [
 		unlocksNpcKey: null,
 	},
 
+	// ── Sports court (gh-130) ─────────────────────────────────────────────
+	{
+		key: "court_hoop",
+		name: "Basketball Hoop",
+		description: "A full-size hoop for pickup games",
+		category: "court",
+		requiredXp: 9000,
+		sortOrder: 1,
+		assetPrompt: "pixel art basketball hoop, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+	{
+		key: "court_pickle",
+		name: "Pickleball Net",
+		description: "A pickleball net for friendly doubles",
+		category: "court",
+		requiredXp: 10000,
+		sortOrder: 2,
+		assetPrompt: "pixel art pickleball net, stardew valley style, 64x64",
+		unlocksNpcKey: null,
+	},
+
 	// ── Amenities ─────────────────────────────────────────────────────────
 	{
 		key: "amenity_water",

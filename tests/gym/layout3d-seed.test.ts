@@ -125,6 +125,7 @@ describe("deriveInitialLayout", () => {
 			["recovery", 0, 1],
 			["juice", 2, 1],
 			["pool", 1, 0],
+			["court", 0, 0],
 		])
 	})
 

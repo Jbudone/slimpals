@@ -95,6 +95,8 @@ const KEY_ROOM: Readonly<Record<string, EquipmentRoomType>> = {
 	hero_spotlight_stage: "boxing",
 	swimming_lap_pool: "pool",
 	swimming_poolside_loungers: "pool",
+	court_hoop: "court",
+	court_pickle: "court",
 	amenity_juice: "juice",
 	amenity_water: "juice",
 	staff_nutrition: "juice",
@@ -127,6 +129,7 @@ const CATEGORY_ROOM: Readonly<Record<string, EquipmentRoomType>> = {
 	punching_bags: "boxing",
 	hero: "boxing",
 	swimming: "pool",
+	court: "court",
 	amenities: "recovery",
 }
 

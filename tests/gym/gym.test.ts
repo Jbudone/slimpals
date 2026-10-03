@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { invites, userGyms, users } from "../../server/db/schema.js"
+import { GYM_UPGRADES } from "../../server/db/seed.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	awardGymXp,
@@ -239,14 +240,14 @@ describe("GET /api/gym/daily-summary", () => {
 })
 
 describe("GET /api/gym/catalog", () => {
-	it("returns 37 upgrades", async () => {
+	it("returns every catalog upgrade", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")
 			.set("Cookie", cookies)
 
 		expect(res.status).toBe(200)
-		expect(res.body).toHaveLength(37)
+		expect(res.body).toHaveLength(GYM_UPGRADES.length)
 
 		const categories = new Set(
 			res.body.map((u: { category: string }) => u.category),
@@ -261,6 +262,7 @@ describe("GET /api/gym/catalog", () => {
 				"boxing",
 				"lagree",
 				"swimming",
+				"court",
 				"punching_bags",
 				"hero",
 			]),

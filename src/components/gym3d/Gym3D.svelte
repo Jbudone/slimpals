@@ -97,6 +97,7 @@ const TYPES: EquipmentRoomType[] = [
 	"recovery",
 	"juice",
 	"pool",
+	"court",
 ]
 const FLOOR_NAMES: Record<string, string> = {
 	checker: "Checker",

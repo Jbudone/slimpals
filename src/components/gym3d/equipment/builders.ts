@@ -1280,6 +1280,46 @@ export const EQUIP: Readonly<Record<string, Builder>> = {
 		return g
 	},
 
+	// ----- sports court -----
+	court_hoop() {
+		const g = group()
+		box(1.1, 0.03, 1.1, "#d9a35f", 0, 0.015, 0.1, g, { noCast: true })
+		cyl(0.05, 2.3, C.steelD, 0, 1.15, -0.7, g, 8)
+		box(0.05, 0.05, 0.5, C.steelD, 0, 2.2, -0.45, g)
+		box(1.0, 0.65, 0.05, C.cream, 0, 2.3, -0.7, g)
+		box(0.4, 0.3, 0.02, "#d4463a", 0, 2.2, -0.66, g, { noCast: true })
+		cyl(0.2, 0.03, "#f2743b", 0, 2.1, -0.2, g, 14)
+		cyl(0.16, 0.2, C.cream, 0, 1.98, -0.2, g, 10)
+		const ball = eqMesh(
+			eqGeo("bball", () => new T.SphereGeometry(0.12, 12, 8)),
+			M("#e8743b"),
+			0.5,
+			0.12,
+			0.5,
+			g,
+		)
+		ball.userData.dyn = 1
+		wst(g, 0, 0.03, 0.4, Math.PI, {
+			pose: "lunge",
+			label: "shooting hoops",
+		})
+		return g
+	},
+	court_pickle() {
+		const g = group()
+		box(1.7, 0.02, 1.2, "#3a8f6a", 0, 0.01, 0, g, { noCast: true })
+		for (const sx of [-0.85, 0.85]) cyl(0.03, 0.9, C.steelD, sx, 0.45, 0, g, 6)
+		box(1.7, 0.3, 0.02, "#2c2f36", 0, 0.7, 0, g, { noCast: true })
+		box(1.7, 0.05, 0.03, C.cream, 0, 0.86, 0, g)
+		box(1.4, 0.02, 0.02, C.cream, 0, 0.022, 0.35, g, { noCast: true })
+		cyl(0.05, 0.02, "#f2c14a", 0.4, 0.03, 0.3, g, 8)
+		wst(g, 0, 0.02, 0.5, Math.PI, {
+			pose: "lunge",
+			label: "playing pickleball",
+		})
+		return g
+	},
+
 	// ----- amenities -----
 	amenity_juice() {
 		const g = group()
