@@ -42,6 +42,8 @@ const tmp = new T.Vector3()
 export class People {
 	readonly people: Person[] = []
 	private spawnT = 1.5
+	private passT = 4
+	private passN = 0
 	private rng: Rng
 	private memberN = 0
 	private reduce: boolean
@@ -248,6 +250,42 @@ export class People {
 			x,
 			z,
 		})
+	}
+
+	/** Passers-by on the pavement in front of the gym: now and then someone
+	 * walks along it from one edge to the other (a few at a time), and about
+	 * one in eight turns in at the door and becomes a member. */
+	private trickleStreet(dt: number): void {
+		this.passT -= dt
+		if (this.passT > 0) return
+		this.passT = 6 + this.rng() * 6
+		const about = this.people.filter((p) => p.key.startsWith("pass:")).length
+		if (about >= Math.max(2, Math.round(this.cap / 2))) return
+		const w = this.w
+		const x0 = -6
+		const x1 = w.cols * PW + 6
+		const left = this.rng() < 0.5
+		const z = w.frontZ + 3 + (this.rng() - 0.5) * 0.5
+		const p = this.add({
+			key: `pass:${++this.passN}`,
+			kind: "extra",
+			name: "Passer-by",
+			out: randOutfit(this.rng),
+			x: left ? x0 : x1,
+			z,
+		})
+		p.speed = 0.7 + this.rng() * 0.5
+		p.state = "walk"
+		if (this.rng() < 0.12) {
+			p.path = [
+				[w.doorX, z],
+				[w.doorX, w.spawn.z],
+			]
+			p.after = "enter"
+		} else {
+			p.path = [[left ? x1 : x0, z]]
+			p.after = "leave"
+		}
 	}
 
 	private ambientCount(): number {
@@ -534,7 +572,13 @@ export class People {
 				this.chooseNext(p)
 			}
 		} else if (p.after === "leave") this.remove(p)
-		else {
+		else if (p.after === "enter") {
+			// a passer-by came in: they are a member now
+			p.kind = "member"
+			p.name = "Member"
+			p.key = `member:${++this.memberN}`
+			this.chooseNext(p)
+		} else {
 			p.state = "idle"
 			p.idle = 1.5
 			if (p.home) p.rig.root.rotation.y = p.home.face
@@ -621,6 +665,7 @@ export class People {
 			for (const p of this.people)
 				p.onscr = onScreen(tmp.copy(p.rig.root.position).setY(0.6))
 		for (const p of this.people.slice()) this.step(p, pd, p.onscr === false)
+		this.trickleStreet(dt)
 		this.spawnT -= dt
 		if (this.spawnT <= 0) {
 			this.spawnT = 3

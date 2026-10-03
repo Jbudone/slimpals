@@ -140,7 +140,7 @@ export type Person = {
 	station: Station | null
 	/** A station this person keeps (staff, swimmers, named NPCs on a target). */
 	fixed: Station | null
-	after: "use" | "leave" | "idle" | null
+	after: "use" | "leave" | "idle" | "enter" | null
 	dest: [number, number, number | undefined] | null
 	fin: [number, number] | null
 	exitFrom: Station | null
