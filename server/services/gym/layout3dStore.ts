@@ -79,6 +79,8 @@ const DECOR_NAMES: Readonly<Record<string, string>> = {
 	mirror: "Standing mirror",
 	studio_mirror: "Studio mirror",
 	trophy: "Trophy stand",
+	lantern: "Jack-o'-lantern",
+	cobwebs: "Cobweb neon",
 }
 
 export async function unlockedUpgrades(

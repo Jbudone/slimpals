@@ -1085,3 +1085,58 @@ test("3D gym customize: a style repaints the room and a vibe tints its floor", a
 	await page.waitForTimeout(800)
 	await shot(page, "17-style-vibe-room")
 })
+
+test("3D gym cosmetics: an owned lantern goes on show in a room and comes down", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, page } = await setup(request, browser, testInfo, 30, "cosm")
+	// the gym owns a lantern (as after day 7 of October's track)
+	const conn = await mysql.createConnection(DB_URL)
+	try {
+		const [rows] = await conn.execute(
+			"SELECT id FROM user_gyms WHERE user_id = ?",
+			[userId],
+		)
+		const gymId = (rows as { id: number }[])[0].id
+		await conn.execute(
+			"INSERT INTO gym_cosmetics (gym_id, cosmetic_key, source) VALUES (?, ?, ?)",
+			[gymId, "halloween_lantern", "e2e"],
+		)
+	} finally {
+		await conn.end()
+	}
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	const room = L0?.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	if (!room) throw new Error("no room")
+
+	await openRoomMenu(page, room)
+	await page.getByTestId("room-customize").click()
+	await page.getByTestId("cosmetic-place-halloween_lantern").click()
+	await expect
+		.poll(async () =>
+			page.evaluate(() =>
+				window.gym3d
+					?.layout()
+					.pieces.some((p) => p.upgradeKey === "cosmetic:halloween_lantern"),
+			),
+		)
+		.toBe(true)
+	await page.waitForTimeout(800)
+	await shot(page, "18-lantern-placed")
+	await page.getByTestId("cosmetic-remove-halloween_lantern").click()
+	await expect
+		.poll(async () =>
+			page.evaluate(() =>
+				window.gym3d
+					?.layout()
+					.pieces.some((p) => p.upgradeKey === "cosmetic:halloween_lantern"),
+			),
+		)
+		.toBe(false)
+})
