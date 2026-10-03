@@ -4,6 +4,7 @@ import type { GymRewardTrackDto } from "../../shared/types"
 import { chipHtml } from "../components/home/icons.js"
 import { api } from "./api.js"
 import { burstAt, centerOf, flyChip } from "./fly.js"
+import { showBadgeToast } from "./toast.svelte.js"
 import { loadWallet } from "./wallet.svelte.js"
 
 export const rewardTrack = $state<{
@@ -26,8 +27,10 @@ export async function claimRewardStep(from?: HTMLElement): Promise<void> {
 		const r = await api.post<{
 			track: GymRewardTrackDto
 			paid: { reward: { coins: number; sweat: number; greens: number } }
+			newBadges?: { name: string; tier: string }[]
 		}>("/gym/reward-track/claim", {})
 		rewardTrack.data = r.track
+		for (const b of r.newBadges ?? []) showBadgeToast(b)
 		// the reward flies to the HUD, then the HUD numbers catch up
 		const at = from ? centerOf(from) : { x: innerWidth / 2, y: innerHeight / 2 }
 		burstAt(at.x, at.y, ["#f2c14a", "#34c973", "#5bc0eb"])

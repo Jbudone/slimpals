@@ -140,6 +140,10 @@ describe("reward track route", () => {
 			.where(eq(userGyms.userId, userId))
 		const res = await claim().expect(200)
 		expect(res.body.paid.n).toBe(1)
+		// the first step earns the Track badge, once
+		expect(res.body.newBadges.map((b: { key: string }) => b.key)).toEqual([
+			"track_first",
+		])
 		expect(res.body.track.claimed).toBe(1)
 		expect(res.body.track.claimedToday).toBe(true)
 		const [g1] = await db
