@@ -1113,6 +1113,17 @@ test("3D gym cosmetics: an owned lantern goes on show in a room and comes down",
 	await expect(
 		page.locator('[data-testid=coach] ellipse[fill="#3b2a55"]'),
 	).toHaveCount(1)
+	// ...and can take it off from the stars card, then put it back on
+	await page.getByTestId("gym-stars").click()
+	await page.getByTestId("outfit-halloween_hat").click()
+	await expect(
+		page.locator('[data-testid=coach] ellipse[fill="#3b2a55"]'),
+	).toHaveCount(0)
+	await page.getByTestId("outfit-halloween_hat").click()
+	await expect(
+		page.locator('[data-testid=coach] ellipse[fill="#3b2a55"]'),
+	).toHaveCount(1)
+	await page.getByTestId("gym-stars").click()
 	const L0 = await page.evaluate(() => window.gym3d?.layout())
 	const room = L0?.rooms.find(
 		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,

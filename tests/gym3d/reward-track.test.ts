@@ -235,5 +235,26 @@ describe("cosmetics from the track", () => {
 			.set("Cookie", cookie)
 		expect(api.status).toBe(200)
 		expect(api.body).toHaveLength(1)
+
+		// an owned outfit can be taken off and put on again; decor cannot be worn
+		await db.insert(gymCosmetics).values({
+			gymId: gym.id,
+			cosmeticKey: "halloween_hat",
+			source: "test",
+		})
+		const wear = (key: string, worn: boolean) =>
+			request(app)
+				.post(`/api/gym/cosmetics/${key}/wear`)
+				.set("Cookie", cookie)
+				.send({ worn })
+		const hat = async () =>
+			(await listCosmetics(db, gym.id)).find((o) => o.key === "halloween_hat")
+		expect((await hat())?.worn).toBe(true)
+		await wear("halloween_hat", false).expect(200)
+		expect((await hat())?.worn).toBe(false)
+		await wear("halloween_hat", true).expect(200)
+		expect((await hat())?.worn).toBe(true)
+		await wear("halloween_lantern", false).expect(400)
+		await wear("challenge_trophy", false).expect(400)
 	})
 })

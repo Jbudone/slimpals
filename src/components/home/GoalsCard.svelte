@@ -5,6 +5,7 @@
 // goal pays Sweat or Greens once.
 import { onMount } from "svelte"
 import { api } from "../../lib/api.js"
+import { cosmetics, wearOutfit } from "../../lib/cosmetics.svelte.js"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 import {
 	claimRewardStep,
@@ -32,6 +33,7 @@ onMount(() => {
 	void loadRewardTrack()
 })
 
+const outfits = $derived(cosmetics.owned.filter((c) => c.kind === "outfit"))
 const burger = $derived(gymGoals.burger)
 let buying = $state(false)
 let burgerError = $state("")
@@ -139,6 +141,24 @@ async function buyBurger() {
 					<p class="hint">{rewardTrack.error || track.blockedReason}</p>
 				{/if}
 			{/if}
+			{#if outfits.length}
+				<h3>Coach outfit</h3>
+				<ul class="outfits" data-testid="outfits">
+					{#each outfits as o (o.key)}
+						<li>
+							<span>{o.name}</span>
+							<button
+								type="button"
+								class="claim"
+								onclick={() => void wearOutfit(o.key, !o.worn)}
+								data-testid="outfit-{o.key}"
+							>
+								{o.worn ? "Take off" : "Put on"}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
 		</div>
 	{/if}
@@ -164,6 +184,20 @@ async function buyBurger() {
 	box-shadow: 0 3px 10px rgba(30, 20, 10, 0.25);
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
+}
+
+.outfits {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.outfits li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 4px 0;
 }
 
 .star span {
