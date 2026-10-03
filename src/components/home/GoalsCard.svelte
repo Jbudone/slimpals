@@ -3,7 +3,14 @@
 // the coach (the account avatar owns the top-right corner) that opens a
 // small card. The server computes both; finishing a
 // goal pays Sweat or Greens once.
+import { onMount } from "svelte"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
+import {
+	claimRewardStep,
+	loadRewardTrack,
+	rewardTrack,
+	stepText,
+} from "../../lib/rewardTrack.svelte.js"
 
 let { top = 64 }: { top?: number } = $props()
 
@@ -13,6 +20,15 @@ const rating = $derived(gymGoals.rating)
 const next = $derived(openGoals(gymGoals.goals))
 const doneCount = $derived(gymGoals.goals.filter((g) => g.done).length)
 const stars = $derived(rating?.stars ?? 1)
+const track = $derived(rewardTrack.data)
+const upNext = $derived(track?.steps.find((s) => !s.claimed) ?? null)
+const nextBig = $derived(
+	track?.steps.find((s) => !s.claimed && s.milestone) ?? null,
+)
+
+onMount(() => {
+	void loadRewardTrack()
+})
 </script>
 
 {#if rating}
@@ -58,6 +74,29 @@ const stars = $derived(rating?.stars ?? 1)
 				</ul>
 			{:else}
 				<p class="hint">Every goal is done.</p>
+			{/if}
+			{#if track}
+				<h3>{track.theme} track</h3>
+				<div class="bar" aria-hidden="true">
+					<i style="width:{((track.claimed / track.steps.length) * 100).toFixed(0)}%"></i>
+				</div>
+				<p class="hint" data-testid="track-progress">
+					Step {track.claimed} of {track.steps.length}.
+					{#if upNext}Next: {stepText(upNext.reward)}.{/if}
+					{#if nextBig && nextBig !== upNext}Big one on day {nextBig.n}: {stepText(nextBig.reward)}.{/if}
+				</p>
+				<button
+					type="button"
+					class="claim"
+					disabled={!track.canClaim}
+					onclick={() => void claimRewardStep()}
+					data-testid="track-claim"
+				>
+					{track.canClaim ? "Take today's step" : "Come back tomorrow"}
+				</button>
+				{#if rewardTrack.error || (!track.canClaim && track.blockedReason)}
+					<p class="hint">{rewardTrack.error || track.blockedReason}</p>
+				{/if}
 			{/if}
 			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
 		</div>
@@ -176,6 +215,24 @@ li {
 	grid-row: 1;
 	grid-column: 2;
 	color: #5c4a38;
+}
+
+.claim {
+	width: 100%;
+	margin: 0 0 6px;
+	padding: 8px 10px;
+	border: 0;
+	border-radius: 10px;
+	background: #34c973;
+	color: #fff;
+	font: 800 13px system-ui, sans-serif;
+	cursor: pointer;
+}
+
+.claim:disabled {
+	background: #d9cdbb;
+	color: #8a7660;
+	cursor: default;
 }
 
 small {
