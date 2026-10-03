@@ -207,3 +207,23 @@ export function pickBanter(
 	const from = fresh.length ? fresh : pool
 	return from[Math.floor(rng() * from.length) % from.length]
 }
+
+/** What a member says on starting a set on upgraded gear (tier 2 or 3). */
+export const GEAR_LINES: Readonly<Record<2 | 3, readonly string[]>> = {
+	2: [
+		"This one has a screen now.",
+		"The new console is a step up.",
+		"Better than the old one, honestly.",
+	],
+	3: [
+		"Gold screen. Fancy.",
+		"Okay, this one's actually nice.",
+		"Speakers on a machine. Nobody asked, and thank you.",
+	],
+}
+
+export function gearLine(tier: number, rng: Rng): string | null {
+	const pool = GEAR_LINES[Math.min(3, tier) as 2 | 3]
+	if (tier < 2 || !pool) return null
+	return pool[Math.floor(rng() * pool.length) % pool.length]
+}
