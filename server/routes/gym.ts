@@ -29,6 +29,7 @@ import {
 	sweatJob,
 	upgradePiece,
 } from "../services/gym/build3d.js"
+import { buyBurgerBaron } from "../services/gym/burger.js"
 import {
 	appendMemoryEvent,
 	generateContentForUser,
@@ -418,6 +419,10 @@ export function createGymRouter(aiService: AIService) {
 		if (!Number.isInteger(v) || v <= 0) throw new BuildError(400, `Bad ${name}`)
 		return v
 	}
+	router.post(
+		"/gym/layout/burger/buy",
+		build((gymId) => buyBurgerBaron(db, gymId)),
+	)
 	router.post(
 		"/gym/cosmetics/:key/place",
 		build((gymId, req) =>

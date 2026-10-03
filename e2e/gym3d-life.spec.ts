@@ -1232,3 +1232,41 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 	await page.waitForTimeout(1500)
 	await shot(page, "22-shops")
 })
+
+test("3D gym burger: at 4 stars the Burger Baron is for sale and buying it shrinks it", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 120, "burger")
+	// a fully unlocked gym is half a point short of 4 stars: a vibe on one
+	// room (+0.5) gets it there
+	const lay = (await (
+		await request.get("/api/gym/layout", { headers: { Origin: AUTH_ORIGIN } })
+	).json()) as { rooms: { id: number; type: string; building: boolean }[] }
+	const room = lay.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	if (!room) throw new Error("no room")
+	const vibe = await request.post(`/api/gym/layout/rooms/${room.id}/vibe`, {
+		headers: { Origin: AUTH_ORIGIN },
+		data: { vibe: "chill" },
+	})
+	expect(vibe.ok()).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("burger-forsale")).toBeVisible()
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
+	await page.waitForTimeout(1200)
+	await shot(page, "23-burger-for-sale")
+	await page.getByTestId("burger-buy").click()
+	// buying remounts the gym; the open card says it is bought
+	await expect(page.getByTestId("burger-bought")).toBeVisible({
+		timeout: 30_000,
+	})
+	await waitReady(page)
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
+	await page.waitForTimeout(1200)
+	await shot(page, "24-burger-bought")
+})

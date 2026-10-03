@@ -7,6 +7,11 @@
 import { and, asc, eq, gte, like, lt, lte, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import {
+	BURGER,
+	BURGER_SOURCE,
+	burgerState,
+} from "../../../shared/gym3d/burger.js"
+import {
 	ECONOMY,
 	type LotShape,
 	levelFromPoints,
@@ -484,6 +489,13 @@ export async function getGymLayoutDto(
 		goalsPaid.push({ id: g.id, title: g.title, reward: got })
 	}
 
+	const [boughtRow] = await db
+		.select({ id: gymRewards.id })
+		.from(gymRewards)
+		.where(
+			and(eq(gymRewards.gymId, gymId), eq(gymRewards.source, BURGER_SOURCE)),
+		)
+
 	return {
 		gymId,
 		coins: gym?.coins ?? 0,
@@ -495,6 +507,11 @@ export async function getGymLayoutDto(
 		nextHireCost: hireCost(hires.length),
 		rating: gs.rating,
 		goals: goalsDto(gs, paid),
+		burger: {
+			state: burgerState(gs.rating.stars, !!boughtRow),
+			cost: BURGER.cost,
+			stars: BURGER.stars,
+		},
 		...(goalsPaid.length ? { goalsPaid } : {}),
 		income: income.sources,
 		kitchen: income.kitchen,

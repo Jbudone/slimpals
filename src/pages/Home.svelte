@@ -268,7 +268,7 @@ onMount(() => {
 		{@html coach}
 	</button>
 	{#if !failed}
-		<GoalsCard top={hudBottom + 62} />
+		<GoalsCard top={hudBottom + 62} onBought={() => mountKey++} />
 	{/if}
 	{#if tip}
 		<div

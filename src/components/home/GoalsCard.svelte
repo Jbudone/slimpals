@@ -4,6 +4,7 @@
 // small card. The server computes both; finishing a
 // goal pays Sweat or Greens once.
 import { onMount } from "svelte"
+import { api } from "../../lib/api.js"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 import {
 	claimRewardStep,
@@ -11,8 +12,9 @@ import {
 	rewardTrack,
 	stepText,
 } from "../../lib/rewardTrack.svelte.js"
+import { loadWallet } from "../../lib/wallet.svelte.js"
 
-let { top = 64 }: { top?: number } = $props()
+let { top = 64, onBought }: { top?: number; onBought?: () => void } = $props()
 
 let open = $state(false)
 
@@ -29,6 +31,23 @@ const nextBig = $derived(
 onMount(() => {
 	void loadRewardTrack()
 })
+
+const burger = $derived(gymGoals.burger)
+let buying = $state(false)
+let burgerError = $state("")
+async function buyBurger() {
+	buying = true
+	burgerError = ""
+	try {
+		await api.post("/gym/layout/burger/buy", {})
+		await loadWallet()
+		onBought?.()
+	} catch (e) {
+		burgerError = e instanceof Error ? e.message : "Could not buy it"
+	} finally {
+		buying = false
+	}
+}
 </script>
 
 {#if rating}
@@ -74,6 +93,28 @@ onMount(() => {
 				</ul>
 			{:else}
 				<p class="hint">Every goal is done.</p>
+			{/if}
+			{#if burger && burger.state !== "closed"}
+				<h3>Burger Baron</h3>
+				{#if burger.state === "forSale"}
+					<p class="hint" data-testid="burger-forsale">
+						Burger Baron is downsizing! Your gym is the best in town, so the building is yours for {burger.cost} coins.
+					</p>
+					<button
+						type="button"
+						class="claim"
+						disabled={buying}
+						onclick={() => void buyBurger()}
+						data-testid="burger-buy"
+					>
+						Buy the Burger Baron
+					</button>
+					{#if burgerError}<p class="hint">{burgerError}</p>{/if}
+				{:else}
+					<p class="hint" data-testid="burger-bought">
+						BURGER BARON Jr. (now smaller!) is yours.
+					</p>
+				{/if}
 			{/if}
 			{#if track}
 				<h3>{track.theme} track</h3>
