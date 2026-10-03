@@ -1,6 +1,7 @@
 <script lang="ts">
 // The gym's star rating and the next few goals: a round star button under
-// the HUD that opens a small card. The server computes both; finishing a
+// the coach (the account avatar owns the top-right corner) that opens a
+// small card. The server computes both; finishing a
 // goal pays Sweat or Greens once.
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 
@@ -66,7 +67,7 @@ const stars = $derived(rating?.stars ?? 1)
 <style>
 .star {
 	position: absolute;
-	right: 10px;
+	left: 10px;
 	z-index: 9;
 	display: flex;
 	align-items: center;
@@ -92,7 +93,7 @@ const stars = $derived(rating?.stars ?? 1)
 
 .card {
 	position: absolute;
-	right: 10px;
+	left: 10px;
 	z-index: 10;
 	width: min(290px, calc(100% - 20px));
 	padding: 12px 14px;

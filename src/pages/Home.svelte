@@ -258,7 +258,7 @@ onMount(() => {
 		{@html COACH_SVG}
 	</button>
 	{#if !failed}
-		<GoalsCard top={hudBottom + 4} />
+		<GoalsCard top={hudBottom + 62} />
 	{/if}
 	{#if tip}
 		<div
