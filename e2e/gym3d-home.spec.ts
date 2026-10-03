@@ -101,6 +101,14 @@ test("gym home: tick a task, collect coins, run the kitchen, come back", async (
 	await expect(page.getByTestId("hud-sweat")).toHaveText("3")
 	await expect(page.getByTestId("drawer-count")).toContainText("0 of 3 done")
 	await shot(page, "01-home")
+	// the star rating and the next goals, on a card under the coach
+	await expectUncovered(page, "gym-stars")
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("goals-card")).toBeVisible()
+	await expect(page.getByTestId("goals-card")).toContainText("Next goals")
+	await shot(page, "01b-goals")
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("goals-card")).toBeHidden()
 
 	// ── the drawer opens; ticking the walk flies +2 Sweat into the HUD ──
 	await page.getByTestId("drawer-head").click()

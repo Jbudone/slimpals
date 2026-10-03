@@ -1,0 +1,185 @@
+<script lang="ts">
+// The gym's star rating and the next few goals: a round star button under
+// the coach (the account avatar owns the top-right corner) that opens a
+// small card. The server computes both; finishing a
+// goal pays Sweat or Greens once.
+import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
+
+let { top = 64 }: { top?: number } = $props()
+
+let open = $state(false)
+
+const rating = $derived(gymGoals.rating)
+const next = $derived(openGoals(gymGoals.goals))
+const doneCount = $derived(gymGoals.goals.filter((g) => g.done).length)
+const stars = $derived(rating?.stars ?? 1)
+</script>
+
+{#if rating}
+	<button
+		type="button"
+		class="star"
+		style="top:{top}px"
+		aria-label="Gym rating {stars} of 5 stars. Goals"
+		aria-expanded={open}
+		onclick={() => (open = !open)}
+		data-testid="gym-stars"
+	>
+		<span aria-hidden="true">★</span><b>{stars}</b>
+	</button>
+	{#if open}
+		<div class="card" style="top:{top + 56}px" role="dialog" aria-label="Gym goals" data-testid="goals-card">
+			<div class="row" aria-hidden="true">
+				{#each [1, 2, 3, 4, 5] as n}
+					<span class="s" class:on={n <= stars}>★</span>
+				{/each}
+			</div>
+			{#if rating.next != null}
+				<div class="bar" aria-hidden="true"><i style="width:{(rating.k * 100).toFixed(0)}%"></i></div>
+				<p class="hint">
+					Score {rating.score.toFixed(rating.score % 1 ? 1 : 0)} of {rating.next} for star {stars + 1}.
+					Rooms, levels, variety, decor and staff all count.
+				</p>
+			{:else}
+				<p class="hint">Five stars. The best gym around.</p>
+			{/if}
+			{#if next.length}
+				<h3>Next goals</h3>
+				<ul>
+					{#each next as g (g.id)}
+						<li data-testid="goal-{g.id}">
+							<span class="t">{g.title}</span>
+							<span class="r">{rewardText(g.reward)}</span>
+							{#if g.target > 1}
+								<span class="p">{g.value}/{g.target}</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="hint">Every goal is done.</p>
+			{/if}
+			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
+		</div>
+	{/if}
+{/if}
+
+<style>
+.star {
+	position: absolute;
+	left: 10px;
+	z-index: 9;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	width: 50px;
+	height: 50px;
+	padding: 0;
+	border: 3px solid #f2b21a;
+	border-radius: 50%;
+	background: #fff;
+	color: #c4521f;
+	font: 800 16px system-ui, sans-serif;
+	box-shadow: 0 3px 10px rgba(30, 20, 10, 0.25);
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.star span {
+	color: #f2b21a;
+	font-size: 18px;
+}
+
+.card {
+	position: absolute;
+	left: 10px;
+	z-index: 10;
+	width: min(290px, calc(100% - 20px));
+	padding: 12px 14px;
+	border-radius: 16px;
+	background: #fff7ea;
+	color: #241d15;
+	box-shadow: 0 6px 20px rgba(58, 38, 34, 0.25);
+	font: 600 13px/1.35 system-ui, sans-serif;
+}
+
+.row {
+	display: flex;
+	gap: 2px;
+	font-size: 24px;
+	line-height: 1;
+}
+
+.s {
+	color: #d9cdbb;
+}
+
+.s.on {
+	color: #f2b21a;
+}
+
+.bar {
+	height: 8px;
+	margin: 8px 0 4px;
+	border-radius: 4px;
+	background: #eadcc6;
+	overflow: hidden;
+}
+
+.bar i {
+	display: block;
+	height: 100%;
+	background: #34c973;
+	border-radius: 4px;
+}
+
+.hint {
+	margin: 4px 0 8px;
+	color: #5c4a38;
+	font-weight: 500;
+}
+
+h3 {
+	margin: 6px 0 4px;
+	font: 800 10.5px/1.2 system-ui, sans-serif;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #1f9a55;
+}
+
+ul {
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+li {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0 8px;
+	padding: 5px 0;
+	border-top: 1px solid #eadcc6;
+}
+
+.t {
+	font-weight: 700;
+}
+
+.r {
+	grid-column: 1;
+	color: #c4521f;
+	font-size: 12px;
+}
+
+.p {
+	grid-row: 1;
+	grid-column: 2;
+	color: #5c4a38;
+}
+
+small {
+	color: #8a7660;
+	font-weight: 600;
+}
+</style>

@@ -6,10 +6,12 @@
 import { onMount } from "svelte"
 import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
+import GoalsCard from "../components/home/GoalsCard.svelte"
 import { COACH_SVG } from "../components/home/icons"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import { api } from "../lib/api.js"
 import { checkinState } from "../lib/checkin.svelte.js"
+import { rewardText, setGymGoals } from "../lib/goals.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
 import {
@@ -108,6 +110,18 @@ function showCoach(ms = 7000) {
 
 function onLayout(l: GymLayoutDto) {
 	patchWallet({ coins: l.coins, sweat: l.sweat, greens: l.greens })
+	setGymGoals(l)
+	// the coach cheers goals the gym just reached (the server paid them)
+	const done = l.goalsPaid?.[0]
+	if (done)
+		onTip(
+			`Goal done: ${done.title}! ${rewardText(done.reward)}${
+				l.goalsPaid && l.goalsPaid.length > 1
+					? ` (and ${l.goalsPaid.length - 1} more)`
+					: ""
+			}`,
+			"info",
+		)
 }
 
 function handleNpcClick(npcKey: string, portrait: string | null = null) {
@@ -243,6 +257,9 @@ onMount(() => {
 	>
 		{@html COACH_SVG}
 	</button>
+	{#if !failed}
+		<GoalsCard top={hudBottom + 62} />
+	{/if}
 	{#if tip}
 		<div
 			class="say"

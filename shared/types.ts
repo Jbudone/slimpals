@@ -195,8 +195,42 @@ export type GymWelcomeBackDto = {
 	sales: number
 }
 
+/** Sweat and Greens a payout gives. */
+export type Reward = { sweat: number; greens: number }
+
+/** The gym's star rating (see shared/gym3d/rating.ts). */
+export type GymRatingDto = {
+	score: number
+	stars: number
+	next: number | null
+	k: number
+	parts: {
+		levels: number
+		variety: number
+		decor: number
+		staff: number
+		bigRooms: number
+	}
+}
+
+/** One rolling goal (see shared/gym3d/goals.ts). */
+export type GymGoalDto = {
+	id: string
+	title: string
+	value: number
+	target: number
+	reward: Reward
+	done: boolean
+}
+
 export type GymLayoutDto = {
 	gymId: number
+	/** Star rating (1..5) from the layout. */
+	rating: GymRatingDto
+	/** Every goal in queue order; the HUD shows the first open ones. */
+	goals: GymGoalDto[]
+	/** Rewards paid by this read for goals reached since the last one. */
+	goalsPaid?: { id: string; title: string; reward: Reward }[]
 	/** Sweat (exercise tasks) and Greens (diet tasks), gym home. */
 	sweat: number
 	greens: number
