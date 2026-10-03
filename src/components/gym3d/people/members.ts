@@ -3,6 +3,9 @@
 // ambient members running the build lab's little AI (walk to a free
 // station, work out, move on or leave).
 import * as T from "three"
+import { hirePost } from "../../../../shared/gym3d/hires"
+import { PD, PW } from "../../../../shared/gym3d/rooms"
+import type { GymHireDto, GymLayoutRoomDto } from "../../../../shared/types"
 import {
 	angLerp,
 	boxGeo,
@@ -185,6 +188,37 @@ export class People {
 			}
 		}
 		this.seedFixed()
+	}
+
+	/** Staff hired for rooms stand at their post in the room. New hires walk
+	 * in from the door (`walkIn`); hires that are gone are removed. */
+	syncHires(
+		hires: readonly GymHireDto[],
+		rooms: readonly GymLayoutRoomDto[],
+		walkIn: boolean,
+	): void {
+		const want = new Map(hires.map((h) => [`hire:${h.id}`, h]))
+		for (const p of this.people.slice())
+			if (p.key.startsWith("hire:") && !want.has(p.key)) this.remove(p)
+		for (const [key, h] of want) {
+			if (this.find(key)) continue
+			const cell = rooms.find((r) => r.id === h.roomId)?.cells[0]
+			if (!cell) continue
+			const post = hirePost(h.post, cell, PW, PD)
+			const from = walkIn ? this.w.spawn : post
+			const p = this.add({
+				key,
+				kind: "staff",
+				name: h.name,
+				role: h.role,
+				out: staffOutfit(key),
+				x: from.x,
+				z: from.z,
+			})
+			p.home = { x: post.x, z: post.z, face: Math.PI * 0.75 }
+			if (walkIn) this.walkTo(p, post.x, post.z, "idle")
+			else p.rig.root.rotation.y = p.home.face
+		}
 	}
 
 	/** Seeds ambient members already working out, plus one walking in. */

@@ -21,6 +21,8 @@ export type RatingInput = {
 	>[]
 	/** Walls opened between rooms (none when left out). */
 	openWalls?: number
+	/** Staff hired for rooms (goals only; none when left out). */
+	hires?: number
 }
 
 export const RATING = {

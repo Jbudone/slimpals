@@ -392,6 +392,21 @@ export const gymRewards = mysqlTable(
 	(t) => [unique("gym_rewards_gym_source_uq").on(t.gymId, t.source)],
 )
 
+// Staff hired for a room (gym home): see shared/gym3d/hires.ts.
+export const gymHires = mysqlTable("gym_hires", {
+	id: int("id").autoincrement().primaryKey(),
+	gymId: int("gym_id")
+		.notNull()
+		.references(() => userGyms.id),
+	roomId: int("room_id")
+		.notNull()
+		.references(() => gymRooms.id),
+	role: varchar("role", { length: 32 }).notNull(),
+	name: varchar("name", { length: 64 }).notNull(),
+	level: int("level").notNull().default(1),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
 // Walls opened between two rooms (gym home), named from the plot on the far
 // side: axis "x" is the wall on that plot's -x side, "z" its -z side. See
 // shared/gym3d/walls.ts.

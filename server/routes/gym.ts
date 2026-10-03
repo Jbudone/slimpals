@@ -43,6 +43,7 @@ import {
 	getRelationshipStage,
 	getStageLabel,
 } from "../services/gym/dialog.js"
+import { hireStaff } from "../services/gym/hires3d.js"
 import { hustleBonus } from "../services/gym/hustle.js"
 import {
 	collectIncome,
@@ -450,6 +451,13 @@ export function createGymRouter(aiService: AIService) {
 		build((gymId, req) =>
 			sweatJob(db, gymId, idParam(req, "jobId"), "hour", maxCostOf(req)),
 		),
+	)
+	// Hire a staff member for a finished room.
+	router.post(
+		"/gym/layout/rooms/:roomId/hire",
+		build(async (gymId, req) => {
+			await hireStaff(db, gymId, idParam(req, "roomId"))
+		}),
 	)
 	// Knock out the wall between two finished rooms ({ px, pz, axis }).
 	router.post(
