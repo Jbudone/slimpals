@@ -178,6 +178,17 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
 
+## Working autonomously
+The owner's standing instruction: do not ask what to work on next. After a PR merges, pick the next task yourself with
+a best guess and carry on, per PR: new branch from `master`, lean tests, `npm run check` + `typecheck` + tests, open the
+PR ("Closes #N" only when the issue is fully done), merge with a merge commit once CI is green, delete the branch, repeat.
+- Choosing: take the epic #127 items and open issues in a sensible order. When the best item is blocked or large, do the
+  unblocking prerequisite or a first vertical slice of it; never stop to ask. Record the guess in the PR description.
+- Stop only for a real blocker: a destructive or outward-facing action nobody authorized, missing credentials, or a CI
+  failure you cannot fix. Say what was decided in the final message, not as a question.
+- Backup check-ins (`send_later`) and PR subscriptions cover waiting on CI; do not end a turn just because CI is pending
+  if other work can start on a fresh branch.
+
 ## Scheduled jobs
 No external cron: `server/index.ts` starts an in-process scheduler (`server/services/scheduler/`) that ticks
 every minute when `SCHEDULER_ENABLED` is on (unset = on only with `NODE_ENV=production`; `1`/`0` force it;
