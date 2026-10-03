@@ -28,6 +28,13 @@ import {
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
+import {
+	type RoomStyle,
+	STYLES,
+	styleOf,
+	VIBE,
+	VIBES,
+} from "../../../shared/gym3d/vibes"
 import { sharedWalls, type WallRef, wallKey } from "../../../shared/gym3d/walls"
 import type {
 	GymJobDto,
@@ -582,6 +589,24 @@ async function paint(p: {
 	if (!r) return
 	const next = await act(`rooms/${r.id}/paint`, p)
 	if (next) app?.sparkleRoom(r.id, p.wall ?? p.floorColor ?? "#ffffff")
+}
+
+/** A whole-room look in one tap (the same paint call as the swatches). */
+function applyStyle(st: RoomStyle) {
+	return paint({
+		wall: st.wall,
+		floorStyle: st.floorStyle,
+		floorColor: st.floorColor,
+	})
+}
+
+/** Sets or clears the room's vibe (coins to set, free to clear). */
+async function setVibe(vibe: string) {
+	const r = room
+	if (!r) return
+	const next = await act(`rooms/${r.id}/vibe`, { vibe })
+	if (next && vibe !== "none")
+		say(`${VIBES[vibe]?.name ?? "New"} vibe on. ${VIBES[vibe]?.blurb ?? ""}`)
 }
 
 async function placeStored(pieceId: number) {
@@ -1277,6 +1302,45 @@ const kitchenView = $derived.by(() => {
 					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
 				>
 				<h3>Customize</h3>
+				<p class="lbl">Style</p>
+				<div class="chips" data-testid="room-styles">
+					{#each STYLES as st (st.key)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={styleOf(room.paint)?.key === st.key}
+							disabled={busy}
+							onclick={() => applyStyle(st)}
+							data-testid="room-style-{st.key}">{st.name}</button
+						>
+					{/each}
+				</div>
+				<p class="lbl">Vibe</p>
+				<div class="chips" data-testid="room-vibes">
+					<button
+						type="button"
+						class="g3d-chipbtn"
+						class:on={!room.vibe}
+						disabled={busy || !room.vibe}
+						onclick={() => setVibe("none")}
+						data-testid="room-vibe-none">None</button
+					>
+					{#each Object.values(VIBES) as v (v.key)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={room.vibe === v.key}
+							disabled={busy || room.vibe === v.key || (layout?.coins ?? 0) < VIBE.cost}
+							onclick={() => setVibe(v.key)}
+							data-testid="room-vibe-{v.key}">{v.name}</button
+						>
+					{/each}
+				</div>
+				<p class="hint">
+					{room.vibe
+						? (VIBES[room.vibe]?.blurb ?? "")
+						: `A vibe costs ${VIBE.cost} coins. It tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars.`}
+				</p>
 				<p class="lbl">Walls</p>
 				<div class="sws">
 					{#each WALL_COLORS as c (c)}

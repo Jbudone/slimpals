@@ -15,6 +15,7 @@ import {
 	roomName,
 	WORLD_ROWS,
 } from "../../../../shared/gym3d/rooms"
+import { VIBES } from "../../../../shared/gym3d/vibes"
 import { wallKey } from "../../../../shared/gym3d/walls"
 import type { GymLayoutDto } from "../../../../shared/types"
 import type { AssetCache } from "../engine/assets"
@@ -60,6 +61,8 @@ export type RoomView = {
 	cx: number
 	cz: number
 	paint: { wall: string; floorStyle: string; floorColor: string }
+	/** The room's vibe (shared/gym3d/vibes.ts), or null. */
+	vibe: string | null
 }
 
 export type PickInfo =
@@ -332,6 +335,7 @@ export class GymWorld implements NavSource {
 				cx,
 				cz,
 				paint: r.paint,
+				vibe: r.vibe ?? null,
 			})
 		}
 	}
@@ -671,6 +675,31 @@ export class GymWorld implements NavSource {
 				const info: PickInfo = { kind: "floor", roomId: r.id }
 				f.userData.pick = info
 				this.floorG.add(f)
+				// a vibe tints the floor with a soft glow (not tappable)
+				const vibe = !r.building && r.vibe ? VIBES[r.vibe] : null
+				if (vibe) {
+					const glow = new T.Mesh(
+						a.geo(`vibeGlow${c.px}_${c.pz}`, () =>
+							new T.PlaneGeometry(PW - 0.3, PD - 0.3).rotateX(-Math.PI / 2),
+						),
+						a.mat(
+							`vibeGlow_${vibe.key}`,
+							() =>
+								new T.MeshBasicMaterial({
+									color: vibe.color,
+									transparent: true,
+									opacity: 0.2,
+									depthWrite: false,
+								}),
+						),
+					)
+					glow.position.set(x0 + PW / 2, 0.012, z0 + PD / 2)
+					glow.renderOrder = 1
+					glow.raycast = () => {}
+					glow.matrixAutoUpdate = false
+					glow.updateMatrix()
+					this.floorG.add(glow)
+				}
 			}
 		}
 	}

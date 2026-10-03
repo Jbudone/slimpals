@@ -428,6 +428,7 @@ export async function getGymLayoutDto(
 			building: cells.some((p) => p.state !== "owned"),
 			layoutVersion: r.layoutVersion,
 			cells: cells.map((p) => ({ px: p.px, pz: p.pz })),
+			vibe: r.vibe ?? null,
 			paint: {
 				wall: r.wallColor ?? d.wall,
 				floorStyle: r.floorStyle ?? d.floorStyle,

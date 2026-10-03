@@ -77,7 +77,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   Admin grants coins/Sweat/Greens (`POST /admin/users/:id/gym/coins|sweat|greens`) and can simulate time
   away (`POST /admin/users/:id/gym/away {hours}`).
 - Rating and goals: the gym's 1-5 star rating is a pure score of the layout (`shared/gym3d/rating.ts`: room
-  levels, room-type variety, decor, staff pieces, rooms of 2+ plots, open walls up to 4). The rolling
+  levels, room-type variety, decor, staff pieces, rooms of 2+ plots, open walls up to 4, vibes up to 3 rooms). The rolling
   goals queue is `shared/gym3d/goals.ts` (fixed order, each pays Sweat/Greens once). Both ride on `GET /gym/layout`
   (`rating`, `goals`, and `goalsPaid` for goals reached by that read) and are settled in `getGymLayoutDto`
   (`layout3dStore.ts`) through `gym_rewards` (`goal:<id>`; `payGymReward` takes the gym row lock first so racing
@@ -91,6 +91,15 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   that the wall exists and is not open, then charges under the gym row lock. The world (`world.ts` `buildWalls`)
   leaves an open wall out entirely, so paths and sight lines join the rooms. It scores 1 star point each (cap 4)
   and pays the `wall-1` goal. UI: the room menu's "Open walls" page. e2e: `gym3d-life.spec.ts` ("walls").
+- Room style and vibe (the room menu's Customize page, `shared/gym3d/vibes.ts`): a style (Industrial, Neon, Zen,
+  Retro) is a whole-room look made only of the existing paint palettes, applied in one tap through the paint
+  endpoint (no new server code; `styleOf` recognises a room painted exactly like one). A vibe (Chill, Hype, Focus;
+  `gym_rooms.vibe`, migration 0026) costs `VIBE.cost` coins to set or change, is free to clear
+  (`POST /api/gym/layout/rooms/:roomId/vibe {vibe|"none"}`, `vibes3d.ts`, under the gym row lock) and: tints the
+  room's floor with a glow (`world.ts` `buildFloors`), sets the workout pace of members in it (`vibePace`, applied
+  in `members.ts` `startUse` and `step`), adds `VIBE.bonus` (+4%) to its machines' coins in `income3d.ts`, and
+  scores `VIBE.scorePoints` per room with a vibe (up to 3 rooms) in the star rating. e2e: `gym3d-life.spec.ts`
+  ("customize").
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds

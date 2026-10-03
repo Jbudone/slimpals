@@ -20,6 +20,7 @@ import {
 } from "../../../shared/gym3d/economy.js"
 import { hireBonus } from "../../../shared/gym3d/hires.js"
 import { areaMultiplier } from "../../../shared/gym3d/staff.js"
+import { VIBE } from "../../../shared/gym3d/vibes.js"
 import type {
 	GymIncomeSourceDto,
 	GymKitchenDto,
@@ -170,6 +171,19 @@ export async function hireBonuses(
 	return out
 }
 
+/** The coin bonus a room's vibe gives its machines (room id to bonus; rooms
+ * without a vibe are absent). */
+async function vibeBonuses(
+	conn: Conn,
+	gymId: number,
+): Promise<Map<number, number>> {
+	const rows = await conn
+		.select({ id: gymRooms.id, vibe: gymRooms.vibe })
+		.from(gymRooms)
+		.where(eq(gymRooms.gymId, gymId))
+	return new Map(rows.filter((r) => r.vibe).map((r) => [r.id, VIBE.bonus]))
+}
+
 /** Rate shown to the player: one decimal at most. */
 const shown = (n: number): number => Math.round(n * 10) / 10
 
@@ -195,6 +209,7 @@ export async function incomeState(
 	const levels = await staffLevels(conn, gymId)
 	const roomTypes = await roomTypesOf(conn, gymId)
 	const hired = await hireBonuses(conn, gymId)
+	const vibed = await vibeBonuses(conn, gymId)
 	const deskMult = areaMultiplier("desk", levels)
 	const kitchenMult = areaMultiplier("kitchen", levels)
 	const sources: GymIncomeSourceDto[] = []
@@ -202,7 +217,8 @@ export async function incomeState(
 		if (!isEarningPiece(p)) continue
 		const mult =
 			areaMultiplier(roomTypes.get(p.roomId as number) ?? "", levels) +
-			(hired.get(p.roomId as number) ?? 0)
+			(hired.get(p.roomId as number) ?? 0) +
+			(vibed.get(p.roomId as number) ?? 0)
 		sources.push({
 			key: `piece:${p.id}`,
 			kind: "machine",
@@ -320,7 +336,8 @@ export async function bankPiece(
 	const roomType = (await roomTypesOf(tx, gymId)).get(p.roomId as number)
 	const mult =
 		areaMultiplier(roomType ?? "", await staffLevels(tx, gymId)) +
-		((await hireBonuses(tx, gymId)).get(p.roomId as number) ?? 0)
+		((await hireBonuses(tx, gymId)).get(p.roomId as number) ?? 0) +
+		((await vibeBonuses(tx, gymId)).get(p.roomId as number) ?? 0)
 	const n = pieceBank(p, now.getTime(), mult)
 	await tx
 		.update(gymPieces)

@@ -302,6 +302,8 @@ export const gymRooms = mysqlTable("gym_rooms", {
 	wallColor: varchar("wall_color", { length: 16 }),
 	floorStyle: varchar("floor_style", { length: 16 }),
 	floorColor: varchar("floor_color", { length: 16 }),
+	// Room vibe (shared/gym3d/vibes.ts); null = none.
+	vibe: varchar("vibe", { length: 16 }),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 

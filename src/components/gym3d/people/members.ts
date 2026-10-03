@@ -5,6 +5,7 @@
 import * as T from "three"
 import { hirePost } from "../../../../shared/gym3d/hires"
 import { PD, PW } from "../../../../shared/gym3d/rooms"
+import { vibePace } from "../../../../shared/gym3d/vibes"
 import type { GymHireDto, GymLayoutRoomDto } from "../../../../shared/types"
 import {
 	angLerp,
@@ -444,6 +445,9 @@ export class People {
 		p.path = []
 		p.fin = null
 		p.timer = this.reduce ? 60 : 10 + this.rng() * 10
+		// a room's vibe sets the pace of the workout
+		const room = this.w.rooms.find((q) => q.id === this.w.roomIdAt(st.x, st.z))
+		p.pace = vibePace(room?.vibe)
 		r.position.set(st.x, st.y || 0, st.z)
 		r.rotation.y = st.face || 0
 		if (st.sync != null) p.t = st.sync
@@ -537,7 +541,7 @@ export class People {
 		const r = p.rig
 		// a hustled member works out faster, then settles back
 		if (p.boost && p.boost > 1) p.boost = Math.max(1, p.boost - dt * 0.5)
-		p.t += dt * (p.boost ?? 1)
+		p.t += dt * (p.boost ?? 1) * (p.state === "use" ? (p.pace ?? 1) : 1)
 		if (!lite) resetPose(r)
 		if (p.state === "walk") {
 			const pos = r.root.position
