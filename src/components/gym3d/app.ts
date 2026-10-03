@@ -10,6 +10,7 @@ import {
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
+import { ghostSeason } from "../../../shared/gym3d/ghost"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
@@ -143,6 +144,7 @@ export type Gym3DStats = {
 	classes: number
 	classPeople: number
 	heroes: number
+	ghost: number
 	/** Coin bubbles showing now. */
 	bubbles: number
 	sweat: number
@@ -437,6 +439,17 @@ export class Gym3DApp {
 		}, POLL_INTERVAL)
 	}
 
+	/** The October ghost is about (`?ghost=1` / `?ghost=0` force it, for
+	 * tests and demos). */
+	private ghostOn(): boolean {
+		const q = new URLSearchParams(globalThis.location?.search ?? "").get(
+			"ghost",
+		)
+		if (q === "1") return true
+		if (q === "0") return false
+		return ghostSeason(new Date().getUTCMonth() + 1)
+	}
+
 	/** The gym as banter sees it: finished room types, placed gear, a crowd. */
 	private banterContext(): BanterContext {
 		const lay = this.world.layout
@@ -549,6 +562,7 @@ export class Gym3DApp {
 			if (p.kind === "npc" && p.npcKey)
 				p.speed = moodSpeed(bySim.get(p.npcKey)?.mood ?? 50)
 		this.hap.setEvent(ev)
+		this.hap.syncGhost(this.ghostOn())
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(

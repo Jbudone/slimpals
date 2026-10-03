@@ -89,6 +89,9 @@ export class Happenings {
 	private classList: ActiveClass[] = []
 	private heroTags = new Map<string, Label>()
 	private sparkT = 0
+	private ghost: Person | null = null
+	private ghostSlot = 0
+	private ghostT = 0
 	private v = new T.Vector3()
 
 	constructor(
@@ -261,6 +264,41 @@ export class Happenings {
 		for (const c of list) if (!this.classes.has(c.key)) this.addClass(c)
 	}
 
+	/** The October ghost: floats in the lobby and drifts to another spot every
+	 * so often (`on` false sends it away). */
+	syncGhost(on: boolean): void {
+		if (!on) {
+			if (this.ghost) this.people.remove(this.ghost)
+			this.ghost = null
+			return
+		}
+		if (this.ghost && this.people.find("ghost")) return
+		this.placeGhost()
+	}
+
+	private placeGhost(): void {
+		const s = this.w.lobbySpot(this.ghostSlot++)
+		const out = staffOutfit("ghost")
+		out.skin = "#eef2ff"
+		out.hair = "#ffffff"
+		out.top = "#f4f6ff"
+		out.bottom = "#f4f6ff"
+		out.shoes = "#f4f6ff"
+		out.beard = false
+		out.lashes = false
+		out.freckles = false
+		this.ghost = this.people.addExtra({
+			key: "ghost",
+			name: "Ghost",
+			out,
+			st: floorStation(s.x, s.z, s.face, "idle", "haunting the lobby", {
+				y: 0.3,
+			}),
+			note: "Ghost",
+		})
+		this.ghostT = 0
+	}
+
 	/** The layout changed: classes find their room and floor again. */
 	layoutChanged(): void {
 		for (const v of this.classes.values()) this.dropClass(v)
@@ -391,6 +429,10 @@ export class Happenings {
 	}
 
 	frame(dt: number): void {
+		if (this.ghost) {
+			this.ghostT += dt
+			if (this.ghostT > 40) this.placeGhost()
+		}
 		this.sparkT -= dt
 		if (this.sparkT > 0) return
 		this.sparkT = 1.1
@@ -408,12 +450,14 @@ export class Happenings {
 		classes: number
 		classPeople: number
 		heroes: number
+		ghost: number
 	} {
 		return {
 			event: this.eventKey,
 			classes: [...this.classes.values()].filter((v) => v.label).length,
 			classPeople: this.classPeople,
 			heroes: this.heroTags.size,
+			ghost: this.ghost ? 1 : 0,
 		}
 	}
 

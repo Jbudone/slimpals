@@ -12,6 +12,7 @@ import {
 	gearLine,
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
+import { ghostLine } from "../../../../shared/gym3d/ghost"
 import {
 	firstName,
 	pairLines,
@@ -293,6 +294,7 @@ export class Life {
 	}
 
 	private nameOf(p: Person): string | null {
+		if (p.key === "ghost") return "Ghost"
 		if (!p.npcKey) return null
 		return firstName(this.names.get(p.npcKey) ?? p.name)
 	}
@@ -318,6 +320,7 @@ export class Life {
 
 	/** One line for a person, or null. */
 	lineFor(p: Person): string | null {
+		if (p.key === "ghost") return ghostLine(this.rng)
 		const recent = this.recent.get(p.key) ?? []
 		if (p.npcKey) {
 			const role = this.roles.get(p.npcKey) ?? p.role ?? "regular"
