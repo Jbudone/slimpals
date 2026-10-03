@@ -62,6 +62,7 @@ import {
 	getGymLayoutDto,
 } from "../services/gym/layout3dStore.js"
 import { buildNpcLines } from "../services/gym/npcLines.js"
+import { claimTrackStep, getRewardTrack } from "../services/gym/rewardTrack.js"
 import {
 	computeGymSimState,
 	type GymClass,
@@ -350,6 +351,27 @@ export function createGymRouter(aiService: AIService) {
 			greens: gym.greens,
 			pendingUpgrades: catalog.filter((c) => pending.includes(c.key)),
 		})
+	})
+
+	// The monthly reward track: one step a day after a check-in.
+	router.get("/gym/reward-track", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json(await getRewardTrack(db, gym.id, userId))
+	})
+	router.post("/gym/reward-track/claim", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		try {
+			res.json(await claimTrackStep(db, gym.id, userId))
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
 	})
 
 	// 3D gym building (gym3d slice 2). Every action validates on the server

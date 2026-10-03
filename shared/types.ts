@@ -256,6 +256,24 @@ export type GymGoalDto = {
 	done: boolean
 }
 
+/** The monthly reward track (see shared/gym3d/rewardTrack.ts). */
+export type GymRewardTrackDto = {
+	month: string
+	theme: string
+	claimed: number
+	claimedToday: boolean
+	checkedIn: boolean
+	canClaim: boolean
+	/** Why a step cannot be claimed now (null when it can). */
+	blockedReason: string | null
+	steps: {
+		n: number
+		milestone: boolean
+		claimed: boolean
+		reward: { coins: number; sweat: number; greens: number }
+	}[]
+}
+
 export type GymLayoutDto = {
 	gymId: number
 	/** Staff hired for rooms, and what the next hire costs. */
