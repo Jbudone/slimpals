@@ -112,8 +112,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   just mean fewer steps. No table: a claimed step is a `gym_rewards` row `track:<YYYY-MM>:<n>` and the day's claim a
   `trackday:<YYYY-MM-DD>` marker, written together under the gym row lock (`server/services/gym/rewardTrack.ts`;
   `GET /api/gym/reward-track`, `POST /api/gym/reward-track/claim`). Steps pay coins, Sweat and Greens. UI: a section in
-  `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
-  #135), the dashboard/HUD placement, the claim animation, admin authoring and "advance user to step N", badges, feed.
+  `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Admin: `POST /admin/users/:id/gym/track-step {step}` sets this month's progress without paying (0 resets;
+  Admin's gym section). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
+  #135), the dashboard/HUD placement, the claim animation, admin authoring of tracks, badges, feed.
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds
