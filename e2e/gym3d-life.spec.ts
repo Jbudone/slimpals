@@ -1145,6 +1145,42 @@ test("3D gym cosmetics: an owned lantern goes on show in a room and comes down",
 		.toBe(false)
 })
 
+test("3D gym reward track: after a check-in the card takes a step and the coins arrive", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(150_000)
+	const { page } = await setup(request, browser, testInfo, 30, "track")
+	const ci = await request.post("/api/checkins", {
+		headers: { Origin: AUTH_ORIGIN },
+		data: {},
+	})
+	expect(ci.ok()).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("track-progress")).toContainText("Step 0 of")
+	await page.getByTestId("track-claim").click()
+	await expect(page.getByTestId("track-progress")).toContainText("Step 1 of", {
+		timeout: 15_000,
+	})
+	await shot(page, "20-track-claimed")
+	// a second try the same day is blocked
+	await expect(page.getByTestId("track-claim")).toBeDisabled()
+	await expect
+		.poll(
+			async () =>
+				Number(
+					(
+						(await page.locator("[data-hud=coins]").first().textContent()) ?? ""
+					).replace(/[^0-9]/g, ""),
+				),
+			{ timeout: 10_000 },
+		)
+		.toBeGreaterThan(coins0)
+})
+
 test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost=1)", async ({
 	request,
 	browser,
