@@ -182,8 +182,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Street life (#131, first slice): `People.trickleStreet` (`people/members.ts`) sends a few passers-by (`pass:<n>`, kind `extra`,
   at most half the ambient cap) along the pavement in front of the gym from one edge to the other every 6-12 s; about one in
   eight turns in at the door (`after: "enter"`) and becomes a member. The pavement has street lamps and, across it, a road with a dashed
-  centre line and a zebra crossing from the curb at the door (`world.ts` `buildGround`, static scenery). Not yet: cars, the bus stop,
-  the dog walker, MaxOut and the Burger Baron. e2e: `gym3d-life.spec.ts` ("street").
+  centre line and a zebra crossing from the curb at the door (`world.ts` `buildGround`, static scenery). Four blocky cars drive along it in both lanes
+  (`world/traffic.ts`, one batched mesh each, wrapping at the edges; none with reduced motion; `stats().cars`). Not yet: the bus
+  stop, the dog walker, MaxOut and the Burger Baron. e2e: `gym3d-life.spec.ts` ("street").
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
