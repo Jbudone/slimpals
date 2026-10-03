@@ -82,7 +82,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   (`rating`, `goals`, and `goalsPaid` for goals reached by that read) and are settled in `getGymLayoutDto`
   (`layout3dStore.ts`) through `gym_rewards` (`goal:<id>`; `payGymReward` takes the gym row lock first so racing
   reads pay once). The first read of a gym writes `goal:_start` and marks what it already meets as done without
-  paying. UI: `GoalsCard.svelte` (star button under the HUD) fed by `src/lib/goals.svelte.ts`. Tests:
+  paying. UI: `GoalsCard.svelte` (star button under the coach; the account avatar owns the top-right) fed by `src/lib/goals.svelte.ts`. Tests:
   `tests/gym3d/rating-goals.test.ts` (pure), `goals-route.test.ts` (DB).
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
