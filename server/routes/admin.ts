@@ -58,6 +58,7 @@ import {
 import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
 import { resetGymLayout } from "../services/gym/layout3dStore.js"
 import { dayKey } from "../services/gym/rewards.js"
+import { setTrackStep } from "../services/gym/rewardTrack.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
 import { staffCards } from "../services/gym/staff.js"
 import type { Scheduler } from "../services/scheduler/index.js"
@@ -1261,6 +1262,25 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			return
 		}
 		res.json({ removed })
+	})
+
+	// Test tool (reward track): makes this month's track stand at `step`
+	// steps claimed (0 resets it) without paying, and frees today's claim.
+	adminRouter.post("/admin/users/:id/gym/track-step", async (req, res) => {
+		const step = Number((req.body as { step?: unknown })?.step)
+		if (!Number.isInteger(step) || step < 0) {
+			res.status(400).json({ error: "step must be a whole number, 0 or more" })
+			return
+		}
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		res.json(await setTrackStep(db, gym.id, String(req.params.id), step))
 	})
 
 	// Test tool (gym home): moves the gym's idle-income clocks and its last

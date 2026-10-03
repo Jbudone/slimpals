@@ -3,9 +3,10 @@
 // claim is a marker row (`trackday:<YYYY-MM-DD>`), so a step pays once and
 // racing taps claim once. Themes and rewards are rules in
 // shared/gym3d/rewardTrack.ts.
-import { and, eq, gte, like, lt, sql } from "drizzle-orm"
+import { and, eq, gte, like, lt, or, sql } from "drizzle-orm"
 import {
 	claimBlock,
+	daysInMonth,
 	monthKey,
 	themeOf,
 	trackSteps,
@@ -135,4 +136,47 @@ export async function claimTrackStep(
 			paid: { ...step, claimed: true },
 		}
 	})
+}
+
+/** Test tool: makes this month's track stand at `step` steps claimed (0..the
+ * month's length) without paying anything, and frees today's claim so the
+ * next step can be taken at once. Returns the new track. */
+export async function setTrackStep(
+	db: Db,
+	gymId: number,
+	userId: string,
+	step: number,
+	now: Date = new Date(),
+): Promise<GymRewardTrackDto> {
+	const key = monthKey(now)
+	const total = daysInMonth(key)
+	const n = Math.max(0, Math.min(total, Math.floor(step) || 0))
+	await db.transaction(async (tx) => {
+		await tx
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.id, gymId))
+			.for("update")
+		await tx
+			.delete(gymRewards)
+			.where(
+				and(
+					eq(gymRewards.gymId, gymId),
+					or(
+						like(gymRewards.source, `track:${key}:%`),
+						eq(gymRewards.source, `trackday:${dayKey(now)}`),
+					),
+				),
+			)
+		if (n)
+			await tx.insert(gymRewards).values(
+				Array.from({ length: n }, (_, i) => ({
+					gymId,
+					source: `track:${key}:${i + 1}`,
+					sweat: 0,
+					greens: 0,
+				})),
+			)
+	})
+	return getRewardTrack(db, gymId, userId, now)
 }
