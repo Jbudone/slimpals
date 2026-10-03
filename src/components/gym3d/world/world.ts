@@ -3,6 +3,7 @@
 // with its stations. Ported from the build lab's world/walls/pieces code,
 // minus everything slice 1 leaves out (street, lots, building, coins).
 import * as T from "three"
+import { BURGER_SIGN, type BurgerState } from "../../../../shared/gym3d/burger"
 import { NEIGHBOURHOOD_COLS } from "../../../../shared/gym3d/lots"
 import {
 	DOOR_HALF,
@@ -346,6 +347,7 @@ export class GymWorld implements NavSource {
 		bindWorld(this.ctx)
 		const cols = this.cols
 		this.readLayout(next)
+		this.setBurger(next.burger?.state ?? "closed")
 		if (cols !== this.cols) this.fitSun()
 		this.clearGroup(this.floorG)
 		this.clearGroup(this.wallG)
@@ -650,75 +652,93 @@ export class GymWorld implements NavSource {
 		texPlane(2.2, 0.55, sign, 0, 2.3, 0.2, 0, cp)
 	}
 
+	private roadZ = 0
+	private burgerG: T.Group | null = null
+	private burgerState = ""
+
 	/** The rival gym (MaxOut) and the Burger Baron on the far side of the
 	 * road: plain blocks with a billboard on the roof that faces the camera. */
 	private buildStreetShops(roadZ: number): void {
-		const shops: {
-			x: number
-			w: number
-			h: number
-			wall: string
-			trim: string
-			label: string
-			bg: string
-			fg: string
-		}[] = [
-			{
-				x: this.doorX - 17,
-				w: 9,
-				h: 3.4,
-				wall: "#8a93a6",
-				trim: "#4a5060",
-				label: "MAXOUT",
-				bg: "#2b3440",
-				fg: "#7fe0d0",
-			},
-			{
-				x: this.doorX + 8,
-				w: 7,
-				h: 2.6,
-				wall: "#e8b04a",
-				trim: "#c85a3c",
-				label: "BURGER BARON",
-				bg: "#c85a3c",
-				fg: "#fff1c2",
-			},
-		]
-		for (const s of shops) {
-			const g = new T.Group()
-			g.position.set(s.x, 0, roadZ + 6.2)
-			this.scene.add(g)
-			const p: Part[] = []
-			pBox(p, s.w, s.h, 4, s.wall, 0, s.h / 2, 0)
-			pBox(p, s.w + 0.3, 0.2, 4.3, s.trim, 0, s.h + 0.1, 0)
-			// a door and two windows on the side facing the gym
-			pBox(p, 1.1, 1.8, 0.1, s.trim, 0, 0.9, -2.03)
-			for (const wx of [-s.w / 3, s.w / 3])
-				pBox(p, 1.6, 1.0, 0.1, "#2b3440", wx, 1.6, -2.03)
-			batchMesh(p, g)
-			const tex = canvasTex(
-				512,
-				128,
-				(c, w, h) => {
-					c.fillStyle = s.bg
-					c.fillRect(0, 0, w, h)
-					c.fillStyle = s.fg
-					const size = s.label.length > 8 ? 48 : 70
-					c.font = `800 ${size}px "Arial Black", "Arial Rounded MT Bold", sans-serif`
-					c.textAlign = "center"
-					c.textBaseline = "middle"
-					c.fillText(s.label, w / 2, h / 2 + 4)
-				},
-				`shopSign_${s.label}`,
-			)
-			const bw = Math.min(s.w - 0.6, 5.2)
-			texPlane(bw, bw / 4, tex, 0, s.h + 0.9, 1.9, 0, g, true)
-			// posts holding the billboard
-			const pp: Part[] = []
-			for (const sx of [-bw / 2 + 0.3, bw / 2 - 0.3])
-				pBox(pp, 0.12, 0.7, 0.12, s.trim, sx, s.h + 0.45, 1.88)
-			batchMesh(pp, g)
+		this.roadZ = roadZ
+		this.makeShop({
+			x: this.doorX - 17,
+			w: 9,
+			h: 3.4,
+			wall: "#8a93a6",
+			trim: "#4a5060",
+			label: "MAXOUT",
+			bg: "#2b3440",
+			fg: "#7fe0d0",
+		})
+		this.setBurger(this.layout.burger?.state ?? "closed")
+	}
+
+	/** The Burger Baron follows the gym's progress: its sign says FOR SALE at
+	 * 4 stars, and once bought it is a smaller "BARON Jr.". */
+	private setBurger(state: string): void {
+		if (state === this.burgerState) return
+		this.burgerState = state
+		if (this.burgerG) {
+			this.clearGroup(this.burgerG)
+			this.burgerG.removeFromParent()
 		}
+		const bought = state === "bought"
+		this.burgerG = this.makeShop({
+			x: this.doorX + 8,
+			w: bought ? 4.6 : 7,
+			h: bought ? 1.8 : 2.6,
+			wall: "#e8b04a",
+			trim: "#c85a3c",
+			label: BURGER_SIGN[(state as BurgerState) || "closed"],
+			bg: state === "forSale" ? "#2f9e8f" : "#c85a3c",
+			fg: "#fff1c2",
+		})
+	}
+
+	private makeShop(s: {
+		x: number
+		w: number
+		h: number
+		wall: string
+		trim: string
+		label: string
+		bg: string
+		fg: string
+	}): T.Group {
+		const g = new T.Group()
+		g.position.set(s.x, 0, this.roadZ + 6.2)
+		this.scene.add(g)
+		const p: Part[] = []
+		pBox(p, s.w, s.h, 4, s.wall, 0, s.h / 2, 0)
+		pBox(p, s.w + 0.3, 0.2, 4.3, s.trim, 0, s.h + 0.1, 0)
+		// a door and two windows on the side facing the gym
+		pBox(p, 1.1, Math.min(1.8, s.h - 0.5), 0.1, s.trim, 0, 0.9, -2.03)
+		for (const wx of [-s.w / 3, s.w / 3])
+			pBox(p, Math.min(1.6, s.w / 3), 1.0, 0.1, "#2b3440", wx, 1.4, -2.03)
+		batchMesh(p, g)
+		const tex = canvasTex(
+			512,
+			128,
+			(c, w, h) => {
+				c.fillStyle = s.bg
+				c.fillRect(0, 0, w, h)
+				c.fillStyle = s.fg
+				const size = s.label.length > 8 ? 48 : 70
+				c.font = `800 ${size}px "Arial Black", "Arial Rounded MT Bold", sans-serif`
+				c.textAlign = "center"
+				c.textBaseline = "middle"
+				c.fillText(s.label, w / 2, h / 2 + 4)
+			},
+			`shopSign_${s.label}_${s.bg}`,
+		)
+		const bw = Math.min(s.w - 0.6, 5.2)
+		texPlane(bw, bw / 4, tex, 0, s.h + 0.9, 1.9, 0, g, true)
+		// posts holding the billboard
+		const pp: Part[] = []
+		for (const sx of [-bw / 2 + 0.3, bw / 2 - 0.3])
+			pBox(pp, 0.12, 0.7, 0.12, s.trim, sx, s.h + 0.45, 1.88)
+		batchMesh(pp, g)
+		return g
 	}
 
 	private buildFloors(): void {

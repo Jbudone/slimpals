@@ -1,19 +1,28 @@
 // The gym's star rating and rolling goals, pushed in from every layout the
 // 3D gym reads or changes (the server computes both, see
 // shared/gym3d/rating.ts and goals.ts).
-import type { GymGoalDto, GymLayoutDto, GymRatingDto } from "../../shared/types"
+import type {
+	GymBurgerDto,
+	GymGoalDto,
+	GymLayoutDto,
+	GymRatingDto,
+} from "../../shared/types"
 
 export const gymGoals = $state<{
 	rating: GymRatingDto | null
 	goals: GymGoalDto[]
-}>({ rating: null, goals: [] })
+	burger: GymBurgerDto | null
+}>({ rating: null, goals: [], burger: null })
 
 /** How many open goals the card lists. */
 export const OPEN_GOALS_SHOWN = 3
 
-export function setGymGoals(l: Pick<GymLayoutDto, "rating" | "goals">): void {
+export function setGymGoals(
+	l: Pick<GymLayoutDto, "rating" | "goals" | "burger">,
+): void {
 	gymGoals.rating = l.rating
 	gymGoals.goals = l.goals
+	gymGoals.burger = l.burger ?? null
 }
 
 /** The next goals to work on, in queue order. */

@@ -286,6 +286,14 @@ export type GymCosmeticDto = {
 	at: string
 }
 
+/** The Burger Baron's state (see shared/gym3d/burger.ts). */
+export type GymBurgerDto = {
+	state: "closed" | "forSale" | "bought"
+	cost: number
+	/** Stars the gym needs for it to go on sale. */
+	stars: number
+}
+
 export type GymLayoutDto = {
 	gymId: number
 	/** Staff hired for rooms, and what the next hire costs. */
@@ -298,6 +306,8 @@ export type GymLayoutDto = {
 	rating: GymRatingDto
 	/** Every goal in queue order; the HUD shows the first open ones. */
 	goals: GymGoalDto[]
+	/** The Burger Baron across the street goes on sale at 4 stars. */
+	burger: GymBurgerDto
 	/** Rewards paid by this read for goals reached since the last one. */
 	goalsPaid?: { id: string; title: string; reward: Reward }[]
 	/** Sweat (exercise tasks) and Greens (diet tasks), gym home. */

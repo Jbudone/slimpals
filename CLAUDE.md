@@ -185,7 +185,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   centre line and a zebra crossing from the curb at the door (`world.ts` `buildGround`, static scenery). Four blocky cars drive along it in both lanes
   (`world/traffic.ts`, one batched mesh each, wrapping at the edges; none with reduced motion; `stats().cars`). Across the road stand MaxOut (the rival gym) and the Burger Baron: plain
   blocks with a billboard on the roof (`world.ts` `buildStreetShops`); banter in `shared/gym3d/banter.ts` compares with MaxOut when the gym
-  lacks a pool or sauna. Not yet: the Burger Baron going on sale at 4 stars, its lot, the bus stop, the dog walker, a MaxOut event. e2e: `gym3d-life.spec.ts` ("street").
+  lacks a pool or sauna. Burger Baron sale: at `BURGER.stars` (4) the billboard reads FOR SALE (`shared/gym3d/burger.ts`, `burgerState`); `POST /api/gym/layout/burger/buy` (`services/gym/burger.ts`, under the gym row lock) charges `BURGER.cost` once (claim `gym_rewards` `burger:bought`) and the sign becomes "BARON Jr." and smaller. The layout carries `burger`; the stars card (`GoalsCard.svelte`) has the Buy button. Not yet: the lot becoming a plot with a street door, the bus stop, the dog walker, a MaxOut event. e2e: `gym3d-life.spec.ts` ("street", "burger").
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
