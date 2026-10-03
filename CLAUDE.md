@@ -143,6 +143,10 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   sauna, ring or megaformer gets talked about, plain chatter is the fallback, recent ids are not repeated. `Life.banter`
   plays one between two nearby people about once a minute as alternating bubbles through the normal bubble pool
   (`app.banterContext()` feeds it). Not yet: the nightly AI batch, the "NPC banter" content-tuning type, relationships.
+- Upgrade look (gh-134, first slice): `equipment/tiers.ts` `applyTier` still recolours and adds the edge and pennant, and
+  now `addUpgradeParts` gives every upgraded machine real parts: tier 2 a floor mat and a console (screen on a stand), tier 3
+  a bigger gold screen, speakers and an overhead light arch. Generic for all gear (sized from the piece footprint); a
+  hand-built model per machine tier, a before/after reveal and members reacting to upgraded gear are still to do.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
