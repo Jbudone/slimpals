@@ -2,10 +2,10 @@
 // the canvas; each label is moved with a transform every frame and hidden
 // when its anchor is off screen.
 //
-// Two sorts: plain tags (room badges, event / class / hero tags, the lineup's
-// names) sit on their anchor; bubbles (the tap chip, job timer cards, coin
-// bubbles, speech lines) go through one layout pass (bubbleLayout.ts) that
-// keeps them on screen, apart, in priority order and under a cap.
+// Two sorts: plain labels (room badges) sit on their anchor; managed ones
+// (the tap chip, job timer cards, coin bubbles, speech lines, and the event /
+// class / hero / name tags) go through one layout pass (bubbleLayout.ts)
+// that keeps them on screen, apart, in priority order and under a cap.
 import * as T from "three"
 import { PD } from "../../../../shared/gym3d/rooms"
 import type { GymRenderer } from "../engine/renderer"
@@ -128,7 +128,9 @@ export class LabelLayer {
 			tx: -1,
 			id: nextId++,
 		}
-		if (owned && (L.bubble || L.soft)) el.style.pointerEvents = "auto"
+		// tags let taps through to the world (the person under a hero tag)
+		if (owned && ((L.bubble && L.bubble !== "tag") || L.soft))
+			el.style.pointerEvents = "auto"
 		// bubbles show once the layout has placed them
 		if (L.bubble) {
 			L.vis = false

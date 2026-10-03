@@ -23,7 +23,7 @@ import {
 import type { People } from "../people/members"
 import { randOutfit, staffOutfit } from "../people/outfits"
 import type { BuildLayer } from "./build"
-import type { Label, LabelLayer } from "./labels"
+import type { Label, LabelLayer, LabelOpts } from "./labels"
 import type { ActiveClass, GymEvent } from "./loadLayout"
 import { ctx } from "./state"
 import type { Person, PoseName, Station } from "./types"
@@ -61,6 +61,11 @@ export function floorStation(
 		...o,
 	}
 }
+
+/** Tags go through the bubble layout: kept on screen and clear of the
+ * bubbles; the event and class banners place before hero tags. */
+export const TAG: LabelOpts = { bubble: "tag", tail: 2 }
+const TAG_BANNER: LabelOpts = { bubble: "tag", tail: 2, boost: 5 }
 
 function tag(cls: string, text: string): HTMLDivElement {
 	const el = document.createElement("div")
@@ -112,7 +117,7 @@ export class Happenings {
 		const el = tag("g3d-evt", `${EVENT_ICONS[e.type] ?? "🎉"} ${e.title}`)
 		el.dataset.testid = "gym3d-event"
 		const a = new T.Vector3(s.x + 0.6, 2.25, s.z)
-		this.eventLabel = this.labels.add(el, () => a)
+		this.eventLabel = this.labels.add(el, () => a, TAG_BANNER)
 	}
 
 	/** Themed props next to the event spot (local to it; +x is further
@@ -297,7 +302,7 @@ export class Happenings {
 		el.dataset.testid = "gym3d-class"
 		const anchor = new T.Vector3(room.cx, 2.0, room.cz)
 		if (f) anchor.set(f.instructor.x, 2.1, f.instructor.z + 0.6)
-		view.label = this.labels.add(el, () => anchor)
+		view.label = this.labels.add(el, () => anchor, TAG_BANNER)
 		if (!f) return
 		const pose = classPose(rt)
 		const ins = f.instructor
@@ -373,10 +378,14 @@ export class Happenings {
 			el.dataset.testid = "gym3d-hero"
 			this.heroTags.set(
 				k,
-				this.labels.add(el, () => {
-					const r = p.rig.root.position
-					return v.set(r.x, r.y + 1.78, r.z)
-				}),
+				this.labels.add(
+					el,
+					() => {
+						const r = p.rig.root.position
+						return v.set(r.x, r.y + 1.78, r.z)
+					},
+					TAG,
+				),
 			)
 		}
 	}

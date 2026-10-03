@@ -1,19 +1,29 @@
 // One layout pass for every bubble drawn over the gym canvas: the tap chip
-// (info card), job timer cards, coin bubbles and speech / ambient lines.
+// (info card), job timer cards, coin bubbles, speech / ambient lines and
+// the tags over the world (today's event, class banners, hero and name
+// tags).
 // Pure (no DOM): the label layer feeds it screen anchors and measured sizes
 // each frame and writes back the transforms it returns.
 //
 // Rules, in order:
 //  - higher priority places first (the player's chip, then timers, coins,
-//    lines the player caused, then ambient chatter); ties keep input order
+//    lines the player caused, NPC lines, tags, then ambient chatter); ties
+//    keep input order
 //  - each box is kept inside the view (HUD above, sheet / tab bar below)
 //  - a box that would cover one already placed slides up, or sideways, by
 //    as little as it can (within its kind's reach); failing that it hides
 //  - at most `caps.talk` speech + ambient lines and `caps.total` boxes show
+//    (tags do not count: there are only a few and they say what is on)
 //  - a box whose anchor left the screen hides, unless it is an edge box
 //    (timer cards stay pinned to the nearest edge)
 
-export type BubbleKind = "info" | "timer" | "coin" | "speech" | "ambient"
+export type BubbleKind =
+	| "info"
+	| "timer"
+	| "coin"
+	| "tag"
+	| "speech"
+	| "ambient"
 
 /** Base priority per kind; `boost` on an item lifts it within or above. */
 export const KIND_PRIO: Record<BubbleKind, number> = {
@@ -21,6 +31,9 @@ export const KIND_PRIO: Record<BubbleKind, number> = {
 	timer: 80,
 	coin: 70,
 	speech: 50,
+	// tags (event, class, hero, names) take no taps: they make way for the
+	// lines and cards the player taps, which keep their natural places
+	tag: 40,
 	ambient: 30,
 }
 
@@ -33,6 +46,7 @@ const REACH: Record<BubbleKind, { x: number; y: number }> = {
 	info: { x: 0, y: 0 },
 	timer: { x: 120, y: 140 },
 	coin: { x: 70, y: 70 },
+	tag: { x: 110, y: 90 },
 	speech: { x: 110, y: 110 },
 	ambient: { x: 90, y: 90 },
 }
@@ -139,10 +153,12 @@ export function layoutBubbles(
 	const placed: Box[] = []
 	const out = new Map<number, BubbleOut>()
 	let talk = 0
+	let counted = 0
 	for (const { b } of order) {
 		const isTalk = b.kind === "speech" || b.kind === "ambient"
+		const isTag = b.kind === "tag"
 		if (
-			placed.length >= caps.total ||
+			(!isTag && counted >= caps.total) ||
 			(isTalk && talk >= caps.talk) ||
 			b.w <= 0 ||
 			b.h <= 0 ||
@@ -224,6 +240,7 @@ export function layoutBubbles(
 		const y = Math.round(pick.y)
 		placed.push({ x0: x, y0: y, x1: x + b.w, y1: y + b.h })
 		if (isTalk) talk++
+		if (!isTag) counted++
 		const dx = x - Math.round(bx)
 		const dy = y - Math.round(by)
 		out.set(b.id, {

@@ -43,7 +43,7 @@ import {
 	jobProgress,
 	type PadRef,
 } from "./world/build"
-import { floorStation, Happenings } from "./world/happenings"
+import { floorStation, Happenings, TAG } from "./world/happenings"
 import { Kitchen } from "./world/kitchen"
 import {
 	badgeAnchor,
@@ -63,7 +63,9 @@ import {
 	type SimState,
 	simNpcsIn,
 } from "./world/loadLayout"
+import { bestHit, type HitCat, isTap, TAP_SLOP } from "./world/picking"
 import { bindWorld, isBound, unbindWorld } from "./world/state"
+import { buzz, TapFx } from "./world/tapFx"
 import type { Person, Piece } from "./world/types"
 import { GymWorld, type PickInfo } from "./world/world"
 
@@ -104,9 +106,17 @@ export type Selection =
 			unlock: number
 			open: boolean
 	  }
-	| { kind: "room"; roomId: number; paint?: boolean }
+	| {
+			kind: "room"
+			roomId: number
+			/** A page of the room menu (none: the menu itself). */
+			view?: RoomView
+	  }
 	| { kind: "job"; jobId: number }
 	| { kind: "kitchen" }
+
+/** Pages of the room action menu. */
+export type RoomView = "gear" | "staff" | "customize"
 
 export type Gym3DStats = {
 	rooms: number
@@ -134,6 +144,12 @@ export type Gym3DStats = {
 	bubbles: number
 	sweat: number
 	greens: number
+	/** The selection marker showing: "ring", "outline" or null. */
+	mark: string | null
+	/** The tap ripple is playing. */
+	rippling: boolean
+	/** Tap feedbacks played so far (a marker, squash, ripple, buzz). */
+	taps: number
 }
 
 /** "sweat": spend 1 Sweat for an hour off; "finish": spend `cost` Sweat. */
@@ -305,6 +321,13 @@ export class Gym3DApp {
 	private clock = 0
 	private kitchen: Kitchen
 	private coinBubs = new Map<string, CoinBubble>()
+	/** Tap feedback: selection marker, squash, ripple (world/tapFx.ts). */
+	private fx: TapFx
+	/** World point of the last pick's winning hit. */
+	private hitPt = new T.Vector3()
+	private badgeOf = new Map<number, Label>()
+	private calm = false
+	private taps = 0
 
 	/** Builds the gym. Throws (the caller falls back to the 2D gym) when
 	 * WebGL2 is missing or the build fails. */
@@ -354,6 +377,10 @@ export class Gym3DApp {
 			this.world.extraBlockers.push(...this.kitchen.blockers())
 			this.world.paths.invalidate()
 			this.kitchen.setMenu(layout.kitchen?.menu ?? [])
+			this.calm =
+				typeof window !== "undefined" &&
+				!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+			this.fx = new TapFx(this.world.scene, this.assets, this.calm)
 		} catch (e) {
 			this.r.dispose()
 			unbindWorld()
@@ -382,9 +409,7 @@ export class Gym3DApp {
 		}
 		this.people.cap = ambientCap(this.r.lvl)
 		this.people.seedMembers()
-		const calm =
-			typeof window !== "undefined" &&
-			!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+		const calm = this.calm
 		this.says = new Bubbles(this.labels, calm)
 		this.people.onRemove = (p) => this.says.forget(p)
 		this.life = new Life(
@@ -543,6 +568,7 @@ export class Gym3DApp {
 			this.updateCoins(now)
 		}
 		this.kitchen.frame(dt)
+		this.fx.frame(dt)
 		this.clock += dt
 		if (this.claiming) this.claimTick(dt)
 		this.hap.frame(dt)
@@ -582,6 +608,7 @@ export class Gym3DApp {
 			finished.map((j) => [j.id, this.build.siteOf(j.id)] as const),
 		)
 		this.endMove(false)
+		this.fx.endSquash()
 		const diff = this.world.applyLayout(next)
 		this.people.layoutChanged(diff.removed)
 		this.hap.layoutChanged()
@@ -599,6 +626,8 @@ export class Gym3DApp {
 			this.select(null)
 		else if (s?.kind === "lot" && !next.lots.some((l) => l.id === s.lotId))
 			this.select(null)
+		// pieces and rooms were rebuilt: the marker finds its target again
+		else this.markSel(this.sel)
 		// named NPCs whose stations moved get new targets
 		if (this.pollSoon) clearTimeout(this.pollSoon)
 		this.pollSoon = setTimeout(() => {
@@ -610,6 +639,7 @@ export class Gym3DApp {
 	private rebuildBadges(): void {
 		for (const b of this.badges) this.labels.remove(b)
 		this.badges = []
+		this.badgeOf.clear()
 		for (const room of this.world.rooms) {
 			// the lobby has no level of its own; rooms being built show a timer
 			if (room.type === "lobby" || room.building) continue
@@ -626,9 +656,13 @@ export class Gym3DApp {
 			const id = room.id
 			el.addEventListener("click", (e) => {
 				e.stopPropagation()
-				this.select({ kind: "room", roomId: id })
+				const s: Selection = { kind: "room", roomId: id }
+				this.select(s)
+				this.feedback(s, null)
 			})
-			this.badges.push(this.labels.add(el, () => a, { soft: true }))
+			const L = this.labels.add(el, () => a, { soft: true })
+			this.badges.push(L)
+			this.badgeOf.set(id, L)
 		}
 	}
 
@@ -822,6 +856,8 @@ export class Gym3DApp {
 			el.append(n)
 			el.addEventListener("click", (e) => {
 				e.stopPropagation()
+				buzz()
+				if (!this.calm) bounceEl(el)
 				this.collect([k])
 			})
 			const L = this.labels.add(el, () => v, { bubble: "coin", tail: 6 })
@@ -1365,6 +1401,7 @@ export class Gym3DApp {
 			this.chipUntil = performance.now() + CHIP_TTL * 1000
 		// the chip's text changes with the selection
 		if (this.chipL) this.labels.remeasure(this.chipL)
+		this.markSel(s)
 		this.opts.onSelect(s)
 	}
 
@@ -1375,93 +1412,123 @@ export class Gym3DApp {
 		return next
 	}
 
-	/** Picks what is under a canvas point: a person, else the nearest
-	 * piece, spot, lot, construction site, floor or wall. */
+	/** Picks what is under a canvas point. Priority (world/picking.ts):
+	 * people > equipment (pieces, spots, sites, the kiosk) > room (floor,
+	 * walls, lots) > open ground; the nearest wins within a category. The
+	 * winning hit's world point is kept in `hitPt` (tap feedback). */
 	pickAt(x: number, y: number): Selection | null {
 		const { w, h } = this.r.size
 		this.ndc.set((x / w) * 2 - 1, -(y / h) * 2 + 1)
 		this.ray.setFromCamera(this.ndc, this.r.cam)
 		this.world.scene.updateMatrixWorld()
-		// named NPCs (Talk) first; then gear and sites, so a member on a
-		// treadmill does not hide the treadmill; then other people
-		let person: Selection | null = null
-		const hitP = this.ray.intersectObjects(this.people.pickables(), false)[0]
-		if (hitP) {
-			const info = hitP.object.userData.pick as PickInfo
-			if (info.kind === "person") {
-				const p = this.people.find(info.key)
-				if (p?.npcKey) return this.selectionOf(p)
-				if (p) person = this.selectionOf(p)
-			}
+		const hits: PickHit[] = []
+		const hp = this.ray.intersectObjects(this.people.pickables(), false)[0]
+		if (hp) {
+			const info = hp.object.userData.pick as PickInfo
+			const p = info.kind === "person" ? this.people.find(info.key) : null
+			const using =
+				p && !p.npcKey && p.state === "use" ? p.station?.piece : null
+			if (p)
+				hits.push({
+					cat: "person",
+					dist: hp.distance,
+					sel: this.selectionOf(p),
+					pt: hp.point,
+					busyOn: using?.roomType ? using.id : undefined,
+				})
 		}
-		const hits = this.ray.intersectObjects(
-			[...this.world.pickables, ...this.build.pickables],
-			false,
-		)
-		for (const hit of hits) {
-			const info = hit.object.userData.pick as PickInfo | undefined
-			// only builder gear (and sites) wins over a person: fixtures like
-			// the reception desk still name the staff member behind them
-			if (
-				(info?.kind === "piece" && info.piece.roomType) ||
-				info?.kind === "job"
-			)
-				break
-			if (person) return person
-			break
-		}
-		if (person && !hits.length) return person
 		const objs = [
 			...this.world.pickables,
 			...this.build.pickables,
 			...this.world.structure,
 		]
 		for (const hit of this.ray.intersectObjects(objs, false)) {
-			const o = hit.object
-			const pads = o.userData.pads as PadRef[] | undefined
-			if (pads && hit.instanceId != null) {
-				const pd = pads[hit.instanceId]
-				if (pd)
-					return {
-						kind: "spot",
-						roomId: pd.roomId,
-						spot: pd.spot,
-						size: pd.size,
-						unlock: pd.unlock,
-						open: pd.open,
-					}
-				continue
-			}
-			const info = o.userData.pick as PickInfo | undefined
-			if (!info) continue
-			switch (info.kind) {
-				case "piece":
-					return { kind: "piece", id: info.piece.id, name: info.piece.name }
-				case "lot":
-					return { kind: "lot", lotId: info.lotId }
-				case "job": {
-					const j = this.world.layout.jobs.find((q) => q.id === info.jobId)
-					if (j?.kind === "upgrade" && j.pieceId != null) {
-						const p = this.world.pieces.find((q) => q.id === j.pieceId)
-						if (p) return { kind: "piece", id: p.id, name: p.name }
-					}
-					return { kind: "job", jobId: info.jobId }
-				}
-				case "kitchen":
-					return { kind: "kitchen" }
-				case "floor":
-					return { kind: "room", roomId: info.roomId }
-				case "wall": {
-					// the visible face of a wall belongs to the room in front of it
-					const id = this.world.roomIdAt(hit.point.x + 0.3, hit.point.z + 0.3)
-					if (id != null) return { kind: "room", roomId: id, paint: true }
-					break
-				}
-				default:
-					break
+			const c = this.classify(hit)
+			if (c) hits.push(c)
+		}
+		const best = bestHit(hits)
+		if (best) this.hitPt.copy(best.pt)
+		// a room tap may land on a wall: the ripple goes on the floor where
+		// the finger points, not inside the wall
+		if (
+			best?.cat === "room" &&
+			this.ray.ray.intersectPlane(this.floorPlane, _f)
+		)
+			this.hitPt.copy(_f)
+		return best?.sel ?? null
+	}
+
+	/** What one ray hit means, by category (null: not tappable). */
+	private classify(hit: T.Intersection): PickHit | null {
+		const o = hit.object
+		const at = { dist: hit.distance, pt: hit.point }
+		const pads = o.userData.pads as PadRef[] | undefined
+		if (pads) {
+			const pd = hit.instanceId != null ? pads[hit.instanceId] : undefined
+			if (!pd) return null
+			return {
+				cat: "gear",
+				...at,
+				sel: {
+					kind: "spot",
+					roomId: pd.roomId,
+					spot: pd.spot,
+					size: pd.size,
+					unlock: pd.unlock,
+					open: pd.open,
+				},
 			}
 		}
-		return null
+		const info = o.userData.pick as PickInfo | undefined
+		if (!info) return null
+		switch (info.kind) {
+			case "piece":
+				// fixtures and decor have no sheet: the room (or the floor) behind
+				// them answers instead
+				if (!info.piece.roomType) return null
+				return {
+					cat: "gear",
+					...at,
+					piece: info.piece.id,
+					sel: { kind: "piece", id: info.piece.id, name: info.piece.name },
+				}
+			case "lot":
+				return { cat: "room", ...at, sel: { kind: "lot", lotId: info.lotId } }
+			case "job": {
+				const j = this.world.layout.jobs.find((q) => q.id === info.jobId)
+				if (j?.kind === "upgrade" && j.pieceId != null) {
+					const p = this.world.pieces.find((q) => q.id === j.pieceId)
+					if (p)
+						return {
+							cat: "gear",
+							...at,
+							sel: { kind: "piece", id: p.id, name: p.name },
+						}
+				}
+				return { cat: "gear", ...at, sel: { kind: "job", jobId: info.jobId } }
+			}
+			case "kitchen":
+				return { cat: "gear", ...at, sel: { kind: "kitchen" } }
+			case "floor":
+				return this.roomHit(info.roomId, at)
+			case "wall": {
+				// the visible face of a wall belongs to the room in front of it
+				const id = this.world.roomIdAt(hit.point.x + 0.3, hit.point.z + 0.3)
+				return id == null ? null : this.roomHit(id, at)
+			}
+			default:
+				return null
+		}
+	}
+
+	/** A room's floor or wall; the lobby has no menu (open ground). */
+	private roomHit(
+		roomId: number,
+		at: { dist: number; pt: T.Vector3 },
+	): PickHit {
+		const r = this.world.rooms.find((q) => q.id === roomId)
+		if (!r || r.type === "lobby") return { cat: "floor", ...at, sel: null }
+		return { cat: "room", ...at, sel: { kind: "room", roomId } }
 	}
 
 	/** The move mark under a canvas point, in move mode. */
@@ -1514,10 +1581,124 @@ export class Gym3DApp {
 		if (this.sel?.kind === "person") {
 			const next = s?.kind === "person" && s.key !== this.sel.key ? s : null
 			this.select(next)
+			this.feedback(next, this.hitPt)
 			return next
 		}
 		this.select(s)
+		this.feedback(s, this.hitPt)
 		return s
+	}
+
+	/** Puts the selection marker on what is selected (or hides it). */
+	private markSel(s: Selection | null): void {
+		const fx = this.fx
+		if (!s) {
+			fx.clearMark()
+			return
+		}
+		switch (s.kind) {
+			case "person": {
+				const p = this.people.find(s.key)
+				if (p) {
+					const r = p.rig.root.position
+					fx.ringAt(r.x, r.z, 0.5, p.rig.root)
+				} else fx.clearMark()
+				return
+			}
+			case "piece": {
+				const p = this.world.pieces.find((q) => q.id === s.id)
+				if (p) fx.ringAt(p.x, p.z, Math.max(0.55, p.size * 0.62))
+				else fx.clearMark()
+				return
+			}
+			case "spot": {
+				const pd = this.build.pads.find(
+					(q) => q.roomId === s.roomId && q.spot === s.spot,
+				)
+				if (pd) fx.ringAt(pd.x, pd.z, Math.max(0.55, pd.size * 0.6))
+				else fx.clearMark()
+				return
+			}
+			case "lot": {
+				const l = this.world.layout.lots.find((q) => q.id === s.lotId)
+				if (l) fx.outlineCells(l.cells)
+				else fx.clearMark()
+				return
+			}
+			case "room": {
+				const r = this.world.rooms.find((q) => q.id === s.roomId)
+				if (r && r.type !== "lobby") fx.outlineCells(r.cells)
+				else fx.clearMark()
+				return
+			}
+			case "job": {
+				const j = this.world.layout.jobs.find((q) => q.id === s.jobId)
+				const r =
+					j?.roomId != null
+						? this.world.rooms.find((q) => q.id === j.roomId)
+						: undefined
+				if (r) fx.outlineCells(r.cells)
+				else fx.clearMark()
+				return
+			}
+			case "kitchen":
+				fx.ringAt(this.kitchen.x, this.kitchen.z, 1.7)
+				return
+		}
+	}
+
+	/** A tap landed on `s`: a buzz, a squash of what was hit and a ripple
+	 * where the finger went down (`pt`, a world point; null: under it). */
+	private feedback(s: Selection | null, pt: T.Vector3 | null): void {
+		if (!s) return
+		this.taps++
+		buzz()
+		const fx = this.fx
+		const at = (x: number, z: number, size: number) =>
+			fx.rippleAt(pt?.x ?? x, pt?.z ?? z, size)
+		switch (s.kind) {
+			case "person": {
+				const p = this.people.find(s.key)
+				if (!p) return
+				const r = p.rig.root.position
+				fx.squash(p.rig.root, 0.12)
+				fx.rippleAt(r.x, r.z, 0.75)
+				return
+			}
+			case "piece": {
+				const p = this.world.pieces.find((q) => q.id === s.id)
+				if (!p) return
+				fx.squash(p.inner)
+				at(p.x, p.z, Math.max(0.7, p.size * 0.55))
+				return
+			}
+			case "spot": {
+				const pd = this.build.pads.find(
+					(q) => q.roomId === s.roomId && q.spot === s.spot,
+				)
+				if (pd) fx.rippleAt(pd.x, pd.z, Math.max(0.7, pd.size * 0.5))
+				return
+			}
+			case "lot":
+				at(0, 0, 1.3)
+				return
+			case "room": {
+				const r = this.world.rooms.find((q) => q.id === s.roomId)
+				if (!r) return
+				at(r.cx, r.cz, 1.4)
+				const b = this.badgeOf.get(r.id)
+				if (b && !this.calm) bounceEl(b.el)
+				return
+			}
+			case "job":
+				this.build.bounceSite(s.jobId)
+				at(0, 0, 1.2)
+				return
+			case "kitchen":
+				this.kitchen.bounce()
+				fx.rippleAt(this.kitchen.x, this.kitchen.z + 0.6, 1.4)
+				return
+		}
 	}
 
 	/** Screen point (inside the host) of a world point, for tests. */
@@ -1589,7 +1770,7 @@ export class Gym3DApp {
 			el.className = "g3d-name"
 			el.textContent = firstName(name)
 			const v = new T.Vector3(x, 1.62, z)
-			set.labels.push(this.labels.add(el, () => v))
+			set.labels.push(this.labels.add(el, () => v, TAG))
 		})
 		this.lineupSet = set
 		this.select(null)
@@ -1696,6 +1877,31 @@ export class Gym3DApp {
 		return true
 	}
 
+	/** Who works in a room right now (named NPCs, staff, instructors), for
+	 * the room menu's Staff page. */
+	staffIn(roomId: number): { key: string; name: string; title: string }[] {
+		const out: { key: string; name: string; title: string }[] = []
+		for (const p of this.people.people) {
+			if (p.leaving || p.kind === "member") continue
+			if (p.kind === "extra" && p.name !== "Instructor") continue
+			const r = p.rig.root.position
+			if (this.world.roomIdAt(r.x, r.z) !== roomId) continue
+			const t = this.infoOf(p).title ?? "Staff"
+			out.push({ key: p.key, name: p.name, title: t })
+		}
+		return out
+	}
+
+	/** Selects a person by key (the tap chip), as a tap on them would. */
+	selectPerson(key: string): boolean {
+		const p = this.people.find(key)
+		if (!p) return false
+		const s = this.selectionOf(p)
+		this.select(s)
+		this.feedback(s, null)
+		return true
+	}
+
 	personKeys(): string[] {
 		return this.people.people.map((p) => p.key)
 	}
@@ -1746,7 +1952,9 @@ export class Gym3DApp {
 				y,
 				x0: x,
 				y0: y,
-				t0: performance.now(),
+				// when the finger went down (the event's own time: a slow frame
+				// must not turn a quick tap into a long press)
+				t0: ev.timeStamp,
 				canvas: onCanvas,
 				panning: false,
 			})
@@ -1755,6 +1963,9 @@ export class Gym3DApp {
 			if (onCanvas) el.setPointerCapture?.(ev.pointerId)
 			if (this.pointers.size === 2) {
 				const [a, c] = [...this.pointers.values()]
+				// a pinch is never a tap, for either finger
+				a.panning = true
+				c.panning = true
 				this.pinch0 = Math.hypot(a.x - c.x, a.y - c.y)
 				this.zoom0 = this.r.zoom
 				cancelPress()
@@ -1807,7 +2018,7 @@ export class Gym3DApp {
 				this.dragMove(x, y)
 				return
 			}
-			const far = Math.hypot(x - pt.x0, y - pt.y0) > 7
+			const far = Math.hypot(x - pt.x0, y - pt.y0) > TAP_SLOP
 			if (this.press && far) {
 				const pr = this.press
 				cancelPress()
@@ -1816,7 +2027,7 @@ export class Gym3DApp {
 					return
 				}
 			}
-			if (Math.hypot(x - pt.x0, y - pt.y0) > 6) {
+			if (far) {
 				if (!pt.panning) {
 					pt.panning = true
 					// a drag from a bubble: the canvas takes the pointer over
@@ -1840,9 +2051,12 @@ export class Gym3DApp {
 				return
 			}
 			if (ev.type === "pointercancel") return
-			const moved = Math.hypot(pt.x - pt.x0, pt.y - pt.y0)
-			const tap =
-				moved < 8 && performance.now() - pt.t0 < 600 && this.pointers.size === 0
+			const tap = isTap({
+				moved: Math.hypot(pt.x - pt.x0, pt.y - pt.y0),
+				ms: ev.timeStamp - pt.t0,
+				panned: pt.panning,
+				others: this.pointers.size,
+			})
 			// a drag that began on a bubble must not also tap it
 			if (!pt.canvas && (pt.panning || !tap))
 				this.noClickUntil = performance.now() + 400
@@ -1925,6 +2139,9 @@ export class Gym3DApp {
 			greens: this.world.layout.greens,
 			bubbles: [...this.coinBubs.values()].filter((b) => b.shown >= 1).length,
 			says: this.says.active,
+			mark: this.fx.marked,
+			rippling: this.fx.rippling,
+			taps: this.taps,
 			...this.hap.stats(),
 		}
 	}
@@ -1951,6 +2168,7 @@ export class Gym3DApp {
 		this.hap.dispose()
 		this.coinBubs.clear()
 		this.kitchen.dispose()
+		this.fx.dispose()
 		this.says.dispose()
 		this.labels.dispose()
 		this.people.onRemove = null
@@ -1973,6 +2191,13 @@ export class Gym3DApp {
 	}
 }
 
+/** A short squash on a DOM element (a room badge, a coin bubble). */
+function bounceEl(el: HTMLElement): void {
+	el.classList.remove("g3d-tapped")
+	void el.offsetWidth // restart the animation
+	el.classList.add("g3d-tapped")
+}
+
 function cap(s: string): string {
 	return s ? s[0].toUpperCase() + s.slice(1) : s
 }
@@ -1980,6 +2205,15 @@ function cap(s: string): string {
 function moodText(m: number): string {
 	const i = moodInfo(m)
 	return `${i.emoji} ${i.word}`
+}
+
+type PickHit = {
+	cat: HitCat
+	dist: number
+	sel: Selection | null
+	pt: T.Vector3
+	piece?: number
+	busyOn?: number
 }
 
 const _v = new T.Vector3()

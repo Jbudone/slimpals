@@ -88,16 +88,26 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   chip > timers > coins > player-caused lines > NPC lines > ambient, no overlap (slide up/aside or hide), clamped
   between `setInsets` top/bottom, capped (2 lines on a phone). Input listens on the gym host: a drag that starts on
   a bubble pans, only a short tap reaches it. Tapping a line pops it; the tap chip is a stat card (Role, Mood,
-  Doing, Bond; never body weight) closing on a tap outside, a pan or after `CHIP_TTL`.
+  Doing, Bond; never body weight) closing on a tap outside, a pan or after `CHIP_TTL`. Event / class banners,
+  hero and name tags are managed too (kind `tag`, below speech and above ambient, take no taps, not counted in the cap): on screen,
+  clear of bubbles, banners wrap.
+- Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
+  ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
+  pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
+  around a room/lot) while selected, a squash, one pooled floor ripple, `navigator.vibrate(10)`; DOM badges and
+  coin bubbles get `.g3d-tapped`. Reduced motion: marker only. A room tap opens the room action menu (info, Upgrade
+  gear, Staff, Customize = paint + decor; `Selection.view`), never paint first.
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
   screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey),
-  coinsWaiting(), coinBubbles(), collectAll(), kitchen(), bubbles(), say(key, text) }`;
+  coinsWaiting(), coinBubbles(), collectAll(), kitchen(), bubbles(), say(key, text), pick(x, y) }` (pick: what a
+  tap would select, without selecting);
   `stats()` gives rooms, pieces, people, drawCalls, geometries, textures, quality, fps, lots, pads, jobs, coins,
-  sweat, greens, bubbles, says, event, classes, classPeople, heroes. It is cleared on unmount.
+  sweat, greens, bubbles, says, mark, rippling, taps, event, classes, classPeople, heroes. It is cleared on unmount.
   `e2e/gym3d-life.spec.ts` covers events, classes, the chip, bubbles (no overlap, tap to pop, pan
   from a bubble, the chip closing), the lineup and the claim ceremony;
   `e2e/gym3d-home.spec.ts` the HUD, drawer ticks, coin bubbles, Welcome back, the kitchen and the tabs.
   `e2e/gym3d-build.spec.ts` buys, finishes, types, moves and upgrades (`GYM3D_SHOTS=<dir>` saves screenshots).
+  `e2e/gym3d-tap.spec.ts` the room menu, Customize, tap feedback, drags that never select and the class banner.
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
 
