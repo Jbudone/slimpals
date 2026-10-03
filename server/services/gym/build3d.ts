@@ -224,6 +224,7 @@ export const PICKABLE_TYPES: readonly EquipmentRoomType[] = [
 	"recovery",
 	"juice",
 	"pool",
+	"court",
 ]
 
 export async function chooseRoomType(

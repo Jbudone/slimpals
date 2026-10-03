@@ -213,6 +213,7 @@ const EQUIPMENT_BY_CATEGORY: Record<string, string[]> = {
 	boxing: ["boxing_ring", "boxing_mitts_station"],
 	lagree: ["lagree_megaformer", "lagree_studio_mirror"],
 	swimming: ["swimming_lap_pool", "swimming_poolside_loungers"],
+	court: ["court_hoop", "court_pickle"],
 	punching_bags: ["punching_bags_heavy_bag_row", "punching_bags_double_end"],
 	// The spotlight stage is a status/unlock signal, not equipment an NPC
 	// picks during its activity sequence.

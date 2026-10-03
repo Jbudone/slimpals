@@ -7,6 +7,7 @@ import {
 	userGymUpgrades,
 	users,
 } from "../../server/db/schema.js"
+import { GYM_UPGRADES } from "../../server/db/seed.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import { UPGRADE_LAYOUT } from "../../server/services/gym/layout.js"
 import {
@@ -71,8 +72,8 @@ afterAll(async () => {
 })
 
 describe("UPGRADE_LAYOUT", () => {
-	it("defines positions for all 37 upgrades", () => {
-		expect(Object.keys(UPGRADE_LAYOUT)).toHaveLength(37)
+	it("defines positions for every catalog upgrade", () => {
+		expect(Object.keys(UPGRADE_LAYOUT)).toHaveLength(GYM_UPGRADES.length)
 	})
 
 	it("all positions are within grid bounds (20x15)", () => {
@@ -174,7 +175,7 @@ describe("POST /api/gym/claim-upgrade — placement data", () => {
 		expect(barbell.placementData).toEqual({ x: 12, y: 2 })
 	})
 
-	it("all 25 layout keys match catalog keys", async () => {
+	it("all layout keys match catalog keys", async () => {
 		const cookies = await registerAndLogin()
 		const res = await request(app)
 			.get("/api/gym/catalog")

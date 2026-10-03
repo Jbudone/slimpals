@@ -22,6 +22,7 @@ export type RoomType =
 	| "pool"
 	| "recovery"
 	| "juice"
+	| "court"
 
 export type EquipmentRoomType = Exclude<RoomType, "lobby">
 
@@ -41,8 +42,7 @@ export type RoomTypeDef = {
 }
 
 // Same room types as the prototype's RT, trimmed to the rooms slice 1 can
-// seed from the real upgrade catalog (no Sports court: nothing unlocks it
-// yet). Boxing gets a "ring" layout with one 3 x 3 spot because the real
+// seed from the real upgrade catalog. Boxing gets a "ring" layout with one 3 x 3 spot because the real
 // catalog has a boxing ring, which the prototype only had as a free piece.
 export const RT: Record<EquipmentRoomType, RoomTypeDef> = {
 	cardio: {
@@ -108,6 +108,14 @@ export const RT: Record<EquipmentRoomType, RoomTypeDef> = {
 		layout: "grid",
 		basic: ["amenity_juice", "amenity_water"],
 		premium: ["staff_nutrition", "staff_ownership_suite"],
+	},
+	court: {
+		name: "Sports court",
+		thumb: "court_hoop",
+		desc: "Hoops and pickleball",
+		layout: "grid",
+		basic: ["court_hoop", "court_pickle"],
+		premium: [],
 	},
 }
 
@@ -181,6 +189,7 @@ export const PAINT: Record<RoomType | "empty", RoomPaint> = {
 	pool: { wall: "#bfe3f0", floorStyle: "tile", floorColor: "#d6eef4" },
 	recovery: { wall: "#e6d6f0", floorStyle: "wood", floorColor: "#e0c29a" },
 	juice: { wall: "#f7d38a", floorStyle: "terrazzo", floorColor: "#f6e6c8" },
+	court: { wall: "#cfe3a8", floorStyle: "wood", floorColor: "#d9a35f" },
 }
 
 export const FLOOR_STYLES: readonly FloorStyle[] = [
@@ -335,6 +344,7 @@ export const ROOM_ORDER: readonly EquipmentRoomType[] = [
 	"recovery",
 	"juice",
 	"pool",
+	"court",
 ]
 
 /** Free-standing decor places (0.5 x 0.5), relative to the plot corner:

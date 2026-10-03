@@ -25,6 +25,8 @@ export const UPGRADE_CELEBRATIONS: Readonly<Record<string, string>> = {
 	staff_massage: "Massage chair! Recovery just leveled up.",
 	staff_physio: "Physical therapy room! Injuries handled right here.",
 	staff_nutrition: "Nutrition desk! Diet is half the battle.",
+	court_hoop: "A basketball hoop! Pickup games start now.",
+	court_pickle: "A pickleball net! Dink responsibly.",
 	boxing_ring: "A boxing ring! Time to step in and spar.",
 	boxing_mitts_station: "Focus mitts station! Sharpen those combos.",
 	lagree_megaformer:

@@ -151,6 +151,8 @@ export const ECONOMY = {
 			amenity_showers: 420,
 			amenity_juice: 600,
 			amenity_water: 90,
+			court_hoop: 500,
+			court_pickle: 450,
 			staff_massage: 680,
 			staff_physio: 720,
 			staff_nutrition: 480,

@@ -39,6 +39,11 @@ export const HIRE_ROLES: Readonly<Record<string, HireRole>> = {
 		names: ["Ayla", "Cormac", "Noor", "Ben"],
 		intro: "Stretch first. Complain second.",
 	},
+	court: {
+		role: "Court coach",
+		names: ["Kobe", "Maya", "Theo", "Zoe"],
+		intro: "Pick a side. Winner buys the smoothies.",
+	},
 	juice: {
 		role: "Barista",
 		names: ["Poppy", "Iggy", "Suki", "Leo"],
