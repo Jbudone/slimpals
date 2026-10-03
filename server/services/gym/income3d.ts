@@ -17,6 +17,7 @@ import {
 	kitchenRate,
 	machineCap,
 	machineRate,
+	menuInSeason,
 } from "../../../shared/gym3d/economy.js"
 import { hireBonus } from "../../../shared/gym3d/hires.js"
 import { areaMultiplier } from "../../../shared/gym3d/staff.js"
@@ -365,6 +366,8 @@ export async function unlockKitchenItem(
 		if (!g) throw new BuildError(404, "No gym")
 		if (kitchenItemsOn(g.kitchenMenu).includes(item.key as KitchenItemKey))
 			throw new BuildError(409, `${item.name} is already on the menu`)
+		if (!menuInSeason(item, now.getUTCMonth() + 1))
+			throw new BuildError(409, `${item.name} is not in season`)
 		await spendCurrency(tx, gym, "greens", item.cost)
 		const collected = await collectIn(tx, gymId, now, ["kitchen"])
 		await tx

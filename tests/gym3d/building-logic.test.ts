@@ -21,6 +21,7 @@ import {
 	levelProgress,
 	machineCap,
 	machineRate,
+	menuInSeason,
 	plotPrice,
 	taskReward,
 	upgradeInfo,
@@ -306,6 +307,14 @@ describe("gym home economy", () => {
 		const costs = KITCHEN_MENU.slice(1).map((x) => x.cost)
 		expect(costs.every((c) => c > 0)).toBe(true)
 		expect([...costs].sort((a, b) => a - b)).toEqual(costs)
+	})
+
+	it("seasonal menu items can only be added in their months", () => {
+		const pumpkin = KITCHEN_MENU.find((m) => m.key === "pumpkin")
+		if (!pumpkin) throw new Error("no pumpkin item")
+		expect(menuInSeason(pumpkin, 10)).toBe(true)
+		expect(menuInSeason(pumpkin, 6)).toBe(false)
+		expect(menuInSeason(KITCHEN_MENU[1], 6)).toBe(true) // year-round
 	})
 
 	it("starter Sweat covers a first speed-up", () => {

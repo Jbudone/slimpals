@@ -104,6 +104,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   catalog category `court`, 9000/10000 XP). It is a content addition: seeded upgrades, `KEY_ROOM` in `layout3d.ts`, builders in
   `equipment/builders.ts`, `ROOM_ORDER`, `PICKABLE_TYPES`, hires (Court coach) and the room picker. Staffed bonuses are the
   existing hires and staff training.
+- Seasonal menu (#141, first piece): `KITCHEN_MENU` has autumn items (Pumpkin spice shake, Apple-cinnamon oats; `months`
+  [9, 10, 11]) that can only be added in season (`menuInSeason`, checked in `unlockKitchenItem`) and stay on the menu once
+  added; the menu sheet and the 3D board list what is on plus what is in season. Not yet: Halloween ghosts, decor, costumes.
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds

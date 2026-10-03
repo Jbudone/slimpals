@@ -40,7 +40,31 @@ export const KITCHEN_MENU = [
 	{ key: "protein", name: "Protein shake", rate: 6, cost: 2 },
 	{ key: "acai", name: "Açaí bowl", rate: 9, cost: 4 },
 	{ key: "salad", name: "Power salad", rate: 12, cost: 6 },
+	// seasonal (autumn): can only be added in these months (1-12, UTC), and
+	// stays on the menu once added
+	{
+		key: "pumpkin",
+		name: "Pumpkin spice shake",
+		rate: 10,
+		cost: 8,
+		months: [9, 10, 11],
+	},
+	{
+		key: "oats",
+		name: "Apple-cinnamon oats",
+		rate: 11,
+		cost: 10,
+		months: [9, 10, 11],
+	},
 ] as const
+
+type MenuItem = { readonly key: string; readonly months?: readonly number[] }
+
+/** Whether a menu item can be added in `month` (1-12): the year-round ones
+ * always, a seasonal one only in its months. */
+export function menuInSeason(item: MenuItem, month: number): boolean {
+	return !item.months || item.months.includes(month)
+}
 
 export type KitchenItemKey = (typeof KITCHEN_MENU)[number]["key"]
 
