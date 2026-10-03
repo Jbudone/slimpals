@@ -12,7 +12,15 @@ export type BanterContext = {
 	gear: readonly string[]
 	/** A room is busy: several people are working out at once. */
 	crowded: boolean
+	/** Today's event is on. */
+	event?: boolean
+	/** A group class is running. */
+	classes?: boolean
+	/** The player upgraded or placed gear a moment ago. */
+	upgraded?: boolean
 }
+
+export type BanterWhen = "event" | "classes" | "upgraded"
 
 export type Banter = {
 	id: string
@@ -22,6 +30,8 @@ export type Banter = {
 	missingGear?: string
 	/** Only when the gym is busy. */
 	crowded?: boolean
+	/** Only while this is going on (an event, a class, a fresh upgrade). */
+	when?: BanterWhen
 	/** Lines in turn: the first person speaks first. */
 	lines: readonly [string, string] | readonly [string, string, string]
 }
@@ -102,6 +112,47 @@ export const BANTER: readonly Banter[] = [
 		lines: ["Are you using that?", "I'm resting.", "That's using it."],
 	},
 	{
+		id: "event-1",
+		when: "event",
+		lines: [
+			"Is that the event by the door?",
+			"It's always the event by the door.",
+			"I'm only here for the free water.",
+		],
+	},
+	{
+		id: "event-2",
+		when: "event",
+		lines: ["I'm not signing up.", "Nobody asked you to."],
+	},
+	{
+		id: "class-1",
+		when: "classes",
+		lines: [
+			"They're doing a class in there.",
+			"Sounds painful.",
+			"Sounds like a lot of counting.",
+		],
+	},
+	{
+		id: "class-2",
+		when: "classes",
+		lines: ["Class is full, isn't it.", "It's full of people who can bend."],
+	},
+	{
+		id: "upgrade-1",
+		when: "upgraded",
+		lines: ["New gear.", "Smells like it too.", "Smells like money, mostly."],
+	},
+	{
+		id: "upgrade-2",
+		when: "upgraded",
+		lines: [
+			"Someone's been upgrading things.",
+			"About time. The old one squeaked.",
+		],
+	},
+	{
 		id: "plain-1",
 		lines: ["Third set?", "Second. The third one's a rumour."],
 	},
@@ -133,11 +184,12 @@ export function banterFor(ctx: BanterContext): Banter[] {
 		if (b.missingRoom && ctx.rooms.includes(b.missingRoom)) return false
 		if (b.missingGear && ctx.gear.includes(b.missingGear)) return false
 		if (b.crowded && !ctx.crowded) return false
+		if (b.when && !ctx[b.when]) return false
 		return true
 	}
 	const all = BANTER.filter(fits)
 	const specific = all.filter(
-		(b) => b.missingRoom || b.missingGear || b.crowded,
+		(b) => b.missingRoom || b.missingGear || b.crowded || b.when,
 	)
 	return specific.length ? specific : all
 }

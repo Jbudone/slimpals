@@ -325,6 +325,8 @@ export class Gym3DApp {
 		done: () => void
 	} | null = null
 	private clock = 0
+	/** Clock of the last upgrade claim (banter talks about fresh gear). */
+	private lastClaimAt = -1e9
 	private kitchen: Kitchen
 	private coinBubs = new Map<string, CoinBubble>()
 	/** Tap feedback: selection marker, squash, ripple (world/tapFx.ts). */
@@ -441,6 +443,9 @@ export class Gym3DApp {
 			gear: lay.pieces
 				.filter((p) => p.status === "placed")
 				.map((p) => p.itemKey),
+			event: this.hap.stats().event !== "",
+			classes: this.hap.stats().classes > 0,
+			upgraded: this.clock - this.lastClaimAt < 180,
 			crowded:
 				this.people.people.filter((p) => p.kind === "member").length >= 8,
 		}
@@ -1036,6 +1041,7 @@ export class Gym3DApp {
 	 * Gear with no free spot goes to storage: a crate drops in the lobby. */
 	async claimCeremony(key: string, done: () => void): Promise<void> {
 		if (this.disposed) return
+		this.lastClaimAt = this.clock
 		this.endClaim()
 		let next: GymLayoutDto | null = null
 		try {

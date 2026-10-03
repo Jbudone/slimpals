@@ -146,7 +146,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   hero and name tags are managed too (kind `tag`, below speech and above ambient, take no taps, not counted in the cap): on screen,
   clear of bubbles, banners wrap.
 - Ambient banter (gh-140, first slice): `shared/gym3d/banter.ts` holds short scripted exchanges (2-3 dry lines, no
-  exclamation marks) picked to fit the gym (`BanterContext`: finished room types, placed gear, a crowd): a missing pool,
+  exclamation marks) picked to fit the gym (`BanterContext`: finished room types, placed gear, a crowd, today's event, a running class, gear upgraded in the last 3 minutes): a missing pool,
   sauna, ring or megaformer gets talked about, plain chatter is the fallback, recent ids are not repeated. `Life.banter`
   plays one between two nearby people about once a minute as alternating bubbles through the normal bubble pool
   (`app.banterContext()` feeds it). Not yet: the nightly AI batch, the "NPC banter" content-tuning type, relationships.
