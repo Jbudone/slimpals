@@ -960,6 +960,56 @@ async function grantGymCurrency(
 	}
 }
 
+/** Test tool: sets every named staff member to `level` at once. */
+async function setAllGymStaffLevel(userId: string, level: number) {
+	gymCoinsStatus = null
+	try {
+		await api.post(`/admin/users/${userId}/gym/staff-level`, {
+			npcKey: "all",
+			level,
+		})
+		gymCoinsStatus = {
+			text: `All named staff are level ${level} now.`,
+			ok: true,
+		}
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+const EXTRAS: Record<string, string> = {
+	staff: "trained staff levels",
+	hires: "hires",
+	walls: "open walls",
+	hustle: "today's hustle bonuses",
+}
+
+/** Test tool: wipes staff levels, hires, open walls or today's hustle bonuses. */
+async function resetGymExtras(
+	userId: string,
+	what: "staff" | "hires" | "walls" | "hustle",
+) {
+	gymCoinsStatus = null
+	try {
+		const r = await api.post<{ removed: number }>(
+			`/admin/users/${userId}/gym/reset-extras`,
+			{ what },
+		)
+		gymCoinsStatus = {
+			text: `Cleared ${EXTRAS[what]} (${r.removed} removed). Reload the gym to see it.`,
+			ok: true,
+		}
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 /** Test tool: as if the player had been away (bubbles fill, Welcome back). */
 async function simulateGymAway(userId: string, hours: number) {
 	gymCoinsStatus = null
@@ -1761,6 +1811,45 @@ onMount(async () => {
 																	data-testid="admin-gym-away"
 																>
 																	Simulate 6h away
+																</button>
+															</div>
+															<div class="field-row">
+																<button
+																	class="btn sm"
+																	onclick={() => setAllGymStaffLevel(user.id, 5)}
+																	data-testid="admin-gym-max-staff"
+																>
+																	Max all staff (Lv 5)
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "staff")}
+																	data-testid="admin-gym-reset-staff"
+																>
+																	Reset staff levels
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "hires")}
+																	data-testid="admin-gym-reset-hires"
+																>
+																	Remove hires
+																</button>
+															</div>
+															<div class="field-row">
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "walls")}
+																	data-testid="admin-gym-reset-walls"
+																>
+																	Close open walls
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "hustle")}
+																	data-testid="admin-gym-reset-hustle"
+																>
+																	Reset today's hustle
 																</button>
 															</div>
 															{#if gymCoinsStatus}

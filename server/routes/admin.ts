@@ -1,7 +1,8 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
-import { and, asc, count, desc, eq, sql } from "drizzle-orm"
+import { and, asc, count, desc, eq, like, sql } from "drizzle-orm"
 import { Router } from "express"
+import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { db } from "../db/index.js"
 import {
 	accounts,
@@ -9,9 +10,13 @@ import {
 	challenges,
 	dailyCheckins,
 	foodLogs,
+	gymHires,
 	gymNpcDailyState,
 	gymNpcs,
+	gymOpenWalls,
 	gymPieces,
+	gymRewards,
+	gymStaff,
 	gymUpgradesCatalog,
 	reactions,
 	sessions,
@@ -52,7 +57,9 @@ import {
 } from "../services/gym/index.js"
 import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
 import { resetGymLayout } from "../services/gym/layout3dStore.js"
+import { dayKey } from "../services/gym/rewards.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
+import { staffCards } from "../services/gym/staff.js"
 import type { Scheduler } from "../services/scheduler/index.js"
 import { isSchedulerEnabled } from "../services/scheduler/schedule.js"
 import {
@@ -1164,6 +1171,97 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			res.json({ [what]: row?.n ?? 0 })
 		})
 	}
+
+	// Test tool (gym home): sets a staff member's level (1..5) so the effect of
+	// training can be seen at once. `npcKey` is a named staff key, `hire:<id>`
+	// or "all" (every named staff member). Answers the gym's staff cards.
+	adminRouter.post("/admin/users/:id/gym/staff-level", async (req, res) => {
+		const body = (req.body ?? {}) as { npcKey?: unknown; level?: unknown }
+		const level = Number(body.level)
+		if (!Number.isInteger(level) || level < 1 || level > STAFF_MAX_LEVEL) {
+			res.status(400).json({
+				error: `level must be a whole number from 1 to ${STAFF_MAX_LEVEL}`,
+			})
+			return
+		}
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		const key = String(body.npcKey ?? "")
+		const hireId = /^hire:(\d+)$/.exec(key)?.[1]
+		if (hireId) {
+			const [hire] = await db
+				.select({ id: gymHires.id })
+				.from(gymHires)
+				.where(and(eq(gymHires.id, Number(hireId)), eq(gymHires.gymId, gym.id)))
+			if (!hire) {
+				res.status(404).json({ error: "No such hire" })
+				return
+			}
+			await db.update(gymHires).set({ level }).where(eq(gymHires.id, hire.id))
+		} else {
+			const keys = key === "all" ? STAFF.map((s) => s.key) : [key]
+			if (!keys.every((k) => staffDef(k))) {
+				res.status(404).json({ error: "Unknown staff member" })
+				return
+			}
+			for (const k of keys)
+				await db
+					.insert(gymStaff)
+					.values({ gymId: gym.id, npcKey: k, level })
+					.onDuplicateKeyUpdate({ set: { level } })
+		}
+		res.json({ staff: await staffCards(db, gym.id) })
+	})
+
+	// Test tool (gym home): wipes one of the newer gym systems for a user so it
+	// can be tried from scratch: trained staff levels, hires, open walls, or
+	// today's tap-to-hustle bonuses. Answers { removed }.
+	adminRouter.post("/admin/users/:id/gym/reset-extras", async (req, res) => {
+		const what = String((req.body as { what?: unknown })?.what ?? "")
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		let removed = 0
+		if (what === "staff")
+			removed = (await db.delete(gymStaff).where(eq(gymStaff.gymId, gym.id)))[0]
+				.affectedRows
+		else if (what === "hires")
+			removed = (await db.delete(gymHires).where(eq(gymHires.gymId, gym.id)))[0]
+				.affectedRows
+		else if (what === "walls")
+			removed = (
+				await db.delete(gymOpenWalls).where(eq(gymOpenWalls.gymId, gym.id))
+			)[0].affectedRows
+		else if (what === "hustle")
+			removed = (
+				await db
+					.delete(gymRewards)
+					.where(
+						and(
+							eq(gymRewards.gymId, gym.id),
+							like(gymRewards.source, `hustle:${dayKey()}:%`),
+						),
+					)
+			)[0].affectedRows
+		else {
+			res
+				.status(400)
+				.json({ error: "what must be staff, hires, walls or hustle" })
+			return
+		}
+		res.json({ removed })
+	})
 
 	// Test tool (gym home): moves the gym's idle-income clocks and its last
 	// open back by `hours`, as if the player had been away that long. Coin
