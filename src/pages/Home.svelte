@@ -7,10 +7,11 @@ import { onMount } from "svelte"
 import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
 import GoalsCard from "../components/home/GoalsCard.svelte"
-import { COACH_SVG } from "../components/home/icons"
+import { coachSvg } from "../components/home/icons"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import { api } from "../lib/api.js"
 import { checkinState } from "../lib/checkin.svelte.js"
+import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
@@ -33,6 +34,8 @@ let dialogPortrait = $state<string | null>(null)
 let claim3d = $state<{ key: string; n: number } | null>(null)
 let claiming = $state(false)
 let hudBottom = $state(72)
+/** The coach, wearing the outfits the gym owns. */
+const coach = $derived(coachSvg(cosmetics.keys))
 let coachOpen = $state(true)
 let coachTimer: ReturnType<typeof setTimeout> | null = null
 let coachPick = $state(0)
@@ -193,6 +196,7 @@ function hasWebGL2(): boolean {
 }
 
 onMount(() => {
+	void loadOwnedCosmetics()
 	if (!hasWebGL2()) failed = "webgl"
 	else load()
 	void loadToday()
@@ -215,7 +219,7 @@ onMount(() => {
 	{#if failed}
 		<div class="fallback" data-testid="gym-fallback">
 			<div class="card">
-				<div class="coach-big">{@html COACH_SVG}</div>
+				<div class="coach-big">{@html coach}</div>
 				<h2>Your gym needs a newer browser</h2>
 				<p>
 					{failed === "webgl"
@@ -261,7 +265,7 @@ onMount(() => {
 		aria-label="{coachName}"
 		data-testid="coach"
 	>
-		{@html COACH_SVG}
+		{@html coach}
 	</button>
 	{#if !failed}
 		<GoalsCard top={hudBottom + 62} />

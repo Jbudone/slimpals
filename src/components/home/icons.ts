@@ -19,6 +19,21 @@ export const TICK_SVG =
 export const COACH_SVG =
 	'<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="21" fill="#fff1dc"/><path d="M4 42c1-8.5 8-12.5 17-12.5S37 33.5 38 42z" fill="#34c973"/><path d="M17 30l4 4 4-4" fill="none" stroke="#1f9a55" stroke-width="2"/><circle cx="21" cy="19" r="9.5" fill="#e8b48e"/><path d="M11 17c0-6 4.5-9.5 10-9.5S31 11 31 17c-3-2.8-7.5-3.8-10-3.8S14 14.2 11 17z" fill="#1f3a2a"/><path d="M10.5 14.5c2-3.5 6-5.4 10.5-5.4s8.5 1.9 10.5 5.4l3 .8c.6.2.6 1 0 1.1l-3.6.3c-2.6-2-6.2-2.9-9.9-2.9s-7.3.9-9.9 2.9z" fill="#34c973"/><circle cx="17.6" cy="20" r="1.3" fill="#2a1c18"/><circle cx="24.4" cy="20" r="1.3" fill="#2a1c18"/><path d="M18 23.6q3 2.6 6 0" fill="none" stroke="#7a2e28" stroke-width="1.5" stroke-linecap="round"/><circle cx="15" cy="23" r="1.6" fill="#f08a7a" opacity=".5"/><circle cx="27" cy="23" r="1.6" fill="#f08a7a" opacity=".5"/></svg>'
 
+/** Outfit pieces drawn on the coach, by cosmetic key (shared/gym3d/cosmetics.ts):
+ * a witch hat sits on top of the head. */
+const COACH_OUTFITS: Readonly<Record<string, string>> = {
+	halloween_hat:
+		'<ellipse cx="21" cy="9.4" rx="12.5" ry="2.6" fill="#3b2a55"/><path d="M14.5 9.2Q19 4.5 22.6 0.6Q23.4 5.4 27.6 9.2z" fill="#4b3470"/><rect x="15.6" y="6.6" width="10.6" height="1.8" rx=".6" fill="#f2a03a"/>',
+}
+
+/** The coach with the outfits the gym owns (worn automatically). */
+export function coachSvg(owned: readonly string[] = []): string {
+	const worn = owned.map((k) => COACH_OUTFITS[k]).filter(Boolean)
+	return worn.length
+		? COACH_SVG.replace("</svg>", `${worn.join("")}</svg>`)
+		: COACH_SVG
+}
+
 /** "+3" with the currency icon, for chips. */
 export function chipHtml(kind: "xp" | "sw" | "gr" | "co", n: number): string {
 	if (kind === "xp") return `+${n} XP`
