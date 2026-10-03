@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
-import { badges, userBadges } from "../../db/schema.js"
+import { badges, socialPosts, userBadges, users } from "../../db/schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -159,4 +159,30 @@ export async function checkAndAward(
 		tier: b.tier,
 		earnedAt: now,
 	}))
+}
+
+/** Posts each new badge to the feed as a milestone when the user has
+ * auto-share on (the same post the check-in route makes). */
+export async function shareBadges(
+	userId: string,
+	newBadges: NewBadge[],
+	db: Db,
+): Promise<void> {
+	if (newBadges.length === 0) return
+	const [user] = await db
+		.select({ autoShareBadges: users.autoShareBadges })
+		.from(users)
+		.where(eq(users.id, userId))
+	if (!user?.autoShareBadges) return
+	await db.insert(socialPosts).values(
+		newBadges.map((badge) => ({
+			userId,
+			type: "milestone" as const,
+			content: {
+				badgeKey: badge.key,
+				badgeName: badge.name,
+				badgeTier: badge.tier,
+			},
+		})),
+	)
 }
