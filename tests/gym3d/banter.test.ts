@@ -35,6 +35,19 @@ describe("ambient banter", () => {
 		)
 	})
 
+	it("talks about an event, a class or fresh gear while it lasts", () => {
+		const ids = (extra: Partial<BanterContext>) =>
+			banterFor({ ...full, ...extra }).map((b) => b.id)
+		expect(ids({ event: true }).every((i) => i.startsWith("event"))).toBe(true)
+		expect(ids({ classes: true }).every((i) => i.startsWith("class"))).toBe(
+			true,
+		)
+		expect(ids({ upgraded: true }).every((i) => i.startsWith("upgrade"))).toBe(
+			true,
+		)
+		expect(ids({}).some((i) => i.startsWith("event"))).toBe(false)
+	})
+
 	it("falls back to plain chatter and avoids repeats", () => {
 		const plain = banterFor(full)
 		expect(plain.length).toBeGreaterThan(1)
