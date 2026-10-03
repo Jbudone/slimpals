@@ -392,6 +392,22 @@ export const gymRewards = mysqlTable(
 	(t) => [unique("gym_rewards_gym_source_uq").on(t.gymId, t.source)],
 )
 
+// Trained staff (gym home): one row per gym and staff NPC once trained past
+// level 1 (no row = level 1). See shared/gym3d/staff.ts.
+export const gymStaff = mysqlTable(
+	"gym_staff",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		npcKey: varchar("npc_key", { length: 128 }).notNull(),
+		level: int("level").notNull().default(1),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_staff_gym_npc_uq").on(t.gymId, t.npcKey)],
+)
+
 /** Legacy (slice 2, no longer written since 0021): real activities that
  * sped up the 3D gym's jobs by an hour. Sweat replaced the automatic cut.
  * Kept so existing rows stay readable. The same

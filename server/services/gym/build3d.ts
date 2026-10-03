@@ -110,7 +110,8 @@ export async function spendCurrency(
 	gym[what] -= n
 }
 
-async function spend(tx: Tx, gym: Locked, cost: number): Promise<void> {
+/** Takes `cost` coins from the locked gym, or refuses. */
+export async function spend(tx: Tx, gym: Locked, cost: number): Promise<void> {
 	if (cost > gym.coins)
 		throw new BuildError(
 			409,

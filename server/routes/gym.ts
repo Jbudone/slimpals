@@ -67,6 +67,7 @@ import {
 	isClassActiveNow,
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
+import { staffCards, trainStaff } from "../services/gym/staff.js"
 
 export async function fetchUserStats(userId: string) {
 	const checkins = await db
@@ -468,6 +469,27 @@ export function createGymRouter(aiService: AIService) {
 		"/gym/layout/kitchen/rush",
 		build((gymId) => startRushHour(db, gymId)),
 	)
+
+	// Staff cards (gym home) and training them with coins.
+	router.get("/gym/staff", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json({ staff: await staffCards(db, gym.id) })
+	})
+	router.post("/gym/staff/:npcKey/train", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		try {
+			res.json(await trainStaff(db, gym.id, String(req.params.npcKey)))
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
+	})
 
 	router.get("/gym/catalog", async (_req, res) => {
 		const catalog = await db

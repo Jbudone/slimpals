@@ -162,6 +162,13 @@
       "when": 1790040000000,
       "tag": "0022_scheduled_job_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1790050000000,
+      "tag": "0023_gym_staff",
+      "breakpoints": true
     }
   ]
 }

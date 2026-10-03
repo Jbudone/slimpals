@@ -84,6 +84,15 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   reads pay once). The first read of a gym writes `goal:_start` and marks what it already meets as done without
   paying. UI: `GoalsCard.svelte` (star button under the coach; the account avatar owns the top-right) fed by `src/lib/goals.svelte.ts`. Tests:
   `tests/gym3d/rating-goals.test.ts` (pure), `goals-route.test.ts` (DB).
+- Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
+  and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
+  1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds
+  half of that to every machine), applied in `income3d.ts`. Rows live in `gym_staff` (no row = level 1;
+  migration 0023). `GET /api/gym/staff` lists the cards; `POST /api/gym/staff/:npcKey/train` locks the gym row, pays
+  the waiting coin bubbles first (so the new rate only counts from then) and charges the coins (`server/services/gym/
+  staff.ts`). UI: the tap chip of a staff NPC (`Gym3D.svelte`) shows level, perk, stat meters and Train. Not built
+  yet: hiring new staff, and admin tools for staff levels. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`,
+  e2e in `gym3d-life.spec.ts`.
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus

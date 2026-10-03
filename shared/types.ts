@@ -198,6 +198,23 @@ export type GymWelcomeBackDto = {
 /** Sweat and Greens a payout gives. */
 export type Reward = { sweat: number; greens: number }
 
+/** One staff member's card (see shared/gym3d/staff.ts). */
+export type GymStaffDto = {
+	npcKey: string
+	level: number
+	maxLevel: number
+	stats: { friendliness: number; expertise: number; speed: number }
+	/** What they look after: a room type, "desk", "kitchen" or "all". */
+	area: string
+	perk: string
+	/** Coin bonus their level gives, 0.06 = +6%. */
+	bonus: number
+	/** Coins to train to the next level (null at the top level). */
+	trainCost: number | null
+	/** Brought to the gym by an upgrade that is claimed (or always there). */
+	available: boolean
+}
+
 /** The gym's star rating (see shared/gym3d/rating.ts). */
 export type GymRatingDto = {
 	score: number

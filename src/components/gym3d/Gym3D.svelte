@@ -24,7 +24,11 @@ import {
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
-import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
+import type {
+	GymJobDto,
+	GymLayoutDto,
+	GymStaffDto,
+} from "../../../shared/types"
 import { api } from "../../lib/api"
 import { centerOf, flyChip } from "../../lib/fly"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
@@ -211,6 +215,53 @@ function say(text: string, kind: "info" | "error" = "info") {
 	tipTimer = setTimeout(() => {
 		tip = null
 	}, 3200)
+}
+
+/** Staff cards by NPC key (level, stats, perk, what training costs). */
+let staff = $state<Record<string, GymStaffDto>>({})
+let training = $state(false)
+
+const STAT_ROWS = [
+	["friendliness", "Friendly"],
+	["expertise", "Expert"],
+	["speed", "Speed"],
+] as const
+
+function setStaff(list: GymStaffDto[]) {
+	staff = Object.fromEntries(list.map((c) => [c.npcKey, c]))
+}
+
+async function loadStaff() {
+	try {
+		const r = await api.get<{ staff: GymStaffDto[] }>("/gym/staff")
+		if (!destroyed) setStaff(r.staff)
+	} catch {
+		// no staff cards until the next try
+	}
+}
+
+/** Trains the person on the chip one level for coins. */
+async function trainStaffMember(npcKey: string, name: string) {
+	if (training || !app) return
+	training = true
+	try {
+		const r = await api.post<{ staff: GymStaffDto[] }>(
+			`/gym/staff/${npcKey}/train`,
+			{},
+		)
+		if (destroyed || !app) return
+		setStaff(r.staff)
+		say(
+			`${name} is now level ${r.staff.find((c) => c.npcKey === npcKey)?.level}`,
+		)
+		// coins moved and rates changed: read the gym again
+		setLayout(await app.reload())
+	} catch (e) {
+		say(e instanceof Error ? e.message : "Something went wrong", "error")
+		await loadStaff()
+	} finally {
+		training = false
+	}
 }
 
 function setLayout(next: GymLayoutDto) {
@@ -611,6 +662,7 @@ onMount(() => {
 				pick: (x, y) => a.pickAt(x, y),
 			}
 			ready = true
+			void loadStaff()
 		})
 		.catch((e: unknown) => {
 			if (destroyed) return
@@ -763,6 +815,39 @@ const kitchenView = $derived.by(() => {
 						</div>
 					{/if}
 				</dl>
+			{/if}
+			{#if selection.npcKey && staff[selection.npcKey]?.available}
+				{@const card = staff[selection.npcKey]}
+				{@const name = selection.name}
+				<div class="g3d-staff" data-testid="gym3d-staff-card">
+					<div class="g3d-staff-head">
+						<b data-testid="gym3d-staff-level">Level {card.level}</b>
+						<span>{card.perk}{card.bonus ? ` (+${Math.round(card.bonus * 100)}%)` : ""}</span>
+					</div>
+					<dl class="g3d-stats">
+						{#each STAT_ROWS as [k, label] (k)}
+							<div>
+								<dt>{label}</dt>
+								<dd>
+									<span class="g3d-meter" role="img" aria-label="{card.stats[k]} of 10"><i style="width:{Math.min(100, card.stats[k] * 10)}%"></i></span>
+								</dd>
+							</div>
+						{/each}
+					</dl>
+					{#if card.trainCost != null}
+						<button
+							type="button"
+							class="g3d-train"
+							disabled={training || (layout?.coins ?? 0) < card.trainCost}
+							onclick={() => trainStaffMember(card.npcKey, name)}
+							data-testid="gym3d-train"
+						>
+							Train <span class="cur">{@html COIN_SVG}</span>{card.trainCost.toLocaleString("en-US")}
+						</button>
+					{:else}
+						<small class="g3d-staff-max">Fully trained</small>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -1559,6 +1644,79 @@ const kitchenView = $derived.by(() => {
 	display: block;
 	height: 100%;
 	background: #e0525a;
+}
+
+.g3d-staff {
+	margin-top: 6px;
+	padding-top: 5px;
+	border-top: 1.5px dashed #d9cbbd;
+}
+
+.g3d-staff-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 8px;
+	font-size: 12px;
+	color: #23262e;
+}
+
+.g3d-staff-head span {
+	font-size: 11px;
+	font-weight: 600;
+	color: #6b5a4e;
+}
+
+.g3d-meter {
+	display: block;
+	height: 6px;
+	margin: 5px 0;
+	border-radius: 3px;
+	background: #e3e8d8;
+	overflow: hidden;
+}
+
+.g3d-meter i {
+	display: block;
+	height: 100%;
+	background: #34c973;
+}
+
+.g3d-train {
+	width: 100%;
+	min-height: 32px;
+	margin-top: 6px;
+	border: 2px solid var(--ink);
+	border-radius: 10px;
+	background: #e8743b;
+	color: #fff;
+	font-weight: 800;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.g3d-train:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+.g3d-train .cur {
+	display: inline-block;
+	width: 13px;
+	height: 13px;
+	vertical-align: -2px;
+}
+
+.g3d-train .cur :global(svg) {
+	width: 100%;
+	height: 100%;
+}
+
+.g3d-staff-max {
+	display: block;
+	margin-top: 4px;
+	color: #8a7a70;
+	font-weight: 700;
 }
 
 .g3d-talk {

@@ -124,6 +124,7 @@ export async function truncateAll() {
 			"user_gym_upgrades",
 			"gym_activity_cuts",
 			"gym_rewards",
+			"gym_staff",
 			"gym_jobs",
 			"gym_pieces",
 			"gym_plots",

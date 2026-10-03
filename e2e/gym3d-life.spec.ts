@@ -633,3 +633,56 @@ test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
 	console.log("gym3d bubbles stats", JSON.stringify(perf))
 	expect(errors).toEqual([])
 })
+
+test("3D gym staff: tapping a staff member shows a card and training levels them up", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		700,
+		"staff",
+	)
+	// 6pm: the staff are on the floor
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	const staffKeys = ["npc:receptionist_lisa", "npc:trainer_marcus"]
+	await page.waitForFunction(
+		(want) => (window.gym3d?.people() ?? []).some((k) => want.includes(k)),
+		staffKeys,
+		{ timeout: 40_000 },
+	)
+	const keys = await page.evaluate(() => window.gym3d?.people() ?? [])
+	const who = staffKeys.find((k) => keys.includes(k))
+	expect(who).toBeTruthy()
+	if (!who) return
+	await tapPerson(page, who)
+	const card = page.getByTestId("gym3d-staff-card")
+	await expect(card).toBeVisible()
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 1")
+	await shot(page, "07-staff-card")
+
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	await page.getByTestId("gym3d-train").click()
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 2")
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
+		)
+		.toBeLessThan(coins0)
+	await shot(page, "08-staff-trained")
+	const cards = (await page.request.get("/api/gym/staff")).ok()
+	expect(cards).toBe(true)
+})

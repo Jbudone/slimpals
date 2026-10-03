@@ -11,7 +11,7 @@ import { COACH_SVG } from "../components/home/icons"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import { api } from "../lib/api.js"
 import { checkinState } from "../lib/checkin.svelte.js"
-import { rewardText, setGymGoals } from "../lib/goals.svelte.js"
+import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
 import {
@@ -43,10 +43,16 @@ let sheetUp = $state(false)
 let tip = $state<{ text: string; kind: "info" | "error" } | null>(null)
 let tipTimer: ReturnType<typeof setTimeout> | null = null
 let sayH = $state(0)
+/** Height of the coach avatar plus the goals star under it. */
+const STAR_BAND = 116
 /** The coach's corner under the HUD: gym cards (job timers, speech) are kept
  * below it so the coach's bubble never covers them. */
 const coachBand = $derived(
-	(coachOpen || tip) && sayH ? Math.max(56, sayH + 10) : 56,
+	Math.max(
+		(coachOpen || tip) && sayH ? Math.max(56, sayH + 10) : 56,
+		// the goals star sits under the coach: cards stay below it too
+		gymGoals.rating && !failed ? STAR_BAND : 0,
+	),
 )
 
 function onTip(text: string, kind: "info" | "error") {
