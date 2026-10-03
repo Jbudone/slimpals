@@ -1219,4 +1219,8 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 			{ timeout: 60_000 },
 		)
 		.toBeGreaterThan(0)
+	// look at the street in front of the lobby door
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
+	await page.waitForTimeout(1500)
+	await shot(page, "21-street")
 })
