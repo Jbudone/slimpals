@@ -185,3 +185,34 @@ describe("admin reset-extras", () => {
 		await reset("everything").expect(400)
 	})
 })
+
+describe("admin reward track", () => {
+	it("sets this month's track step without paying, and refuses bad input", async () => {
+		const { admin, member, gymId } = await adminAndMember()
+		const db = await getTestDb()
+		const coins = async () =>
+			(await db.select().from(userGyms).where(eq(userGyms.id, gymId)))[0].coins
+
+		const before = await coins()
+		const r = await post(admin.cookie, member.userId, "track-step", {
+			step: 5,
+		}).expect(200)
+		expect(r.body.claimed).toBe(5)
+		expect(await coins()).toBe(before)
+
+		const reset = await post(admin.cookie, member.userId, "track-step", {
+			step: 0,
+		}).expect(200)
+		expect(reset.body.claimed).toBe(0)
+		const clamped = await post(admin.cookie, member.userId, "track-step", {
+			step: 999,
+		}).expect(200)
+		expect(clamped.body.claimed).toBe(clamped.body.steps.length)
+		await post(admin.cookie, member.userId, "track-step", {
+			step: -1,
+		}).expect(400)
+		await post(member.cookie, member.userId, "track-step", { step: 1 }).expect(
+			403,
+		)
+	})
+})

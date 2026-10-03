@@ -112,8 +112,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   just mean fewer steps. No table: a claimed step is a `gym_rewards` row `track:<YYYY-MM>:<n>` and the day's claim a
   `trackday:<YYYY-MM-DD>` marker, written together under the gym row lock (`server/services/gym/rewardTrack.ts`;
   `GET /api/gym/reward-track`, `POST /api/gym/reward-track/claim`). Steps pay coins, Sweat and Greens. UI: a section in
-  `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
-  #135), the dashboard/HUD placement, the claim animation, admin authoring and "advance user to step N", badges, feed.
+  `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Admin: `POST /admin/users/:id/gym/track-step {step}` sets this month's progress without paying (0 resets;
+  Admin's gym section). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
+  #135), the dashboard/HUD placement, the claim animation, admin authoring of tracks, badges, feed.
 - Cosmetics inventory (#135, first slice): `gym_cosmetics` (migration 0027; one row per gym and key, source recorded)
   holds what a gym owns besides gear; the catalog is `shared/gym3d/cosmetics.ts` (October's Jack-o'-lantern, Cobweb neon
   and the coach's witch hat). The reward track grants them: its first three big steps of a month give that month's cosmetics

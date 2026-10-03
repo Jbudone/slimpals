@@ -980,6 +980,8 @@ async function setAllGymStaffLevel(userId: string, level: number) {
 	}
 }
 
+let trackStepInput = $state<number | string>("")
+
 const EXTRAS: Record<string, string> = {
 	staff: "trained staff levels",
 	hires: "hires",
@@ -1000,6 +1002,26 @@ async function resetGymExtras(
 		)
 		gymCoinsStatus = {
 			text: `Cleared ${EXTRAS[what]} (${r.removed} removed). Reload the gym to see it.`,
+			ok: true,
+		}
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+/** Test tool: sets this month's reward track to `step` steps (0 resets it). */
+async function setTrackStep(userId: string, step: number) {
+	gymCoinsStatus = null
+	try {
+		const r = await api.post<{ claimed: number; steps: unknown[] }>(
+			`/admin/users/${userId}/gym/track-step`,
+			{ step },
+		)
+		gymCoinsStatus = {
+			text: `Reward track is at step ${r.claimed} of ${r.steps.length}. Reload the gym to see it.`,
 			ok: true,
 		}
 	} catch (e) {
@@ -1850,6 +1872,23 @@ onMount(async () => {
 																	data-testid="admin-gym-reset-hustle"
 																>
 																	Reset today's hustle
+																</button>
+															</div>
+															<div class="field-row">
+																<input
+																	type="number"
+																	min="0"
+																	max="31"
+																	placeholder="Track step"
+																	bind:value={trackStepInput}
+																	data-testid="admin-gym-track-step"
+																/>
+																<button
+																	class="btn sm"
+																	onclick={() => setTrackStep(user.id, Number(trackStepInput) || 0)}
+																	data-testid="admin-gym-track-set"
+																>
+																	Set reward track step
 																</button>
 															</div>
 															{#if gymCoinsStatus}
