@@ -104,6 +104,13 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   catalog category `court`, 9000/10000 XP). It is a content addition: seeded upgrades, `KEY_ROOM` in `layout3d.ts`, builders in
   `equipment/builders.ts`, `ROOM_ORDER`, `PICKABLE_TYPES`, hires (Court coach) and the room picker. Staffed bonuses are the
   existing hires and staff training.
+- Monthly reward track (#126, first slice): `shared/gym3d/rewardTrack.ts` (pure: a step per day of the UTC month, a theme per
+  month, bigger steps every 7th and the last, `claimBlock`). One step a day, only after that day's check-in; missed days
+  just mean fewer steps. No table: a claimed step is a `gym_rewards` row `track:<YYYY-MM>:<n>` and the day's claim a
+  `trackday:<YYYY-MM-DD>` marker, written together under the gym row lock (`server/services/gym/rewardTrack.ts`;
+  `GET /api/gym/reward-track`, `POST /api/gym/reward-track/claim`). Steps pay coins, Sweat and Greens. UI: a section in
+  `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`). Not yet: cosmetic/NPC/coach rewards (needs the shared inventory,
+  #135), the dashboard/HUD placement, the claim animation, admin authoring and "advance user to step N", badges, feed.
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds
