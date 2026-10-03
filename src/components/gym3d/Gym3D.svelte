@@ -8,6 +8,7 @@ import {
 	Users,
 } from "@lucide/svelte"
 import { onDestroy, onMount } from "svelte"
+import { cosmeticPieceKey } from "../../../shared/gym3d/cosmetics"
 import {
 	ECONOMY,
 	FLOOR_TINTS,
@@ -38,6 +39,7 @@ import {
 } from "../../../shared/gym3d/vibes"
 import { sharedWalls, type WallRef, wallKey } from "../../../shared/gym3d/walls"
 import type {
+	GymCosmeticDto,
 	GymJobDto,
 	GymLayoutDto,
 	GymStaffDto,
@@ -317,7 +319,9 @@ async function act(path: string, body?: unknown): Promise<GymLayoutDto | null> {
 	if (!app || busy) return null
 	busy = true
 	try {
-		const next = await api.post<GymLayoutDto>(`/gym/layout/${path}`, body ?? {})
+		// a path that starts with "/" is under /gym, not /gym/layout
+		const url = path.startsWith("/") ? `/gym${path}` : `/gym/layout/${path}`
+		const next = await api.post<GymLayoutDto>(url, body ?? {})
 		if (destroyed || !app) return null
 		app.applyLayout(next)
 		setLayout(next)
@@ -334,6 +338,30 @@ async function act(path: string, body?: unknown): Promise<GymLayoutDto | null> {
 	} finally {
 		busy = false
 	}
+}
+
+// Decor cosmetics the gym owns (the monthly track gives them): listed on a
+// room's Customize page to put on show in that room.
+let ownedDecor = $state<GymCosmeticDto[]>([])
+async function loadCosmetics() {
+	try {
+		const all = await api.get<GymCosmeticDto[]>("/gym/cosmetics")
+		ownedDecor = all.filter((c) => c.kind === "decor")
+	} catch {
+		// the page just shows no extra decor
+	}
+}
+$effect(() => {
+	if (sheet === "paint") void loadCosmetics()
+})
+async function placeDecor(key: string) {
+	if (!room) return
+	const next = await act(`/cosmetics/${key}/place`, { roomId: room.id })
+	if (next) say("Put on show.")
+}
+async function takeDownDecor(key: string) {
+	const next = await act(`/cosmetics/${key}/remove`)
+	if (next) say("Taken down. You still own it.")
 }
 
 function close() {
@@ -1382,6 +1410,39 @@ const kitchenView = $derived.by(() => {
 						></button>
 					{/each}
 				</div>
+
+				{#if ownedDecor.length}
+					<p class="lbl">Your decor</p>
+					<ul class="gear" data-testid="room-cosmetics">
+						{#each ownedDecor as c (c.key)}
+							{@const shown = layout?.pieces.find((p) => p.upgradeKey === cosmeticPieceKey(c.key))}
+							<li>
+								<span><b>{c.name}</b><small style="display:block">{shown ? "On show" : c.from}</small></span>
+								{#if shown}
+									<button
+										type="button"
+										class="g3d-btn"
+										disabled={busy}
+										onclick={() => takeDownDecor(c.key)}
+										data-testid="cosmetic-remove-{c.key}"
+									>
+										Take down
+									</button>
+								{:else}
+									<button
+										type="button"
+										class="g3d-btn primary"
+										disabled={busy}
+										onclick={() => placeDecor(c.key)}
+										data-testid="cosmetic-place-{c.key}"
+									>
+										Put here
+									</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
 
 				<p class="lbl">Decor</p>
 				{#if roomInfo?.decor.length}

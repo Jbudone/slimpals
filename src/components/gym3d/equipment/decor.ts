@@ -183,4 +183,46 @@ export const DECOR: Readonly<Record<string, () => T.Group>> = {
 		eqCup(g, 0, 0.58, 0, 1.9, GOLD())
 		return g
 	},
+	// Halloween cosmetics (the monthly track)
+	lantern() {
+		const g = group()
+		cyl(0.22, 0.3, "#e8743b", 0, 0.2, 0, g, 12)
+		cyl(0.16, 0.34, "#d9622b", 0, 0.21, 0, g, 12)
+		cyl(0.03, 0.1, "#3f7c44", 0.02, 0.43, 0, g, 6)
+		for (const [x, y, w, h] of [
+			[-0.08, 0.26, 0.07, 0.07],
+			[0.08, 0.26, 0.07, 0.07],
+			[0, 0.15, 0.2, 0.05],
+		] as const) {
+			const m = new T.Mesh(
+				eqGeo(`lantern${w}_${h}`, () => new T.BoxGeometry(w, h, 0.03)),
+				glowM("#ffd35a"),
+			)
+			m.position.set(x, y, 0.21)
+			g.add(m)
+		}
+		return g
+	},
+	cobwebs() {
+		const g = group()
+		box(0.5, 0.04, 0.12, C.rubber, 0, 0.02, 0, g)
+		for (const x of [-0.24, 0.24])
+			box(0.03, 0.62, 0.03, C.rubber, x, 0.33, 0, g)
+		const web = (w: number, h: number, x: number, y: number, rz = 0) => {
+			const m = new T.Mesh(
+				eqGeo(`web${w}_${h}`, () => new T.BoxGeometry(w, h, 0.02)),
+				glowM("#d9d2ff"),
+			)
+			m.position.set(x, y, 0)
+			m.rotation.z = rz
+			g.add(m)
+		}
+		web(0.46, 0.02, 0, 0.2)
+		web(0.46, 0.02, 0, 0.4)
+		web(0.46, 0.02, 0, 0.58)
+		web(0.02, 0.56, 0, 0.33)
+		web(0.02, 0.6, 0, 0.33, 0.78)
+		web(0.02, 0.6, 0, 0.33, -0.78)
+		return g
+	},
 }

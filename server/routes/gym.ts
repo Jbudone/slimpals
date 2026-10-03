@@ -34,6 +34,7 @@ import {
 	generateContentForUser,
 	generateNightlyGymContent,
 } from "../services/gym/content.js"
+import { placeCosmetic, removeCosmetic } from "../services/gym/cosmeticPlace.js"
 import {
 	computeRelationshipGain,
 	type DialogEntry,
@@ -417,6 +418,21 @@ export function createGymRouter(aiService: AIService) {
 		if (!Number.isInteger(v) || v <= 0) throw new BuildError(400, `Bad ${name}`)
 		return v
 	}
+	router.post(
+		"/gym/cosmetics/:key/place",
+		build((gymId, req) =>
+			placeCosmetic(
+				db,
+				gymId,
+				String(req.params.key),
+				Number((req.body as { roomId?: unknown })?.roomId),
+			),
+		),
+	)
+	router.post(
+		"/gym/cosmetics/:key/remove",
+		build((gymId, req) => removeCosmetic(db, gymId, String(req.params.key))),
+	)
 	router.post(
 		"/gym/layout/lots/:lotId/buy",
 		build((gymId, req) => buyLot(db, gymId, String(req.params.lotId))),
