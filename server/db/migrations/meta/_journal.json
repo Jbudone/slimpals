@@ -190,6 +190,13 @@
       "when": 1790080000000,
       "tag": "0026_gym_room_vibe",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1790090000000,
+      "tag": "0027_gym_cosmetics",
+      "breakpoints": true
     }
   ]
 }

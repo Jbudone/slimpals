@@ -82,8 +82,8 @@ onMount(() => {
 				</div>
 				<p class="hint" data-testid="track-progress">
 					Step {track.claimed} of {track.steps.length}.
-					{#if upNext}Next: {stepText(upNext.reward)}.{/if}
-					{#if nextBig && nextBig !== upNext}Big one on day {nextBig.n}: {stepText(nextBig.reward)}.{/if}
+					{#if upNext}Next: {stepText(upNext.reward, upNext.cosmeticName)}.{/if}
+					{#if nextBig && nextBig !== upNext}Big one on day {nextBig.n}: {stepText(nextBig.reward, nextBig.cosmeticName)}.{/if}
 				</p>
 				<button
 					type="button"

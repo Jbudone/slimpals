@@ -3,11 +3,16 @@ import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
 	dailyCheckins,
+	gymCosmetics,
 	invites,
 	userGyms,
 	users,
 } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
+import {
+	claimTrackStep,
+	listCosmetics,
+} from "../../server/services/gym/rewardTrack.js"
 import {
 	claimBlock,
 	daysInMonth,
@@ -53,6 +58,15 @@ describe("reward track rules", () => {
 		])
 		expect(stepReward(7, 31).coins).toBe(TRACK.milestoneCoins)
 		expect(stepReward(2, 31).coins).toBe(TRACK.stepCoins)
+	})
+
+	it("October's first three big steps give a Halloween cosmetic, other months none", () => {
+		const oct = trackSteps("2026-10")
+		expect(oct.filter((s) => s.reward.cosmetic).map((s) => s.n)).toEqual([
+			7, 14, 21,
+		])
+		expect(oct[6].reward.cosmetic).toBe("halloween_lantern")
+		expect(trackSteps("2026-05").some((s) => s.reward.cosmetic)).toBe(false)
 	})
 
 	it("blocks a second step the same day, no check-in and a finished track", () => {
@@ -142,5 +156,70 @@ describe("reward track route", () => {
 			.from(userGyms)
 			.where(eq(userGyms.userId, userId))
 		expect(g2.coins).toBe(g1.coins)
+	})
+})
+
+describe("cosmetics from the track", () => {
+	let n = 0
+	beforeAll(async () => {
+		await resetSchema()
+	})
+	beforeEach(async () => {
+		await truncateAll()
+		const db = await getTestDb()
+		await db.insert(users).values({
+			id: "admin-001",
+			email: "admin@slimpals.test",
+			name: "Admin",
+		})
+	})
+	afterAll(async () => {
+		await closeTestDb()
+	})
+
+	it("a big step grants its cosmetic once and the inventory lists it", async () => {
+		const db = await getTestDb()
+		const code = `COSM-INVITE-${++n}`
+		await db.insert(invites).values({
+			code,
+			createdByUserId: "admin-001",
+			expiresAt: new Date(Date.now() + 86_400_000),
+		})
+		const res = await request(app).post("/api/auth/sign-up/email").send({
+			name: "Tester",
+			email: "cosm@slimpals.test",
+			password: "Password1!",
+			inviteCode: code,
+		})
+		const c = res.headers["set-cookie"] as string[]
+		const cookie = Array.isArray(c) ? c.join("; ") : c
+		const userId = res.body.user.id as string
+		await request(app).get("/api/gym").set("Cookie", cookie).expect(200)
+		await request(app).get("/api/gym/layout").set("Cookie", cookie).expect(200)
+		const [gym] = await db
+			.select()
+			.from(userGyms)
+			.where(eq(userGyms.userId, userId))
+
+		// claim steps 1..7 of October on seven different days
+		for (let day = 1; day <= 7; day++) {
+			const now = new Date(Date.UTC(2026, 9, day, 12))
+			await db.insert(dailyCheckins).values({ userId, date: now })
+			const r = await claimTrackStep(db, gym.id, userId, now)
+			expect(r.paid.n).toBe(day)
+			if (day < 7) expect(await listCosmetics(db, gym.id)).toHaveLength(0)
+		}
+		const owned = await listCosmetics(db, gym.id)
+		expect(owned.map((o) => o.key)).toEqual(["halloween_lantern"])
+		expect(owned[0].name).toBe("Jack-o'-lantern")
+		expect((await db.select().from(gymCosmetics)).map((r) => r.source)).toEqual(
+			["track:2026-10:7"],
+		)
+
+		const api = await request(app)
+			.get("/api/gym/cosmetics")
+			.set("Cookie", cookie)
+		expect(api.status).toBe(200)
+		expect(api.body).toHaveLength(1)
 	})
 })

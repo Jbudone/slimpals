@@ -409,6 +409,24 @@ export const gymHires = mysqlTable("gym_hires", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
+// Cosmetics a gym owns (gym home): decor, outfits and the like, from reward
+// sources such as the monthly track. One row per gym and cosmetic; the
+// catalog is shared/gym3d/cosmetics.ts.
+export const gymCosmetics = mysqlTable(
+	"gym_cosmetics",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		cosmeticKey: varchar("cosmetic_key", { length: 64 }).notNull(),
+		/** What gave it (e.g. track:2026-10:7). */
+		source: varchar("source", { length: 64 }).notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_cosmetics_gym_key_uq").on(t.gymId, t.cosmeticKey)],
+)
+
 // Walls opened between two rooms (gym home), named from the plot on the far
 // side: axis "x" is the wall on that plot's -x side, "z" its -z side. See
 // shared/gym3d/walls.ts.

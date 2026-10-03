@@ -5,7 +5,13 @@
 // day, and only after checking in that day; missed days just mean fewer
 // steps. Steps pay coins, Sweat and Greens (cosmetics come once the shared
 // inventory exists); every 7th step and the last one pay a lot more.
-export type TrackReward = { coins: number; sweat: number; greens: number }
+export type TrackReward = {
+	coins: number
+	sweat: number
+	greens: number
+	/** A cosmetic key (shared/gym3d/cosmetics.ts) a big step also gives. */
+	cosmetic?: string
+}
 
 export type TrackStep = {
 	/** 1-based step number. */
@@ -39,6 +45,11 @@ const THEMES = [
 	"Winter Warm-up",
 ] as const
 
+/** Cosmetics the first big steps of a month give, by month (1-12). */
+const MONTH_COSMETICS: Readonly<Record<number, readonly string[]>> = {
+	10: ["halloween_lantern", "halloween_cobwebs", "halloween_hat"],
+}
+
 /** YYYY-MM (UTC). */
 export function monthKey(d: Date = new Date()): string {
 	return d.toISOString().slice(0, 7)
@@ -53,9 +64,20 @@ export function themeOf(key: string): string {
 	return THEMES[(Number(key.split("-")[1]) - 1) % THEMES.length] ?? THEMES[0]
 }
 
-export function stepReward(n: number, total: number): TrackReward {
-	if (n % TRACK.milestoneEvery === 0 || n === total)
-		return { coins: TRACK.milestoneCoins, ...TRACK.milestone }
+export function stepReward(
+	n: number,
+	total: number,
+	key?: string,
+): TrackReward {
+	if (n % TRACK.milestoneEvery === 0 || n === total) {
+		const month = key ? Number(key.split("-")[1]) : 0
+		const cosmetic = MONTH_COSMETICS[month]?.[n / TRACK.milestoneEvery - 1]
+		return {
+			coins: TRACK.milestoneCoins,
+			...TRACK.milestone,
+			...(cosmetic ? { cosmetic } : {}),
+		}
+	}
 	// the small ones alternate between Sweat and Greens
 	return {
 		coins: TRACK.stepCoins,
@@ -70,7 +92,7 @@ export function trackSteps(key: string): TrackStep[] {
 		const n = i + 1
 		return {
 			n,
-			reward: stepReward(n, total),
+			reward: stepReward(n, total, key),
 			milestone: n % TRACK.milestoneEvery === 0 || n === total,
 		}
 	})
