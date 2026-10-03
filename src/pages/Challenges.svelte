@@ -62,6 +62,7 @@ let joining = $state(false)
 let savingGoal = $state<string | null>(null)
 let justCompleted = $state(false)
 let gymXpAwarded = $state(0)
+let cosmeticAwarded = $state<string | null>(null)
 
 let sprint = $state<SprintData | null>(null)
 let sprintSaving = $state<string | null>(null)
@@ -165,6 +166,7 @@ async function tapGoal(goal: Goal) {
 			completed: boolean
 			newBadges: NewBadge[]
 			gymXpAwarded: number
+			cosmeticAwarded: string | null
 		}>(`/challenges/${challenge.id}/progress`, {
 			dailyProgress: { [goal.id]: goal.dailyAmount },
 		})
@@ -182,6 +184,7 @@ async function tapGoal(goal: Goal) {
 		if (res.completed) {
 			justCompleted = true
 			gymXpAwarded = res.gymXpAwarded
+			cosmeticAwarded = res.cosmeticAwarded
 			for (const b of res.newBadges) showBadgeToast(b)
 		}
 	} finally {
@@ -241,6 +244,11 @@ onMount(loadChallenge)
 					<div class="celebration-icon">🏆</div>
 					<h3>Challenge Complete!</h3>
 					<p>You hit every goal this month. +{gymXpAwarded || 200} Gym XP earned!</p>
+					{#if cosmeticAwarded}
+						<p data-testid="challenge-cosmetic">
+							{cosmeticAwarded} added to your gym's decor. Put it on show from a room's Customize page.
+						</p>
+					{/if}
 				</div>
 			</Card>
 		{/if}
