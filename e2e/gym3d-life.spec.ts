@@ -1227,4 +1227,8 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
 	await page.waitForTimeout(1500)
 	await shot(page, "21-street")
+	// the rival gym and the burger place across the road
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
+	await page.waitForTimeout(1500)
+	await shot(page, "22-shops")
 })

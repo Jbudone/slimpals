@@ -46,6 +46,23 @@ export const BANTER: readonly Banter[] = [
 		],
 	},
 	{
+		id: "maxout-pool",
+		missingRoom: "pool",
+		lines: [
+			"MaxOut across the street has a pool.",
+			"MaxOut also has a contract nobody can read.",
+		],
+	},
+	{
+		id: "maxout-sauna",
+		missingRoom: "recovery",
+		lines: [
+			"MaxOut has a sauna.",
+			"Then go to MaxOut.",
+			"Their towels are rented.",
+		],
+	},
+	{
 		id: "no-sauna",
 		missingRoom: "recovery",
 		lines: [
