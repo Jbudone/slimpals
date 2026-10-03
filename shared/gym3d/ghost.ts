@@ -20,8 +20,18 @@ export const GHOST_LINES: readonly string[] = [
 	"I'm only here for the form checks.",
 ]
 
-export function ghostLine(rng: Rng): string {
-	return GHOST_LINES[
-		Math.floor(rng() * GHOST_LINES.length) % GHOST_LINES.length
-	]
+/** The ghost's activity label while it stands guard at the lockers. */
+export const GHOST_LOCKERS = "guarding the lockers"
+
+/** What it says when it is standing guard at the lockers. */
+export const GHOST_LOCKER_LINES: readonly string[] = [
+	"Nobody leaves without stretching. I'm guarding the lockers.",
+	"Your stuff is safe. I have been here since the nineties.",
+	"Locker 13 is mine. Do not ask.",
+	"Leaving already? The lockers say stay.",
+]
+
+export function ghostLine(rng: Rng, atLockers = false): string {
+	const pool = atLockers ? GHOST_LOCKER_LINES : GHOST_LINES
+	return pool[Math.floor(rng() * pool.length) % pool.length]
 }

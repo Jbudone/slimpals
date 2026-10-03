@@ -4,6 +4,7 @@
 // room, with a label) and visiting heroes (a gold tag over their head and
 // sparkles while they are on the spotlight stage).
 import * as T from "three"
+import { GHOST_LOCKERS } from "../../../../shared/gym3d/ghost"
 import {
 	classFormation,
 	classPose,
@@ -277,7 +278,22 @@ export class Happenings {
 	}
 
 	private placeGhost(): void {
-		const s = this.w.lobbySpot(this.ghostSlot++)
+		const slot = this.ghostSlot++
+		let s = this.w.lobbySpot(slot)
+		let label = "haunting the lobby"
+		// every third drift it stands guard in front of the lockers, if built
+		const lockers = this.w.pieces.find(
+			(p) => p.upgradeKey === "amenity_lockers" && !p.locked,
+		)
+		if (lockers && slot % 3 === 2) {
+			const dx = this.w.doorX - lockers.x
+			const dz = this.w.frontZ - lockers.z
+			const d = Math.hypot(dx, dz) || 1
+			const x = lockers.x + (dx / d) * 1.1
+			const z = lockers.z + (dz / d) * 1.1
+			s = { x, z, face: Math.atan2(lockers.x - x, lockers.z - z) }
+			label = GHOST_LOCKERS
+		}
 		const out = staffOutfit("ghost")
 		out.skin = "#eef2ff"
 		out.hair = "#ffffff"
@@ -291,7 +307,7 @@ export class Happenings {
 			key: "ghost",
 			name: "Ghost",
 			out,
-			st: floorStation(s.x, s.z, s.face, "idle", "haunting the lobby", {
+			st: floorStation(s.x, s.z, s.face, "idle", label, {
 				y: 0.3,
 			}),
 			note: "Ghost",
