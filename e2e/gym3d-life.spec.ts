@@ -1101,14 +1101,18 @@ test("3D gym cosmetics: an owned lantern goes on show in a room and comes down",
 		)
 		const gymId = (rows as { id: number }[])[0].id
 		await conn.execute(
-			"INSERT INTO gym_cosmetics (gym_id, cosmetic_key, source) VALUES (?, ?, ?)",
-			[gymId, "halloween_lantern", "e2e"],
+			"INSERT INTO gym_cosmetics (gym_id, cosmetic_key, source) VALUES (?, ?, ?), (?, ?, ?)",
+			[gymId, "halloween_lantern", "e2e", gymId, "halloween_hat", "e2e"],
 		)
 	} finally {
 		await conn.end()
 	}
 	await page.goto("/")
 	await waitReady(page)
+	// the coach wears the owned witch hat
+	await expect(
+		page.locator('[data-testid=coach] ellipse[fill="#3b2a55"]'),
+	).toHaveCount(1)
 	const L0 = await page.evaluate(() => window.gym3d?.layout())
 	const room = L0?.rooms.find(
 		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,

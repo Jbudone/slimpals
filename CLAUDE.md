@@ -123,7 +123,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `/remove`, `server/services/gym/cosmeticPlace.ts`): the first free decor place of that room gets a decor piece with upgrade
   key `cosmetic:<key>` (once per gym; builders `lantern`, `cobwebs` in `equipment/decor.ts`) that scores as decor.
   `grantCosmetic` (`server/services/gym/cosmetics.ts`) is the one way to grant; finishing a monthly challenge grants the
-  `challenge_trophy` (first completion only; the challenge page says so). Not yet: wearing outfits, per-challenge decor and
+  `challenge_trophy` (first completion only; the challenge page says so). Outfits are worn automatically: the coach
+  avatar (`coachSvg` in `components/home/icons.ts`, owned keys from `src/lib/cosmetics.svelte.ts`) wears the witch hat. Not yet:
+  choosing what to wear, per-challenge decor and
   tiers/milestones (#124), a standalone inventory screen. e2e: `gym3d-life.spec.ts` ("cosmetics").
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
