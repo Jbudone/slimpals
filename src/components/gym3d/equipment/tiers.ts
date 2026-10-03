@@ -109,6 +109,51 @@ function tierFlagTex(t: number): T.Texture {
 	)
 }
 
+/** Parts a better machine really has, not a new colour: tier 2 gets a
+ * floor mat and a console (screen on a stand) by the front corner; tier 3
+ * adds an overhead light arch and side speakers, and a bigger screen. */
+function addUpgradeParts(d: T.Group, tier: number, s: number, h: number): void {
+	const add = (
+		geo: T.BufferGeometry,
+		mat: T.Material,
+		x: number,
+		y: number,
+		z: number,
+	) => {
+		const m = new T.Mesh(geo, mat)
+		m.position.set(x, y, z)
+		m.castShadow = true
+		d.add(m)
+		return m
+	}
+	add(boxGeo(s * 0.9, 0.02, s * 0.9), M(C.rubber), 0, 0.012, 0)
+	const sw = tier === 3 ? 0.62 : 0.46
+	const sh = tier === 3 ? 0.4 : 0.3
+	add(cylGeo(0.03, 1.0, 6), M(C.steel), -h + 0.12, 0.5, h - 0.12)
+	add(
+		boxGeo(sw + 0.06, sh + 0.06, 0.05),
+		M(C.rubber),
+		-h + 0.12,
+		1.12,
+		h - 0.12,
+	)
+	add(
+		boxGeo(sw, sh, 0.02),
+		glowM(tier === 3 ? "#ffd35a" : "#7fe0d0"),
+		-h + 0.12,
+		1.12,
+		h - 0.095,
+	)
+	if (tier < 3) return
+	for (const x of [-h + 0.06, h - 0.06]) {
+		add(cylGeo(0.04, 2.1, 8), M(C.steelD), x, 1.05, -h + 0.06)
+		add(boxGeo(0.18, 0.42, 0.18), M(C.rubber), x, 0.21, h - 0.1)
+		add(cylGeo(0.05, 0.02, 10), glowM("#ffd35a"), x, 0.43, h - 0.1)
+	}
+	add(boxGeo(s - 0.06, 0.06, 0.08), M(C.steelD), 0, 2.1, -h + 0.06)
+	add(boxGeo(s - 0.3, 0.03, 0.05), glowM("#fff1c2"), 0, 2.06, -h + 0.12)
+}
+
 export function applyTier(p: Piece): void {
 	rebakePiece(p)
 	p.inner.traverse((o) => {
@@ -162,6 +207,7 @@ export function applyTier(p: Piece): void {
 	fl.position.set(h - 0.08 + 0.25, 1.32, -h + 0.08)
 	d.add(fl)
 	d.userData.flag = fl
+	addUpgradeParts(d, p.tier, s, h)
 	if (p.tier === 3) {
 		const gl = new T.Mesh(
 			a.geo(`tierglow${s}`, () => new T.PlaneGeometry(s + 0.5, s + 0.5)),
