@@ -3,6 +3,7 @@ import { coachPersonalityType } from "./coachPersonality.js"
 import { gymEventsType } from "./gymEvents.js"
 import { gymLayoutType } from "./gymLayout.js"
 import { monthlyChallengeType } from "./monthlyChallenge.js"
+import { npcBanterType } from "./npcBanter.js"
 import { npcDialogType } from "./npcDialog.js"
 import { npcPortraitsType } from "./npcPortraits.js"
 import { sprintsType } from "./sprints.js"
@@ -49,6 +50,7 @@ export const CONTENT_TUNING_TYPES: ContentTuningType[] = [
 	victoryMessageType,
 	weeklyInspirationType,
 	npcDialogType,
+	npcBanterType,
 	gymEventsType,
 	npcPortraitsType,
 	gymLayoutType,
