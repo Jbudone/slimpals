@@ -33,6 +33,13 @@ export const COSMETICS: readonly CosmeticDef[] = [
 		builder: "cobwebs",
 	},
 	{
+		key: "challenge_trophy",
+		name: "Challenge trophy",
+		kind: "decor",
+		from: "Finishing a monthly challenge",
+		builder: "trophy",
+	},
+	{
 		key: "halloween_hat",
 		name: "Witch hat for the coach",
 		kind: "outfit",

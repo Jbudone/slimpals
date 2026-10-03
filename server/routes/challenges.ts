@@ -7,7 +7,8 @@ import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
-import { awardGymXp } from "../services/gym/index.js"
+import { grantCosmetic } from "../services/gym/cosmetics.js"
+import { awardGymXp, getOrCreateGym } from "../services/gym/index.js"
 
 type GoalProgress = Record<string, number>
 type DailyLog = Record<string, string[]>
@@ -213,6 +214,7 @@ export function createChallengesRouter(aiService: AIService) {
 
 		let newBadges: Awaited<ReturnType<typeof checkAndAward>> = []
 		let gymXpAwarded = 0
+		let cosmeticAwarded: string | null = null
 
 		if (isComplete) {
 			const [{ value: totalCompleted }] = await db
@@ -228,6 +230,13 @@ export function createChallengesRouter(aiService: AIService) {
 
 			gymXpAwarded = 200
 			await awardGymXp(userId, gymXpAwarded, "challenge_complete", db)
+			// the first finished challenge puts a trophy in the gym's inventory
+			cosmeticAwarded = await grantCosmetic(
+				db,
+				(await getOrCreateGym(userId, db)).id,
+				"challenge_trophy",
+				`challenge:${userChallenge.challengeId}`,
+			)
 		}
 
 		res.json({
@@ -242,6 +251,7 @@ export function createChallengesRouter(aiService: AIService) {
 			completed: isComplete,
 			newBadges,
 			gymXpAwarded: isComplete ? gymXpAwarded : 0,
+			cosmeticAwarded,
 		})
 	})
 

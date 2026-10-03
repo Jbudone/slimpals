@@ -316,6 +316,14 @@ describe("PATCH /api/challenges/:id/progress", () => {
 		expect(res.body.completed).toBe(true)
 		expect(res.body.overallProgress).toBe(100)
 		expect(res.body.gymXpAwarded).toBe(200)
+		// the first finished challenge gives the gym a trophy to put on show
+		expect(res.body.cosmeticAwarded).toBe("Challenge trophy")
+		const inv = await request(app)
+			.get("/api/gym/cosmetics")
+			.set("Cookie", cookie)
+		expect(inv.body.map((c: { key: string }) => c.key)).toEqual([
+			"challenge_trophy",
+		])
 	})
 
 	it("prevents updating after completion", async () => {
