@@ -9,10 +9,14 @@ import { vibePace } from "../../../../shared/gym3d/vibes"
 import type { GymHireDto, GymLayoutRoomDto } from "../../../../shared/types"
 import {
 	angLerp,
+	batchMesh,
 	boxGeo,
 	hashString,
 	mulberry32,
+	type Part,
+	pBox,
 	type Rng,
+	releaseMesh,
 } from "../engine/helpers"
 import type { Assignment } from "../world/assignTargets"
 import { ctx } from "../world/state"
@@ -107,6 +111,7 @@ export class People {
 	remove(p: Person): void {
 		this.onRemove?.(p)
 		this.release(p)
+		if (p.dog) releaseMesh(p.dog)
 		disposeRig(p.rig)
 		const i = this.people.indexOf(p)
 		if (i >= 0) this.people.splice(i, 1)
@@ -285,7 +290,29 @@ export class People {
 		} else {
 			p.path = [[left ? x1 : x0, z]]
 			p.after = "leave"
+			// now and then a dog trots along on a lead
+			if (this.rng() < 0.3) this.addDog(p)
 		}
+	}
+
+	private addDog(p: Person): void {
+		const d: Part[] = []
+		const fur = this.rng() < 0.5 ? "#b9824f" : "#e8dcc4"
+		pBox(d, 0.2, 0.2, 0.46, fur, 0, 0.3, 0)
+		pBox(d, 0.17, 0.17, 0.17, fur, 0, 0.42, 0.3)
+		pBox(d, 0.06, 0.1, 0.06, "#4a3a2a", 0.06, 0.55, 0.28)
+		pBox(d, 0.06, 0.1, 0.06, "#4a3a2a", -0.06, 0.55, 0.28)
+		pBox(d, 0.05, 0.05, 0.2, fur, 0, 0.36, -0.3)
+		for (const [lx, lz] of [
+			[0.06, 0.16],
+			[-0.06, 0.16],
+			[0.06, -0.16],
+			[-0.06, -0.16],
+		] as const)
+			pBox(d, 0.05, 0.2, 0.05, "#4a3a2a", lx, 0.1, lz)
+		const m = batchMesh(d, p.rig.root, { static: false, noCast: true })
+		m.position.set(0.55, 0, 0.45)
+		p.dog = m
 	}
 
 	private ambientCount(): number {
@@ -632,6 +659,7 @@ export class People {
 				)
 			}
 			if (!lite) POSES.walk(r, p.t, null)
+			if (p.dog) p.dog.position.y = Math.abs(Math.sin(p.t * 9)) * 0.04
 		} else if (p.state === "use") {
 			const st = p.station
 			if (!st) {
