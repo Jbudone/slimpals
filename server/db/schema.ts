@@ -392,6 +392,40 @@ export const gymRewards = mysqlTable(
 	(t) => [unique("gym_rewards_gym_source_uq").on(t.gymId, t.source)],
 )
 
+// Walls opened between two rooms (gym home), named from the plot on the far
+// side: axis "x" is the wall on that plot's -x side, "z" its -z side. See
+// shared/gym3d/walls.ts.
+export const gymOpenWalls = mysqlTable(
+	"gym_open_walls",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		px: int("px").notNull(),
+		pz: int("pz").notNull(),
+		axis: varchar("axis", { length: 1 }).notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_open_walls_uq").on(t.gymId, t.px, t.pz, t.axis)],
+)
+
+// Trained staff (gym home): one row per gym and staff NPC once trained past
+// level 1 (no row = level 1). See shared/gym3d/staff.ts.
+export const gymStaff = mysqlTable(
+	"gym_staff",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		gymId: int("gym_id")
+			.notNull()
+			.references(() => userGyms.id),
+		npcKey: varchar("npc_key", { length: 128 }).notNull(),
+		level: int("level").notNull().default(1),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(t) => [unique("gym_staff_gym_npc_uq").on(t.gymId, t.npcKey)],
+)
+
 /** Legacy (slice 2, no longer written since 0021): real activities that
  * sped up the 3D gym's jobs by an hour. Sweat replaced the automatic cut.
  * Kept so existing rows stay readable. The same

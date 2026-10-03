@@ -4,10 +4,12 @@
 import * as T from "three"
 import { celebrationFor } from "../../../shared/gym3d/celebrations"
 import {
+	ECONOMY,
 	finishCost,
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
+import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
 	getRelationshipStage,
@@ -116,7 +118,7 @@ export type Selection =
 	| { kind: "kitchen" }
 
 /** Pages of the room action menu. */
-export type RoomView = "gear" | "staff" | "customize"
+export type RoomView = "gear" | "staff" | "customize" | "walls"
 
 export type Gym3DStats = {
 	rooms: number
@@ -157,6 +159,9 @@ export type JobAction = "sweat" | "finish"
 
 export type AppOpts = {
 	onSelect: (s: Selection | null) => void
+	/** A hustled member finished their workout early at this machine (the
+	 * host asks the server for the coin bonus). */
+	onHustle?: (pieceId: number) => void
 	/** A piece was dropped / tapped onto a spot (move mode or drag). */
 	onMoveTarget?: (pieceId: number, roomId: number, spot: number) => void
 	/** Move mode or a drag ended without a target. */
@@ -1422,10 +1427,12 @@ export class Gym3DApp {
 		this.ray.setFromCamera(this.ndc, this.r.cam)
 		this.world.scene.updateMatrixWorld()
 		const hits: PickHit[] = []
+		this.rayWorker = null
 		const hp = this.ray.intersectObjects(this.people.pickables(), false)[0]
 		if (hp) {
 			const info = hp.object.userData.pick as PickInfo
 			const p = info.kind === "person" ? this.people.find(info.key) : null
+			if (p && this.canHustle(p)) this.rayWorker = p
 			const using =
 				p && !p.npcKey && p.state === "use" ? p.station?.piece : null
 			if (p)
@@ -1576,6 +1583,25 @@ export class Gym3DApp {
 			return null
 		}
 		const s = this.pickAt(x, y)
+		// a working member under the finger: the first tap is the usual one
+		// (their machine gives way to the gear, see picking.ts); more taps in
+		// quick succession hurry them along instead
+		const worker = this.rayWorker
+		if (worker) {
+			const now = performance.now()
+			const last = this.lastWorkerTap
+			const again =
+				last?.key === worker.key && now - last.t < ECONOMY.hustle.gapMs
+			const open = this.sel?.kind === "person" && this.sel.key === worker.key
+			this.lastWorkerTap = { key: worker.key, t: now }
+			if (again || open) {
+				const sel = this.selectionOf(worker)
+				if (!open) this.select(sel)
+				this.hustleTap(worker)
+				this.feedback(sel, this.hitPt)
+				return sel
+			}
+		} else this.lastWorkerTap = null
 		// an open tap chip: a tap elsewhere closes it (and does nothing
 		// else); a tap on another person shows theirs
 		if (this.sel?.kind === "person") {
@@ -1587,6 +1613,42 @@ export class Gym3DApp {
 		this.select(s)
 		this.feedback(s, this.hitPt)
 		return s
+	}
+
+	/** Taps each member has had at the machine they are on (tap-to-hustle). */
+	private hustleTaps = new Map<string, number>()
+	/** The working member the last pick's ray went through, and when a tap
+	 * last landed on one (wall time). */
+	private rayWorker: Person | null = null
+	private lastWorkerTap: { key: string; t: number } | null = null
+
+	/** A member at a working machine can be hurried along. */
+	private canHustle(p: Person): boolean {
+		return (
+			p.kind === "member" &&
+			p.state === "use" &&
+			!!p.station?.piece &&
+			!p.fixed &&
+			!p.leaving
+		)
+	}
+
+	/** One hustle tap: faster reps and a line; the last one ends the workout
+	 * early and asks the host for the coin bonus. */
+	private hustleTap(p: Person): void {
+		const total = ECONOMY.hustle.taps
+		const n = (this.hustleTaps.get(p.key) ?? 0) + 1
+		this.people.hustle(p)
+		const line = hustleLine(n, total, Math.floor(this.clock * 7))
+		if (line) this.life.sayNow(p, line, this.clock, 2.5)
+		if (n < total) {
+			this.hustleTaps.set(p.key, n)
+			return
+		}
+		this.hustleTaps.delete(p.key)
+		const id = p.station?.piece?.id
+		this.people.hurry(p)
+		if (id != null) this.opts.onHustle?.(id)
 	}
 
 	/** Puts the selection marker on what is selected (or hides it). */
@@ -1839,6 +1901,20 @@ export class Gym3DApp {
 			this.r.dirtyShadow()
 		}
 		if (url) this.portraits.set(npcKey, url)
+		return url
+	}
+
+	private gearPics = new Map<string, string | null>()
+
+	/** A thumbnail of a piece of gear by its key (cached; null if it cannot
+	 * be drawn), for the spot sheet. */
+	gearPreview(itemKey: string): string | null {
+		if (this.gearPics.has(itemKey)) return this.gearPics.get(itemKey) ?? null
+		if (this.disposed) return null
+		bindWorld(this.world.ctx)
+		const url = this.world.previewGear(itemKey, this.r.renderer)
+		this.gearPics.set(itemKey, url)
+		this.r.dirtyShadow()
 		return url
 	}
 

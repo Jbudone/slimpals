@@ -84,6 +84,53 @@ async function runMigrationsInAutocommit(conn: mysql.PoolConnection) {
 	}
 }
 
+/** Tables a test has written to: an auto-increment past 1, or (for tables
+ * without one) at least one row. Everything else is still pristine, so
+ * truncating it would only cost time. */
+async function dirtyTables(conn: mysql.PoolConnection): Promise<string[]> {
+	try {
+		// MySQL caches table statistics for a day; we need them live
+		await conn.query("SET SESSION information_schema_stats_expiry = 0")
+	} catch {
+		// engines without the cache (MariaDB) are always live
+	}
+	const [rows] = await conn.query<mysql.RowDataPacket[]>(
+		`SELECT TABLE_NAME AS name, AUTO_INCREMENT AS ai
+		 FROM information_schema.TABLES
+		 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'
+		   AND TABLE_NAME <> '__drizzle_migrations'`,
+	)
+	const dirty: string[] = []
+	for (const r of rows) {
+		const name = r.name as string
+		if (r.ai != null) {
+			if (Number(r.ai) > 1) dirty.push(name)
+			continue
+		}
+		const [has] = await conn.query<mysql.RowDataPacket[]>(
+			`SELECT 1 FROM \`${name}\` LIMIT 1`,
+		)
+		if (has.length) dirty.push(name)
+	}
+	return dirty
+}
+
+/** True when every migration file is already recorded as applied. */
+async function schemaIsCurrent(conn: mysql.PoolConnection): Promise<boolean> {
+	try {
+		const files = (await readdir("./server/db/migrations")).filter((f) =>
+			f.endsWith(".sql"),
+		)
+		const [applied] = await conn.query<mysql.RowDataPacket[]>(
+			"SELECT hash FROM `__drizzle_migrations`",
+		)
+		const have = new Set(applied.map((r) => r.hash as string))
+		return files.every((f) => have.has(f.replace(".sql", "")))
+	} catch {
+		return false // no migrations table yet: a fresh database
+	}
+}
+
 export async function resetSchema() {
 	if (!pool) {
 		pool = mysql.createPool(parseDbUrl(TEST_DB_URL))
@@ -91,6 +138,19 @@ export async function resetSchema() {
 	const conn = await pool.getConnection()
 	try {
 		await conn.query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+		// The tables are already built (the usual case after the first file):
+		// each test cleans up after itself, so keep them. A changed or new
+		// migration file takes the full drop-and-rebuild below.
+		if (await schemaIsCurrent(conn)) {
+			// like a fresh schema: empty (the seeds come with truncateAll)
+			const dirty = await dirtyTables(conn)
+			if (dirty.length) {
+				await conn.query("SET FOREIGN_KEY_CHECKS = 0")
+				for (const t of dirty) await conn.query(`TRUNCATE TABLE \`${t}\``)
+				await conn.query("SET FOREIGN_KEY_CHECKS = 1")
+			}
+			return
+		}
 		const [tables] = await conn.query<mysql.RowDataPacket[]>(
 			"SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
 		)
@@ -111,48 +171,12 @@ export async function truncateAll() {
 	if (!pool) return
 	const conn = await pool.getConnection()
 	try {
-		await conn.query("SET FOREIGN_KEY_CHECKS = 0")
-		const tables = [
-			"content_tuning_feedback",
-			"reactions",
-			"social_posts",
-			"tournament_participants",
-			"tournaments",
-			"gym_npc_dialog_batches",
-			"gym_npc_daily_state",
-			"user_gym_npc_relationships",
-			"user_gym_upgrades",
-			"gym_activity_cuts",
-			"gym_rewards",
-			"gym_jobs",
-			"gym_pieces",
-			"gym_plots",
-			"gym_rooms",
-			"user_gyms",
-			"user_badges",
-			"daily_checkins",
-			"user_challenges",
-			"food_logs",
-			"weight_entries",
-			"step_records",
-			"sprints",
-			"weekly_inspirations",
-			"invites",
-			"session",
-			"account",
-			"verification",
-			"users",
-			"badges",
-			"gym_npcs",
-			"gym_upgrades_catalog",
-			"gym_classes",
-			"challenges",
-			"scheduled_job_runs",
-		]
-		for (const t of tables) {
-			await conn.query(`TRUNCATE TABLE \`${t}\``)
+		const dirty = await dirtyTables(conn)
+		if (dirty.length) {
+			await conn.query("SET FOREIGN_KEY_CHECKS = 0")
+			for (const t of dirty) await conn.query(`TRUNCATE TABLE \`${t}\``)
+			await conn.query("SET FOREIGN_KEY_CHECKS = 1")
 		}
-		await conn.query("SET FOREIGN_KEY_CHECKS = 1")
 	} finally {
 		conn.release()
 	}

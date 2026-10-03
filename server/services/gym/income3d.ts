@@ -18,6 +18,7 @@ import {
 	machineCap,
 	machineRate,
 } from "../../../shared/gym3d/economy.js"
+import { areaMultiplier } from "../../../shared/gym3d/staff.js"
 import type {
 	GymIncomeSourceDto,
 	GymKitchenDto,
@@ -28,6 +29,7 @@ import {
 	gymPieces,
 	gymPlots,
 	gymRooms,
+	gymStaff,
 	userGyms,
 } from "../../db/schema.js"
 import { BuildError, spendCurrency, withGym } from "./build3d.js"
@@ -63,21 +65,27 @@ function rushWindow(g: GymIncomeRow) {
 	return { startMs: end - r.hours * HOUR, endMs: end, mult: r.mult }
 }
 
-export function pieceBank(p: PieceRow, nowMs: number): number {
+/** `mult` is the staff bonus of the machine's room (1 = none). */
+export function pieceBank(p: PieceRow, nowMs: number, mult = 1): number {
 	if (!isEarningPiece(p)) return 0
 	const from = (p.collectedAt ?? p.createdAt).getTime()
-	return accrued(machineRate(p.tier), machineCap(p.tier), from, nowMs)
+	return accrued(machineRate(p.tier) * mult, machineCap(p.tier), from, nowMs)
 }
 
-function deskBank(g: GymIncomeRow, rooms: number, nowMs: number): number {
+function deskBank(
+	g: GymIncomeRow,
+	rooms: number,
+	nowMs: number,
+	mult = 1,
+): number {
 	const from = (g.deskCollectedAt ?? g.createdAt).getTime()
-	return accrued(deskRate(rooms), ECONOMY.income.desk.cap, from, nowMs)
+	return accrued(deskRate(rooms) * mult, ECONOMY.income.desk.cap, from, nowMs)
 }
 
-function kitchenBank(g: GymIncomeRow, nowMs: number): number {
+function kitchenBank(g: GymIncomeRow, nowMs: number, mult = 1): number {
 	const from = (g.kitchenCollectedAt ?? g.createdAt).getTime()
 	return accrued(
-		kitchenRate(g.kitchenMenu),
+		kitchenRate(g.kitchenMenu) * mult,
 		ECONOMY.income.kitchen.cap,
 		from,
 		nowMs,
@@ -120,6 +128,33 @@ async function finishedRooms(conn: Conn, gymId: number): Promise<number> {
 	).length
 }
 
+/** Room id to room type for the gym's rooms. */
+async function roomTypesOf(
+	conn: Conn,
+	gymId: number,
+): Promise<Map<number, string>> {
+	const rows = await conn
+		.select({ id: gymRooms.id, type: gymRooms.type })
+		.from(gymRooms)
+		.where(eq(gymRooms.gymId, gymId))
+	return new Map(rows.map((r) => [r.id, r.type]))
+}
+
+/** Trained staff levels of a gym (npc key to level; untrained = absent). */
+export async function staffLevels(
+	conn: Conn,
+	gymId: number,
+): Promise<Map<string, number>> {
+	const rows = await conn
+		.select({ npcKey: gymStaff.npcKey, level: gymStaff.level })
+		.from(gymStaff)
+		.where(eq(gymStaff.gymId, gymId))
+	return new Map(rows.map((r) => [r.npcKey, r.level]))
+}
+
+/** Rate shown to the player: one decimal at most. */
+const shown = (n: number): number => Math.round(n * 10) / 10
+
 export type IncomeState = {
 	sources: GymIncomeSourceDto[]
 	kitchen: GymKitchenDto
@@ -139,26 +174,31 @@ export async function incomeState(
 		.from(gymPieces)
 		.where(eq(gymPieces.gymId, gymId))
 	const rooms = await finishedRooms(conn, gymId)
+	const levels = await staffLevels(conn, gymId)
+	const roomTypes = await roomTypesOf(conn, gymId)
+	const deskMult = areaMultiplier("desk", levels)
+	const kitchenMult = areaMultiplier("kitchen", levels)
 	const sources: GymIncomeSourceDto[] = []
 	for (const p of pieces) {
 		if (!isEarningPiece(p)) continue
+		const mult = areaMultiplier(roomTypes.get(p.roomId as number) ?? "", levels)
 		sources.push({
 			key: `piece:${p.id}`,
 			kind: "machine",
 			pieceId: p.id,
-			bank: pieceBank(p, nowMs),
+			bank: pieceBank(p, nowMs, mult),
 			cap: machineCap(p.tier),
-			rate: machineRate(p.tier),
+			rate: shown(machineRate(p.tier) * mult),
 		})
 	}
 	const kitchen: GymKitchenDto = {
 		menu: kitchenItemsOn(g?.kitchenMenu ?? 1),
-		rate: kitchenRate(g?.kitchenMenu ?? 1),
+		rate: shown(kitchenRate(g?.kitchenMenu ?? 1) * kitchenMult),
 		rushEndsAt:
 			g?.kitchenRushEndsAt && rushOn(g, nowMs)
 				? g.kitchenRushEndsAt.toISOString()
 				: null,
-		bank: g ? kitchenBank(g, nowMs) : 0,
+		bank: g ? kitchenBank(g, nowMs, kitchenMult) : 0,
 		cap: ECONOMY.income.kitchen.cap,
 	}
 	if (g) {
@@ -166,9 +206,9 @@ export async function incomeState(
 			key: "desk",
 			kind: "desk",
 			pieceId: null,
-			bank: deskBank(g, rooms, nowMs),
+			bank: deskBank(g, rooms, nowMs, deskMult),
 			cap: ECONOMY.income.desk.cap,
-			rate: deskRate(rooms),
+			rate: shown(deskRate(rooms) * deskMult),
 		})
 		sources.push({
 			key: "kitchen",
@@ -220,6 +260,16 @@ async function collectIn(
 	return sum
 }
 
+/** Pays every waiting coin bubble and restarts them at `now` (before a rate
+ * changes, so the new rate only counts from now). Returns the coins. */
+export function settleIncome(
+	tx: Tx,
+	gymId: number,
+	now: Date,
+): Promise<number> {
+	return collectIn(tx, gymId, now, null)
+}
+
 /** Taps on coin bubbles: collects the given sources (or all of them). */
 export async function collectIncome(
 	db: Db,
@@ -246,7 +296,9 @@ export async function bankPiece(
 		.from(gymPieces)
 		.where(and(eq(gymPieces.id, pieceId), eq(gymPieces.gymId, gymId)))
 	if (!p) return 0
-	const n = pieceBank(p, now.getTime())
+	const roomType = (await roomTypesOf(tx, gymId)).get(p.roomId as number)
+	const mult = areaMultiplier(roomType ?? "", await staffLevels(tx, gymId))
+	const n = pieceBank(p, now.getTime(), mult)
 	await tx
 		.update(gymPieces)
 		.set({ collectedAt: now })

@@ -2,6 +2,7 @@
 import {
 	ChevronLeft,
 	ChevronRight,
+	DoorOpen,
 	Dumbbell,
 	Paintbrush,
 	Users,
@@ -13,6 +14,7 @@ import {
 	finishCost,
 	KITCHEN_MENU,
 	levelProgress,
+	machineRate,
 	upgradeInfo,
 	WALL_COLORS,
 } from "../../../shared/gym3d/economy"
@@ -20,13 +22,20 @@ import { SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
 	type EquipmentRoomType,
 	FLOOR_STYLES,
+	LV_TH,
 	PAINT,
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
-import type { GymJobDto, GymLayoutDto } from "../../../shared/types"
+import { sharedWalls, type WallRef, wallKey } from "../../../shared/gym3d/walls"
+import type {
+	GymJobDto,
+	GymLayoutDto,
+	GymStaffDto,
+} from "../../../shared/types"
 import { api } from "../../lib/api"
 import { centerOf, flyChip } from "../../lib/fly"
+import { wallet } from "../../lib/wallet.svelte"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
 import {
 	bankAt,
@@ -180,6 +189,7 @@ const sheet = $derived.by(() => {
 		if (s.view === "customize") return "paint"
 		if (s.view === "gear") return "room-gear"
 		if (s.view === "staff") return "room-staff"
+		if (s.view === "walls") return "room-walls"
 		return "room"
 	}
 	return null
@@ -211,6 +221,79 @@ function say(text: string, kind: "info" | "error" = "info") {
 	tipTimer = setTimeout(() => {
 		tip = null
 	}, 3200)
+}
+
+/** A member was hurried along until they finished: the server decides the
+ * small coin bonus (a toy: it shrinks through the day and stops at a cap). */
+async function hustleBonus(pieceId: number) {
+	if (!app) return
+	try {
+		const r = await api.post<{ paid: number; left: number }>(
+			`/gym/layout/hustle/${pieceId}`,
+			{},
+		)
+		if (destroyed || !app) return
+		if (r.paid > 0) {
+			say(`+${r.paid} coin${r.paid === 1 ? "" : "s"} for the push`)
+			setLayout(await app.reload())
+		} else {
+			say("Everyone is worn out for today. Come back tomorrow.")
+		}
+	} catch {
+		// the push still looked good; no bonus this time
+	}
+}
+
+/** A thumbnail of a piece of gear (drawn once, then cached by the app). */
+function gearPic(itemKey: string): string | null {
+	return app?.gearPreview(itemKey) ?? null
+}
+
+/** Staff cards by NPC key (level, stats, perk, what training costs). */
+let staff = $state<Record<string, GymStaffDto>>({})
+let training = $state(false)
+
+const STAT_ROWS = [
+	["friendliness", "Friendly"],
+	["expertise", "Expert"],
+	["speed", "Speed"],
+] as const
+
+function setStaff(list: GymStaffDto[]) {
+	staff = Object.fromEntries(list.map((c) => [c.npcKey, c]))
+}
+
+async function loadStaff() {
+	try {
+		const r = await api.get<{ staff: GymStaffDto[] }>("/gym/staff")
+		if (!destroyed) setStaff(r.staff)
+	} catch {
+		// no staff cards until the next try
+	}
+}
+
+/** Trains the person on the chip one level for coins. */
+async function trainStaffMember(npcKey: string, name: string) {
+	if (training || !app) return
+	training = true
+	try {
+		const r = await api.post<{ staff: GymStaffDto[] }>(
+			`/gym/staff/${npcKey}/train`,
+			{},
+		)
+		if (destroyed || !app) return
+		setStaff(r.staff)
+		say(
+			`${name} is now level ${r.staff.find((c) => c.npcKey === npcKey)?.level}`,
+		)
+		// coins moved and rates changed: read the gym again
+		setLayout(await app.reload())
+	} catch (e) {
+		say(e instanceof Error ? e.message : "Something went wrong", "error")
+		await loadStaff()
+	} finally {
+		training = false
+	}
 }
 
 function setLayout(next: GymLayoutDto) {
@@ -300,6 +383,31 @@ const roomStaff = $derived.by(() => {
 	const r = room
 	return sheet === "room-staff" && r && app ? app.staffIn(r.id) : []
 })
+
+/** The walls this room shares with other finished rooms, open or not. */
+const roomWalls = $derived.by(() => {
+	const r = room
+	const L = layout
+	if (!r || !L) return []
+	const opened = new Set(L.openWalls.map(wallKey))
+	return sharedWalls(L.plots, L.rooms)
+		.filter((w) => w.near === r.id || w.far === r.id)
+		.map((w) => {
+			const otherId = w.near === r.id ? w.far : w.near
+			const other = L.rooms.find((q) => q.id === otherId)
+			return {
+				ref: w.ref,
+				label: other ? roomLabel(other.type, other.shape) : "Room",
+				open: opened.has(wallKey(w.ref)),
+			}
+		})
+})
+
+/** Knocks out a wall for coins (the server checks and charges). */
+async function openWallTo(ref: WallRef) {
+	const next = await act("walls/open", ref)
+	if (next) say("Wall knocked out. The rooms are one space now.")
+}
 
 async function buyLot() {
 	const l = lot
@@ -548,6 +656,7 @@ onMount(() => {
 			selection = s
 			pickType = null
 		},
+		onHustle: (pieceId) => void hustleBonus(pieceId),
 		onMoveTarget: (id, roomId, spot) => void onMoveTarget(id, roomId, spot),
 		onMoveEnd: () => {
 			moving = null
@@ -611,6 +720,7 @@ onMount(() => {
 				pick: (x, y) => a.pickAt(x, y),
 			}
 			ready = true
+			void loadStaff()
 		})
 		.catch((e: unknown) => {
 			if (destroyed) return
@@ -763,6 +873,39 @@ const kitchenView = $derived.by(() => {
 						</div>
 					{/if}
 				</dl>
+			{/if}
+			{#if selection.npcKey && staff[selection.npcKey]?.available}
+				{@const card = staff[selection.npcKey]}
+				{@const name = selection.name}
+				<div class="g3d-staff" data-testid="gym3d-staff-card">
+					<div class="g3d-staff-head">
+						<b data-testid="gym3d-staff-level">Level {card.level}</b>
+						<span>{card.perk}{card.bonus ? ` (+${Math.round(card.bonus * 100)}%)` : ""}</span>
+					</div>
+					<dl class="g3d-stats">
+						{#each STAT_ROWS as [k, label] (k)}
+							<div>
+								<dt>{label}</dt>
+								<dd>
+									<span class="g3d-meter" role="img" aria-label="{card.stats[k]} of 10"><i style="width:{Math.min(100, card.stats[k] * 10)}%"></i></span>
+								</dd>
+							</div>
+						{/each}
+					</dl>
+					{#if card.trainCost != null}
+						<button
+							type="button"
+							class="g3d-train"
+							disabled={training || (layout?.coins ?? 0) < card.trainCost}
+							onclick={() => trainStaffMember(card.npcKey, name)}
+							data-testid="gym3d-train"
+						>
+							Train <span class="cur">{@html COIN_SVG}</span>{card.trainCost.toLocaleString("en-US")}
+						</button>
+					{:else}
+						<small class="g3d-staff-max">Fully trained</small>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -971,6 +1114,19 @@ const kitchenView = $derived.by(() => {
 							<ChevronRight size={18} />
 						</button>
 					</li>
+					{#if roomWalls.length}
+						<li>
+							<button type="button" class="rrow" onclick={() => roomPage("walls")} data-testid="room-walls">
+								<span class="ric"><DoorOpen size={20} /></span>
+								<span class="rtx"
+									><b>Open walls</b><small
+										>{roomWalls.filter((w) => w.open).length} of {roomWalls.length} open</small
+									></span
+								>
+								<ChevronRight size={18} />
+							</button>
+						</li>
+					{/if}
 				</ul>
 
 			{:else if sheet === "room-gear" && room && roomInfo}
@@ -1023,6 +1179,33 @@ const kitchenView = $derived.by(() => {
 						<li class="locked">
 							<span><b>Bonus spot</b> <small>{q.size} × {q.size}</small></span>
 							<small>Opens at Lv {q.unlock}</small>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if sheet === "room-walls" && room}
+				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
+					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
+				>
+				<h3>Open walls</h3>
+				<p class="sub">Knock out a wall to join two rooms into one space. It counts towards your stars.</p>
+				<ul class="gear" data-testid="room-walls-list">
+					{#each roomWalls as w (wallKey(w.ref))}
+						<li>
+							<span><b>{w.label}</b></span>
+							{#if w.open}
+								<small>Open</small>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									disabled={busy || (layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
+									onclick={() => openWallTo(w.ref)}
+									data-testid="gym3d-open-wall"
+								>
+									Open <span class="cur">{@html COIN_SVG}</span>{(layout?.nextWallCost ?? 0).toLocaleString("en-US")}
+								</button>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -1118,12 +1301,26 @@ const kitchenView = $derived.by(() => {
 					{roomLabel(room.type, room.shape)} · {si.s.size} × {si.s.size}
 				</p>
 				{#if !si.s.open}
-					<p class="hint">Upgrade the gear in this room to reach Lv {si.s.unlock}.</p>
+					{@const need = LV_TH[si.s.unlock] ?? 0}
+					<p class="hint" data-testid="gym3d-spot-progress">
+						This room has <b>{room.points}</b> of <b>{need}</b> points for Lv {si.s.unlock}. Every
+						machine scores its tier, so upgrading one, or filling another spot, gets you there.
+					</p>
+					<div class="g3d-meter" aria-hidden="true">
+						<i style="width:{Math.min(100, (room.points / Math.max(1, need)) * 100)}%"></i>
+					</div>
 				{:else if si.stored.length || si.locked.length}
 					<ul class="gear">
 						{#each si.stored as p (p.id)}
+							{@const pic = gearPic(p.itemKey)}
 							<li>
-								<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{p.name}</b> <span class="stars">{stars(p.tier)}</span>
+										<small class="earn">+{machineRate(p.tier)} coins/h</small>
+									</span>
+								</span>
 								<button
 									type="button"
 									class="g3d-btn primary"
@@ -1134,14 +1331,21 @@ const kitchenView = $derived.by(() => {
 							</li>
 						{/each}
 						{#each si.locked as g (g.key)}
+							{@const pic = gearPic(g.key)}
+							{@const togo = Math.max(0, g.requiredXp - (wallet.data?.xp ?? 0))}
 							<li class="locked">
-								<span><b>{g.name}</b></span>
-								<small>Unlocks at {g.requiredXp} XP</small>
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{g.name}</b>
+										<small class="earn">Unlocks at {g.requiredXp.toLocaleString("en-US")} XP{togo ? ` · ${togo.toLocaleString("en-US")} to go` : ""}</small>
+									</span>
+								</span>
 							</li>
 						{/each}
 					</ul>
 				{:else}
-					<p class="hint">Nothing in storage fits here. New gear comes from gym XP unlocks.</p>
+					<p class="hint">Every machine that fits here is already in your gym.</p>
 				{/if}
 
 			{:else if sheet === "piece" && piece}
@@ -1559,6 +1763,107 @@ const kitchenView = $derived.by(() => {
 	display: block;
 	height: 100%;
 	background: #e0525a;
+}
+
+.gearrow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.gearpic {
+	flex: none;
+	width: 48px;
+	height: 48px;
+	border-radius: 10px;
+	object-fit: cover;
+	border: 2px solid var(--ink);
+	background: #fde7d6;
+}
+
+.gear .locked .gearpic {
+	filter: grayscale(1);
+	opacity: 0.6;
+}
+
+.earn {
+	display: block;
+	color: #6b5a4e;
+	font-weight: 700;
+}
+
+.g3d-staff {
+	margin-top: 6px;
+	padding-top: 5px;
+	border-top: 1.5px dashed #d9cbbd;
+}
+
+.g3d-staff-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 8px;
+	font-size: 12px;
+	color: #23262e;
+}
+
+.g3d-staff-head span {
+	font-size: 11px;
+	font-weight: 600;
+	color: #6b5a4e;
+}
+
+.g3d-meter {
+	display: block;
+	height: 6px;
+	margin: 5px 0;
+	border-radius: 3px;
+	background: #e3e8d8;
+	overflow: hidden;
+}
+
+.g3d-meter i {
+	display: block;
+	height: 100%;
+	background: #34c973;
+}
+
+.g3d-train {
+	width: 100%;
+	min-height: 32px;
+	margin-top: 6px;
+	border: 2px solid var(--ink);
+	border-radius: 10px;
+	background: #e8743b;
+	color: #fff;
+	font-weight: 800;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.g3d-train:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+.g3d-train .cur {
+	display: inline-block;
+	width: 13px;
+	height: 13px;
+	vertical-align: -2px;
+}
+
+.g3d-train .cur :global(svg) {
+	width: 100%;
+	height: 100%;
+}
+
+.g3d-staff-max {
+	display: block;
+	margin-top: 4px;
+	color: #8a7a70;
+	font-weight: 700;
 }
 
 .g3d-talk {

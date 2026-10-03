@@ -489,9 +489,21 @@ export class People {
 		}
 	}
 
+	/** Hurries a working member along: their workout speeds up for a while. */
+	hustle(p: Person, boost = 2.2): void {
+		p.boost = Math.max(p.boost ?? 1, boost)
+	}
+
+	/** Ends a working member's session now (they walk off as usual). */
+	hurry(p: Person): void {
+		if (p.state === "use" && p.kind === "member") p.timer = 0
+	}
+
 	private step(p: Person, dt: number, lite: boolean): void {
 		const r = p.rig
-		p.t += dt
+		// a hustled member works out faster, then settles back
+		if (p.boost && p.boost > 1) p.boost = Math.max(1, p.boost - dt * 0.5)
+		p.t += dt * (p.boost ?? 1)
 		if (!lite) resetPose(r)
 		if (p.state === "walk") {
 			const pos = r.root.position

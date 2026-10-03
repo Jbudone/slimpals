@@ -30,6 +30,7 @@ import {
 	PAINT,
 	type RoomType,
 } from "../../../shared/gym3d/rooms.js"
+import { openWallCost } from "../../../shared/gym3d/walls.js"
 import type {
 	GymJobDto,
 	GymLayoutDto,
@@ -39,6 +40,7 @@ import type {
 import type * as schema from "../../db/schema.js"
 import {
 	gymJobs,
+	gymOpenWalls,
 	gymPieces,
 	gymPlots,
 	gymRewards,
@@ -59,6 +61,7 @@ import {
 	type UnlockedUpgrade,
 } from "./layout3d.js"
 import { markPaid, payGymReward } from "./rewards.js"
+import { openWallRefs } from "./walls3d.js"
 
 export type Db = MySql2Database<typeof schema>
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0]
@@ -299,6 +302,7 @@ export async function resetGymLayout(gymId: number, db: Db): Promise<void> {
 			.where(eq(userGyms.id, gymId))
 			.for("update")
 		await tx.delete(gymJobs).where(eq(gymJobs.gymId, gymId))
+		await tx.delete(gymOpenWalls).where(eq(gymOpenWalls.gymId, gymId))
 		await tx.delete(gymPieces).where(eq(gymPieces.gymId, gymId))
 		await tx.delete(gymPlots).where(eq(gymPlots.gymId, gymId))
 		await tx.delete(gymRooms).where(eq(gymRooms.gymId, gymId))
@@ -429,7 +433,9 @@ export async function getGymLayoutDto(
 	})
 
 	// Rating and goals read the layout; a goal that is newly met pays once.
+	const openWalls = await openWallRefs(db, gymId)
 	const goalIn: RatingInput = {
+		openWalls: openWalls.length,
 		rooms: roomDtos,
 		pieces: pieces.map((p) => ({
 			kind: p.kind === "decor" ? "decor" : "equipment",
@@ -474,6 +480,8 @@ export async function getGymLayoutDto(
 		coins: gym?.coins ?? 0,
 		sweat: (gym?.sweat ?? 0) + paidSweat,
 		greens: (gym?.greens ?? 0) + paidGreens,
+		openWalls,
+		nextWallCost: openWallCost(openWalls.length),
 		rating: gs.rating,
 		goals: goalsDto(gs, paid),
 		...(goalsPaid.length ? { goalsPaid } : {}),

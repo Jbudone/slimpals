@@ -77,13 +77,29 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   Admin grants coins/Sweat/Greens (`POST /admin/users/:id/gym/coins|sweat|greens`) and can simulate time
   away (`POST /admin/users/:id/gym/away {hours}`).
 - Rating and goals: the gym's 1-5 star rating is a pure score of the layout (`shared/gym3d/rating.ts`: room
-  levels, room-type variety, decor, staff pieces, rooms of 2+ plots; open walls will join when built). The rolling
+  levels, room-type variety, decor, staff pieces, rooms of 2+ plots, open walls up to 4). The rolling
   goals queue is `shared/gym3d/goals.ts` (fixed order, each pays Sweat/Greens once). Both ride on `GET /gym/layout`
   (`rating`, `goals`, and `goalsPaid` for goals reached by that read) and are settled in `getGymLayoutDto`
   (`layout3dStore.ts`) through `gym_rewards` (`goal:<id>`; `payGymReward` takes the gym row lock first so racing
   reads pay once). The first read of a gym writes `goal:_start` and marks what it already meets as done without
   paying. UI: `GoalsCard.svelte` (star button under the coach; the account avatar owns the top-right) fed by `src/lib/goals.svelte.ts`. Tests:
   `tests/gym3d/rating-goals.test.ts` (pure), `goals-route.test.ts` (DB).
+- Open walls: the wall between two finished, typed rooms can be knocked out for coins (`ECONOMY.walls`: 400, +250
+  for each one already open). A wall is named from the plot on its far side (`shared/gym3d/walls.ts`: `WallRef` =
+  px, pz and axis x|z, `sharedWalls`, `openWallCost`); rows live in `gym_open_walls` (migration 0024) and the layout
+  carries `openWalls` and `nextWallCost`. `POST /api/gym/layout/walls/open {px, pz, axis}` (`walls3d.ts`) validates
+  that the wall exists and is not open, then charges under the gym row lock. The world (`world.ts` `buildWalls`)
+  leaves an open wall out entirely, so paths and sight lines join the rooms. It scores 1 star point each (cap 4)
+  and pays the `wall-1` goal. UI: the room menu's "Open walls" page. e2e: `gym3d-life.spec.ts` ("walls").
+- Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
+  and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
+  1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds
+  half of that to every machine), applied in `income3d.ts`. Rows live in `gym_staff` (no row = level 1;
+  migration 0023). `GET /api/gym/staff` lists the cards; `POST /api/gym/staff/:npcKey/train` locks the gym row, pays
+  the waiting coin bubbles first (so the new rate only counts from then) and charges the coins (`server/services/gym/
+  staff.ts`). UI: the tap chip of a staff NPC (`Gym3D.svelte`) shows level, perk, stat meters and Train. Not built
+  yet: hiring new staff, and admin tools for staff levels. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`,
+  e2e in `gym3d-life.spec.ts`.
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus
@@ -105,6 +121,17 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   around a room/lot) while selected, a squash, one pooled floor ripple, `navigator.vibrate(10)`; DOM badges and
   coin bubbles get `.g3d-tapped`. Reduced motion: marker only. A room tap opens the room action menu (info, Upgrade
   gear, Staff, Customize = paint + decor; `Selection.view`), never paint first.
+- Tap-to-hustle: taps in quick succession (`ECONOMY.hustle.gapMs`) on a member who is working out speed up their
+  reps and make them say a line (`shared/gym3d/hustleLines.ts`); after `ECONOMY.hustle.taps` they finish early and
+  the host asks `POST /api/gym/layout/hustle/:pieceId` (`server/services/gym/hustle.ts`) for a few coins. The server
+  decides: the piece must be a working machine, the daily count is claimed in `gym_rewards` (`hustle:<day>:<n>`),
+  the payout shrinks through the day (`hustleCoins`) and stops at `dailyCap`. The first tap is the usual one (their
+  machine's sheet, see `picking.ts`); the gesture is in `Gym3DApp.tapAt` (`rayWorker`, `hustleTap`).
+- Spot sheet (tap an empty pad): a locked spot says how many room points the room has of the points its level needs
+  (`LV_TH`); an open one lists stored and still-locked gear with a picture each (`Gym3DApp.gearPreview` ->
+  `World.previewGear`: built like a placed piece, drawn once offscreen, cached per key; the shared geometries stay in
+  the asset cache until `dispose()`), coins per hour, and for locked gear the XP still to go. e2e: `gym3d-life.spec.ts`
+  ("spots").
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
   screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey),
   coinsWaiting(), coinBubbles(), collectAll(), kitchen(), bubbles(), say(key, text), pick(x, y) }` (pick: what a

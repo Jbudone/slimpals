@@ -43,6 +43,7 @@ import {
 	getRelationshipStage,
 	getStageLabel,
 } from "../services/gym/dialog.js"
+import { hustleBonus } from "../services/gym/hustle.js"
 import {
 	collectIncome,
 	openGym,
@@ -67,6 +68,8 @@ import {
 	isClassActiveNow,
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
+import { staffCards, trainStaff } from "../services/gym/staff.js"
+import { openWall } from "../services/gym/walls3d.js"
 
 export async function fetchUserStats(userId: string) {
 	const checkins = await db
@@ -448,6 +451,13 @@ export function createGymRouter(aiService: AIService) {
 			sweatJob(db, gymId, idParam(req, "jobId"), "hour", maxCostOf(req)),
 		),
 	)
+	// Knock out the wall between two finished rooms ({ px, pz, axis }).
+	router.post(
+		"/gym/layout/walls/open",
+		build(async (gymId, req) => {
+			await openWall(db, gymId, req.body ?? {})
+		}),
+	)
 	// Idle coins: tap one bubble ({ keys: ["piece:12"] }) or collect all.
 	router.post(
 		"/gym/layout/income/collect",
@@ -468,6 +478,43 @@ export function createGymRouter(aiService: AIService) {
 		"/gym/layout/kitchen/rush",
 		build((gymId) => startRushHour(db, gymId)),
 	)
+
+	// Tap-to-hustle bonus: a few coins when a member is hurried along.
+	router.post("/gym/layout/hustle/:pieceId", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		try {
+			res.json(await hustleBonus(db, gym.id, Number(req.params.pieceId)))
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
+	})
+
+	// Staff cards (gym home) and training them with coins.
+	router.get("/gym/staff", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json({ staff: await staffCards(db, gym.id) })
+	})
+	router.post("/gym/staff/:npcKey/train", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		await ensureGymLayout(gym.id, db)
+		try {
+			res.json(await trainStaff(db, gym.id, String(req.params.npcKey)))
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
+	})
 
 	router.get("/gym/catalog", async (_req, res) => {
 		const catalog = await db

@@ -70,6 +70,12 @@ export const GOALS: readonly GoalDef[] = [
 		reward: { sweat: 2, greens: 0 },
 	},
 	{
+		id: "wall-1",
+		title: "Knock out a wall between two rooms",
+		progress: (s) => ({ value: Math.min(1, s.openWalls ?? 0), target: 1 }),
+		reward: { sweat: 2, greens: 0 },
+	},
+	{
 		id: "upgrade-t2",
 		title: "Upgrade a machine to tier 2",
 		progress: (s) => ({

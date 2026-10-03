@@ -8,6 +8,12 @@ import {
 	test,
 } from "@playwright/test"
 import mysql from "mysql2/promise"
+import {
+	type EquipmentRoomType,
+	PD,
+	PW,
+	roomSpots,
+} from "../shared/gym3d/rooms.js"
 import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
 
 // 3D gym life (gym3d slice 3) on a phone: today's event by the entrance,
@@ -632,4 +638,312 @@ test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
 	const perf = await page.evaluate(() => window.gym3d?.stats())
 	console.log("gym3d bubbles stats", JSON.stringify(perf))
 	expect(errors).toEqual([])
+})
+
+test("3D gym staff: tapping a staff member shows a card and training levels them up", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		700,
+		"staff",
+	)
+	// 6pm: the staff are on the floor
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	const staffKeys = ["npc:receptionist_lisa", "npc:trainer_marcus"]
+	await page.waitForFunction(
+		(want) => (window.gym3d?.people() ?? []).some((k) => want.includes(k)),
+		staffKeys,
+		{ timeout: 40_000 },
+	)
+	const keys = await page.evaluate(() => window.gym3d?.people() ?? [])
+	const who = staffKeys.find((k) => keys.includes(k))
+	expect(who).toBeTruthy()
+	if (!who) return
+	await tapPerson(page, who)
+	const card = page.getByTestId("gym3d-staff-card")
+	await expect(card).toBeVisible()
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 1")
+	await shot(page, "07-staff-card")
+
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	await page.getByTestId("gym3d-train").click()
+	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 2")
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
+		)
+		.toBeLessThan(coins0)
+	await shot(page, "08-staff-trained")
+	const cards = (await page.request.get("/api/gym/staff")).ok()
+	expect(cards).toBe(true)
+})
+
+test("3D gym spots: a locked spot shows how close it is, an open one shows gear pictures", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "spots")
+	await page.goto("/")
+	await waitReady(page)
+	const L = await page.evaluate(() => window.gym3d?.layout())
+	expect(L).toBeTruthy()
+	if (!L) return
+	const taken = new Set(
+		L.pieces
+			.filter((p) => p.roomId != null && p.spotIndex != null)
+			.map((p) => `${p.roomId}:${p.spotIndex}`),
+	)
+	type Pick = { x: number; z: number; type: string; size: number }
+	let locked: Pick | null = null
+	let open: (Pick & { hasGear: boolean }) | null = null
+	for (const r of L.rooms) {
+		if (r.building || r.type === "lobby" || r.type === "empty") continue
+		for (const s of roomSpots(r.type as EquipmentRoomType, r.cells)) {
+			if (taken.has(`${r.id}:${s.index}`)) continue
+			const where = { x: s.x, z: s.z, type: r.type, size: s.size }
+			if (r.level < s.unlock) locked ??= where
+			else if (!open) {
+				const hasGear =
+					L.lockedGear.some(
+						(g) => g.roomType === r.type && g.size === s.size,
+					) ||
+					L.pieces.some(
+						(p) =>
+							p.status === "stored" &&
+							p.roomType === r.type &&
+							p.size === s.size,
+					)
+				open = { ...where, hasGear }
+			}
+		}
+	}
+
+	const tapAt = async (x: number, z: number) => {
+		await page.evaluate(([a, c]) => window.gym3d?.panTo(a, c), [x, z] as const)
+		await page.waitForTimeout(700)
+		const pt = await page.evaluate(
+			([a, c]) => window.gym3d?.screenAt(a, 0.05, c) ?? null,
+			[x, z] as const,
+		)
+		const box = await page.locator("[data-testid=gym3d]").boundingBox()
+		if (!pt || !box) throw new Error("no gym")
+		await page.mouse.click(box.x + pt.x, box.y + pt.y)
+	}
+	const sheet = page.getByTestId("gym3d-sheet")
+
+	// a locked spot: points of the room towards the level it needs
+	expect(locked).toBeTruthy()
+	if (locked) {
+		await tapAt(locked.x, locked.z)
+		await expect(sheet).toHaveAttribute("data-sheet", "spot")
+		await expect(page.getByTestId("gym3d-spot-progress")).toContainText(
+			"points for Lv",
+		)
+		await shot(page, "09-locked-spot")
+		await page.getByRole("button", { name: "Close" }).click()
+	}
+
+	// an open empty spot: every machine that fits has a picture
+	expect(open).toBeTruthy()
+	if (open?.hasGear) {
+		const gpu = () =>
+			page.evaluate(() => {
+				const st = window.gym3d?.stats()
+				return { geometries: st?.geometries ?? 0, textures: st?.textures ?? 0 }
+			})
+		await tapAt(open.x, open.z)
+		await expect(sheet).toHaveAttribute("data-sheet", "spot")
+		const pics = page.getByTestId("gym3d-gearpic")
+		await expect(pics.first()).toBeVisible()
+		const src = await pics.first().getAttribute("src")
+		expect(src).toMatch(/^data:image\/png/)
+		await shot(page, "10-gear-previews")
+		// the pictures are drawn once: opening the sheet again allocates nothing
+		const once = await gpu()
+		await page.getByRole("button", { name: "Close" }).click()
+		await tapAt(open.x, open.z)
+		await expect(pics.first()).toBeVisible()
+		expect(await gpu()).toEqual(once)
+	}
+})
+
+test("3D gym hustle: tapping a working member until they finish pays a small coin bonus", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(240_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		30,
+		"hustle",
+	)
+	// 6pm: the gym is busy, so someone is working out
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	const L = await page.evaluate(() => window.gym3d?.layout())
+	if (!L) throw new Error("no layout")
+	const centers = L.rooms
+		.filter((r) => !r.building && r.type !== "empty")
+		.map((r) => ({
+			x: r.cells[0].px * PW + PW / 2,
+			z: r.cells[0].pz * PD + PD / 2,
+		}))
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+
+	// find a member who is working out and on screen
+	const findWorker = async (): Promise<string | null> => {
+		for (const c of centers) {
+			await page.evaluate(([a, b]) => window.gym3d?.panTo(a, b), [
+				c.x,
+				c.z,
+			] as const)
+			await page.waitForTimeout(500)
+			const key = await page.evaluate(
+				({ w, h }) => {
+					const g = window.gym3d
+					for (const k of g?.people() ?? []) {
+						if (!k.startsWith("member:")) continue
+						const doing = g?.info(k)?.doing ?? ""
+						if (!doing || /move|home/i.test(doing)) continue
+						const pt = g?.screenOf(k)
+						if (
+							pt &&
+							pt.x > 20 &&
+							pt.x < w - 20 &&
+							pt.y > 120 &&
+							pt.y < h - 160
+						)
+							return k
+					}
+					return null
+				},
+				{ w: box.width, h: box.height },
+			)
+			if (key) return key
+		}
+		return null
+	}
+	let who: string | null = null
+	for (let i = 0; i < 12 && !who; i++) {
+		who = await findWorker()
+		if (!who) await page.waitForTimeout(2500)
+	}
+	expect(who).toBeTruthy()
+	if (!who) return
+
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	// the first tap opens their machine; quick taps after it hurry them along
+	// (tapped through the gym's own hook, in one go, so the gaps between taps
+	// do not depend on how slowly a software renderer draws frames)
+	await page.evaluate(async (k) => {
+		const g = window.gym3d
+		for (let i = 0; i < 12; i++) {
+			const pt = g?.screenOf(k)
+			if (!pt) break
+			g?.tap(pt.x, pt.y)
+			await new Promise((r) => setTimeout(r, 100))
+		}
+	}, who)
+	await shot(page, "11-hustled")
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
+			{
+				timeout: 15_000,
+			},
+		)
+		.toBeGreaterThan(coins0)
+})
+
+test("3D gym walls: knocking out a wall between two rooms joins them and scores", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "walls")
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	if (!L0) throw new Error("no layout")
+	expect(L0.openWalls).toEqual([])
+	const room = L0.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	expect(room).toBeTruthy()
+	if (!room) return
+	const cx = room.cells[0].px * PW + PW / 2
+	const cz = room.cells[0].pz * PD + PD / 2
+	const sheet = page.getByTestId("gym3d-sheet")
+
+	// tap the room's floor (a few points: a member may stand on one)
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+	for (const [dx, dz] of [
+		[0, 0],
+		[0.4, 0],
+		[-0.4, 0.1],
+		[0, -0.2],
+	]) {
+		await page.evaluate(([a, b]) => window.gym3d?.panTo(a, b), [
+			cx,
+			cz,
+		] as const)
+		await page.waitForTimeout(600)
+		const pt = await page.evaluate(
+			([a, b]) => window.gym3d?.screenAt(a, 0.02, b) ?? null,
+			[cx + dx, cz + dz] as const,
+		)
+		if (!pt) continue
+		await page.mouse.click(box.x + pt.x, box.y + pt.y)
+		const on = await sheet
+			.getAttribute("data-sheet", { timeout: 1500 })
+			.catch(() => null)
+		if (on === "room") break
+	}
+	await expect(sheet).toHaveAttribute("data-sheet", "room")
+	await page.getByTestId("room-walls").click()
+	await expect(page.getByTestId("room-walls-list")).toBeVisible()
+	await shot(page, "12-walls-menu")
+
+	await page.getByTestId("gym3d-open-wall").first().click()
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().openWalls.length)) ??
+				0,
+		)
+		.toBe(1)
+	const L1 = await page.evaluate(() => window.gym3d?.layout())
+	expect(L1?.nextWallCost).toBeGreaterThan(L0.nextWallCost)
+	expect(L1?.coins).toBeLessThan(L0.coins)
+	await page.waitForTimeout(600)
+	await shot(page, "13-wall-open")
 })
