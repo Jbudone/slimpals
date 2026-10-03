@@ -1204,7 +1204,7 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 	request,
 	browser,
 }, testInfo) => {
-	test.setTimeout(150_000)
+	test.setTimeout(400_000)
 	const { page } = await setup(request, browser, testInfo, 30, "street")
 	await page.goto("/")
 	await waitReady(page)
@@ -1229,6 +1229,17 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 			timeout: 90_000,
 		})
 		.toBeGreaterThan(0)
+	// someone waits at the bus stop and climbs on when the bus pulls in
+	await expect
+		.poll(async () => page.evaluate(() => window.gym3d?.stats().waiting ?? 0), {
+			timeout: 90_000,
+		})
+		.toBeGreaterThan(0)
+	await expect
+		.poll(async () => page.evaluate(() => window.gym3d?.stats().waiting ?? 0), {
+			timeout: 150_000,
+		})
+		.toBe(0)
 	// look at the street in front of the lobby door
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
 	await page.waitForTimeout(1500)

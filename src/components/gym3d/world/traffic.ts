@@ -114,6 +114,11 @@ export class Traffic {
 		})
 	}
 
+	/** The bus is standing at the stop right now. */
+	get busAtStop(): boolean {
+		return this.cars.some((c) => c.stopX !== undefined && (c.wait ?? 0) > 0)
+	}
+
 	get count(): number {
 		return this.cars.length
 	}

@@ -19,6 +19,7 @@ import {
 	releaseMesh,
 } from "../engine/helpers"
 import type { Assignment } from "../world/assignTargets"
+import { APRON, BUS_STOP_DX } from "../world/paths"
 import { ctx } from "../world/state"
 import type { Person, PersonKind, Station } from "../world/types"
 import type { GymWorld } from "../world/world"
@@ -51,6 +52,8 @@ export class People {
 	private rng: Rng
 	private memberN = 0
 	private reduce: boolean
+	/** Set when a bus runs: waiters at the stop board it when it pulls in. */
+	busAtStop: (() => boolean) | null = null
 	/** Most ambient members right now (follows the quality level). */
 	cap = 6
 
@@ -271,6 +274,14 @@ export class People {
 		const x1 = w.cols * PW + 6
 		const left = this.rng() < 0.5
 		const z = w.frontZ + 3 + (this.rng() - 0.5) * 0.5
+		if (
+			this.busAtStop &&
+			this.rng() < 0.2 &&
+			!this.people.some((q) => q.after === "wait")
+		) {
+			this.addWaiter(left ? x0 : x1, z)
+			return
+		}
 		const p = this.add({
 			key: `pass:${++this.passN}`,
 			kind: "extra",
@@ -292,6 +303,41 @@ export class People {
 			p.after = "leave"
 			// now and then a dog trots along on a lead
 			if (this.rng() < 0.3) this.addDog(p)
+		}
+	}
+
+	/** Someone who walks to the bus stop and waits for the bus. */
+	private addWaiter(x: number, z: number): void {
+		const w = this.w
+		const p = this.add({
+			key: `pass:${++this.passN}`,
+			kind: "extra",
+			name: "Passer-by",
+			out: randOutfit(this.rng),
+			x,
+			z,
+		})
+		p.speed = 0.8 + this.rng() * 0.4
+		p.state = "walk"
+		p.path = [[w.doorX + BUS_STOP_DX - 0.4, w.frontZ + APRON - 0.5]]
+		p.after = "wait"
+		p.timer = 120
+	}
+
+	/** Waiters climb on when the bus is in (or give up and wander off). */
+	private boardWaiters(dt: number): void {
+		for (const p of this.people) {
+			if (p.after !== "wait" || p.state !== "idle") continue
+			const w = this.w
+			p.timer -= dt
+			const boards = this.busAtStop?.() ?? false
+			if (!boards && p.timer > 0) continue
+			const roadZ = w.frontZ + APRON + 3.3
+			p.path = boards
+				? [[w.doorX + BUS_STOP_DX, roadZ - 0.95]]
+				: [[w.doorX + BUS_STOP_DX + 12, p.rig.root.position.z]]
+			p.after = "leave"
+			p.state = "walk"
 		}
 	}
 
@@ -599,7 +645,12 @@ export class People {
 				this.chooseNext(p)
 			}
 		} else if (p.after === "leave") this.remove(p)
-		else if (p.after === "enter") {
+		else if (p.after === "wait") {
+			// at the stop: face the road and wait for the bus
+			p.state = "idle"
+			p.idle = 1e9
+			p.rig.root.rotation.y = 0
+		} else if (p.after === "enter") {
 			// a passer-by came in: they are a member now
 			p.kind = "member"
 			p.name = "Member"
@@ -694,6 +745,7 @@ export class People {
 				p.onscr = onScreen(tmp.copy(p.rig.root.position).setY(0.6))
 		for (const p of this.people.slice()) this.step(p, pd, p.onscr === false)
 		this.trickleStreet(dt)
+		this.boardWaiters(dt)
 		this.spawnT -= dt
 		if (this.spawnT <= 0) {
 			this.spawnT = 3

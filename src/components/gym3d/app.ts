@@ -148,6 +148,7 @@ export type Gym3DStats = {
 	ghost: number
 	cars: number
 	dogs: number
+	waiting: number
 	/** Coin bubbles showing now. */
 	bubbles: number
 	sweat: number
@@ -396,6 +397,7 @@ export class Gym3DApp {
 				!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 			this.fx = new TapFx(this.world.scene, this.assets, this.calm)
 			this.traffic = new Traffic(this.world, this.calm)
+			if (!this.calm) this.people.busAtStop = () => this.traffic.busAtStop
 		} catch (e) {
 			this.r.dispose()
 			unbindWorld()
@@ -2274,6 +2276,7 @@ export class Gym3DApp {
 			...this.hap.stats(),
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
+			waiting: this.people.people.filter((q) => q.after === "wait").length,
 		}
 	}
 
