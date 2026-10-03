@@ -776,6 +776,16 @@ export class BuildLayer {
 		})
 	}
 
+	/** The before/after of an upgrade: the machine's new parts (its `deco`)
+	 * pop in with a burst once the ribbon is cut. */
+	reveal(x: number, z: number, deco: T.Object3D | undefined): void {
+		if (deco) {
+			deco.visible = true
+			this.popIn(deco, 0.8)
+		}
+		this.confetti(x, 1.2, z, 40)
+	}
+
 	dustAt(
 		x: number,
 		y: number,
