@@ -172,9 +172,17 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 		await expect(page.getByTestId("gym3d-tip")).toHaveCount(0, {
 			timeout: 10_000,
 		})
-		// (re)open it so its 7s timer does not run out mid-check
-		if (await page.getByTestId("coach-say").isVisible())
-			await page.getByTestId("coach").click()
+		// (re)open it so its 7s timer does not run out mid-check. Close it
+		// first, and make sure it is closed: the line's own timer may close it
+		// between a look and a click, and a click then opens it instead (on a
+		// slow desktop run the next click closed it again)
+		await expect(async () => {
+			if (await page.getByTestId("coach-say").isVisible())
+				await page.getByTestId("coach").click()
+			await expect(page.getByTestId("coach-say")).toHaveCount(0, {
+				timeout: 1000,
+			})
+		}).toPass({ timeout: 10_000 })
 		await page.getByTestId("coach").click()
 		await expect(page.getByTestId("coach-say")).toBeVisible()
 		await expectNoOverlap(page, "[data-testid=coach-say]", ".g3d-bub")

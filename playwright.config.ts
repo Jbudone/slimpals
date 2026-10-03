@@ -21,7 +21,9 @@ export default defineConfig({
 	},
 	webServer: {
 		command: "npm run dev",
-		url: "http://localhost:3000/api/health",
+		// through the Vite proxy: ready once both Vite and the API answer (the
+		// API alone left the first test racing Vite: ECONNREFUSED :5173)
+		url: "http://localhost:5173/api/health",
 		timeout: 60_000,
 		reuseExistingServer: false,
 		env: {
