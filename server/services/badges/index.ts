@@ -25,6 +25,7 @@ export type BadgeContext =
 			tournamentType: string
 	  }
 	| { type: "challenge_complete"; totalCompleted: number }
+	| { type: "track_step"; claimed: number; total: number }
 
 export type NewBadge = {
 	key: string
@@ -103,6 +104,12 @@ function badgeKeysForContext(ctx: BadgeContext): string[] {
 			if (ctx.totalCompleted >= 3) keys.push("challenge_3")
 			if (ctx.totalCompleted >= 6) keys.push("challenge_6")
 			if (ctx.totalCompleted >= 12) keys.push("challenge_12")
+			return keys
+		}
+		case "track_step": {
+			const keys = ["track_first"]
+			if (ctx.claimed >= 7) keys.push("track_week")
+			if (ctx.claimed >= ctx.total) keys.push("track_full")
 			return keys
 		}
 	}

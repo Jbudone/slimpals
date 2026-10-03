@@ -198,6 +198,24 @@ const BADGE_CATALOG: BadgeRow[] = [
 		tier: "platinum",
 	},
 	{
+		key: "track_first",
+		name: "On the Track",
+		description: "Take your first step on a monthly reward track",
+		tier: "bronze",
+	},
+	{
+		key: "track_week",
+		name: "Track Regular",
+		description: "Take 7 steps on one month's reward track",
+		tier: "silver",
+	},
+	{
+		key: "track_full",
+		name: "Track Finisher",
+		description: "Take every step on a month's reward track",
+		tier: "gold",
+	},
+	{
 		key: "sprint_first",
 		name: "Sprint Starter",
 		description: "Complete your first weekly sprint",

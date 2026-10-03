@@ -18,6 +18,7 @@ import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService } from "../services/ai/index.js"
+import { checkAndAward } from "../services/badges/index.js"
 import {
 	BuildError,
 	buyLot,
@@ -375,7 +376,17 @@ export function createGymRouter(aiService: AIService) {
 		const gym = await getOrCreateGym(userId, db)
 		await ensureGymLayout(gym.id, db)
 		try {
-			res.json(await claimTrackStep(db, gym.id, userId))
+			const r = await claimTrackStep(db, gym.id, userId)
+			const newBadges = await checkAndAward(
+				userId,
+				{
+					type: "track_step",
+					claimed: r.track.claimed,
+					total: r.track.steps.length,
+				},
+				db,
+			)
+			res.json({ ...r, newBadges })
 		} catch (e) {
 			if (e instanceof BuildError) {
 				res.status(e.status).json({ error: e.message })
