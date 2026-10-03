@@ -1231,6 +1231,10 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
 	await page.waitForTimeout(1500)
 	await shot(page, "22-shops")
+	// the bus stop shelter, with the bus (when it has pulled in)
+	await page.evaluate(() => window.gym3d?.panTo(20.5, 22))
+	await page.waitForTimeout(1500)
+	await shot(page, "25-bus-stop")
 })
 
 test("3D gym burger: at 4 stars the Burger Baron is for sale and buying it shrinks it", async ({

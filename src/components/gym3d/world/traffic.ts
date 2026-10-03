@@ -11,7 +11,7 @@ import {
 	pGeo,
 	releaseMesh,
 } from "../engine/helpers"
-import { APRON } from "./paths"
+import { APRON, BUS_STOP_DX } from "./paths"
 import type { GymWorld } from "./world"
 
 const COLORS = [
@@ -27,6 +27,9 @@ type Car = {
 	mesh: T.Mesh
 	dir: 1 | -1
 	speed: number
+	// the bus waits at the stop for a while on each pass
+	stopX?: number
+	wait?: number
 }
 
 export class Traffic {
@@ -67,16 +70,48 @@ export class Traffic {
 			mesh.rotation.y = dir === 1 ? 0 : Math.PI
 			this.cars.push({ mesh, dir, speed: 3.5 + (i % 3) * 1.4 })
 		}
+		this.addBus(world, roadZ)
 	}
 
 	frame(dt: number): void {
 		for (const c of this.cars) {
+			if (c.stopX !== undefined) {
+				if ((c.wait ?? 0) > 0) {
+					c.wait = (c.wait ?? 0) - dt
+					continue
+				}
+				const x = c.mesh.position.x
+				if (x < c.stopX && x + c.speed * dt >= c.stopX) {
+					c.mesh.position.x = c.stopX
+					c.wait = 5
+					continue
+				}
+			}
 			c.mesh.position.x += c.dir * c.speed * dt
 			if (c.dir === 1 && c.mesh.position.x > this.x1)
 				c.mesh.position.x = this.x0
 			if (c.dir === -1 && c.mesh.position.x < this.x0)
 				c.mesh.position.x = this.x1
 		}
+	}
+
+	private addBus(world: GymWorld, roadZ: number): void {
+		const p: Part[] = []
+		pBox(p, 4.2, 0.9, 1.1, "#f2c14a", 0, 0.75, 0)
+		pBox(p, 4.0, 0.5, 1.12, "#2b3440", 0, 1.35, 0)
+		pBox(p, 4.2, 0.12, 1.1, "#f2c14a", 0, 1.66, 0)
+		pBox(p, 0.06, 0.16, 0.8, "#fff1b8", 2.1, 0.5, 0)
+		for (const wx of [-1.3, 1.3])
+			for (const wz of [0.55, -0.55])
+				pGeo(p, cylGeo(0.26, 0.16, 8), "#2c2f36", wx, 0.26, wz, Math.PI / 2)
+		const mesh = batchMesh(p, this.root, { static: false, noCast: true })
+		mesh.position.set(world.doorX - 14, 0, roadZ - 0.95)
+		this.cars.push({
+			mesh,
+			dir: 1,
+			speed: 3,
+			stopX: world.doorX + BUS_STOP_DX,
+		})
 	}
 
 	get count(): number {

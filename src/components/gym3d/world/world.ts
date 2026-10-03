@@ -39,7 +39,13 @@ import {
 import { EQUIP } from "../equipment/builders"
 import { DECOR } from "../equipment/decor"
 import { applyTier, bakePiece } from "../equipment/tiers"
-import { APRON, type NavSource, PathFinder, type WallSeg } from "./paths"
+import {
+	APRON,
+	BUS_STOP_DX,
+	type NavSource,
+	PathFinder,
+	type WallSeg,
+} from "./paths"
 import { bindWorld, type WorldCtx } from "./state"
 import type { Piece, Station } from "./types"
 
@@ -621,6 +627,16 @@ export class GymWorld implements NavSource {
 			pBox(parts, 0.26, 0.05, 0.34, "#fff1b8", x, 3.02, z + 0.8)
 			pGeo(parts, cylGeo(0.16, 0.12, 8), "#4a4050", x, 0.06, z)
 		}
+		// the bus stop: a roofed shelter with a bench and a sign on the pavement
+		const bx = this.doorX + BUS_STOP_DX
+		const bz = fz + APRON - 0.9
+		pBox(parts, 2.2, 0.08, 1.0, "#3a6f8f", bx, 2.1, bz)
+		for (const dx of [-1, 1])
+			pBox(parts, 0.07, 2.1, 0.07, "#4a4050", bx + dx, 1.05, bz - 0.4)
+		pBox(parts, 2.1, 1.4, 0.04, "#bfe3f0", bx, 1.2, bz - 0.45)
+		pBox(parts, 1.5, 0.08, 0.36, C.woodD, bx, 0.5, bz - 0.2)
+		pBox(parts, 0.3, 0.3, 0.04, "#3a6f8f", bx + 1.4, 2.6, bz + 0.3)
+		pGeo(parts, cylGeo(0.04, 2.6, 6), "#4a4050", bx + 1.4, 1.3, bz + 0.3)
 		const g = batchMesh(parts)
 		g.castShadow = false
 		this.buildStreetShops(roadZ)

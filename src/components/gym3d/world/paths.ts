@@ -3,6 +3,8 @@
 import { CELL, PD, PW } from "../../../../shared/gym3d/rooms"
 
 /** Depth of the walkable apron in front of the gym. */
+// the bus stop sits this far east of the door, on the pavement
+export const BUS_STOP_DX = 7
 export const APRON = 3.5
 
 export type WallSeg = {
