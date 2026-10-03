@@ -13,6 +13,7 @@ import {
 	finishCost,
 	KITCHEN_MENU,
 	levelProgress,
+	machineRate,
 	upgradeInfo,
 	WALL_COLORS,
 } from "../../../shared/gym3d/economy"
@@ -20,6 +21,7 @@ import { SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
 	type EquipmentRoomType,
 	FLOOR_STYLES,
+	LV_TH,
 	PAINT,
 	RT,
 	roomSpots,
@@ -31,6 +33,7 @@ import type {
 } from "../../../shared/types"
 import { api } from "../../lib/api"
 import { centerOf, flyChip } from "../../lib/fly"
+import { wallet } from "../../lib/wallet.svelte"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
 import {
 	bankAt,
@@ -215,6 +218,11 @@ function say(text: string, kind: "info" | "error" = "info") {
 	tipTimer = setTimeout(() => {
 		tip = null
 	}, 3200)
+}
+
+/** A thumbnail of a piece of gear (drawn once, then cached by the app). */
+function gearPic(itemKey: string): string | null {
+	return app?.gearPreview(itemKey) ?? null
 }
 
 /** Staff cards by NPC key (level, stats, perk, what training costs). */
@@ -1203,12 +1211,26 @@ const kitchenView = $derived.by(() => {
 					{roomLabel(room.type, room.shape)} · {si.s.size} × {si.s.size}
 				</p>
 				{#if !si.s.open}
-					<p class="hint">Upgrade the gear in this room to reach Lv {si.s.unlock}.</p>
+					{@const need = LV_TH[si.s.unlock] ?? 0}
+					<p class="hint" data-testid="gym3d-spot-progress">
+						This room has <b>{room.points}</b> of <b>{need}</b> points for Lv {si.s.unlock}. Every
+						machine scores its tier, so upgrading one, or filling another spot, gets you there.
+					</p>
+					<div class="g3d-meter" aria-hidden="true">
+						<i style="width:{Math.min(100, (room.points / Math.max(1, need)) * 100)}%"></i>
+					</div>
 				{:else if si.stored.length || si.locked.length}
 					<ul class="gear">
 						{#each si.stored as p (p.id)}
+							{@const pic = gearPic(p.itemKey)}
 							<li>
-								<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{p.name}</b> <span class="stars">{stars(p.tier)}</span>
+										<small class="earn">+{machineRate(p.tier)} coins/h</small>
+									</span>
+								</span>
 								<button
 									type="button"
 									class="g3d-btn primary"
@@ -1219,14 +1241,21 @@ const kitchenView = $derived.by(() => {
 							</li>
 						{/each}
 						{#each si.locked as g (g.key)}
+							{@const pic = gearPic(g.key)}
+							{@const togo = Math.max(0, g.requiredXp - (wallet.data?.xp ?? 0))}
 							<li class="locked">
-								<span><b>{g.name}</b></span>
-								<small>Unlocks at {g.requiredXp} XP</small>
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{g.name}</b>
+										<small class="earn">Unlocks at {g.requiredXp.toLocaleString("en-US")} XP{togo ? ` · ${togo.toLocaleString("en-US")} to go` : ""}</small>
+									</span>
+								</span>
 							</li>
 						{/each}
 					</ul>
 				{:else}
-					<p class="hint">Nothing in storage fits here. New gear comes from gym XP unlocks.</p>
+					<p class="hint">Every machine that fits here is already in your gym.</p>
 				{/if}
 
 			{:else if sheet === "piece" && piece}
@@ -1644,6 +1673,34 @@ const kitchenView = $derived.by(() => {
 	display: block;
 	height: 100%;
 	background: #e0525a;
+}
+
+.gearrow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.gearpic {
+	flex: none;
+	width: 48px;
+	height: 48px;
+	border-radius: 10px;
+	object-fit: cover;
+	border: 2px solid var(--ink);
+	background: #fde7d6;
+}
+
+.gear .locked .gearpic {
+	filter: grayscale(1);
+	opacity: 0.6;
+}
+
+.earn {
+	display: block;
+	color: #6b5a4e;
+	font-weight: 700;
 }
 
 .g3d-staff {

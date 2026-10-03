@@ -1842,6 +1842,20 @@ export class Gym3DApp {
 		return url
 	}
 
+	private gearPics = new Map<string, string | null>()
+
+	/** A thumbnail of a piece of gear by its key (cached; null if it cannot
+	 * be drawn), for the spot sheet. */
+	gearPreview(itemKey: string): string | null {
+		if (this.gearPics.has(itemKey)) return this.gearPics.get(itemKey) ?? null
+		if (this.disposed) return null
+		bindWorld(this.world.ctx)
+		const url = this.world.previewGear(itemKey, this.r.renderer)
+		this.gearPics.set(itemKey, url)
+		this.r.dirtyShadow()
+		return url
+	}
+
 	/** Screen point (inside the host) of a person, for tests and tooling. */
 	screenOf(key: string): { x: number; y: number } | null {
 		const p = this.people.find(key)

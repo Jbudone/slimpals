@@ -114,6 +114,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   around a room/lot) while selected, a squash, one pooled floor ripple, `navigator.vibrate(10)`; DOM badges and
   coin bubbles get `.g3d-tapped`. Reduced motion: marker only. A room tap opens the room action menu (info, Upgrade
   gear, Staff, Customize = paint + decor; `Selection.view`), never paint first.
+- Spot sheet (tap an empty pad): a locked spot says how many room points the room has of the points its level needs
+  (`LV_TH`); an open one lists stored and still-locked gear with a picture each (`Gym3DApp.gearPreview` ->
+  `World.previewGear`: built like a placed piece, drawn once offscreen, cached per key; the shared geometries stay in
+  the asset cache until `dispose()`), coins per hour, and for locked gear the XP still to go. e2e: `gym3d-life.spec.ts`
+  ("spots").
 - Test hook while mounted: `window.gym3d` = `{ ready, stats(), tap(x, y), screenOf(key), people(), layout(),
   screenAt(x, y, z), panTo(x, z), moveTargets(), lineup(on?), info(key), claiming(), portrait(npcKey),
   coinsWaiting(), coinBubbles(), collectAll(), kitchen(), bubbles(), say(key, text), pick(x, y) }` (pick: what a

@@ -396,6 +396,86 @@ export class GymWorld implements NavSource {
 		}
 	}
 
+	/** A small picture of a piece of gear that is not placed anywhere (the
+	 * spot sheet's thumbnails): built like a placed piece, drawn once into an
+	 * offscreen target and freed again. Null when it cannot be drawn. */
+	previewGear(itemKey: string, rd: T.WebGLRenderer, size = 160): string | null {
+		const build = EQUIP[itemKey]
+		if (!build || typeof document === "undefined") return null
+		const c = this.ctx
+		c.stations = []
+		c.ticks = []
+		const prevRng = c.rng
+		c.rng = mulberry32(hashString(`preview:${itemKey}`))
+		let g: T.Group
+		try {
+			g = build()
+		} catch {
+			return null
+		} finally {
+			c.stations = null
+			c.ticks = null
+			c.rng = prevRng
+		}
+		const scene = new T.Scene()
+		scene.background = new T.Color("#fde7d6")
+		const hemi = new T.HemisphereLight(0xfff4ea, 0xb07a6a, 0.9 * Math.PI)
+		const key = new T.DirectionalLight(0xffffff, 0.7 * Math.PI)
+		key.position.set(3, 5, 4)
+		scene.add(hemi, key, g)
+		g.updateMatrixWorld(true)
+		const ball = new T.Box3().setFromObject(g).getBoundingSphere(new T.Sphere())
+		const cam = new T.PerspectiveCamera(26, 1, 0.1, 60)
+		cam.position
+			.copy(ball.center)
+			.addScaledVector(new T.Vector3(1, 0.85, 1).normalize(), ball.radius * 3.2)
+		cam.lookAt(ball.center)
+		const rt = new T.WebGLRenderTarget(size, size)
+		let url: string | null = null
+		try {
+			const prev = rd.getRenderTarget()
+			rd.setRenderTarget(rt)
+			rd.render(scene, cam)
+			const px = new Uint8Array(size * size * 4)
+			rd.readRenderTargetPixels(rt, 0, 0, size, size, px)
+			rd.setRenderTarget(prev)
+			const cv = document.createElement("canvas")
+			cv.width = size
+			cv.height = size
+			const g2 = cv.getContext("2d")
+			if (g2) {
+				const img = g2.createImageData(size, size)
+				// WebGL rows run bottom-up
+				for (let y = 0; y < size; y++)
+					img.data.set(
+						px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4),
+						y * size * 4,
+					)
+				g2.putImageData(img, 0, 0)
+				url = cv.toDataURL("image/png")
+			}
+		} catch {
+			url = null
+		} finally {
+			const a = c.assets
+			g.removeFromParent()
+			g.traverse((o) => {
+				const m = o as T.Mesh
+				if (m.geometry) a.release(m.geometry)
+				const mat = m.material as T.Material | T.Material[] | undefined
+				for (const x of Array.isArray(mat) ? mat : mat ? [mat] : []) {
+					const map = (x as T.MeshStandardMaterial).map
+					if (map) a.release(map)
+					a.release(x)
+				}
+			})
+			rt.dispose()
+			hemi.dispose()
+			key.dispose()
+		}
+		return url
+	}
+
 	private removePiece(p: Piece): void {
 		const a = this.ctx.assets
 		p.root.removeFromParent()

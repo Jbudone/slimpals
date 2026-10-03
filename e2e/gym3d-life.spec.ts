@@ -8,6 +8,7 @@ import {
 	test,
 } from "@playwright/test"
 import mysql from "mysql2/promise"
+import { type EquipmentRoomType, roomSpots } from "../shared/gym3d/rooms.js"
 import { AUTH_ORIGIN, mintInviteCode, registerUser } from "./helpers.js"
 
 // 3D gym life (gym3d slice 3) on a phone: today's event by the entrance,
@@ -685,4 +686,94 @@ test("3D gym staff: tapping a staff member shows a card and training levels them
 	await shot(page, "08-staff-trained")
 	const cards = (await page.request.get("/api/gym/staff")).ok()
 	expect(cards).toBe(true)
+})
+
+test("3D gym spots: a locked spot shows how close it is, an open one shows gear pictures", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "spots")
+	await page.goto("/")
+	await waitReady(page)
+	const L = await page.evaluate(() => window.gym3d?.layout())
+	expect(L).toBeTruthy()
+	if (!L) return
+	const taken = new Set(
+		L.pieces
+			.filter((p) => p.roomId != null && p.spotIndex != null)
+			.map((p) => `${p.roomId}:${p.spotIndex}`),
+	)
+	type Pick = { x: number; z: number; type: string; size: number }
+	let locked: Pick | null = null
+	let open: (Pick & { hasGear: boolean }) | null = null
+	for (const r of L.rooms) {
+		if (r.building || r.type === "lobby" || r.type === "empty") continue
+		for (const s of roomSpots(r.type as EquipmentRoomType, r.cells)) {
+			if (taken.has(`${r.id}:${s.index}`)) continue
+			const where = { x: s.x, z: s.z, type: r.type, size: s.size }
+			if (r.level < s.unlock) locked ??= where
+			else if (!open) {
+				const hasGear =
+					L.lockedGear.some(
+						(g) => g.roomType === r.type && g.size === s.size,
+					) ||
+					L.pieces.some(
+						(p) =>
+							p.status === "stored" &&
+							p.roomType === r.type &&
+							p.size === s.size,
+					)
+				open = { ...where, hasGear }
+			}
+		}
+	}
+
+	const tapAt = async (x: number, z: number) => {
+		await page.evaluate(([a, c]) => window.gym3d?.panTo(a, c), [x, z] as const)
+		await page.waitForTimeout(700)
+		const pt = await page.evaluate(
+			([a, c]) => window.gym3d?.screenAt(a, 0.05, c) ?? null,
+			[x, z] as const,
+		)
+		const box = await page.locator("[data-testid=gym3d]").boundingBox()
+		if (!pt || !box) throw new Error("no gym")
+		await page.mouse.click(box.x + pt.x, box.y + pt.y)
+	}
+	const sheet = page.getByTestId("gym3d-sheet")
+
+	// a locked spot: points of the room towards the level it needs
+	expect(locked).toBeTruthy()
+	if (locked) {
+		await tapAt(locked.x, locked.z)
+		await expect(sheet).toHaveAttribute("data-sheet", "spot")
+		await expect(page.getByTestId("gym3d-spot-progress")).toContainText(
+			"points for Lv",
+		)
+		await shot(page, "09-locked-spot")
+		await page.getByRole("button", { name: "Close" }).click()
+	}
+
+	// an open empty spot: every machine that fits has a picture
+	expect(open).toBeTruthy()
+	if (open?.hasGear) {
+		const gpu = () =>
+			page.evaluate(() => {
+				const st = window.gym3d?.stats()
+				return { geometries: st?.geometries ?? 0, textures: st?.textures ?? 0 }
+			})
+		await tapAt(open.x, open.z)
+		await expect(sheet).toHaveAttribute("data-sheet", "spot")
+		const pics = page.getByTestId("gym3d-gearpic")
+		await expect(pics.first()).toBeVisible()
+		const src = await pics.first().getAttribute("src")
+		expect(src).toMatch(/^data:image\/png/)
+		await shot(page, "10-gear-previews")
+		// the pictures are drawn once: opening the sheet again allocates nothing
+		const once = await gpu()
+		await page.getByRole("button", { name: "Close" }).click()
+		await tapAt(open.x, open.z)
+		await expect(pics.first()).toBeVisible()
+		expect(await gpu()).toEqual(once)
+	}
 })
