@@ -70,6 +70,7 @@ import {
 import { bestHit, type HitCat, isTap, TAP_SLOP } from "./world/picking"
 import { bindWorld, isBound, unbindWorld } from "./world/state"
 import { buzz, TapFx } from "./world/tapFx"
+import { Traffic } from "./world/traffic"
 import type { Person, Piece } from "./world/types"
 import { GymWorld, type PickInfo } from "./world/world"
 
@@ -145,6 +146,7 @@ export type Gym3DStats = {
 	classPeople: number
 	heroes: number
 	ghost: number
+	cars: number
 	/** Coin bubbles showing now. */
 	bubbles: number
 	sweat: number
@@ -330,6 +332,7 @@ export class Gym3DApp {
 	/** Clock of the last upgrade claim (banter talks about fresh gear). */
 	private lastClaimAt = -1e9
 	private kitchen: Kitchen
+	private traffic: Traffic
 	private coinBubs = new Map<string, CoinBubble>()
 	/** Tap feedback: selection marker, squash, ripple (world/tapFx.ts). */
 	private fx: TapFx
@@ -391,6 +394,7 @@ export class Gym3DApp {
 				typeof window !== "undefined" &&
 				!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 			this.fx = new TapFx(this.world.scene, this.assets, this.calm)
+			this.traffic = new Traffic(this.world, this.calm)
 		} catch (e) {
 			this.r.dispose()
 			unbindWorld()
@@ -610,6 +614,7 @@ export class Gym3DApp {
 			this.updateCoins(now)
 		}
 		this.kitchen.frame(dt)
+		this.traffic.frame(dt)
 		this.fx.frame(dt)
 		this.clock += dt
 		if (this.claiming) this.claimTick(dt)
@@ -2266,6 +2271,7 @@ export class Gym3DApp {
 			rippling: this.fx.rippling,
 			taps: this.taps,
 			...this.hap.stats(),
+			cars: this.traffic.count,
 		}
 	}
 
@@ -2291,6 +2297,7 @@ export class Gym3DApp {
 		this.hap.dispose()
 		this.coinBubs.clear()
 		this.kitchen.dispose()
+		this.traffic.dispose()
 		this.fx.dispose()
 		this.says.dispose()
 		this.labels.dispose()
