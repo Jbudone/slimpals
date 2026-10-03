@@ -6,8 +6,8 @@
 // - variety: 1 per different room type;
 // - decor: 0.5 per placed decor piece, up to 6 pieces;
 // - staff: 1 per different placed staff piece;
-// - big rooms: 2 for every room that spans two or more plots.
-// Open walls between rooms are not built yet; when they are, they join here.
+// - big rooms: 2 for every room that spans two or more plots;
+// - open walls: 1 for every wall opened between two rooms, up to 4.
 import type { GymLayoutPieceDto, GymLayoutRoomDto } from "../types.js"
 
 export type RatingInput = {
@@ -19,6 +19,8 @@ export type RatingInput = {
 		GymLayoutPieceDto,
 		"kind" | "itemKey" | "tier" | "status"
 	>[]
+	/** Walls opened between rooms (none when left out). */
+	openWalls?: number
 }
 
 export const RATING = {
@@ -30,6 +32,8 @@ export const RATING = {
 	staffPoints: 1,
 	varietyPoints: 1,
 	bigRoomPoints: 2,
+	openWallPoints: 1,
+	openWallCap: 4,
 } as const
 
 export type Rating = {
@@ -45,6 +49,7 @@ export type Rating = {
 		decor: number
 		staff: number
 		bigRooms: number
+		openWalls: number
 	}
 }
 
@@ -70,13 +75,17 @@ export function gymScore(input: RatingInput): Rating["parts"] & {
 		).size * RATING.staffPoints
 	const bigRooms =
 		rooms.filter((r) => r.cells.length >= 2).length * RATING.bigRoomPoints
+	const openWalls =
+		Math.min(RATING.openWallCap, Math.max(0, input.openWalls ?? 0)) *
+		RATING.openWallPoints
 	return {
 		levels,
 		variety,
 		decor,
 		staff,
 		bigRooms,
-		total: levels + variety + decor + staff + bigRooms,
+		openWalls,
+		total: levels + variety + decor + staff + bigRooms + openWalls,
 	}
 }
 

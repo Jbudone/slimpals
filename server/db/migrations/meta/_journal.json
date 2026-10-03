@@ -169,6 +169,13 @@
       "when": 1790050000000,
       "tag": "0023_gym_staff",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1790060000000,
+      "tag": "0024_gym_open_walls",
+      "breakpoints": true
     }
   ]
 }

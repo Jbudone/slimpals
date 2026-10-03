@@ -15,6 +15,7 @@ import {
 	roomName,
 	WORLD_ROWS,
 } from "../../../../shared/gym3d/rooms"
+import { wallKey } from "../../../../shared/gym3d/walls"
 import type { GymLayoutDto } from "../../../../shared/types"
 import type { AssetCache } from "../engine/assets"
 import {
@@ -209,6 +210,8 @@ export class GymWorld implements NavSource {
 	private plotRoom = new Map<string, number>()
 	/** Owned and building cells -> room id (walls). */
 	private plotAll = new Map<string, number>()
+	/** Walls knocked out between rooms (wallKey of each). */
+	private openWalls = new Set<string>()
 	private wallSegs: WallSeg[] = []
 	private flags: { mesh: T.Object3D; id: number }[] = []
 	private floorG = new T.Group()
@@ -287,6 +290,7 @@ export class GymWorld implements NavSource {
 		this.cols = Math.max(3, maxPx + 1)
 		this.plotRoom.clear()
 		this.plotAll.clear()
+		this.openWalls = new Set(layout.openWalls.map(wallKey))
 		for (const p of layout.plots) {
 			if (p.roomId == null) continue
 			this.plotAll.set(pkey(p.px, p.pz), p.roomId)
@@ -703,6 +707,13 @@ export class GymWorld implements NavSource {
 					const mid = (a0 + a1) / 2
 					if (nb != null) {
 						if (nb === r.id || !low) continue
+						// knocked out: no wall at all, not even a doorway
+						if (
+							this.openWalls.has(
+								wallKey({ px: P.px, pz: P.pz, axis: vert ? "x" : "z" }),
+							)
+						)
+							continue
 						segs.push({
 							vert,
 							c,

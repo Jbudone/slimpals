@@ -227,6 +227,7 @@ export type GymRatingDto = {
 		decor: number
 		staff: number
 		bigRooms: number
+		openWalls: number
 	}
 }
 
@@ -242,6 +243,9 @@ export type GymGoalDto = {
 
 export type GymLayoutDto = {
 	gymId: number
+	/** Walls opened between rooms, and what the next one costs. */
+	openWalls: { px: number; pz: number; axis: "x" | "z" }[]
+	nextWallCost: number
 	/** Star rating (1..5) from the layout. */
 	rating: GymRatingDto
 	/** Every goal in queue order; the HUD shows the first open ones. */

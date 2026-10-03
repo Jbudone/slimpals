@@ -882,3 +882,68 @@ test("3D gym hustle: tapping a working member until they finish pays a small coi
 		)
 		.toBeGreaterThan(coins0)
 })
+
+test("3D gym walls: knocking out a wall between two rooms joins them and scores", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "walls")
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	if (!L0) throw new Error("no layout")
+	expect(L0.openWalls).toEqual([])
+	const room = L0.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	expect(room).toBeTruthy()
+	if (!room) return
+	const cx = room.cells[0].px * PW + PW / 2
+	const cz = room.cells[0].pz * PD + PD / 2
+	const sheet = page.getByTestId("gym3d-sheet")
+
+	// tap the room's floor (a few points: a member may stand on one)
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+	for (const [dx, dz] of [
+		[0, 0],
+		[0.4, 0],
+		[-0.4, 0.1],
+		[0, -0.2],
+	]) {
+		await page.evaluate(([a, b]) => window.gym3d?.panTo(a, b), [
+			cx,
+			cz,
+		] as const)
+		await page.waitForTimeout(600)
+		const pt = await page.evaluate(
+			([a, b]) => window.gym3d?.screenAt(a, 0.02, b) ?? null,
+			[cx + dx, cz + dz] as const,
+		)
+		if (!pt) continue
+		await page.mouse.click(box.x + pt.x, box.y + pt.y)
+		const on = await sheet
+			.getAttribute("data-sheet", { timeout: 1500 })
+			.catch(() => null)
+		if (on === "room") break
+	}
+	await expect(sheet).toHaveAttribute("data-sheet", "room")
+	await page.getByTestId("room-walls").click()
+	await expect(page.getByTestId("room-walls-list")).toBeVisible()
+	await shot(page, "12-walls-menu")
+
+	await page.getByTestId("gym3d-open-wall").first().click()
+	await expect
+		.poll(
+			async () =>
+				(await page.evaluate(() => window.gym3d?.layout().openWalls.length)) ??
+				0,
+		)
+		.toBe(1)
+	const L1 = await page.evaluate(() => window.gym3d?.layout())
+	expect(L1?.nextWallCost).toBeGreaterThan(L0.nextWallCost)
+	expect(L1?.coins).toBeLessThan(L0.coins)
+	await page.waitForTimeout(600)
+	await shot(page, "13-wall-open")
+})

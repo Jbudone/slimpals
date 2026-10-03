@@ -69,6 +69,7 @@ import {
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
 import { staffCards, trainStaff } from "../services/gym/staff.js"
+import { openWall } from "../services/gym/walls3d.js"
 
 export async function fetchUserStats(userId: string) {
 	const checkins = await db
@@ -449,6 +450,13 @@ export function createGymRouter(aiService: AIService) {
 		build((gymId, req) =>
 			sweatJob(db, gymId, idParam(req, "jobId"), "hour", maxCostOf(req)),
 		),
+	)
+	// Knock out the wall between two finished rooms ({ px, pz, axis }).
+	router.post(
+		"/gym/layout/walls/open",
+		build(async (gymId, req) => {
+			await openWall(db, gymId, req.body ?? {})
+		}),
 	)
 	// Idle coins: tap one bubble ({ keys: ["piece:12"] }) or collect all.
 	router.post(

@@ -2,6 +2,7 @@
 import {
 	ChevronLeft,
 	ChevronRight,
+	DoorOpen,
 	Dumbbell,
 	Paintbrush,
 	Users,
@@ -26,6 +27,7 @@ import {
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
+import { sharedWalls, type WallRef, wallKey } from "../../../shared/gym3d/walls"
 import type {
 	GymJobDto,
 	GymLayoutDto,
@@ -187,6 +189,7 @@ const sheet = $derived.by(() => {
 		if (s.view === "customize") return "paint"
 		if (s.view === "gear") return "room-gear"
 		if (s.view === "staff") return "room-staff"
+		if (s.view === "walls") return "room-walls"
 		return "room"
 	}
 	return null
@@ -380,6 +383,31 @@ const roomStaff = $derived.by(() => {
 	const r = room
 	return sheet === "room-staff" && r && app ? app.staffIn(r.id) : []
 })
+
+/** The walls this room shares with other finished rooms, open or not. */
+const roomWalls = $derived.by(() => {
+	const r = room
+	const L = layout
+	if (!r || !L) return []
+	const opened = new Set(L.openWalls.map(wallKey))
+	return sharedWalls(L.plots, L.rooms)
+		.filter((w) => w.near === r.id || w.far === r.id)
+		.map((w) => {
+			const otherId = w.near === r.id ? w.far : w.near
+			const other = L.rooms.find((q) => q.id === otherId)
+			return {
+				ref: w.ref,
+				label: other ? roomLabel(other.type, other.shape) : "Room",
+				open: opened.has(wallKey(w.ref)),
+			}
+		})
+})
+
+/** Knocks out a wall for coins (the server checks and charges). */
+async function openWallTo(ref: WallRef) {
+	const next = await act("walls/open", ref)
+	if (next) say("Wall knocked out. The rooms are one space now.")
+}
 
 async function buyLot() {
 	const l = lot
@@ -1086,6 +1114,19 @@ const kitchenView = $derived.by(() => {
 							<ChevronRight size={18} />
 						</button>
 					</li>
+					{#if roomWalls.length}
+						<li>
+							<button type="button" class="rrow" onclick={() => roomPage("walls")} data-testid="room-walls">
+								<span class="ric"><DoorOpen size={20} /></span>
+								<span class="rtx"
+									><b>Open walls</b><small
+										>{roomWalls.filter((w) => w.open).length} of {roomWalls.length} open</small
+									></span
+								>
+								<ChevronRight size={18} />
+							</button>
+						</li>
+					{/if}
 				</ul>
 
 			{:else if sheet === "room-gear" && room && roomInfo}
@@ -1138,6 +1179,33 @@ const kitchenView = $derived.by(() => {
 						<li class="locked">
 							<span><b>Bonus spot</b> <small>{q.size} × {q.size}</small></span>
 							<small>Opens at Lv {q.unlock}</small>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if sheet === "room-walls" && room}
+				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
+					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
+				>
+				<h3>Open walls</h3>
+				<p class="sub">Knock out a wall to join two rooms into one space. It counts towards your stars.</p>
+				<ul class="gear" data-testid="room-walls-list">
+					{#each roomWalls as w (wallKey(w.ref))}
+						<li>
+							<span><b>{w.label}</b></span>
+							{#if w.open}
+								<small>Open</small>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									disabled={busy || (layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
+									onclick={() => openWallTo(w.ref)}
+									data-testid="gym3d-open-wall"
+								>
+									Open <span class="cur">{@html COIN_SVG}</span>{(layout?.nextWallCost ?? 0).toLocaleString("en-US")}
+								</button>
+							{/if}
 						</li>
 					{/each}
 				</ul>

@@ -77,13 +77,20 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   Admin grants coins/Sweat/Greens (`POST /admin/users/:id/gym/coins|sweat|greens`) and can simulate time
   away (`POST /admin/users/:id/gym/away {hours}`).
 - Rating and goals: the gym's 1-5 star rating is a pure score of the layout (`shared/gym3d/rating.ts`: room
-  levels, room-type variety, decor, staff pieces, rooms of 2+ plots; open walls will join when built). The rolling
+  levels, room-type variety, decor, staff pieces, rooms of 2+ plots, open walls up to 4). The rolling
   goals queue is `shared/gym3d/goals.ts` (fixed order, each pays Sweat/Greens once). Both ride on `GET /gym/layout`
   (`rating`, `goals`, and `goalsPaid` for goals reached by that read) and are settled in `getGymLayoutDto`
   (`layout3dStore.ts`) through `gym_rewards` (`goal:<id>`; `payGymReward` takes the gym row lock first so racing
   reads pay once). The first read of a gym writes `goal:_start` and marks what it already meets as done without
   paying. UI: `GoalsCard.svelte` (star button under the coach; the account avatar owns the top-right) fed by `src/lib/goals.svelte.ts`. Tests:
   `tests/gym3d/rating-goals.test.ts` (pure), `goals-route.test.ts` (DB).
+- Open walls: the wall between two finished, typed rooms can be knocked out for coins (`ECONOMY.walls`: 400, +250
+  for each one already open). A wall is named from the plot on its far side (`shared/gym3d/walls.ts`: `WallRef` =
+  px, pz and axis x|z, `sharedWalls`, `openWallCost`); rows live in `gym_open_walls` (migration 0024) and the layout
+  carries `openWalls` and `nextWallCost`. `POST /api/gym/layout/walls/open {px, pz, axis}` (`walls3d.ts`) validates
+  that the wall exists and is not open, then charges under the gym row lock. The world (`world.ts` `buildWalls`)
+  leaves an open wall out entirely, so paths and sight lines join the rooms. It scores 1 star point each (cap 4)
+  and pays the `wall-1` goal. UI: the room menu's "Open walls" page. e2e: `gym3d-life.spec.ts` ("walls").
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds

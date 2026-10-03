@@ -62,6 +62,12 @@ export const ECONOMY = {
 		/** Hours one Sweat takes off a job. */
 		hoursPerSweat: 1,
 	},
+	/** Open walls: knocking out the wall between two finished rooms. Each
+	 * one opened makes the next cost `step` more. */
+	walls: {
+		base: 400,
+		step: 250,
+	},
 	/** Tap-to-hustle: tapping a working member until they are done pays a
 	 * few coins, less as the day goes on, and nothing past the daily cap
 	 * (a toy, not an income). */

@@ -118,7 +118,7 @@ export type Selection =
 	| { kind: "kitchen" }
 
 /** Pages of the room action menu. */
-export type RoomView = "gear" | "staff" | "customize"
+export type RoomView = "gear" | "staff" | "customize" | "walls"
 
 export type Gym3DStats = {
 	rooms: number
