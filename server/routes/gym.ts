@@ -18,7 +18,7 @@ import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService } from "../services/ai/index.js"
-import { checkAndAward } from "../services/badges/index.js"
+import { checkAndAward, shareBadges } from "../services/badges/index.js"
 import {
 	BuildError,
 	buyLot,
@@ -386,6 +386,7 @@ export function createGymRouter(aiService: AIService) {
 				},
 				db,
 			)
+			await shareBadges(userId, newBadges, db)
 			res.json({ ...r, newBadges })
 		} catch (e) {
 			if (e instanceof BuildError) {

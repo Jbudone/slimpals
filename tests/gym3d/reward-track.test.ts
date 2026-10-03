@@ -5,6 +5,7 @@ import {
 	dailyCheckins,
 	gymCosmetics,
 	invites,
+	socialPosts,
 	userGyms,
 	users,
 } from "../../server/db/schema.js"
@@ -144,6 +145,15 @@ describe("reward track route", () => {
 		expect(res.body.newBadges.map((b: { key: string }) => b.key)).toEqual([
 			"track_first",
 		])
+		// ...and, with auto-share on (the default), posts it to the feed
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.userId, userId))
+		expect(posts.map((p) => p.type)).toEqual(["milestone"])
+		expect((posts[0].content as { badgeKey: string }).badgeKey).toBe(
+			"track_first",
+		)
 		expect(res.body.track.claimed).toBe(1)
 		expect(res.body.track.claimedToday).toBe(true)
 		const [g1] = await db
