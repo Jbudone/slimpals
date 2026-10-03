@@ -168,7 +168,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   exclamation marks) picked to fit the gym (`BanterContext`: finished room types, placed gear, a crowd, today's event, a running class, gear upgraded in the last 3 minutes): a missing pool,
   sauna, ring or megaformer gets talked about, plain chatter is the fallback, recent ids are not repeated. `Life.banter`
   plays one between two nearby people about once a minute as alternating bubbles through the normal bubble pool
-  (`app.banterContext()` feeds it). Not yet: the nightly AI batch, the "NPC banter" content-tuning type, relationships.
+  (`app.banterContext()` feeds it). Admin's content tuning has an "NPC Banter" type (`contentTuning/npcBanter.ts`, style doc `docs/npc_banter.md`; a sample is a few exchanges for a chosen situation). Not yet: the nightly AI batch that would feed it into the game, relationships.
 - Upgrade look (gh-134, first slice): `equipment/tiers.ts` `applyTier` still recolours and adds the edge and pennant, and
   now `addUpgradeParts` gives every upgraded machine real parts: tier 2 a floor mat and a console (screen on a stand), tier 3
   a bigger gold screen, speakers and an overhead light arch. Generic for all gear (sized from the piece footprint); the

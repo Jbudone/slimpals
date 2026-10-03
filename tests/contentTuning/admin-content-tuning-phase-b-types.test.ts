@@ -35,6 +35,8 @@ const stubAI: AIService = {
 			personalityTagAdded: null,
 		},
 	],
+	generateCoachSample: async (systemInstruction, scenarioText) =>
+		`rules: ${systemInstruction.slice(0, 30)} | scene: ${scenarioText}`,
 	generateGymEvent: async (prompt) => ({
 		type: "class",
 		title: `Event for prompt of length ${prompt.length}`,
@@ -117,7 +119,9 @@ describe("GET /api/admin/content-tuning/types (Phase B rollout)", () => {
 
 		expect(res.status).toBe(200)
 		const keys = res.body.map((t: { key: string }) => t.key)
-		expect(keys).toEqual(expect.arrayContaining(["npc_dialog", "gym_events"]))
+		expect(keys).toEqual(
+			expect.arrayContaining(["npc_dialog", "npc_banter", "gym_events"]),
+		)
 	})
 })
 
@@ -154,5 +158,22 @@ describe("POST /api/admin/content-tuning/gym_events/default/generate", () => {
 		expect(res.status).toBe(200)
 		expect(res.body.sample).toContain("[class] Event for prompt of length")
 		expect(res.body.sample).toContain("Host: trainer_marcus")
+	})
+})
+
+describe("POST /api/admin/content-tuning/npc_banter/default/generate", () => {
+	it("feeds the banter style doc and the chosen situation to the generator", async () => {
+		const { cookie, userId } = await registerAndLogin(
+			"admin-npcbanter-gen@slimpals.test",
+			"Admin",
+		)
+		await makeAdmin(userId)
+		const res = await request(app)
+			.post("/api/admin/content-tuning/npc_banter/default/generate")
+			.set("Cookie", cookie)
+			.send({ contextParams: { situation: "no_pool" } })
+		expect(res.status).toBe(200)
+		expect(res.body.sample).toContain("rules: Write three short exchanges")
+		expect(res.body.sample).toContain("MaxOut")
 	})
 })
