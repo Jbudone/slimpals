@@ -12,7 +12,7 @@ import {
 	gearLine,
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
-import { ghostLine } from "../../../../shared/gym3d/ghost"
+import { GHOST_LOCKERS, ghostLine } from "../../../../shared/gym3d/ghost"
 import {
 	firstName,
 	pairLines,
@@ -320,7 +320,8 @@ export class Life {
 
 	/** One line for a person, or null. */
 	lineFor(p: Person): string | null {
-		if (p.key === "ghost") return ghostLine(this.rng)
+		if (p.key === "ghost")
+			return ghostLine(this.rng, p.fixed?.label === GHOST_LOCKERS)
 		const recent = this.recent.get(p.key) ?? []
 		if (p.npcKey) {
 			const role = this.roles.get(p.npcKey) ?? p.role ?? "regular"
