@@ -100,3 +100,27 @@ export async function removeCosmetic(
 		if (!res.affectedRows) throw new BuildError(409, "It is not on show")
 	})
 }
+
+/** Puts an owned outfit on the coach or takes it off. */
+export async function wearCosmetic(
+	db: Db,
+	gymId: number,
+	key: string,
+	worn: boolean,
+): Promise<void> {
+	if (cosmeticOf(key)?.kind !== "outfit")
+		throw new BuildError(400, "That is not an outfit")
+	await withGym(db, gymId, async (tx) => {
+		const [own] = await tx
+			.select({ id: gymCosmetics.id })
+			.from(gymCosmetics)
+			.where(
+				and(eq(gymCosmetics.gymId, gymId), eq(gymCosmetics.cosmeticKey, key)),
+			)
+		if (!own) throw new BuildError(409, "You do not own that yet")
+		await tx
+			.update(gymCosmetics)
+			.set({ worn })
+			.where(eq(gymCosmetics.id, own.id))
+	})
+}

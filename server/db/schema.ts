@@ -422,6 +422,8 @@ export const gymCosmetics = mysqlTable(
 		cosmeticKey: varchar("cosmetic_key", { length: 64 }).notNull(),
 		/** What gave it (e.g. track:2026-10:7). */
 		source: varchar("source", { length: 64 }).notNull(),
+		/** Outfits: whether the coach wears it (decor ignores this). */
+		worn: boolean("worn").notNull().default(true),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(t) => [unique("gym_cosmetics_gym_key_uq").on(t.gymId, t.cosmeticKey)],

@@ -281,6 +281,8 @@ export type GymCosmeticDto = {
 	key: string
 	name: string
 	kind: "decor" | "outfit"
+	/** Outfits: the coach wears it now. */
+	worn: boolean
 	from: string
 	/** ISO time it was granted. */
 	at: string

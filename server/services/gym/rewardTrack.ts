@@ -180,6 +180,7 @@ export async function listCosmetics(
 						key: def.key,
 						name: def.name,
 						kind: def.kind,
+						worn: r.worn,
 						from: def.from,
 						at: r.createdAt.toISOString(),
 					},
