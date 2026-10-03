@@ -26,6 +26,13 @@ describe("ambient banter", () => {
 		}
 	})
 
+	it("has a rival to compare with: MaxOut across the street", () => {
+		const bare = { ...full, rooms: ["cardio"], gear: [] }
+		const lines = banterFor(bare).flatMap((b) => b.lines)
+		expect(lines.some((l) => l.includes("MaxOut"))).toBe(true)
+		expect(banterFor(full).some((b) => b.id.startsWith("maxout"))).toBe(false)
+	})
+
 	it("talks about what the gym is missing, and about a crowd", () => {
 		const bare = { ...full, rooms: ["cardio"], gear: [] }
 		const ids = banterFor(bare).map((b) => b.id)
