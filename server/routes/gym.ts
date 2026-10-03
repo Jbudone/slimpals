@@ -70,6 +70,7 @@ import {
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
 import { staffCards, trainStaff } from "../services/gym/staff.js"
+import { setRoomVibe } from "../services/gym/vibes3d.js"
 import { openWall } from "../services/gym/walls3d.js"
 
 export async function fetchUserStats(userId: string) {
@@ -451,6 +452,13 @@ export function createGymRouter(aiService: AIService) {
 		build((gymId, req) =>
 			sweatJob(db, gymId, idParam(req, "jobId"), "hour", maxCostOf(req)),
 		),
+	)
+	// Set or clear a finished room's vibe ({ vibe: "chill" | "hype" | "focus" | "none" }).
+	router.post(
+		"/gym/layout/rooms/:roomId/vibe",
+		build(async (gymId, req) => {
+			await setRoomVibe(db, gymId, idParam(req, "roomId"), req.body?.vibe)
+		}),
 	)
 	// Hire a staff member for a finished room.
 	router.post(

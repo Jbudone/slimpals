@@ -157,6 +157,8 @@ export type Person = {
 	speed?: number
 	/** Workout speed factor while being hustled (decays back to 1). */
 	boost?: number
+	/** Workout speed factor of the room they work out in (its vibe). */
+	pace?: number
 	/** Extra chip line (the class a member is in). */
 	note?: string | null
 }

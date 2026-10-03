@@ -115,6 +115,8 @@ export type GymLayoutRoomDto = {
 	cells: { px: number; pz: number }[]
 	/** Stored paint, or the room type's default. */
 	paint: GymLayoutPaint
+	/** The room's vibe (shared/gym3d/vibes.ts), or null. */
+	vibe: string | null
 }
 
 export type GymLayoutPieceDto = {
@@ -239,6 +241,7 @@ export type GymRatingDto = {
 		staff: number
 		bigRooms: number
 		openWalls: number
+		vibes: number
 	}
 }
 

@@ -775,12 +775,27 @@ test("3D gym spots: a locked spot shows how close it is, an open one shows gear 
 		const src = await pics.first().getAttribute("src")
 		expect(src).toMatch(/^data:image\/png/)
 		await shot(page, "10-gear-previews")
-		// the pictures are drawn once: opening the sheet again allocates nothing
+		// the pictures are drawn once: opening the sheet again allocates no
+		// new models (a re-draw would add dozens of geometries)
 		const once = await gpu()
 		await page.getByRole("button", { name: "Close" }).click()
-		await tapAt(open.x, open.z)
+		// (a member may walk over the spot: try the tap again)
+		for (let i = 0; i < 4; i++) {
+			await tapAt(open.x, open.z)
+			if (
+				await pics
+					.first()
+					.isVisible({ timeout: 2500 })
+					.catch(() => false)
+			)
+				break
+			await page.waitForTimeout(1200)
+		}
 		await expect(pics.first()).toBeVisible()
-		expect(await gpu()).toEqual(once)
+		const again = await gpu()
+		expect(again.geometries).toBe(once.geometries)
+		// a new member's outfit print may add a texture meanwhile
+		expect(again.textures).toBeLessThanOrEqual(once.textures + 2)
 	}
 })
 
@@ -1019,4 +1034,54 @@ test("3D gym hiring: a hire walks in, stands in the room and can be trained", as
 	await page.getByTestId("gym3d-train").click()
 	await expect(page.getByTestId("gym3d-staff-level")).toHaveText("Level 2")
 	await shot(page, "15-hire-trained")
+})
+
+test("3D gym customize: a style repaints the room and a vibe tints its floor", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "style")
+	await page.goto("/")
+	await waitReady(page)
+	const L0 = await page.evaluate(() => window.gym3d?.layout())
+	if (!L0) throw new Error("no layout")
+	const room = L0.rooms.find(
+		(r) => r.type !== "lobby" && r.type !== "empty" && !r.building,
+	)
+	expect(room).toBeTruthy()
+	if (!room) return
+
+	await openRoomMenu(page, room)
+	await page.getByTestId("room-customize").click()
+	await page.getByTestId("room-style-zen").click()
+	await expect
+		.poll(async () =>
+			page.evaluate(
+				(id) =>
+					window.gym3d?.layout().rooms.find((r) => r.id === id)?.paint.wall,
+				room.id,
+			),
+		)
+		.toBe("#fff1e0")
+
+	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	await page.getByTestId("room-vibe-hype").click()
+	await expect
+		.poll(async () =>
+			page.evaluate(
+				(id) => window.gym3d?.layout().rooms.find((r) => r.id === id)?.vibe,
+				room.id,
+			),
+		)
+		.toBe("hype")
+	expect(
+		(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
+	).toBeLessThan(coins0)
+	await page.waitForTimeout(800)
+	await shot(page, "16-style-vibe")
+	// with the sheet closed, the room shows its new look and glow
+	await page.getByRole("button", { name: "Close" }).click()
+	await page.waitForTimeout(800)
+	await shot(page, "17-style-vibe-room")
 })

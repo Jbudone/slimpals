@@ -7,14 +7,17 @@
 // - decor: 0.5 per placed decor piece, up to 6 pieces;
 // - staff: 1 per different placed staff piece;
 // - big rooms: 2 for every room that spans two or more plots;
-// - open walls: 1 for every wall opened between two rooms, up to 4.
+// - open walls: 1 for every wall opened between two rooms, up to 4;
+// - vibes: 0.5 for each room with a vibe, up to 3 rooms.
 import type { GymLayoutPieceDto, GymLayoutRoomDto } from "../types.js"
+import { VIBE } from "./vibes.js"
 
 export type RatingInput = {
-	rooms: readonly Pick<
+	rooms: readonly (Pick<
 		GymLayoutRoomDto,
 		"type" | "level" | "building" | "cells"
-	>[]
+	> &
+		Partial<Pick<GymLayoutRoomDto, "vibe">>)[]
 	pieces: readonly Pick<
 		GymLayoutPieceDto,
 		"kind" | "itemKey" | "tier" | "status"
@@ -52,6 +55,7 @@ export type Rating = {
 		staff: number
 		bigRooms: number
 		openWalls: number
+		vibes: number
 	}
 }
 
@@ -80,6 +84,9 @@ export function gymScore(input: RatingInput): Rating["parts"] & {
 	const openWalls =
 		Math.min(RATING.openWallCap, Math.max(0, input.openWalls ?? 0)) *
 		RATING.openWallPoints
+	const vibes =
+		Math.min(VIBE.scoreCap, rooms.filter((r) => r.vibe).length) *
+		VIBE.scorePoints
 	return {
 		levels,
 		variety,
@@ -87,7 +94,8 @@ export function gymScore(input: RatingInput): Rating["parts"] & {
 		staff,
 		bigRooms,
 		openWalls,
-		total: levels + variety + decor + staff + bigRooms + openWalls,
+		vibes,
+		total: levels + variety + decor + staff + bigRooms + openWalls + vibes,
 	}
 }
 
