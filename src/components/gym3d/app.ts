@@ -1012,12 +1012,22 @@ export class Gym3DApp {
 		}
 		const title = j.kind === "plot" ? "New room!" : `Tier ${j.targetTier ?? 2}!`
 		const fr = r
+		// an upgraded machine keeps its new parts out of sight until the
+		// ribbon is cut, then they pop in (the before/after)
+		const upgraded =
+			j.kind === "plot"
+				? null
+				: (this.world.pieces.find((q) => q.id === j.pieceId) ?? null)
+		if (upgraded?.deco) upgraded.deco.visible = false
 		this.build.ceremony(
 			fr.x,
 			fr.z,
 			j.kind === "plot" ? 4 : fr.w,
 			Math.min(fr.d, PD - 1),
-			() => this.opts.onJobDone?.(j, title),
+			() => {
+				if (upgraded) this.build.reveal(fr.x, fr.z, upgraded.deco)
+				this.opts.onJobDone?.(j, title)
+			},
 		)
 	}
 
