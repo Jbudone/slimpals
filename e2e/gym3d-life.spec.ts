@@ -1163,3 +1163,24 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 	await waitReady(page)
 	expect(await page.evaluate(() => window.gym3d?.stats().ghost)).toBe(0)
 })
+
+test("3D gym street: passers-by walk along the pavement in front of the gym", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(150_000)
+	const { page } = await setup(request, browser, testInfo, 30, "street")
+	await page.goto("/")
+	await waitReady(page)
+	await expect
+		.poll(
+			async () =>
+				page.evaluate(
+					() =>
+						window.gym3d?.people().filter((k) => k.startsWith("pass:"))
+							.length ?? 0,
+				),
+			{ timeout: 60_000 },
+		)
+		.toBeGreaterThan(0)
+})

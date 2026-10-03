@@ -178,6 +178,10 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   in the lobby and drifts it to the next lobby spot every 40 s; `Life` gives it ghost lines and the name "Ghost". `?ghost=1` /
   `?ghost=0` force it on or off (tests, demos); `stats().ghost` is 1 while it is about. e2e: `gym3d-life.spec.ts` ("ghost").
   Not yet: ghosts guarding the locker rooms or making early leavers stay, costumes, the costume contest.
+- Street life (#131, first slice): `People.trickleStreet` (`people/members.ts`) sends a few passers-by (`pass:<n>`, kind `extra`,
+  at most half the ambient cap) along the pavement in front of the gym from one edge to the other every 6-12 s; about one in
+  eight turns in at the door (`after: "enter"`) and becomes a member. Not yet: the road, crosswalk, lamps, cars, the dog
+  walker, MaxOut and the Burger Baron. e2e: `gym3d-life.spec.ts` ("street").
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
