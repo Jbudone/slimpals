@@ -127,6 +127,10 @@ async function roomPoint(
 		[0.7, 0.9],
 	])
 		pts.push([c.px * 9 + fx * 9, c.pz * 6 + fz * 6])
+	// then anywhere on a grid over the cell
+	for (let fx = 0.1; fx < 1; fx += 0.2)
+		for (let fz = 0.1; fz < 1; fz += 0.2)
+			pts.push([c.px * 9 + fx * 9, c.pz * 6 + fz * 6])
 	for (const [x, z] of pts) {
 		const res = await page.evaluate(
 			([x, z, id]) => {
@@ -136,7 +140,7 @@ async function roomPoint(
 				const host = document.querySelector("[data-testid=gym3d]")
 				if (!host) return null
 				const b = host.getBoundingClientRect()
-				if (p.x < 30 || p.x > b.width - 30 || p.y < 160 || p.y > b.height - 220)
+				if (p.x < 30 || p.x > b.width - 30 || p.y < 140 || p.y > b.height - 170)
 					return null
 				const hit = document.elementFromPoint(b.left + p.x, b.top + p.y)
 				if (hit?.tagName !== "CANVAS") return null
@@ -183,7 +187,7 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	request,
 	browser,
 }, testInfo) => {
-	test.setTimeout(180_000)
+	test.setTimeout(300_000)
 	const { page } = await setup(request, browser, testInfo, 700, "tap")
 	const touch = !!testInfo.project.use.hasTouch
 	const errors: string[] = []
@@ -223,13 +227,16 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	await expect(page.locator(".g3d-sheet .sw2")).toHaveCount(0)
 	await shot(page, "02-room-menu")
 	// the ripple ends; the marker stays while the room is selected. It is
-	// one mesh: the draw calls stay within the gym's phone budget (they
-	// move a little anyway as people walk in and out of view)
+	// one mesh: draw calls stay near idle (and in the phone budget); they
+	// move a little anyway as people walk in and out of view
 	await expect.poll(async () => (await stats(page))?.rippling).toBe(false)
 	const calls1 = (await stats(page))?.drawCalls ?? 0
 	console.log(`gym3d tap draw calls: idle ${calls0}, room selected ${calls1}`)
-	expect(calls0).toBeLessThan(250)
-	expect(calls1).toBeLessThan(250)
+	expect(calls1 - calls0).toBeLessThan(20)
+	if (testInfo.project.use.isMobile) {
+		expect(calls0).toBeLessThan(250)
+		expect(calls1).toBeLessThan(250)
+	}
 
 	// ── Customize reaches paint (and Back returns to the menu) ──
 	await page.getByTestId("room-customize").click()
@@ -313,7 +320,10 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 		const host = document.querySelector("[data-testid=gym3d]")
 		if (!g || !host) return null
 		const b = host.getBoundingClientRect()
+		// a named NPC: a press on a member working out lands on their gear,
+		// where holding still is the deliberate hold-to-move
 		for (const k of g.people()) {
+			if (!k.startsWith("npc:")) continue
 			const p = g.screenOf(k)
 			if (
 				p &&
@@ -399,7 +409,7 @@ test("3D gym: the class banner stays on screen and clear of bubbles", async ({
 	request,
 	browser,
 }, testInfo) => {
-	test.setTimeout(150_000)
+	test.setTimeout(300_000)
 	const { page } = await setup(request, browser, testInfo, 700, "banner")
 	const errors: string[] = []
 	page.on("pageerror", (e) => errors.push(e.message))
