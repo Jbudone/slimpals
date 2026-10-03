@@ -153,6 +153,8 @@ export type Person = {
 	leaving: boolean
 	/** Pose used instead of the station's (a hero flexing on the stage). */
 	poseAs?: PoseName | null
+	/** A dog on a lead beside a passer-by (a child of the rig root). */
+	dog?: T.Mesh
 	/** Walk speed factor (mood). */
 	speed?: number
 	/** Workout speed factor while being hustled (decays back to 1). */

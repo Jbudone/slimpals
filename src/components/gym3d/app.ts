@@ -147,6 +147,7 @@ export type Gym3DStats = {
 	heroes: number
 	ghost: number
 	cars: number
+	dogs: number
 	/** Coin bubbles showing now. */
 	bubbles: number
 	sweat: number
@@ -2272,6 +2273,7 @@ export class Gym3DApp {
 			taps: this.taps,
 			...this.hap.stats(),
 			cars: this.traffic.count,
+			dogs: this.people.people.filter((q) => q.dog).length,
 		}
 	}
 

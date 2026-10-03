@@ -1223,6 +1223,12 @@ test("3D gym street: passers-by walk along the pavement in front of the gym", as
 	expect(await page.evaluate(() => window.gym3d?.stats().cars)).toBeGreaterThan(
 		0,
 	)
+	// a dog walker turns up now and then
+	await expect
+		.poll(async () => page.evaluate(() => window.gym3d?.stats().dogs ?? 0), {
+			timeout: 90_000,
+		})
+		.toBeGreaterThan(0)
 	// look at the street in front of the lobby door
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
 	await page.waitForTimeout(1500)
