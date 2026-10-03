@@ -1146,6 +1146,8 @@ test("3D gym cosmetics: an owned lantern goes on show in a room and comes down",
 })
 
 test("3D gym reward track: after a check-in the card takes a step and the coins arrive", async ({
+
+test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost=1)", async ({
 	request,
 	browser,
 }, testInfo) => {
@@ -1179,4 +1181,17 @@ test("3D gym reward track: after a check-in the card takes a step and the coins 
 			{ timeout: 10_000 },
 		)
 		.toBeGreaterThan(coins0)
+
+const { page } = await setup(request, browser, testInfo, 30, "ghost")
+await page.goto("/?ghost=1")
+await waitReady(page)
+await expect
+	.poll(async () => page.evaluate(() => window.gym3d?.stats().ghost))
+	.toBe(1)
+await page.waitForTimeout(1200)
+await shot(page, "19-ghost")
+// and off again with ?ghost=0
+await page.goto("/?ghost=0")
+await waitReady(page)
+expect(await page.evaluate(() => window.gym3d?.stats().ghost)).toBe(0)
 })
