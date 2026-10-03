@@ -15,6 +15,7 @@ import {
 	KITCHEN_MENU,
 	levelProgress,
 	machineRate,
+	menuInSeason,
 	upgradeInfo,
 	WALL_COLORS,
 } from "../../../shared/gym3d/economy"
@@ -1040,7 +1041,7 @@ const kitchenView = $derived.by(() => {
 					<div><small>Rush hour</small><b>{kv.rush ? fmtLeft(kv.rushLeft) : "Off"}</b></div>
 				</div>
 				<ul class="menu">
-					{#each KITCHEN_MENU as m (m.key)}
+					{#each KITCHEN_MENU.filter((q) => kv.k.menu.includes(q.key) || menuInSeason(q, new Date().getUTCMonth() + 1)) as m (m.key)}
 						{@const on = kv.k.menu.includes(m.key)}
 						<li class:on>
 							<span><b>{m.name}</b><small>+{m.rate} coins/h</small></span>

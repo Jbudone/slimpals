@@ -3,7 +3,7 @@
 // board redrawn when the menu changes and a cup per item on the counter.
 // Everything goes through the gym's asset cache (freed on dispose).
 import * as T from "three"
-import { KITCHEN_MENU } from "../../../../shared/gym3d/economy"
+import { KITCHEN_MENU, menuInSeason } from "../../../../shared/gym3d/economy"
 import { PW } from "../../../../shared/gym3d/rooms"
 import {
 	batchMesh,
@@ -25,6 +25,8 @@ const ITEM_COLOR: Record<string, string> = {
 	protein: "#c98b56",
 	acai: "#7a3a8a",
 	salad: "#4f9a3a",
+	pumpkin: "#e8743b",
+	oats: "#d9a35f",
 }
 
 export class Kitchen {
@@ -160,8 +162,14 @@ export class Kitchen {
 			g.fillText("MENU", w / 2, 30)
 			g.textAlign = "left"
 			g.font = "700 17px Arial, sans-serif"
-			KITCHEN_MENU.forEach((m, i) => {
-				const y = 58 + i * 25
+			// what is on, plus what is in season to add (tighter rows past four)
+			const month = new Date().getUTCMonth() + 1
+			const shown = KITCHEN_MENU.filter(
+				(m) => on.includes(m.key) || menuInSeason(m, month),
+			)
+			const step = shown.length > 4 ? 19 : 25
+			shown.forEach((m, i) => {
+				const y = 54 + i * step
 				const lit = on.includes(m.key)
 				g.fillStyle = lit ? (ITEM_COLOR[m.key] ?? "#7ac943") : "#556a5c"
 				g.beginPath()
@@ -175,7 +183,7 @@ export class Kitchen {
 		if (this.cups) releaseMesh(this.cups)
 		const p: Part[] = []
 		KITCHEN_MENU.filter((m) => on.includes(m.key)).forEach((m, i) => {
-			const x = -0.95 + i * 0.42
+			const x = -0.95 + i * (on.length > 4 ? 0.3 : 0.42)
 			const z = 0.42
 			const c = ITEM_COLOR[m.key] ?? "#7ac943"
 			if (m.key === "acai" || m.key === "salad") {

@@ -104,6 +104,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   catalog category `court`, 9000/10000 XP). It is a content addition: seeded upgrades, `KEY_ROOM` in `layout3d.ts`, builders in
   `equipment/builders.ts`, `ROOM_ORDER`, `PICKABLE_TYPES`, hires (Court coach) and the room picker. Staffed bonuses are the
   existing hires and staff training.
+- Seasonal menu (#141, first piece): `KITCHEN_MENU` has autumn items (Pumpkin spice shake, Apple-cinnamon oats; `months`
+  [9, 10, 11]) that can only be added in season (`menuInSeason`, checked in `unlockKitchenItem`) and stay on the menu once
+  added; the menu sheet and the 3D board list what is on plus what is in season. Not yet: Halloween ghosts, decor, costumes.
 - Monthly reward track (#126, first slice): `shared/gym3d/rewardTrack.ts` (pure: a step per day of the UTC month, a theme per
   month, bigger steps every 7th and the last, `claimBlock`). One step a day, only after that day's check-in; missed days
   just mean fewer steps. No table: a claimed step is a `gym_rewards` row `track:<YYYY-MM>:<n>` and the day's claim a
