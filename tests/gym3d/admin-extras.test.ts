@@ -1,0 +1,187 @@
+// Admin test tools for the newer gym systems: set staff levels, and wipe
+// staff levels, hires, open walls or today's hustle bonuses.
+import { eq } from "drizzle-orm"
+import request from "supertest"
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+	gymHires,
+	gymOpenWalls,
+	gymRewards,
+	gymStaff,
+	invites,
+	userGyms,
+	userGymUpgrades,
+	users,
+} from "../../server/db/schema.js"
+import { dayKey } from "../../server/services/gym/rewards.js"
+import { STAFF } from "../../shared/gym3d/staff.js"
+import type { GymLayoutDto, GymStaffDto } from "../../shared/types.js"
+import {
+	closeTestDb,
+	getTestDb,
+	resetSchema,
+	truncateAll,
+} from "../helpers/db.js"
+
+const { createApp } = await import("../../server/app.js")
+const app = createApp()
+
+let inviteCounter = 0
+
+async function registerAndLogin(email: string, name: string) {
+	const db = await getTestDb()
+	const code = `ADMIN-EXTRAS-${++inviteCounter}`
+	await db.insert(invites).values({
+		code,
+		createdByUserId: "admin-001",
+		expiresAt: new Date(Date.now() + 86_400_000),
+	})
+	const res = await request(app).post("/api/auth/sign-up/email").send({
+		name,
+		email,
+		password: "Password1!",
+		inviteCode: code,
+	})
+	const cookies = res.headers["set-cookie"] as string[]
+	return {
+		cookie: Array.isArray(cookies) ? cookies.join("; ") : cookies,
+		userId: res.body.user.id as string,
+	}
+}
+
+/** An admin, and a member whose gym has a seeded layout with a cardio room. */
+async function adminAndMember() {
+	const db = await getTestDb()
+	const admin = await registerAndLogin("a@slimpals.test", "Admin Two")
+	await db
+		.update(users)
+		.set({ isAdmin: true })
+		.where(eq(users.id, admin.userId))
+	const member = await registerAndLogin("b@slimpals.test", "Member Two")
+	await request(app).get("/api/gym").set("Cookie", member.cookie).expect(200)
+	const [gym] = await db
+		.select()
+		.from(userGyms)
+		.where(eq(userGyms.userId, member.userId))
+	await db
+		.insert(userGymUpgrades)
+		.values({ gymId: gym.id, upgradeKey: "cardio_treadmill" })
+	const layout = (
+		await request(app).get("/api/gym/layout").set("Cookie", member.cookie)
+	).body as GymLayoutDto
+	return { admin, member, gymId: gym.id, layout }
+}
+
+const post = (cookie: string, userId: string, path: string, body: object) =>
+	request(app)
+		.post(`/api/admin/users/${userId}/gym/${path}`)
+		.set("Cookie", cookie)
+		.send(body)
+
+beforeAll(async () => {
+	await resetSchema()
+})
+
+beforeEach(async () => {
+	await truncateAll()
+	const db = await getTestDb()
+	await db.insert(users).values({
+		id: "admin-001",
+		email: "admin@slimpals.test",
+		name: "Admin",
+	})
+})
+
+afterAll(async () => {
+	await closeTestDb()
+})
+
+describe("admin staff levels", () => {
+	it("sets one named staff member, or all of them", async () => {
+		const { admin, member } = await adminAndMember()
+		const one = await post(admin.cookie, member.userId, "staff-level", {
+			npcKey: "trainer_marcus",
+			level: 3,
+		}).expect(200)
+		const marcus = (one.body.staff as GymStaffDto[]).find(
+			(c) => c.npcKey === "trainer_marcus",
+		)
+		expect(marcus?.level).toBe(3)
+
+		const all = await post(admin.cookie, member.userId, "staff-level", {
+			npcKey: "all",
+			level: 5,
+		}).expect(200)
+		const named = (all.body.staff as GymStaffDto[]).filter((c) =>
+			STAFF.some((s) => s.key === c.npcKey),
+		)
+		expect(named).toHaveLength(STAFF.length)
+		for (const c of named) expect(c.level).toBe(5)
+	})
+
+	it("sets a hire's level and refuses bad input and non-admins", async () => {
+		const { admin, member, gymId, layout } = await adminAndMember()
+		const room = layout.rooms.find((r) => r.type === "cardio")
+		if (!room) throw new Error("no cardio room")
+		const db = await getTestDb()
+		const [hire] = await db
+			.insert(gymHires)
+			.values({ gymId, roomId: room.id, role: "Cardio coach", name: "Nia" })
+			.$returningId()
+
+		await post(admin.cookie, member.userId, "staff-level", {
+			npcKey: `hire:${hire.id}`,
+			level: 4,
+		}).expect(200)
+		const [row] = await db
+			.select()
+			.from(gymHires)
+			.where(eq(gymHires.id, hire.id))
+		expect(row.level).toBe(4)
+
+		const bad = (body: object) =>
+			post(admin.cookie, member.userId, "staff-level", body)
+		await bad({ npcKey: "trainer_marcus", level: 9 }).expect(400)
+		await bad({ npcKey: "trainer_marcus", level: 0 }).expect(400)
+		await bad({ npcKey: "nobody", level: 2 }).expect(404)
+		await bad({ npcKey: "hire:999999", level: 2 }).expect(404)
+		await post(member.cookie, member.userId, "staff-level", {
+			npcKey: "all",
+			level: 5,
+		}).expect(403)
+	})
+})
+
+describe("admin reset-extras", () => {
+	it("clears staff levels, hires, open walls and only today's hustle", async () => {
+		const { admin, member, gymId, layout } = await adminAndMember()
+		const room = layout.rooms.find((r) => r.type === "cardio")
+		if (!room) throw new Error("no cardio room")
+		const db = await getTestDb()
+		await db
+			.insert(gymStaff)
+			.values({ gymId, npcKey: "trainer_marcus", level: 2 })
+		await db
+			.insert(gymHires)
+			.values({ gymId, roomId: room.id, role: "Cardio coach", name: "Nia" })
+		await db.insert(gymOpenWalls).values({ gymId, px: 1, pz: 1, axis: "x" })
+		await db.insert(gymRewards).values([
+			{ gymId, source: `hustle:${dayKey()}:1` },
+			{ gymId, source: "hustle:2000-01-01:1" },
+		])
+
+		const reset = (what: string) =>
+			post(admin.cookie, member.userId, "reset-extras", { what })
+		expect((await reset("staff").expect(200)).body.removed).toBe(1)
+		expect((await reset("hires").expect(200)).body.removed).toBe(1)
+		expect((await reset("walls").expect(200)).body.removed).toBe(1)
+		expect((await reset("hustle").expect(200)).body.removed).toBe(1)
+		const left = await db
+			.select()
+			.from(gymRewards)
+			.where(eq(gymRewards.gymId, gymId))
+		expect(left.map((r) => r.source)).toContain("hustle:2000-01-01:1")
+
+		await reset("everything").expect(400)
+	})
+})
