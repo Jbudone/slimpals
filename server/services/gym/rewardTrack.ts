@@ -25,6 +25,7 @@ import {
 import { BuildError, withGym } from "./build3d.js"
 import type { Db } from "./layout3dStore.js"
 import { dayKey } from "./rewards.js"
+import { loadTrackOverride } from "./rewardTrackOverride.js"
 
 async function checkedInToday(db: Db, userId: string, now: Date) {
 	const start = new Date(now)
@@ -64,9 +65,11 @@ async function state(db: Db, gymId: number, userId: string, now: Date) {
 				eq(gymRewards.source, `trackday:${dayKey(now)}`),
 			),
 		)
-	const steps = trackSteps(key)
+	const override = await loadTrackOverride(db, key)
+	const steps = trackSteps(key, override)
 	return {
 		key,
+		override,
 		steps,
 		claimed: claimedRows.length,
 		claimedToday: !!today,
@@ -83,7 +86,7 @@ function toDto(s: Awaited<ReturnType<typeof state>>): GymRewardTrackDto {
 	})
 	return {
 		month: s.key,
-		theme: themeOf(s.key),
+		theme: themeOf(s.key, s.override),
 		claimed: s.claimed,
 		claimedToday: s.claimedToday,
 		checkedIn: s.checkedIn,
