@@ -1279,6 +1279,13 @@ test("3D gym seasons: winter dresses the door and the people, harvest the door o
 	await expect
 		.poll(() => stat("costumes"), { timeout: 90_000 })
 		.toBeGreaterThan(0)
+	// the costume contest crowns one costumed member with a tag
+	await expect
+		.poll(() => page.evaluate(() => window.gym3d?.stats().contest), {
+			timeout: 90_000,
+		})
+		.not.toBe("")
+	await expect(page.getByTestId("gym3d-contest")).toHaveCount(1)
 	// harvest: hay and pumpkins by the door, no hats
 	await page.goto("/?season=harvest")
 	await waitReady(page)

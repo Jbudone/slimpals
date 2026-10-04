@@ -6,6 +6,7 @@
 // (lines from the server's dialog data, their cast lines, their role), the
 // crowd now and then (ambient lines, drawn as thoughts), and two NPCs near
 // each other (or chatting in the sim) exchange a line.
+
 import * as T from "three"
 import {
 	type Banter,
@@ -14,6 +15,7 @@ import {
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
 import { banterFromAi } from "../../../../shared/gym3d/banterAi"
+import { contestLine } from "../../../../shared/gym3d/costumeContest"
 import {
 	GHOST_LOCKERS,
 	ghostLine,
@@ -335,6 +337,12 @@ export class Life {
 	ghostStay(p: Person, now: number): void {
 		if (this.paused || this.bubbles.active >= 2 || !this.visible(p)) return
 		this.bubbles.say(p, stayLine(this.rng), this.nameOf(p), now, 3.2)
+	}
+
+	/** Today's costume winner gets their tag: they say so. */
+	contestWin(p: Person, now: number): void {
+		if (this.paused || this.bubbles.active >= 2 || !this.visible(p)) return
+		this.bubbles.say(p, contestLine(this.rng), this.nameOf(p), now, 3.4)
 	}
 
 	/** One line for a person, or null. */
