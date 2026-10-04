@@ -9,6 +9,7 @@ import { STORY_ALUMNI } from "./storyAlumni.js"
 import { STORY_CAMPUS } from "./storyCampus.js"
 import { STORY_HARBOUR } from "./storyHarbour.js"
 import { STORY_REUNION } from "./storyReunion.js"
+import { STORY_TIDES } from "./storyTides.js"
 
 export type Speaker = { name: string; color: string }
 
@@ -478,6 +479,7 @@ export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
 	3: STORY_HARBOUR,
 	4: STORY_REUNION,
 	5: STORY_ALUMNI,
+	6: STORY_TIDES,
 }
 
 export function storyFor(campaign: number): readonly StoryBeat[] {
