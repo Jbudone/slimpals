@@ -5,6 +5,7 @@ import { Router } from "express"
 import { catalogChallenge } from "../../shared/challenges/catalog.js"
 import { tierGoals } from "../../shared/challenges/tiers.js"
 import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
+import { CAMPAIGN_FINALE } from "../../shared/gym3d/campaign.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { db } from "../db/index.js"
@@ -1317,6 +1318,29 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			return
 		}
 		res.json({ removed })
+	})
+
+	// Test tool (campaigns): marks the gym's story as finished, so the next
+	// campaign can be begun without playing through all of it.
+	adminRouter.post("/admin/users/:id/gym/finish-story", async (req, res) => {
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(activeGymOf(String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		await db
+			.insert(gymRewards)
+			.ignore()
+			.values({
+				gymId: gym.id,
+				source: `story:${CAMPAIGN_FINALE}`,
+				sweat: 0,
+				greens: 0,
+			})
+		res.json({ ok: true })
 	})
 
 	// Test tool (cosmetics): gives the user's gym a cosmetic by key. Answers

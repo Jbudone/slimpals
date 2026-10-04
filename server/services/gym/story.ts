@@ -59,9 +59,22 @@ export async function getStoryDto(
 	now = new Date(),
 ): Promise<StoryDto> {
 	const [gym] = await db
-		.select({ level: userGyms.level, xp: userGyms.xp })
+		.select({
+			level: userGyms.level,
+			xp: userGyms.xp,
+			campaign: userGyms.campaign,
+		})
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
+	// the authored story is campaign one's; later campaigns have none yet
+	if ((gym?.campaign ?? 1) > 1)
+		return {
+			pending: null,
+			log: [],
+			nextLevel: null,
+			waitingForOpen: false,
+			open: null,
+		}
 	let cs = await claims(db, gymId)
 	const start = startOf(cs)
 	let end = endOf(cs)

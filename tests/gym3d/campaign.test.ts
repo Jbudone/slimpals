@@ -149,11 +149,47 @@ describe("campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(409)
+		// the authored story belongs to campaign one: the new gym has none yet
+		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
+		expect(story.body).toMatchObject({
+			pending: null,
+			log: [],
+			nextLevel: null,
+		})
 		// everything that reads "the gym" now reads the new one
 		const wallet = await request(app)
 			.get("/api/gym/wallet")
 			.set("Cookie", cookie)
 		expect(wallet.status).toBe(200)
 		expect(wallet.body.level).toBe(0)
+	})
+})
+
+describe("admin: finish the story", () => {
+	it("marks the story finished for an admin, so the next campaign can begin", async () => {
+		const { db, cookie, userId } = await setup()
+		// a non-admin cannot
+		await request(app)
+			.post(`/api/admin/users/${userId}/gym/finish-story`)
+			.set("Cookie", cookie)
+			.expect(403)
+		await db.update(users).set({ isAdmin: true }).where(eq(users.id, userId))
+		await request(app)
+			.post(`/api/admin/users/${userId}/gym/finish-story`)
+			.set("Cookie", cookie)
+			.expect(200)
+		expect(
+			(await request(app).get("/api/gym/campaign").set("Cookie", cookie)).body
+				.canFinish,
+		).toBe(true)
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(200)
+		// an unknown user has no gym
+		await request(app)
+			.post("/api/admin/users/nobody/gym/finish-story")
+			.set("Cookie", cookie)
+			.expect(404)
 	})
 })

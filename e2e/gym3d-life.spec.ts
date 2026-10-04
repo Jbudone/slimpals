@@ -1347,6 +1347,41 @@ test("3D gym story guests: Victor and Barry are about after their chapters (forc
 	expect(await guest()).toBe("")
 })
 
+test("3D gym campaign: a finished story lets the player begin the next campaign, the old gym goes to the Hall of fame", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, page } = await setup(request, browser, testInfo, 30, "camp")
+	const base = testInfo.project.use.baseURL ?? "http://localhost:5173"
+	const admin = await adminContext(base)
+	await page.goto("/")
+	await waitReady(page)
+	await page.getByTestId("gym-stars").click()
+	// not offered before the story is done
+	await expect(page.getByTestId("campaign-next")).toHaveCount(0)
+	const fin = await admin.post(`/api/admin/users/${userId}/gym/finish-story`, {
+		headers: { Origin: AUTH_ORIGIN },
+	})
+	expect(fin.ok()).toBe(true)
+	await page.goto("/")
+	await waitReady(page)
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("campaign-done")).toBeVisible()
+	await shot(page, "36-campaign-done")
+	page.once("dialog", (d) => void d.accept())
+	await page.getByTestId("campaign-next").click()
+	// the page reloads into the fresh gym
+	await waitReady(page)
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("campaign-hall")).toContainText("Campaign 1")
+	await expect(page.getByTestId("campaign-next")).toHaveCount(0)
+	// a fresh gym: starter coins, level 0
+	const lay = await page.evaluate(() => window.gym3d?.layout().coins)
+	expect(lay).toBeLessThan(5000)
+	await shot(page, "37-campaign-two")
+})
+
 test("3D gym MaxOut: the rival's sign changes during its weekend promo", async ({
 	request,
 	browser,

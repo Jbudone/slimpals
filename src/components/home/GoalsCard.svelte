@@ -89,7 +89,7 @@ async function buyBurger() {
 		{/if}
 	</button>
 	{#if open}
-		<div class="card" style="top:{top + 56}px" role="dialog" aria-label="Gym goals" data-testid="goals-card">
+		<div class="card" style="top:{top + 56}px; max-height: calc(100% - {top + 56 + 170}px)" role="dialog" aria-label="Gym goals" data-testid="goals-card">
 			<div class="row" aria-hidden="true">
 				{#each [1, 2, 3, 4, 5] as n}
 					<span class="s" class:on={n <= stars}>★</span>
@@ -311,6 +311,8 @@ async function buyBurger() {
 }
 
 .card {
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	position: absolute;
 	left: 10px;
 	z-index: 10;
