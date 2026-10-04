@@ -189,7 +189,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   santa, none for harvest; `People.costumes`). Only Halloween has the ghost and its stay-for-one-more-set. The monthly track gives November's Harvest
   basket, Hay bale and the coach's autumn scarf, and December's Holiday tree, String lights and the coach's holiday hat (`MONTH_COSMETICS`,
   decor builders `basket`, `hay`, `tree`, `lights`); the kitchen gets Hot cocoa protein and Gingerbread oats in Dec-Feb (appended: the menu is a bitmask).
-  Not yet: banter and coach lines for November/December, other months' seasons (spring, summer).
+  Banter for November and December: `Banter.season` exchanges (`harvest-*`, `winter-*`) fit only in that season (`BanterContext.season`) and count as plain chatter, so the gym's real gaps still get talked about first. Not yet: coach lines for November/December, other months' seasons (spring, summer).
 - Street life (#131, first slice): `People.trickleStreet` (`people/members.ts`) sends a few passers-by (`pass:<n>`, kind `extra`,
   at most half the ambient cap) along the pavement in front of the gym from one edge to the other every 6-12 s; about one in
   eight turns in at the door (`after: "enter"`) and becomes a member. The pavement has street lamps and, across it, a road with a dashed

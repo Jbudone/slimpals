@@ -3,6 +3,7 @@
 // it is now (a missing room or machine, a crowd) and plays it as alternating
 // bubbles. Style: understated, specific, dry; no exclamation marks.
 import type { Rng } from "./npcLines.js"
+import type { Season } from "./season.js"
 
 /** What the gym looks like right now, as far as banter cares. */
 export type BanterContext = {
@@ -20,6 +21,8 @@ export type BanterContext = {
 	upgraded?: boolean
 	/** The rival gym is running its weekend promo. */
 	maxout?: boolean
+	/** The season dressing the gym (October to December). */
+	season?: Season | null
 	/** The campaign in play: the exchanges about MaxOut belong to the first. */
 	campaign?: number
 }
@@ -34,6 +37,8 @@ export type Banter = {
 	missingGear?: string
 	/** Only when the gym is busy. */
 	crowded?: boolean
+	/** Only in this season; counts as plain chatter, so gaps still win. */
+	season?: Season
 	/** Only while this is going on (an event, a class, a fresh upgrade). */
 	when?: BanterWhen
 	/** Lines in turn: the first person speaks first. */
@@ -41,6 +46,57 @@ export type Banter = {
 }
 
 export const BANTER: readonly Banter[] = [
+	{
+		id: "harvest-basket",
+		season: "harvest",
+		lines: [
+			"Someone left a basket of apples by the door.",
+			"Is it a gift or a trap.",
+			"Both, usually.",
+		],
+	},
+	{
+		id: "harvest-hay",
+		season: "harvest",
+		lines: [
+			"There's hay in the lobby.",
+			"It's atmosphere.",
+			"It's in my shoe.",
+		],
+	},
+	{
+		id: "harvest-thanks",
+		season: "harvest",
+		lines: [
+			"Grateful for the new rack, honestly.",
+			"Grateful nobody's using the squat rack as a coat hook.",
+		],
+	},
+	{
+		id: "winter-tree",
+		season: "winter",
+		lines: [
+			"They put up a tree. Next to the dumbbells.",
+			"It's the only thing here that's not heavy.",
+		],
+	},
+	{
+		id: "winter-lights",
+		season: "winter",
+		lines: [
+			"The lights blink out of time with my sets.",
+			"Your sets are out of time with each other.",
+		],
+	},
+	{
+		id: "winter-resolution",
+		season: "winter",
+		lines: [
+			"Everyone's already planning January.",
+			"January is a long way off.",
+			"That's the plan, yes.",
+		],
+	},
 	{
 		id: "maxout-promo-sign",
 		when: "maxout",
@@ -236,6 +292,7 @@ export function banterFor(
 		if (b.missingGear && ctx.gear.includes(b.missingGear)) return false
 		if (b.crowded && !ctx.crowded) return false
 		if (b.when && !ctx[b.when]) return false
+		if (b.season && b.season !== ctx.season) return false
 		return true
 	}
 	const all = [...BANTER, ...extra].filter(fits)
