@@ -10,6 +10,7 @@ import {
 	users,
 } from "../../server/db/schema.js"
 import { CAMPAIGN_FINALE, daysBetween } from "../../shared/gym3d/campaign.js"
+import { STORIES, storyFinaleOf } from "../../shared/gym3d/story.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -235,64 +236,40 @@ describe("the stories of later campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(409)
-		// its finale chapter finishes it, and campaign three has its own story
-		await db.insert(gymRewards).values({
-			gymId: fresh.id,
-			source: "story:c2-graduation",
-			sweat: 0,
-			greens: 0,
-		})
-		await request(app)
-			.post("/api/gym/campaign/next")
-			.set("Cookie", cookie)
-			.expect(200)
-		const three = await request(app)
-			.get("/api/gym/campaign")
-			.set("Cookie", cookie)
-		expect(three.body.campaign).toBe(3)
-		expect(three.body.hall).toHaveLength(2)
-		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
-		expect(story.body).toMatchObject({ pending: null, log: [], nextLevel: 1 })
-		const g3 = await latest()
-		await db.insert(gymRewards).values({
-			gymId: g3.id,
-			source: "story:c3-harbour-lights",
-			sweat: 0,
-			greens: 0,
-		})
-		await request(app)
-			.post("/api/gym/campaign/next")
-			.set("Cookie", cookie)
-			.expect(200)
-		// campaign four plays Pavement Street again with a story of its own
-		const four = await request(app)
-			.get("/api/gym/campaign")
-			.set("Cookie", cookie)
-		expect(four.body.campaign).toBe(4)
-		const s4 = await request(app).get("/api/gym/story").set("Cookie", cookie)
-		expect(s4.body).toMatchObject({ pending: null, log: [], nextLevel: 1 })
-		const g4 = await latest()
-		await db.insert(gymRewards).values({
-			gymId: g4.id,
-			source: "story:c4-street-party",
-			sweat: 0,
-			greens: 0,
-		})
-		await request(app)
-			.post("/api/gym/campaign/next")
-			.set("Cookie", cookie)
-			.expect(200)
-		// campaign five has no story yet
+		// every campaign's finale chapter finishes it and starts the next one
+		// from level 0; the last authored one leads to a campaign with no story
+		const lastStory = Math.max(...Object.keys(STORIES).map(Number))
+		let current = fresh
+		for (let c = 2; c <= lastStory; c++) {
+			const finale = storyFinaleOf(c)
+			expect(finale).toBeTruthy()
+			await db.insert(gymRewards).values({
+				gymId: current.id,
+				source: `story:${finale}`,
+				sweat: 0,
+				greens: 0,
+			})
+			await request(app)
+				.post("/api/gym/campaign/next")
+				.set("Cookie", cookie)
+				.expect(200)
+			const next = await request(app)
+				.get("/api/gym/campaign")
+				.set("Cookie", cookie)
+			expect(next.body.campaign).toBe(c + 1)
+			expect(next.body.hall).toHaveLength(c)
+			const st = await request(app).get("/api/gym/story").set("Cookie", cookie)
+			expect(st.body).toMatchObject({
+				pending: null,
+				log: [],
+				nextLevel: c < lastStory ? 1 : null,
+			})
+			current = await latest()
+		}
 		const five = await request(app)
 			.get("/api/gym/campaign")
 			.set("Cookie", cookie)
-		expect(five.body.campaign).toBe(5)
-		const none = await request(app).get("/api/gym/story").set("Cookie", cookie)
-		expect(none.body).toMatchObject({
-			pending: null,
-			log: [],
-			nextLevel: null,
-		})
+		expect(five.body.campaign).toBe(lastStory + 1)
 		// without a story the gym level decides: not yet, then at level 17
 		expect(five.body.canFinish).toBe(false)
 		const g5 = await latest()
