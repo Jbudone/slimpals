@@ -144,6 +144,11 @@ export const challenges = mysqlTable("challenges", {
 	theme: varchar("theme", { length: 255 }),
 	aiGenerated: boolean("ai_generated").notNull().default(false),
 	tasks: json("tasks").notNull(),
+	// Curated cards (shared/challenges/catalog.ts): a tagline, the coach's
+	// opening line and a decor cosmetic key given for finishing.
+	tagline: varchar("tagline", { length: 255 }),
+	coachIntro: text("coach_intro"),
+	rewardCosmetic: varchar("reward_cosmetic", { length: 64 }),
 })
 
 export const userChallenges = mysqlTable("user_challenges", {

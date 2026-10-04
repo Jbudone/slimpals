@@ -196,6 +196,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
   computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
   portraits per personality, the coach lines in Admin's content tuning.
+- Challenge catalog (#124, second slice): `shared/challenges/catalog.ts` holds curated monthly cards (Burpee Blitz, Sunrise Stride, Green Machine: tagline,
+  coach intro, three goals, a decor `rewardCosmetic`: `arcade_cabinet`, `sunrise_mural`, `herb_planter`, builders in `equipment/decor.ts`). Columns `tagline`,
+  `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
+  `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
+  `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
 - Challenge milestones (#124, first slice): a monthly challenge pays the gym at 25/50/75/100% of its goals' average completion
   (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
   reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each
