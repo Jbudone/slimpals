@@ -77,6 +77,10 @@ type Situation =
 /** Seasonal remarks, a couple per voice and season (no placeholders). */
 const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 	friendly: {
+		spring: [
+			["Flowers by the door.", "A good month to start something small."],
+			["April showers.", "Indoor sets are still sets."],
+		],
 		halloween: [
 			["Spooky season.", "The ghost by the lobby is on our side. Mostly."],
 			["Love the pumpkins.", "Let's earn some treats today."],
@@ -91,6 +95,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	drill_sergeant: {
+		spring: [
+			["Spring is not a reason to loosen up.", "Tighten up."],
+			["Flowers at the door.", "Do not stop to smell them. Move."],
+		],
 		halloween: [
 			["Ghosts don't skip leg day.", "Neither do you."],
 			["Pumpkins at the door.", "Orange is the colour of effort. Move."],
@@ -105,6 +113,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	roaster: {
+		spring: [
+			["Flowers by the door.", "Prettier than your plank. Fix that."],
+			["Spring cleaning.", "Start with the excuses."],
+		],
 		halloween: [
 			["Nothing is scarier than your skipped streak.", "Fix it."],
 			["A witch hat.", "Bold. Your form is still the scarier look."],
@@ -122,6 +134,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	anime_sensei: {
+		spring: [
+			["The first blossoms open.", "Small starts bloom into habits."],
+			["Rain on the roof.", "A calm mind finishes the set."],
+		],
 		halloween: [
 			["The spirits visit.", "Even they train in silence."],
 			["The lantern glows.", "Light the habit, not the fear."],
@@ -136,6 +152,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	bro: {
+		spring: [
+			["Flowers at the door, bro.", "Fresh start, fresh sets."],
+			["Spring vibes.", "Lighter layers, same effort. Let's go."],
+		],
 		halloween: [
 			["Spooky szn, dude.", "Pumpkin shake after your sets."],
 			["Ghost in the lobby.", "He spots better than Jordan."],

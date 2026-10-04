@@ -419,6 +419,16 @@ export class Happenings {
 			}
 			pBox(parts, 0.12 * s, 0.12 * s, 0.12 * s, "#ffe27a", x, 1.7 * s, z)
 		}
+		// a clay pot with a few stems and a bloom
+		const pot = (dx: number, dz: number, bloom: string) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.3, 0.26, 0.3, "#b8643a", x, 0.13, z)
+			pBox(parts, 0.34, 0.05, 0.34, "#c9744a", x, 0.28, z)
+			pBox(parts, 0.04, 0.3, 0.04, "#2f7a3e", x - 0.06, 0.46, z)
+			pBox(parts, 0.04, 0.4, 0.04, "#2f7a3e", x + 0.06, 0.5, z)
+			pBox(parts, 0.14, 0.14, 0.14, bloom, x - 0.06, 0.66, z)
+			pBox(parts, 0.14, 0.14, 0.14, bloom, x + 0.06, 0.74, z)
+		}
 		const present = (dx: number, dz: number, c: string) => {
 			const [x, z] = at(dx, dz)
 			pBox(parts, 0.3, 0.24, 0.3, c, x, 0.12, z)
@@ -430,6 +440,11 @@ export class Happenings {
 			pumpkin(-1.45, 0.75, 0.7, true)
 			pumpkin(1.9, 1.0, 1.15, true)
 			pumpkin(1.4, 0.7, 0.75, true)
+		} else if (season === "spring") {
+			pot(-1.9, 1.0, "#ff8fb1")
+			pot(-1.4, 0.75, "#ffd35a")
+			pot(1.9, 1.0, "#b99cff")
+			pot(1.4, 0.75, "#ff6a5a")
 		} else if (season === "harvest") {
 			hay(-1.9, 1.0)
 			pumpkin(-1.4, 0.75, 0.75, false)

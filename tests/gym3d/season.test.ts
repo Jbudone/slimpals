@@ -10,11 +10,12 @@ import {
 } from "../../shared/gym3d/season.js"
 
 describe("seasons", () => {
-	it("October, November and December each have a season, the rest of the year none", () => {
+	it("April, October, November and December each have a season, the rest of the year none", () => {
+		expect(seasonOf(4)).toBe("spring")
 		expect(seasonOf(10)).toBe("halloween")
 		expect(seasonOf(11)).toBe("harvest")
 		expect(seasonOf(12)).toBe("winter")
-		for (const m of [1, 2, 3, 4, 5, 6, 7, 8, 9]) expect(seasonOf(m)).toBeNull()
+		for (const m of [1, 2, 3, 5, 6, 7, 8, 9]) expect(seasonOf(m)).toBeNull()
 	})
 
 	it("a query can force a season, or none; ?ghost keeps its old meaning", () => {
@@ -28,9 +29,10 @@ describe("seasons", () => {
 		expect(seasonFromQuery("harvest", "1")).toBe("harvest")
 	})
 
-	it("halloween and winter put a hat on people, harvest none", () => {
-		expect(SEASONS).toHaveLength(3)
+	it("halloween and winter put a hat on people, spring and harvest none", () => {
+		expect(SEASONS).toHaveLength(4)
 		expect(SEASON_HAT).toEqual({
+			spring: null,
 			halloween: "witch",
 			harvest: null,
 			winter: "santa",

@@ -489,7 +489,7 @@ export class Gym3DApp {
 	}
 
 	/** The season now: by the calendar (UTC month), or forced for tests and
-	 * demos with `?season=halloween|harvest|winter|none` (`?ghost=1` / `?ghost=0`
+	 * demos with `?season=spring|halloween|harvest|winter|none` (`?ghost=1` / `?ghost=0`
 	 * still mean Halloween / none). */
 	private forcedSeason = (() => {
 		const q = new URLSearchParams(globalThis.location?.search ?? "")

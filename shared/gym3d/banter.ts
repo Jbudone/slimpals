@@ -47,6 +47,23 @@ export type Banter = {
 
 export const BANTER: readonly Banter[] = [
 	{
+		id: "spring-pots",
+		season: "spring",
+		lines: [
+			"Someone put flowers by the door.",
+			"They're real. I checked.",
+			"You checked by pulling one.",
+		],
+	},
+	{
+		id: "spring-rain",
+		season: "spring",
+		lines: [
+			"It rained all morning.",
+			"Good. Nobody has an excuse to run outside.",
+		],
+	},
+	{
 		id: "harvest-basket",
 		season: "harvest",
 		lines: [
