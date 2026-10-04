@@ -274,7 +274,7 @@ Playwright sets `0`, Vitest never starts it). Jobs (`scheduler/jobs.ts`, all UTC
 00:05), weekly sprints (Mon 00:05), weekly inspiration (Mon 00:10), nightly gym content + NPC dialog for gyms
 active in the last 7 days (00:20, `findActiveGymUserIds`), recurring tournaments (daily 00:25: this and next week plus this and next month, `server/services/tournaments/recurring.ts`,
 pure periods and type rotation in `shared/tournaments/recurring.ts`; system tournaments have `creator_id` null and a unique `system_key`, show as
-"Featured" on the Tournaments page, announce themselves in the feed when created and post the winner when resolved; announcements are system posts: `social_posts.user_id` is nullable (migration 0032), the feed and admin lists show them as "SlimPals"), tournament auto-resolve (every 15 min). Each run is
+"Featured" on the Tournaments page, get a livelier name and prize line from the AI when it can (optional `generateTournamentFlavor`, checked by `cleanTournamentFlavor` in `shared/tournaments/flavor.ts`; otherwise the plain deterministic name stays), announce themselves in the feed when created and post the winner when resolved; announcements are system posts: `social_posts.user_id` is nullable (migration 0032), the feed and admin lists show them as "SlimPals"), tournament auto-resolve (every 15 min). Each run is
 claimed per period in `scheduled_job_runs` (unique job+period), so restarts/double ticks never rerun a period;
 failures retry after 1h, max 3 tries. Admin → "Scheduled jobs" shows last run/next due and "Run now"
 (`GET /admin/scheduler`, `POST /admin/scheduler/:job/run`). The cron-style endpoints
