@@ -81,6 +81,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 			["Flowers by the door.", "A good month to start something small."],
 			["April showers.", "Indoor sets are still sets."],
 		],
+		summer: [
+			["Hot out there.", "Drink water and pace your sets."],
+			["Summer hours.", "Even a short session counts today."],
+		],
 		halloween: [
 			["Spooky season.", "The ghost by the lobby is on our side. Mostly."],
 			["Love the pumpkins.", "Let's earn some treats today."],
@@ -99,6 +103,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 			["Spring is not a reason to loosen up.", "Tighten up."],
 			["Flowers at the door.", "Do not stop to smell them. Move."],
 		],
+		summer: [
+			["Heat is not a day off.", "Hydrate and get moving."],
+			["The cooler by the door is for water.", "Use it, then work."],
+		],
 		halloween: [
 			["Ghosts don't skip leg day.", "Neither do you."],
 			["Pumpkins at the door.", "Orange is the colour of effort. Move."],
@@ -116,6 +124,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		spring: [
 			["Flowers by the door.", "Prettier than your plank. Fix that."],
 			["Spring cleaning.", "Start with the excuses."],
+		],
+		summer: [
+			["Summer body season, they say.", "I say summer habit season. Show up."],
+			["The umbrella is for shade.", "Not for hiding from leg day."],
 		],
 		halloween: [
 			["Nothing is scarier than your skipped streak.", "Fix it."],
@@ -138,6 +150,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 			["The first blossoms open.", "Small starts bloom into habits."],
 			["Rain on the roof.", "A calm mind finishes the set."],
 		],
+		summer: [
+			["The cicadas sing.", "Steady effort, like steady heat."],
+			["Long days.", "Use the light, then rest well."],
+		],
 		halloween: [
 			["The spirits visit.", "Even they train in silence."],
 			["The lantern glows.", "Light the habit, not the fear."],
@@ -155,6 +171,10 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		spring: [
 			["Flowers at the door, bro.", "Fresh start, fresh sets."],
 			["Spring vibes.", "Lighter layers, same effort. Let's go."],
+		],
+		summer: [
+			["Summer, bro.", "Water bottle, towel, sets. Easy."],
+			["Hot one today.", "Hydrate, then pump."],
 		],
 		halloween: [
 			["Spooky szn, dude.", "Pumpkin shake after your sets."],

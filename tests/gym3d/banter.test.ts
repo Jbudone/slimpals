@@ -75,7 +75,9 @@ describe("ambient banter", () => {
 		expect(ids({ season: "harvest" }).some((i) => i.startsWith("winter"))).toBe(
 			false,
 		)
-		expect(ids({}).some((i) => /^(winter|harvest|spring)/.test(i))).toBe(false)
+		expect(ids({}).some((i) => /^(winter|harvest|spring|summer)/.test(i))).toBe(
+			false,
+		)
 		const gap = { ...full, rooms: [], season: "winter" as const }
 		expect(banterFor(gap).every((b) => !b.id.startsWith("winter"))).toBe(true)
 	})
