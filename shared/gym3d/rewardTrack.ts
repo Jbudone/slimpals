@@ -71,8 +71,80 @@ export function daysInMonth(key: string): number {
 	return new Date(Date.UTC(y, m, 0)).getUTCDate()
 }
 
-export function themeOf(key: string): string {
-	return THEMES[(Number(key.split("-")[1]) - 1) % THEMES.length] ?? THEMES[0]
+/** What an admin can author for one month (#126): a theme name and, per
+ * step number, a different coin / Sweat / Greens payout. Cosmetics stay on
+ * the rule table. */
+export type TrackOverride = {
+	theme?: string
+	steps?: Record<string, { coins?: number; sweat?: number; greens?: number }>
+}
+
+export const OVERRIDE_LIMITS = { coins: 5000, sweat: 50, greens: 50 } as const
+
+/** Checks what an admin sent (`total` = days in that month); returns the
+ * cleaned override or the first problem. */
+export function validateTrackOverride(
+	raw: unknown,
+	total: number,
+): { ok: true; value: TrackOverride } | { ok: false; error: string } {
+	if (raw == null || typeof raw !== "object" || Array.isArray(raw))
+		return { ok: false, error: "The override must be an object" }
+	const r = raw as { theme?: unknown; steps?: unknown }
+	const value: TrackOverride = {}
+	if (r.theme !== undefined) {
+		const t = typeof r.theme === "string" ? r.theme.trim() : ""
+		if (!t || t.length > 40)
+			return { ok: false, error: "theme must be 1 to 40 characters" }
+		value.theme = t
+	}
+	if (r.steps !== undefined) {
+		if (
+			r.steps == null ||
+			typeof r.steps !== "object" ||
+			Array.isArray(r.steps)
+		)
+			return {
+				ok: false,
+				error: "steps must be an object keyed by step number",
+			}
+		const steps: NonNullable<TrackOverride["steps"]> = {}
+		for (const [k, v] of Object.entries(r.steps as Record<string, unknown>)) {
+			const n = Number(k)
+			if (!Number.isInteger(n) || n < 1 || n > total)
+				return {
+					ok: false,
+					error: `step ${k} is not a day of this month (1-${total})`,
+				}
+			if (v == null || typeof v !== "object" || Array.isArray(v))
+				return { ok: false, error: `step ${k} must be an object` }
+			const out: { coins?: number; sweat?: number; greens?: number } = {}
+			for (const f of ["coins", "sweat", "greens"] as const) {
+				const x = (v as Record<string, unknown>)[f]
+				if (x === undefined) continue
+				if (
+					!Number.isInteger(x) ||
+					(x as number) < 0 ||
+					(x as number) > OVERRIDE_LIMITS[f]
+				)
+					return {
+						ok: false,
+						error: `step ${k}: ${f} must be a whole number from 0 to ${OVERRIDE_LIMITS[f]}`,
+					}
+				out[f] = x as number
+			}
+			steps[String(n)] = out
+		}
+		value.steps = steps
+	}
+	return { ok: true, value }
+}
+
+export function themeOf(key: string, override?: TrackOverride | null): string {
+	return (
+		override?.theme ??
+		THEMES[(Number(key.split("-")[1]) - 1) % THEMES.length] ??
+		THEMES[0]
+	)
 }
 
 export function stepReward(
@@ -97,13 +169,16 @@ export function stepReward(
 	}
 }
 
-export function trackSteps(key: string): TrackStep[] {
+export function trackSteps(
+	key: string,
+	override?: TrackOverride | null,
+): TrackStep[] {
 	const total = daysInMonth(key)
 	return Array.from({ length: total }, (_, i) => {
 		const n = i + 1
 		return {
 			n,
-			reward: stepReward(n, total, key),
+			reward: { ...stepReward(n, total, key), ...override?.steps?.[String(n)] },
 			milestone: n % TRACK.milestoneEvery === 0 || n === total,
 		}
 	})

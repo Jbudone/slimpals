@@ -757,6 +757,14 @@ export const scheduledJobRuns = mysqlTable(
 
 // Banter exchanges the AI writes each night (shared/gym3d/banterAi.ts), shared
 // by every gym: `lines` is a JSON array of 2-3 strings for `situation`.
+/** An admin's authored month of the reward track (#126): theme and per-step
+ * coin / Sweat / Greens overrides (`TrackOverride`), one row per month. */
+export const rewardTrackOverrides = mysqlTable("reward_track_overrides", {
+	monthKey: varchar("month_key", { length: 7 }).primaryKey(),
+	override: json("override").notNull(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+})
+
 export const banterPool = mysqlTable(
 	"banter_pool",
 	{

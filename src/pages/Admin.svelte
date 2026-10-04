@@ -1083,6 +1083,88 @@ async function setTrackStep(userId: string, step: number) {
 	}
 }
 
+// ── reward track authoring (#126): a month's theme and per-step payouts ──
+let trackMonth = $state(new Date().toISOString().slice(0, 7))
+let trackTheme = $state("")
+let trackStepsJson = $state("")
+let trackAuthorStatus = $state<{ text: string; ok: boolean } | null>(null)
+
+type TrackAuthored = {
+	month: string
+	theme: string
+	override: { theme?: string; steps?: unknown } | null
+	steps: {
+		n: number
+		reward: { coins: number; sweat: number; greens: number }
+	}[]
+}
+
+function showTrackAuthored(r: TrackAuthored, note: string) {
+	trackTheme = r.override?.theme ?? ""
+	trackStepsJson = r.override?.steps
+		? JSON.stringify(r.override.steps, null, 1)
+		: ""
+	trackAuthorStatus = {
+		text: `${note} Theme: ${r.theme}. Step 1 pays ${r.steps[0].reward.coins} coins.`,
+		ok: true,
+	}
+}
+
+async function loadTrackAuthoring() {
+	trackAuthorStatus = null
+	try {
+		showTrackAuthored(
+			await api.get<TrackAuthored>(`/admin/reward-track/${trackMonth}`),
+			"Loaded.",
+		)
+	} catch (e) {
+		trackAuthorStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+async function saveTrackAuthoring() {
+	trackAuthorStatus = null
+	let steps: unknown
+	try {
+		steps = trackStepsJson.trim() ? JSON.parse(trackStepsJson) : undefined
+	} catch {
+		trackAuthorStatus = { text: "The steps are not valid JSON.", ok: false }
+		return
+	}
+	try {
+		showTrackAuthored(
+			await api.put<TrackAuthored>(`/admin/reward-track/${trackMonth}`, {
+				...(trackTheme.trim() ? { theme: trackTheme } : {}),
+				...(steps ? { steps } : {}),
+			}),
+			"Saved.",
+		)
+	} catch (e) {
+		trackAuthorStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
+async function clearTrackAuthoring() {
+	trackAuthorStatus = null
+	try {
+		showTrackAuthored(
+			await api.del<TrackAuthored>(`/admin/reward-track/${trackMonth}`),
+			"Cleared.",
+		)
+	} catch (e) {
+		trackAuthorStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 /** Test tool: as if the player had been away (bubbles fill, Welcome back). */
 async function simulateGymAway(userId: string, hours: number) {
 	gymCoinsStatus = null
@@ -2251,6 +2333,36 @@ onMount(async () => {
 				</tbody>
 			</table>
 		</section>
+		<section class="card" data-testid="admin-track-authoring">
+			<h2>Reward track</h2>
+			<p class="muted challenge-generate-note">
+				Author a month of the daily reward track: a theme and, per step number,
+				different coins, Sweat or Greens. Steps you leave out keep the usual
+				payout. Players see it from the next load.
+			</p>
+			<div class="track-author">
+				<label>
+					Month
+					<input type="month" bind:value={trackMonth} data-testid="admin-track-month" />
+				</label>
+				<label>
+					Theme (optional)
+					<input type="text" maxlength="40" bind:value={trackTheme} data-testid="admin-track-theme" />
+				</label>
+				<label>
+					Steps (JSON, e.g. <code>{'{"3": {"coins": 150, "sweat": 2}}'}</code>)
+					<textarea rows="4" bind:value={trackStepsJson} data-testid="admin-track-steps"></textarea>
+				</label>
+				<div class="track-author-buttons">
+					<button type="button" onclick={loadTrackAuthoring} data-testid="admin-track-load">Load</button>
+					<button type="button" onclick={saveTrackAuthoring} data-testid="admin-track-save">Save</button>
+					<button type="button" onclick={clearTrackAuthoring} data-testid="admin-track-clear">Clear</button>
+				</div>
+				{#if trackAuthorStatus}
+					<p class="status-msg" class:fail={!trackAuthorStatus.ok}>{trackAuthorStatus.text}</p>
+				{/if}
+			</div>
+		</section>
 		<section class="card">
 			<h2>Scheduled jobs</h2>
 			{#if schedulerError}
@@ -2862,6 +2974,21 @@ onMount(async () => {
 	color: var(--color-danger);
 }
 
+.track-author {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.track-author label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	font-size: 0.9rem;
+}
+.track-author-buttons {
+	display: flex;
+	gap: var(--space-2);
+}
 .challenge-generate-note {
 	margin: var(--space-1) 0 var(--space-3);
 	font-size: var(--font-size-xs);

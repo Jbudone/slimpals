@@ -7,6 +7,7 @@ import { tierGoals } from "../../shared/challenges/tiers.js"
 import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
 import { CAMPAIGN_FALLBACK_LEVEL } from "../../shared/gym3d/campaign.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
+import { themeOf, trackSteps } from "../../shared/gym3d/rewardTrack.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { storyFinaleOf } from "../../shared/gym3d/story.js"
 import { db } from "../db/index.js"
@@ -53,6 +54,7 @@ import {
 	generateChallengeForMonth,
 } from "../services/challenges/index.js"
 import { activeGymOf } from "../services/gym/activeGym.js"
+import { BuildError } from "../services/gym/build3d.js"
 import { grantCosmetic } from "../services/gym/cosmetics.js"
 import {
 	deriveRelationshipFromDays,
@@ -71,6 +73,12 @@ import { UPGRADE_LAYOUT } from "../services/gym/layout.js"
 import { resetGymLayout } from "../services/gym/layout3dStore.js"
 import { dayKey } from "../services/gym/rewards.js"
 import { setTrackStep } from "../services/gym/rewardTrack.js"
+import {
+	clearTrackOverride,
+	loadTrackOverride,
+	MONTH_RE,
+	saveTrackOverride,
+} from "../services/gym/rewardTrackOverride.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
 import { staffCards } from "../services/gym/staff.js"
 import type { Scheduler } from "../services/scheduler/index.js"
@@ -1387,6 +1395,52 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			return
 		}
 		res.json(await setTrackStep(db, gym.id, String(req.params.id), step))
+	})
+
+	// Authoring (reward track, #126): a month's theme and per-step payouts.
+	// GET answers the override (null when none) and the effective steps.
+	adminRouter.get("/admin/reward-track/:month", async (req, res) => {
+		const month = String(req.params.month)
+		if (!MONTH_RE.test(month)) {
+			res.status(400).json({ error: "month must be YYYY-MM" })
+			return
+		}
+		const override = await loadTrackOverride(db, month)
+		res.json({
+			month,
+			theme: themeOf(month, override),
+			override,
+			steps: trackSteps(month, override),
+		})
+	})
+
+	adminRouter.put("/admin/reward-track/:month", async (req, res) => {
+		const month = String(req.params.month)
+		try {
+			const override = await saveTrackOverride(db, month, req.body)
+			res.json({
+				month,
+				theme: themeOf(month, override),
+				override,
+				steps: trackSteps(month, override),
+			})
+		} catch (e) {
+			if (e instanceof BuildError) {
+				res.status(e.status).json({ error: e.message })
+				return
+			}
+			throw e
+		}
+	})
+
+	adminRouter.delete("/admin/reward-track/:month", async (req, res) => {
+		const month = String(req.params.month)
+		if (!MONTH_RE.test(month)) {
+			res.status(400).json({ error: "month must be YYYY-MM" })
+			return
+		}
+		await clearTrackOverride(db, month)
+		res.json({ month, override: null, steps: trackSteps(month) })
 	})
 
 	// Test tool (gym home): moves the gym's idle-income clocks and its last
