@@ -5,6 +5,7 @@
 // docs/story_bible.md for the plan the beats follow.
 
 import type { OpenResult, OpenState } from "./open.js"
+import { STORY_CAMPUS } from "./storyCampus.js"
 
 export type Speaker = { name: string; color: string }
 
@@ -19,6 +20,8 @@ export const SPEAKERS: Readonly<Record<string, Speaker>> = {
 	victor: { name: "Victor Maxwell", color: "#2b3440" },
 	dana: { name: "Dana Voss", color: "#2a8f8f" },
 	barry: { name: "Barry Baron", color: "#d4463a" },
+	quill: { name: "Prof. Quill", color: "#6b4a8a" },
+	tess: { name: "Tess", color: "#d98a3a" },
 	narrator: { name: "", color: "#6b5d4f" },
 }
 
@@ -463,6 +466,22 @@ export const STORY: readonly StoryBeat[] = [
 	},
 ]
 
+/** Each campaign's authored story (campaigns without one have none yet). */
+export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
+	1: STORY,
+	2: STORY_CAMPUS,
+}
+
+export function storyFor(campaign: number): readonly StoryBeat[] {
+	return STORIES[campaign] ?? []
+}
+
+/** The chapter that finishes a campaign's story (null: it has no story). */
+export function storyFinaleOf(campaign: number): string | null {
+	const beats = storyFor(campaign)
+	return beats.length ? beats[beats.length - 1].id : null
+}
+
 export type StoryDto = {
 	/** The chapter waiting to be shown, if any. */
 	pending: StoryBeat | null
@@ -509,11 +528,12 @@ export function storyState(
 	seen: readonly StorySeen[],
 	now: Date,
 	open: OpenResult | null = null,
+	beats: readonly StoryBeat[] = STORY,
 ): StoryState {
 	const seenIds = new Set(seen.map((s) => s.id))
-	const log = STORY.filter((b) => seenIds.has(b.id))
+	const log = beats.filter((b) => seenIds.has(b.id))
 	const next =
-		STORY.find((b) => !seenIds.has(b.id) && !skipped(b, open)) ?? null
+		beats.find((b) => !seenIds.has(b.id) && !skipped(b, open)) ?? null
 	if (!next)
 		return { pending: null, log, nextLevel: null, waitingForOpen: false }
 	const last = seen.reduce<Date | null>(
@@ -537,7 +557,7 @@ export function storyState(
 // while after it was seen (an extra standing in the lobby or on the pavement
 // with a couple of lines of their own).
 
-export type StoryGuestKey = "victor" | "barry" | "dana"
+export type StoryGuestKey = "victor" | "barry" | "dana" | "quill" | "tess"
 
 export type StoryGuest = {
 	who: StoryGuestKey
@@ -556,6 +576,42 @@ export type StoryGuest = {
 }
 
 export const STORY_GUESTS: Readonly<Record<StoryGuestKey, StoryGuest>> = {
+	quill: {
+		who: "quill",
+		name: "Prof. Quill",
+		where: "lobby",
+		look: {
+			skin: "#d9a98a",
+			hair: "#b8b8c8",
+			top: "#6b4a8a",
+			bottom: "#3a2d4a",
+			shoes: "#2a2030",
+		},
+		lines: [
+			"Fascinating. Truly. A footnote, perhaps.",
+			"Your signage is not peer reviewed.",
+			"I am only here to observe.",
+			"Participation is graded.",
+		],
+	},
+	tess: {
+		who: "tess",
+		name: "Tess",
+		where: "pavement",
+		look: {
+			skin: "#e8b48e",
+			hair: "#8a3a1d",
+			top: "#d98a3a",
+			bottom: "#5a3a2a",
+			shoes: "#ffffff",
+		},
+		lines: [
+			"Cupcake. Take the cupcake.",
+			"Student discount, no questions.",
+			"Ada says hello. Ada did not say hello.",
+			"Free coffee for anyone who looks tired.",
+		],
+	},
 	dana: {
 		who: "dana",
 		name: "Dana",
@@ -624,6 +680,10 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"a3-start": "dana",
 	"a3-win": "barry",
 	"a3-finale": "barry",
+	"c2-professor": "quill",
+	"c2-discount": "tess",
+	"c2-hours": "quill",
+	"c2-graduation": "tess",
 }
 export const GUEST_MINUTES = 12
 

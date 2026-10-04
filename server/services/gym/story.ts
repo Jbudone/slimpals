@@ -13,9 +13,10 @@ import {
 	openState,
 } from "../../../shared/gym3d/open.js"
 import {
-	STORY,
+	type StoryBeat,
 	type StoryDto,
 	type StorySeen,
+	storyFor,
 	storyState,
 } from "../../../shared/gym3d/story.js"
 import { gymRewards, userGyms } from "../../db/schema.js"
@@ -36,10 +37,10 @@ async function claims(db: Db, gymId: number): Promise<Claim[]> {
 	return rows.map((r) => ({ source: r.source, at: r.at }))
 }
 
-const seenOf = (cs: Claim[]): StorySeen[] =>
+const seenOf = (cs: Claim[], beats: readonly StoryBeat[]): StorySeen[] =>
 	cs
 		.map((c) => ({ id: c.source.slice(PREFIX.length), at: c.at }))
-		.filter((s) => STORY.some((b) => b.id === s.id))
+		.filter((s) => beats.some((b) => b.id === s.id))
 
 function startOf(cs: Claim[]): OpenStart | null {
 	const c = cs.find((x) => x.source.startsWith(OPEN_START_PREFIX))
@@ -66,8 +67,9 @@ export async function getStoryDto(
 		})
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
-	// the authored story is campaign one's; later campaigns have none yet
-	if ((gym?.campaign ?? 1) > 1)
+	// each campaign has its own authored story (some have none yet)
+	const beats = storyFor(gym?.campaign ?? 1)
+	if (beats.length === 0)
 		return {
 			pending: null,
 			log: [],
@@ -94,8 +96,8 @@ export async function getStoryDto(
 		end = endOf(cs)
 		open = openState({ start, end, xpNow: gym?.xp ?? 0, now })
 	}
-	const seen = seenOf(cs)
-	const state = storyState(gym?.level ?? 0, seen, now, open.result)
+	const seen = seenOf(cs, beats)
+	const state = storyState(gym?.level ?? 0, seen, now, open.result, beats)
 	const at = new Map(seen.map((x) => [x.id, x.at]))
 	return {
 		pending: state.pending,

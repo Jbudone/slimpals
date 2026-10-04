@@ -3,8 +3,12 @@
 // one with a fresh gym. Cosmetics and trophies carry over; coins, staff,
 // rooms and levels do not. Pure bits live here.
 
-/** The story chapter whose being seen finishes campaign 1. */
+/** The story chapter whose being seen finishes campaign 1 (each campaign's
+ * last chapter finishes it: `storyFinaleOf` in story.ts). */
 export const CAMPAIGN_FINALE = "a3-finale"
+
+/** A campaign with no story of its own can be finished from this gym level. */
+export const CAMPAIGN_FALLBACK_LEVEL = 17
 
 /** What the Hall of fame keeps of a finished gym. */
 export type CampaignSummary = {

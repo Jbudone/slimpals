@@ -8,8 +8,11 @@ import {
 	GUEST_MINUTES,
 	MIN_BEAT_GAP_HOURS,
 	SPEAKERS,
+	STORIES,
 	STORY,
 	STORY_GUESTS,
+	storyFinaleOf,
+	storyFor,
 	storyGuestNow,
 	storyState,
 } from "../../shared/gym3d/story.js"
@@ -24,11 +27,14 @@ const HOUR = 3_600_000
 const t0 = new Date("2026-10-04T10:00:00Z")
 
 describe("the story's beats", () => {
-	it("are well formed, in order, and keep to the tone rules", () => {
-		expect(new Set(STORY.map((b) => b.id)).size).toBe(STORY.length)
-		for (let i = 1; i < STORY.length; i++)
-			expect(STORY[i].level).toBeGreaterThanOrEqual(STORY[i - 1].level)
-		for (const b of STORY) {
+	it("are well formed, in order, and keep to the tone rules, in every campaign", () => {
+		const all = Object.values(STORIES).flat()
+		// ids are unique across campaigns too
+		expect(new Set(all.map((b) => b.id)).size).toBe(all.length)
+		for (const beats of Object.values(STORIES))
+			for (let i = 1; i < beats.length; i++)
+				expect(beats[i].level).toBeGreaterThanOrEqual(beats[i - 1].level)
+		for (const b of all) {
 			expect(b.lines.length).toBeGreaterThanOrEqual(3)
 			expect(b.lines.length).toBeLessThanOrEqual(6)
 			expect(b.recap.length).toBeGreaterThan(10)
@@ -39,6 +45,21 @@ describe("the story's beats", () => {
 				expect(l.text).not.toMatch(/weight|\bfat\b|lazy|skinny|diet|belly/i)
 			}
 		}
+	})
+})
+
+describe("campaign stories", () => {
+	it("each campaign has its own, the finale is its last chapter, later ones have none yet", () => {
+		expect(storyFor(1)).toBe(STORY)
+		expect(storyFor(2)[0].id).toBe("c2-arrival")
+		expect(storyFinaleOf(1)).toBe("a3-finale")
+		expect(storyFinaleOf(2)).toBe("c2-graduation")
+		expect(storyFor(3)).toEqual([])
+		expect(storyFinaleOf(3)).toBeNull()
+		// campaign two plays from gym level 1 through the same state rules
+		const c2 = storyFor(2)
+		expect(storyState(1, [], t0, null, c2).pending?.id).toBe("c2-arrival")
+		expect(storyState(0, [], t0, null, c2).pending).toBeNull()
 	})
 })
 
@@ -80,7 +101,11 @@ describe("which chapter waits", () => {
 describe("story guests", () => {
 	it("only come from real chapters and have dry lines of their own", () => {
 		for (const id of Object.keys(GUEST_BEATS))
-			expect(STORY.some((b) => b.id === id)).toBe(true)
+			expect(
+				Object.values(STORIES)
+					.flat()
+					.some((b) => b.id === id),
+			).toBe(true)
 		for (const g of Object.values(STORY_GUESTS)) {
 			expect(g.lines.length).toBeGreaterThanOrEqual(3)
 			for (const l of g.lines) {

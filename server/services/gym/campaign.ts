@@ -4,24 +4,34 @@
 // carries the cosmetics over (never the coins, staff, rooms or levels).
 import { and, asc, count, eq, isNotNull, sql } from "drizzle-orm"
 import {
-	CAMPAIGN_FINALE,
+	CAMPAIGN_FALLBACK_LEVEL,
 	type CampaignDto,
 	type CampaignSummary,
 	daysBetween,
 	type HallEntry,
 } from "../../../shared/gym3d/campaign.js"
+import { storyFinaleOf } from "../../../shared/gym3d/story.js"
 import { gymPieces, gymPlots, gymRewards, userGyms } from "../../db/schema.js"
 import { BuildError } from "./build3d.js"
 import type { Db } from "./layout3dStore.js"
 
-async function finaleSeen(db: Db, gymId: number): Promise<boolean> {
+/** The campaign's story is done (its finale chapter was seen), or, for a
+ * campaign with no story, the gym is far enough along. */
+async function canFinish(db: Db, gymId: number): Promise<boolean> {
+	const [gym] = await db
+		.select({ campaign: userGyms.campaign, level: userGyms.level })
+		.from(userGyms)
+		.where(eq(userGyms.id, gymId))
+	if (!gym) return false
+	const finale = storyFinaleOf(gym.campaign)
+	if (!finale) return gym.level >= CAMPAIGN_FALLBACK_LEVEL
 	const rows = await db
 		.select({ id: gymRewards.id })
 		.from(gymRewards)
 		.where(
 			and(
 				eq(gymRewards.gymId, gymId),
-				eq(gymRewards.source, `story:${CAMPAIGN_FINALE}`),
+				eq(gymRewards.source, `story:${finale}`),
 			),
 		)
 		.limit(1)
@@ -50,7 +60,7 @@ export async function getCampaignDto(
 	}))
 	return {
 		campaign: gym?.campaign ?? 1,
-		canFinish: await finaleSeen(db, gymId),
+		canFinish: await canFinish(db, gymId),
 		hall,
 	}
 }
@@ -71,7 +81,7 @@ export async function beginNextCampaign(
 			.for("update")
 		if (!gym || gym.userId !== userId || gym.archivedAt)
 			throw new BuildError(404, "No gym in play")
-		if (!(await finaleSeen(tx as unknown as Db, gymId)))
+		if (!(await canFinish(tx as unknown as Db, gymId)))
 			throw new BuildError(409, "Finish this campaign's story first")
 		const [{ plots }] = await tx
 			.select({ plots: count() })

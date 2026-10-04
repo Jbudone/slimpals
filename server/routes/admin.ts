@@ -5,9 +5,10 @@ import { Router } from "express"
 import { catalogChallenge } from "../../shared/challenges/catalog.js"
 import { tierGoals } from "../../shared/challenges/tiers.js"
 import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
-import { CAMPAIGN_FINALE } from "../../shared/gym3d/campaign.js"
+import { CAMPAIGN_FALLBACK_LEVEL } from "../../shared/gym3d/campaign.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
+import { storyFinaleOf } from "../../shared/gym3d/story.js"
 import { db } from "../db/index.js"
 import {
 	accounts,
@@ -1324,11 +1325,18 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 	// campaign can be begun without playing through all of it.
 	adminRouter.post("/admin/users/:id/gym/finish-story", async (req, res) => {
 		const [gym] = await db
-			.select({ id: userGyms.id })
+			.select({ id: userGyms.id, campaign: userGyms.campaign })
 			.from(userGyms)
 			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		const finale = storyFinaleOf(gym.campaign)
+		if (!finale) {
+			res.status(409).json({
+				error: `This campaign has no story: it can be finished from gym level ${CAMPAIGN_FALLBACK_LEVEL}`,
+			})
 			return
 		}
 		await db
@@ -1336,7 +1344,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			.ignore()
 			.values({
 				gymId: gym.id,
-				source: `story:${CAMPAIGN_FINALE}`,
+				source: `story:${finale}`,
 				sweat: 0,
 				greens: 0,
 			})
