@@ -89,4 +89,11 @@ some years on: Captain Reyes has retired (and is on the quay anyway), Old Joe's
 shack has a queue he cannot explain, the road floods at spring tides and a storm
 leaves the crew's boat in the car park. The arc ends in a small regatta.
 
-Campaign 7 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 7: Pavement Street, a third time
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyNight.ts`. The first street
+once more, with a Friday night market: Barry's pickle stall, Dana sharing an
+awning in the rain, Victor's old banner poles hung with lights, and the gym's
+"five minute stand". The mural pigeon is spotted again. The council is asked to
+keep the market and the street signs one list together.
+
+Campaign 8 onwards have no story yet (they can be finished from gym level 17).
