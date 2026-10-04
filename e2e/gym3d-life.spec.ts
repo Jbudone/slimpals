@@ -1331,7 +1331,7 @@ test("3D gym story: the first chapter plays as a card and lands in the story log
 	await expect(page.getByTestId("story-card")).toHaveCount(0)
 })
 
-test("3D gym story guests: Victor and Barry are about after their chapters (forced with ?storyguest=)", async ({
+test("3D gym story guests: Victor, Barry and the other guests are about after their chapters (forced with ?storyguest=)", async ({
 	request,
 	browser,
 }, testInfo) => {
@@ -1349,6 +1349,12 @@ test("3D gym story guests: Victor and Barry are about after their chapters (forc
 	await page.evaluate(() => window.gym3d?.panTo(16.5, 20))
 	await page.waitForTimeout(1500)
 	await shot(page, "35-barry-pavement")
+	await page.goto("/?storyguest=reyes&ghost=0")
+	await waitReady(page)
+	await expect.poll(guest).toBe("reyes")
+	await page.goto("/?storyguest=joe&ghost=0")
+	await waitReady(page)
+	await expect.poll(guest).toBe("joe")
 	await page.goto("/?storyguest=none&ghost=0")
 	await waitReady(page)
 	expect(await guest()).toBe("")
