@@ -17,6 +17,18 @@ export type CosmeticDef = {
  * gym, so a cosmetic is on show once at most). */
 export const cosmeticPieceKey = (key: string): string => `cosmetic:${key}`
 
+/** The hat an owned, worn outfit puts on the gym's group coach (Coach Rivera). */
+export const OUTFIT_HAT: Readonly<Record<string, "witch" | "santa">> = {
+	halloween_hat: "witch",
+	winter_hat: "santa",
+}
+
+/** The coach NPC's hat from the outfit keys worn right now (the first one). */
+export function staffHatOf(worn: readonly string[]): "witch" | "santa" | null {
+	for (const k of worn) if (OUTFIT_HAT[k]) return OUTFIT_HAT[k]
+	return null
+}
+
 export const COSMETICS: readonly CosmeticDef[] = [
 	{
 		key: "jan_decor",

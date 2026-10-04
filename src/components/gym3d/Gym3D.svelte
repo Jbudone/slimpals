@@ -45,6 +45,7 @@ import type {
 	GymStaffDto,
 } from "../../../shared/types"
 import { api } from "../../lib/api"
+import { cosmetics } from "../../lib/cosmetics.svelte"
 import { centerOf, flyChip } from "../../lib/fly"
 import { wallet } from "../../lib/wallet.svelte"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
@@ -730,6 +731,7 @@ const spotInfo = $derived.by(() => {
 
 onMount(() => {
 	Gym3DApp.create(host, {
+		outfits: [...cosmetics.keys],
 		onSelect: (s) => {
 			selection = s
 			pickType = null
