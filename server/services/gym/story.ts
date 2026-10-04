@@ -35,7 +35,9 @@ export async function getStoryDto(
 		.select({ level: userGyms.level })
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
-	const state = storyState(gym?.level ?? 0, await seenBeats(db, gymId), now)
+	const seen = await seenBeats(db, gymId)
+	const state = storyState(gym?.level ?? 0, seen, now)
+	const at = new Map(seen.map((x) => [x.id, x.at]))
 	return {
 		pending: state.pending,
 		log: state.log.map((b) => ({
@@ -43,6 +45,7 @@ export async function getStoryDto(
 			act: b.act,
 			title: b.title,
 			recap: b.recap,
+			seenAt: (at.get(b.id) ?? now).toISOString(),
 		})),
 		nextLevel: state.nextLevel,
 	}

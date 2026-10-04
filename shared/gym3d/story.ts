@@ -204,7 +204,14 @@ export type StoryDto = {
 	/** The chapter waiting to be shown, if any. */
 	pending: StoryBeat | null
 	/** Chapters seen, in story order. */
-	log: { id: string; act: number; title: string; recap: string }[]
+	log: {
+		id: string
+		act: number
+		title: string
+		recap: string
+		/** When the chapter was seen (ISO). */
+		seenAt: string
+	}[]
 	/** The gym level that opens the next chapter (null at the end). */
 	nextLevel: number | null
 }
@@ -243,4 +250,93 @@ export function storyState(
 		log,
 		nextLevel: next.level,
 	}
+}
+
+// ── story guests ─────────────────────────────────────────────────────────────
+// A chapter that features Victor or Barry also puts them in the gym for a
+// while after it was seen (an extra standing in the lobby or on the pavement
+// with a couple of lines of their own).
+
+export type StoryGuestKey = "victor" | "barry"
+
+export type StoryGuest = {
+	who: StoryGuestKey
+	name: string
+	where: "lobby" | "pavement"
+	/** Looks laid over a plain staff outfit. */
+	look: {
+		skin: string
+		hair: string
+		top: string
+		bottom: string
+		shoes: string
+	}
+	/** Dry lines they say now and then while they are about. */
+	lines: readonly string[]
+}
+
+export const STORY_GUESTS: Readonly<Record<StoryGuestKey, StoryGuest>> = {
+	victor: {
+		who: "victor",
+		name: "Victor",
+		where: "lobby",
+		look: {
+			skin: "#e8b48e",
+			hair: "#1d1a1f",
+			top: "#2b3440",
+			bottom: "#20242c",
+			shoes: "#101216",
+		},
+		lines: [
+			"Interesting floor plan.",
+			"I would knock that wall down.",
+			"Charming. Truly.",
+			"Mind if I take a leaflet.",
+		],
+	},
+	barry: {
+		who: "barry",
+		name: "Barry",
+		where: "pavement",
+		look: {
+			skin: "#d99a6c",
+			hair: "#6b3a1d",
+			top: "#d4463a",
+			bottom: "#e8b04a",
+			shoes: "#ffffff",
+		},
+		lines: [
+			"Smell that? That's marketing.",
+			"Free. I said free.",
+			"One bite. For the neighbourhood.",
+			"My fryer is a good listener.",
+		],
+	},
+}
+
+/** The chapters that bring a guest, and how long the guest stays. */
+export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
+	"a1-coat": "victor",
+	"a1-samples": "barry",
+	"a1-offer": "victor",
+	"a1-friend": "barry",
+}
+export const GUEST_MINUTES = 12
+
+/** The guest who is about now: from the most recent guest chapter seen
+ * within `GUEST_MINUTES`, or null. */
+export function storyGuestNow(
+	log: readonly { id: string; seenAt: string }[],
+	now: Date,
+): StoryGuest | null {
+	let best: { who: StoryGuestKey; at: number } | null = null
+	for (const c of log) {
+		const who = GUEST_BEATS[c.id]
+		const at = Date.parse(c.seenAt)
+		if (!who || Number.isNaN(at)) continue
+		if (now.getTime() - at > GUEST_MINUTES * 60_000 || at > now.getTime())
+			continue
+		if (!best || at > best.at) best = { who, at }
+	}
+	return best ? STORY_GUESTS[best.who] : null
 }

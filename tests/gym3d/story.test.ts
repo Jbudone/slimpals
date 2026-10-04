@@ -4,9 +4,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { gymRewards, invites, userGyms, users } from "../../server/db/schema.js"
 import { getStoryDto, markBeatSeen } from "../../server/services/gym/story.js"
 import {
+	GUEST_BEATS,
+	GUEST_MINUTES,
 	MIN_BEAT_GAP_HOURS,
 	SPEAKERS,
 	STORY,
+	STORY_GUESTS,
+	storyGuestNow,
 	storyState,
 } from "../../shared/gym3d/story.js"
 import {
@@ -70,6 +74,40 @@ describe("which chapter waits", () => {
 		expect(s.pending).toBeNull()
 		expect(s.nextLevel).toBeNull()
 		expect(s.log).toHaveLength(STORY.length)
+	})
+})
+
+describe("story guests", () => {
+	it("only come from real chapters and have dry lines of their own", () => {
+		for (const id of Object.keys(GUEST_BEATS))
+			expect(STORY.some((b) => b.id === id)).toBe(true)
+		for (const g of Object.values(STORY_GUESTS)) {
+			expect(g.lines.length).toBeGreaterThanOrEqual(3)
+			for (const l of g.lines) {
+				expect(l).not.toContain("!")
+				expect(l.length).toBeLessThanOrEqual(60)
+			}
+		}
+	})
+
+	it("stay for a while after the chapter was seen, the latest one winning", () => {
+		const seen = (id: string, minutesAgo: number) => ({
+			id,
+			seenAt: new Date(t0.getTime() - minutesAgo * 60_000).toISOString(),
+		})
+		expect(storyGuestNow([], t0)).toBeNull()
+		// a chapter without a guest brings nobody
+		expect(storyGuestNow([seen("a1-opening", 1)], t0)).toBeNull()
+		expect(storyGuestNow([seen("a1-coat", 1)], t0)?.who).toBe("victor")
+		expect(storyGuestNow([seen("a1-samples", 1)], t0)?.who).toBe("barry")
+		// they leave after the stay
+		expect(storyGuestNow([seen("a1-coat", GUEST_MINUTES + 1)], t0)).toBeNull()
+		// the most recent guest chapter wins
+		expect(
+			storyGuestNow([seen("a1-coat", 8), seen("a1-samples", 2)], t0)?.who,
+		).toBe("barry")
+		// a time in the future (clock skew) is ignored
+		expect(storyGuestNow([seen("a1-coat", -5)], t0)).toBeNull()
 	})
 })
 
