@@ -45,7 +45,7 @@ Heavier than the Vitest unit suite — run periodically/on-demand, not on every 
 Always spawns its own dev server with `DEV_AUTOLOGIN_EMAIL` disabled regardless of `.env`, since
 autologin would make the login/register/logout flow untestable. That means ports 3000/5173 must be
 free — stop any manually-running `npm run dev` first. A `mobile-chromium` project (Pixel 7) runs only
-`e2e/gym3d-*.spec.ts`. Specs that call the AI (food photo analysis, NPC dialog) need a real `GEMINI_API_KEY`.
+`e2e/gym3d-*.spec.ts`. In October the ghost season is on by default (ghost, witch hats, pumpkins, people talked into staying): specs that need a quiet gym use `?ghost=0`. The phone draw-call budget asserted in `gym3d-build`/`gym3d-tap` is 300 (a full gym with the street was ~265). Run alone, a spec is far more reliable than inside the whole suite on a slow box. Specs that call the AI (food photo analysis, NPC dialog) need a real `GEMINI_API_KEY`.
 
 ## Canvas notes
 The gym renders with three.js into a `<canvas>`; standard DOM tools don't apply inside it. Drive and

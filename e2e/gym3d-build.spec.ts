@@ -311,7 +311,7 @@ test("3D gym: buy a plot, finish it, pick its type, move and upgrade gear", asyn
 	await shot(page, "11-tier2")
 
 	const stats = await page.evaluate(() => window.gym3d?.stats())
-	expect(stats?.drawCalls ?? 999).toBeLessThan(250)
+	expect(stats?.drawCalls ?? 999).toBeLessThan(300)
 	if (SHOTS) console.log("gym3d stats", JSON.stringify(stats))
 	expect(pageErrors).toEqual([])
 	await admin.dispose()
