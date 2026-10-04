@@ -4,6 +4,7 @@
 // minus everything slice 1 leaves out (street, lots, building, coins).
 import * as T from "three"
 import { BURGER_SIGN, type BurgerState } from "../../../../shared/gym3d/burger"
+import { type Location, locationFor } from "../../../../shared/gym3d/locations"
 import { NEIGHBOURHOOD_COLS } from "../../../../shared/gym3d/lots"
 import { MAXOUT_PROMO_SIGN, MAXOUT_SIGN } from "../../../../shared/gym3d/maxout"
 import {
@@ -564,14 +565,15 @@ export class GymWorld implements NavSource {
 		const L = X1 - X0
 		const mx = (X0 + X1) / 2
 		const parts: Part[] = []
-		pBox(parts, L, 0.2, 90, C.ground, mx, -0.2, fz / 2 - 10)
-		pBox(parts, L, 0.06, APRON, C.walk, mx, -0.07, fz + APRON / 2)
-		pBox(parts, L, 0.1, 0.18, "#e8a88f", mx, -0.02, fz + APRON - 0.09)
-		pBox(parts, L, 0.05, 30, "#d9867a", mx, -0.12, fz + APRON + 15)
+		const loc = this.location
+		pBox(parts, L, 0.2, 90, loc.ground, mx, -0.2, fz / 2 - 10)
+		pBox(parts, L, 0.06, APRON, loc.walk, mx, -0.07, fz + APRON / 2)
+		pBox(parts, L, 0.1, 0.18, loc.curb, mx, -0.02, fz + APRON - 0.09)
+		pBox(parts, L, 0.05, 30, loc.verge, mx, -0.12, fz + APRON + 15)
 		// the road across the street: asphalt, a dashed centre line and a
 		// zebra crossing from the curb in front of the door
 		const roadZ = fz + APRON + 3.3
-		pBox(parts, L, 0.06, 5, "#5d5663", mx, -0.06, roadZ)
+		pBox(parts, L, 0.06, 5, loc.road, mx, -0.06, roadZ)
 		for (let x = X0 + 1; x < X1 - 1; x += 3)
 			pBox(parts, 1.4, 0.02, 0.16, "#f4e9c8", x, -0.025, roadZ)
 		for (let i = -5; i <= 5; i++)
@@ -669,6 +671,11 @@ export class GymWorld implements NavSource {
 		texPlane(2.2, 0.55, sign, 0, 2.3, 0.2, 0, cp)
 	}
 
+	/** Where this campaign takes place (colours and shop names). */
+	get location(): Location {
+		return locationFor(this.layout.campaign ?? 1)
+	}
+
 	private roadZ = 0
 	private burgerG: T.Group | null = null
 	private burgerState = ""
@@ -702,7 +709,9 @@ export class GymWorld implements NavSource {
 			h: 3.4,
 			wall: "#8a93a6",
 			trim: "#4a5060",
-			label: this.maxoutOn ? MAXOUT_PROMO_SIGN : MAXOUT_SIGN,
+			label: this.maxoutOn
+				? `${this.location.rivalSign}${MAXOUT_PROMO_SIGN.slice(MAXOUT_SIGN.length)}`
+				: this.location.rivalSign,
 			bg: this.maxoutOn ? "#c0392b" : "#2b3440",
 			fg: this.maxoutOn ? "#fff1c2" : "#7fe0d0",
 		})
@@ -724,7 +733,10 @@ export class GymWorld implements NavSource {
 			h: bought ? 1.8 : 2.6,
 			wall: "#e8b04a",
 			trim: "#c85a3c",
-			label: BURGER_SIGN[(state as BurgerState) || "closed"],
+			label:
+				state === "forSale" || state === "bought"
+					? BURGER_SIGN[state as BurgerState]
+					: this.location.foodSign,
 			bg: state === "forSale" ? "#2f9e8f" : "#c85a3c",
 			fg: "#fff1c2",
 		})

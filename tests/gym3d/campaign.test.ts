@@ -75,6 +75,8 @@ describe("campaigns", () => {
 			.set("Cookie", cookie)
 		expect(res.status).toBe(200)
 		expect(res.body).toEqual({ campaign: 1, canFinish: false, hall: [] })
+		const lay = await request(app).get("/api/gym/layout").set("Cookie", cookie)
+		expect(lay.body.campaign).toBe(1)
 		await request(app)
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
@@ -149,6 +151,9 @@ describe("campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(409)
+		// the layout says which campaign it is, which decides the street's look
+		const lay = await request(app).get("/api/gym/layout").set("Cookie", cookie)
+		expect(lay.body.campaign).toBe(2)
 		// campaign two has its own story, starting at gym level 1
 		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
 		expect(story.body).toMatchObject({

@@ -298,6 +298,8 @@ export type GymBurgerDto = {
 
 export type GymLayoutDto = {
 	gymId: number
+	/** The campaign in play (1, 2, ...): decides the street's look. */
+	campaign: number
 	/** Staff hired for rooms, and what the next hire costs. */
 	hires: GymHireDto[]
 	nextHireCost: number

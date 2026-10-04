@@ -1379,6 +1379,14 @@ test("3D gym campaign: a finished story lets the player begin the next campaign,
 	// a fresh gym: starter coins, level 0
 	const lay = await page.evaluate(() => window.gym3d?.layout().coins)
 	expect(lay).toBeLessThan(5000)
+	// ...and somewhere else: the street has its own look and shop names
+	expect(await page.evaluate(() => window.gym3d?.layout().campaign)).toBe(2)
+	expect(await page.evaluate(() => window.gym3d?.stats().location)).toBe(
+		"Campus Row",
+	)
+	await page.getByTestId("gym-stars").click()
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
+	await page.waitForTimeout(1200)
 	await shot(page, "37-campaign-two")
 })
 
