@@ -680,7 +680,7 @@ export class Gym3DApp {
 		this.people.costumes = season ? SEASON_HAT[season] : null
 		this.people.ghostStays = season === "halloween"
 		this.hap.syncSeason(season)
-		this.world.setMaxoutPromo(this.maxoutOn())
+		this.world.setMaxoutPromo(this.maxoutOn(), story.data?.open?.result ?? null)
 		this.hap.syncStoryGuest(this.storyGuest())
 		this.hap.syncContest(this.contestWinner())
 		this.hap.setClasses(sim.activeClasses)

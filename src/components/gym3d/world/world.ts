@@ -6,7 +6,7 @@ import * as T from "three"
 import { BURGER_SIGN, type BurgerState } from "../../../../shared/gym3d/burger"
 import { type Location, locationFor } from "../../../../shared/gym3d/locations"
 import { NEIGHBOURHOOD_COLS } from "../../../../shared/gym3d/lots"
-import { MAXOUT_PROMO_SIGN, MAXOUT_SIGN } from "../../../../shared/gym3d/maxout"
+import { rivalSign } from "../../../../shared/gym3d/maxout"
 import {
 	DOOR_HALF,
 	isRoomType,
@@ -692,11 +692,15 @@ export class GymWorld implements NavSource {
 	private maxoutOn = false
 
 	/** MaxOut's weekend promo: its billboard changes while it runs. */
-	setMaxoutPromo(on: boolean): void {
-		if (on === this.maxoutOn) return
+	setMaxoutPromo(on: boolean, openResult: "win" | "lose" | null = null): void {
+		if (on === this.maxoutOn && openResult === this.openResult) return
 		this.maxoutOn = on
+		this.openResult = openResult
 		this.drawMaxout()
 	}
+
+	/** The Open's result, shown on the rival's sign when no promo runs. */
+	private openResult: "win" | "lose" | null = null
 
 	private drawMaxout(): void {
 		if (this.maxoutG) {
@@ -709,11 +713,7 @@ export class GymWorld implements NavSource {
 			h: 3.4,
 			wall: "#8a93a6",
 			trim: "#4a5060",
-			label: this.maxoutOn
-				? `${this.location.rivalSign}${MAXOUT_PROMO_SIGN.slice(MAXOUT_SIGN.length)}`
-				: this.location.rivalSign,
-			bg: this.maxoutOn ? "#c0392b" : "#2b3440",
-			fg: this.maxoutOn ? "#fff1c2" : "#7fe0d0",
+			...rivalSign(this.location.rivalSign, this.maxoutOn, this.openResult),
 		})
 	}
 

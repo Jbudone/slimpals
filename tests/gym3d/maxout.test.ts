@@ -4,6 +4,7 @@ import {
 	MAXOUT_SIGN,
 	maxoutFromQuery,
 	maxoutPromo,
+	rivalSign,
 } from "../../shared/gym3d/maxout.js"
 
 describe("MaxOut promo", () => {
@@ -23,5 +24,18 @@ describe("MaxOut promo", () => {
 		expect(maxoutFromQuery("0")).toBe(false)
 		expect(maxoutFromQuery(null)).toBeNull()
 		expect(maxoutFromQuery("yes")).toBeNull()
+	})
+})
+
+describe("the rival's sign", () => {
+	it("shows the promo first, then the Open's result, else the plain name", () => {
+		expect(rivalSign("MAXOUT", false, null).label).toBe("MAXOUT")
+		expect(rivalSign("MAXOUT", true, null).label).toBe(MAXOUT_PROMO_SIGN)
+		expect(rivalSign("FITZONE", true, "win").label).toBe("FITZONE 50% OFF")
+		expect(rivalSign("MAXOUT", false, "win").label).toBe("MAXOUT: 2ND")
+		expect(rivalSign("MAXOUT", false, "lose").label).toBe("MAXOUT: CHAMPS")
+		expect(rivalSign("MAXOUT", false, "lose").label.length).toBeLessThanOrEqual(
+			14,
+		)
 	})
 })

@@ -22,3 +22,24 @@ export function maxoutFromQuery(v: string | null): boolean | null {
 	if (v === "0") return false
 	return null
 }
+
+/** The rival's billboard: the weekend promo wins, then the Pavement Street
+ * Open's result (the gym won: MaxOut is runner-up; the gym lost: MaxOut
+ * champs), else the plain name. `base` is the location's rival name. */
+export function rivalSign(
+	base: string,
+	promo: boolean,
+	openResult: "win" | "lose" | null,
+): { label: string; bg: string; fg: string } {
+	if (promo)
+		return {
+			label: `${base}${MAXOUT_PROMO_SIGN.slice(MAXOUT_SIGN.length)}`,
+			bg: "#c0392b",
+			fg: "#fff1c2",
+		}
+	if (openResult === "win")
+		return { label: `${base}: 2ND`, bg: "#2b3440", fg: "#c9d2e0" }
+	if (openResult === "lose")
+		return { label: `${base}: CHAMPS`, bg: "#2b3440", fg: "#ffd75e" }
+	return { label: base, bg: "#2b3440", fg: "#7fe0d0" }
+}
