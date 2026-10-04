@@ -2,7 +2,7 @@
 // `auto` takes no taps from the player; the food log and the check-in feed it.
 // Silver targets and tiers apply as for any goal.
 
-export const AUTO_GOAL_KINDS = ["great_meal", "checkin"] as const
+export const AUTO_GOAL_KINDS = ["great_meal", "checkin", "steps"] as const
 export type AutoGoalKind = (typeof AUTO_GOAL_KINDS)[number]
 
 export function isAutoKind(v: unknown): v is AutoGoalKind {
@@ -17,4 +17,5 @@ export const GREAT_MEAL_RATING = 8
 export const AUTO_GOAL_NOTE: Readonly<Record<AutoGoalKind, string>> = {
 	great_meal: "Counts on its own when a meal photo rates great.",
 	checkin: "Counts on its own with your daily check-in.",
+	steps: "Counts on its own from the steps in your health import.",
 }

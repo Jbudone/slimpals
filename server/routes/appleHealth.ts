@@ -5,6 +5,7 @@ import multer from "multer"
 import { db } from "../db/index.js"
 import { stepRecords, weightEntries } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
+import { syncStepGoals } from "../services/challenges/progress.js"
 
 const upload = multer({
 	storage: multer.memoryStorage(),
@@ -131,6 +132,19 @@ appleHealthRouter.post(
 
 		let stepRecordsSaved = 0
 		for (const rec of parsed.stepRecords) {
+			// re-importing the same export never counts a record twice
+			const [dup] = await db
+				.select({ id: stepRecords.id })
+				.from(stepRecords)
+				.where(
+					and(
+						eq(stepRecords.userId, userId),
+						eq(stepRecords.recordedAt, rec.recordedAt),
+						eq(stepRecords.steps, rec.steps),
+					),
+				)
+				.limit(1)
+			if (dup) continue
 			await db.insert(stepRecords).values({
 				userId,
 				steps: rec.steps,
@@ -139,6 +153,9 @@ appleHealthRouter.post(
 			})
 			stepRecordsSaved++
 		}
+
+		// steps feed any "steps" goal of this month's challenge
+		if (stepRecordsSaved > 0) await syncStepGoals(db, userId)
 
 		res.json({
 			weightEntriesImported,

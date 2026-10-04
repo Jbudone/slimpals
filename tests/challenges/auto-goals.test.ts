@@ -201,3 +201,77 @@ describe("auto goals", () => {
 		expect(await progressOf(cookie)).toEqual({})
 	})
 })
+
+describe("steps goals", () => {
+	const ymd = (d: Date) => d.toISOString().slice(0, 10)
+	const record = (date: string, steps: number) =>
+		`<Record type="HKQuantityTypeIdentifierStepCount" value="${steps}" startDate="${date} 08:00:00 +0000" endDate="${date} 08:00:00 +0000" unit="count" />`
+	const xml = (records: string[]) =>
+		`<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE HealthData>\n<HealthData>\n${records.join("\n")}\n</HealthData>`
+
+	it("follow this month's imported steps, once, and never go down", async () => {
+		const { cookie } = await login()
+		const db = await getTestDb()
+		const now = new Date()
+		await db.insert(challenges).values({
+			title: "Steps Month",
+			description: "d",
+			month: now.getUTCMonth() + 1,
+			year: now.getUTCFullYear(),
+			theme: "sunrise",
+			tasks: [goal(1, { auto: "steps", target: 40000 })],
+		})
+		const [c] = await db
+			.select()
+			.from(challenges)
+			.where(eq(challenges.title, "Steps Month"))
+		await request(app)
+			.post(`/api/challenges/${c.id}/join`)
+			.set("Cookie", cookie)
+			.expect(201)
+		const first = ymd(
+			new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+		)
+		const lastMonth = ymd(
+			new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)),
+		)
+		const upload = (records: string[]) =>
+			request(app)
+				.post("/api/health/import")
+				.set("Cookie", cookie)
+				.attach("file", Buffer.from(xml(records)), "export.xml")
+		const day2 = ymd(
+			new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2)),
+		)
+		const r1 = await upload([
+			record(first, 5000),
+			record(day2, 7000),
+			record(lastMonth, 9999),
+		])
+		expect(r1.status).toBe(200)
+		expect(r1.body.stepRecordsSaved).toBe(3)
+		// last month's steps do not count
+		expect((await progressOf(cookie)).goal_1).toBe(12000)
+		// the same export again adds nothing
+		const r2 = await upload([
+			record(first, 5000),
+			record(day2, 7000),
+			record(lastMonth, 9999),
+		])
+		expect(r2.body.stepRecordsSaved).toBe(0)
+		expect((await progressOf(cookie)).goal_1).toBe(12000)
+		// a new record tops it up
+		const day3 = ymd(
+			new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 3)),
+		)
+		await upload([record(day3, 3000)])
+		expect((await progressOf(cookie)).goal_1).toBe(15000)
+		// the player's taps do nothing for it
+		await request(app)
+			.patch(`/api/challenges/${c.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 999 } })
+			.expect(200)
+		expect((await progressOf(cookie)).goal_1).toBe(15000)
+	})
+})
