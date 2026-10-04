@@ -66,6 +66,20 @@ describe("ambient banter", () => {
 		expect(ids({}).some((i) => i.startsWith("maxout-promo"))).toBe(false)
 	})
 
+	it("talks about the season only in it, and gaps still come first", () => {
+		const ids = (extra: Partial<BanterContext>) =>
+			banterFor({ ...full, ...extra }).map((b) => b.id)
+		expect(ids({ season: "winter" }).some((i) => i.startsWith("winter"))).toBe(
+			true,
+		)
+		expect(ids({ season: "harvest" }).some((i) => i.startsWith("winter"))).toBe(
+			false,
+		)
+		expect(ids({}).some((i) => /^(winter|harvest)/.test(i))).toBe(false)
+		const gap = { ...full, rooms: [], season: "winter" as const }
+		expect(banterFor(gap).every((b) => !b.id.startsWith("winter"))).toBe(true)
+	})
+
 	it("falls back to plain chatter and avoids repeats", () => {
 		const plain = banterFor(full)
 		expect(plain.length).toBeGreaterThan(1)

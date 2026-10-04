@@ -130,6 +130,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `GoalsCard.svelte`; the coach avatar (`coachSvg` in `components/home/icons.ts`, worn keys from `src/lib/cosmetics.svelte.ts`) wears the
   witch hat while it is on. Not yet: NPC/staff outfits, per-challenge decor and
   tiers/milestones (#124), a standalone inventory screen. e2e: `gym3d-life.spec.ts` ("cosmetics").
+- Monthly decor (#126, #135): January to September each have one decor cosmetic on the reward track (`jan_decor`…`sep_decor`, `MONTH_COSMETICS` in `shared/gym3d/rewardTrack.ts`, first big step of the month), built in `equipment/decor.ts` (`MONTH_DECOR`) and placed like the lantern; every month 1-12 now has a track cosmetic (test in `reward-track.test.ts`).
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
   and a perk (`shared/gym3d/staff.ts`: `STAFF`, `trainCost`, `areaMultiplier`). Training costs coins; every level above
   1 adds +3% coins/hour to the staff member's area (a room type's machines, the desk or the kitchen; the manager adds
@@ -188,7 +189,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   santa, none for harvest; `People.costumes`). Only Halloween has the ghost and its stay-for-one-more-set. The monthly track gives November's Harvest
   basket, Hay bale and the coach's autumn scarf, and December's Holiday tree, String lights and the coach's holiday hat (`MONTH_COSMETICS`,
   decor builders `basket`, `hay`, `tree`, `lights`); the kitchen gets Hot cocoa protein and Gingerbread oats in Dec-Feb (appended: the menu is a bitmask).
-  Not yet: banter and coach lines for November/December, other months' seasons (spring, summer).
+  Banter for November and December: `Banter.season` exchanges (`harvest-*`, `winter-*`) fit only in that season (`BanterContext.season`) and count as plain chatter, so the gym's real gaps still get talked about first. Not yet: coach lines for November/December, other months' seasons (spring, summer).
 - Street life (#131, first slice): `People.trickleStreet` (`people/members.ts`) sends a few passers-by (`pass:<n>`, kind `extra`,
   at most half the ambient cap) along the pavement in front of the gym from one edge to the other every 6-12 s; about one in
   eight turns in at the door (`after: "enter"`) and becomes a member. The pavement has street lamps and, across it, a road with a dashed

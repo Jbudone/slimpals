@@ -61,13 +61,16 @@ describe("reward track rules", () => {
 		expect(stepReward(2, 31).coins).toBe(TRACK.stepCoins)
 	})
 
-	it("October's first three big steps give a Halloween cosmetic, other months none", () => {
+	it("October's first three big steps give a Halloween cosmetic, every month has one", () => {
 		const oct = trackSteps("2026-10")
 		expect(oct.filter((s) => s.reward.cosmetic).map((s) => s.n)).toEqual([
 			7, 14, 21,
 		])
 		expect(oct[6].reward.cosmetic).toBe("halloween_lantern")
-		expect(trackSteps("2026-05").some((s) => s.reward.cosmetic)).toBe(false)
+		for (let m = 1; m <= 12; m++) {
+			const key = `2026-${String(m).padStart(2, "0")}`
+			expect(trackSteps(key).some((s) => s.reward.cosmetic)).toBe(true)
+		}
 	})
 
 	it("blocks a second step the same day, no check-in and a finished track", () => {

@@ -534,6 +534,7 @@ export class Gym3DApp {
 			upgraded: this.clock - this.lastClaimAt < 180,
 			maxout: this.maxoutOn() && (this.world.layout.campaign ?? 1) === 1,
 			campaign: this.world.layout.campaign ?? 1,
+			season: this.season(),
 			crowded:
 				this.people.people.filter((p) => p.kind === "member").length >= 8,
 		}
