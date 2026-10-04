@@ -264,11 +264,29 @@ describe("the stories of later campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(200)
-		// campaign four has no story yet
+		// campaign four plays Pavement Street again with a story of its own
 		const four = await request(app)
 			.get("/api/gym/campaign")
 			.set("Cookie", cookie)
 		expect(four.body.campaign).toBe(4)
+		const s4 = await request(app).get("/api/gym/story").set("Cookie", cookie)
+		expect(s4.body).toMatchObject({ pending: null, log: [], nextLevel: 1 })
+		const g4 = await latest()
+		await db.insert(gymRewards).values({
+			gymId: g4.id,
+			source: "story:c4-street-party",
+			sweat: 0,
+			greens: 0,
+		})
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(200)
+		// campaign five has no story yet
+		const five = await request(app)
+			.get("/api/gym/campaign")
+			.set("Cookie", cookie)
+		expect(five.body.campaign).toBe(5)
 		const none = await request(app).get("/api/gym/story").set("Cookie", cookie)
 		expect(none.body).toMatchObject({
 			pending: null,
@@ -276,9 +294,9 @@ describe("the stories of later campaigns", () => {
 			nextLevel: null,
 		})
 		// without a story the gym level decides: not yet, then at level 17
-		expect(four.body.canFinish).toBe(false)
-		const g4 = await latest()
-		await db.update(userGyms).set({ level: 17 }).where(eq(userGyms.id, g4.id))
+		expect(five.body.canFinish).toBe(false)
+		const g5 = await latest()
+		await db.update(userGyms).set({ level: 17 }).where(eq(userGyms.id, g5.id))
 		const ready = await request(app)
 			.get("/api/gym/campaign")
 			.set("Cookie", cookie)

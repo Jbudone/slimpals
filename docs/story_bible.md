@@ -67,4 +67,12 @@ Joe's Fish Shack. A 1987 ledger shows IronWave once lost a race to Joe's
 father; the rematch has three crews (the gym, IronWave, Joe's cousins) and one
 harbour trophy, which they end up sharing.
 
-Campaign 4 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 4: Pavement Street again
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyReunion.ts`. The locations
+repeat after three, so it is the first street some years on, with the first
+cast: MaxOut is a smaller, quieter gym under Dana Voss, Victor drops in without
+leaflets, and Barry reveals that the Burger Baron's secret is the pickle. The
+street votes on a mural, ties between a pigeon and a burger, and paints a pigeon
+holding a burger together; the arc ends in a street party.
+
+Campaign 5 onwards have no story yet (they can be finished from gym level 17).
