@@ -84,6 +84,8 @@ const pending = $derived(wallet.data?.pendingUpgrades ?? [])
 /** What the coach said lately (a plain list: it only feeds the next pick). */
 const recentCoach: string[] = []
 let challengeStand = $state<ChallengeStanding | null>(null)
+/** Coins waiting in the gym, in steps of 50 so the bubble holds still as they grow. */
+let coinsWaiting = $state(0)
 const coachSay = $derived.by((): CoachSay => {
 	void coachPick
 	const c = (() => {
@@ -104,6 +106,7 @@ const coachSay = $derived.by((): CoachSay => {
 			streak: checkinState.data?.streakCount,
 			hour: new Date().getHours(),
 			challenge: challengeStand ?? undefined,
+			coinsWaiting,
 		},
 		recentCoach,
 		seededRng(coachPick),
@@ -264,6 +267,7 @@ onMount(() => {
 				insetBottom={sheetUp ? 0 : 78}
 				{onLayout}
 				{onTip}
+				onWaiting={(n) => (coinsWaiting = Math.floor(n / 50) * 50)}
 				onSheet={(o) => {
 					sheetUp = o
 					if (o) drawerOpen = false

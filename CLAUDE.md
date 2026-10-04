@@ -5,7 +5,7 @@
 - **Backend**: Express + TypeScript, port 3000
 - **Database**: MariaDB via Drizzle ORM (`server/db/schema.ts`, migrations in `server/db/migrations/`)
 - **Auth**: Better Auth
-- **Tests**: Vitest (`npm test`), Biome for lint/format (`npm run check`)
+- **Tests**: Vitest (`npm test`), Biome for lint/format (`npm run check`); `npm run typecheck` also checks `.svelte` for undefined names
 - **Dev server**: `npm run dev` — starts both Vite and Express via concurrently
 
 ## Key paths
@@ -201,15 +201,22 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   streak milestone, tasks left by morning/day/evening), skipping the last three it said (`Home.svelte` keeps them). Challenge commentary: with a joined challenge the bubble now and then (2 in 5, when nothing
   urgent is up) speaks about it instead of the task count, and the Challenges page shows the coach's note for the day (`challengeLineFor`,
   stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
-  computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
+  computed on the fly, not stored, since the lines are scripted). Coins piling up: from `COINS_PILE` (150) waiting coins the bubble now and then (2 in 5, never over gear or loading) nudges to collect them (`coins` lines per voice, `{c}` = the count; `Gym3D.svelte` reports `onWaiting` each second, Home keeps it in steps of 50 so the bubble holds still). Not yet: AI-generated per-day commentary,
   portraits per personality. Admin's content tuning has a "Coach Lines" type (`contentTuning/coachLines.ts`, style doc `docs/coach_lines.md`): pick a voice and a situation (or challenge stage) and it lists the scripted lines next to the style rules (no AI call, the lines are scripted).
 - Challenge catalog (#124, second slice): `shared/challenges/catalog.ts` holds curated monthly cards (Burpee Blitz, Sunrise Stride, Green Machine: tagline,
   coach intro, three goals, a decor `rewardCosmetic`: `arcade_cabinet`, `sunrise_mural`, `herb_planter`, builders in `equipment/decor.ts`). Columns `tagline`,
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
   `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
   `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
+- Challenge banner (#124): `src/components/ChallengeBanner.svelte` is a CSS-only animated strip by the challenge `theme` (arcade: scrolling stars and a blinking coin;
+  sunrise: the sky runs dawn to dusk with progress; greens: drifting leaves; anything else a shimmer), on the unjoined card and above the coach note once joined;
+  still under reduced motion. Template components are not covered by `tsc`: `npm run typecheck` also runs `check:svelte-names` (svelte-check, fails on "Cannot find name"),
+  which caught missing imports in `Challenges.svelte` that had been broken since the milestones slice.
 - Challenge feed post (#124): finishing a challenge posts a `challenge_completion` to the feed for users with auto-share on (`server/services/challenges/feed.ts`,
   content carries `challengeName`, `tier`, `reward`), and badges earned on the finish are shared through `shareBadges` like the check-in route does.
+- Challenge generator (#124): `shared/challenges/validate.ts` (`validateGeneratedChallenge`, pure) checks what the AI returns (1-5 goals `goal_N`, positive numbers,
+  bronze <= target <= gold, unit not "days") and `generateChallengeForMonth` falls back to the catalog on anything malformed, like when the AI is down. The prompt doc
+  (`contentTuning/docs/monthly_challenge.md`) now also asks for `tagline`, `coachIntro` and per-goal `tiers`, which are stored on the challenge.
 - Challenge milestones (#124, first slice): a monthly challenge pays the gym at 25/50/75/100% of its goals' average completion
   (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
   reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each

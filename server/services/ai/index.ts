@@ -37,6 +37,8 @@ export type GeneratedChallenge = {
 	title: string
 	description: string
 	theme: string
+	tagline?: string
+	coachIntro?: string
 	goals: ChallengeGoal[]
 }
 

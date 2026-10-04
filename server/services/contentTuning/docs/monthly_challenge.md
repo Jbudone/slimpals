@@ -2,7 +2,9 @@ Generate a themed monthly wellness challenge. Respond with a JSON object only (n
 {
   "title": "short, encouraging challenge name (2-4 words)",
   "description": "1 friendly sentence about the theme",
-  "theme": "one-word theme",
+  "theme": "one-word theme (arcade, sunrise or greens get a themed banner; anything else is fine)",
+  "tagline": "a short, playful line under the title (under 60 characters)",
+  "coachIntro": "the coach's one-sentence pitch for the challenge, no exclamation marks",
   "goals": [
     {
       "id": "goal_1",
@@ -11,7 +13,8 @@ Generate a themed monthly wellness challenge. Respond with a JSON object only (n
       "target": 120,
       "unit": "glasses",
       "dailyAmount": 6,
-      "dailyPrompt": "Did you drink your 6 glasses today?"
+      "dailyPrompt": "Did you drink your 6 glasses today?",
+      "tiers": { "bronze": 72, "gold": 168 }
     }
   ]
 }
@@ -24,3 +27,5 @@ Generate exactly 3 goals. Each goal is a cumulative monthly total built from a s
 - Each dailyPrompt should be a yes/no question starting with "Did you".
 - Theme the 3 goals around a cohesive wellness concept.
 - Goal IDs: goal_1, goal_2, goal_3.
+- tiers sets the bronze (gentler) and gold (harder) monthly totals for the goal; target is silver. Keep bronze below target and gold above it, roughly 60% and 140%.
+- Output that does not follow this shape (wrong goal ids, targets that are not positive numbers, bronze above target, gold below it) is rejected and a curated challenge is used for the month instead.

@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type { CatalogChallenge } from "../../../shared/challenges/catalog.js"
 import { catalogForMonth } from "../../../shared/challenges/catalog.js"
+import { validateGeneratedChallenge } from "../../../shared/challenges/validate.js"
 import type * as schema from "../../db/schema.js"
 import { challenges } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
@@ -29,7 +30,11 @@ export async function generateChallengeForMonth(
 	}
 
 	try {
-		const generated = await aiService.generateMonthlyChallenge(month, year)
+		const checked = validateGeneratedChallenge(
+			await aiService.generateMonthlyChallenge(month, year),
+		)
+		if (!checked.ok) throw new Error(`Malformed challenge: ${checked.error}`)
+		const generated = checked.challenge
 		const [inserted] = await db
 			.insert(challenges)
 			.values({
@@ -38,6 +43,8 @@ export async function generateChallengeForMonth(
 				month,
 				year,
 				theme: generated.theme,
+				tagline: generated.tagline ?? null,
+				coachIntro: generated.coachIntro ?? null,
 				aiGenerated: true,
 				tasks: generated.goals,
 			})
