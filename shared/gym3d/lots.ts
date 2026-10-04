@@ -10,6 +10,14 @@ import { LOBBY_CELL, PD, type PlotCell, PW, WORLD_ROWS } from "./rooms.js"
 /** Columns of plots in the neighbourhood (x = 0 .. 7 * PW). */
 export const NEIGHBOURHOOD_COLS = 7
 
+/** Extra columns that open at the east end once the Burger Baron is bought. */
+export const BURGER_COLS = 2
+
+/** The neighbourhood's width in plots (wider once the Baron is bought). */
+export function neighbourhoodCols(burger = false): number {
+	return NEIGHBOURHOOD_COLS + (burger ? BURGER_COLS : 0)
+}
+
 export type LotTemplate = { shape: LotShape; cells: readonly PlotCell[] }
 
 const c = (px: number, pz: number): PlotCell => ({ px, pz })
@@ -27,6 +35,14 @@ export const LOT_TEMPLATES: readonly LotTemplate[] = [
 	{ shape: "normal", cells: [c(4, 0)] },
 	{ shape: "big", cells: [c(5, 1), c(6, 1), c(5, 2), c(6, 2)] },
 	{ shape: "wide", cells: [c(5, 0), c(6, 0)] },
+]
+
+/** The Baron's old lot: two more lots past the east end, only once he is
+ * bought (#131). Same rules as the rest: they are for sale next to a built
+ * plot, and bought and built like any other. */
+export const BURGER_LOT_TEMPLATES: readonly LotTemplate[] = [
+	{ shape: "big", cells: [c(7, 1), c(8, 1), c(7, 2), c(8, 2)] },
+	{ shape: "wide", cells: [c(7, 0), c(8, 0)] },
 ]
 
 export type Lot = {
@@ -59,11 +75,13 @@ export function inNeighbourhood(p: PlotCell): boolean {
 
 /** Lots as they stand given the built cells: whole templates where every
  * cell is free, single plots for the free cells of partly built ones. */
-export function currentLots(built: readonly PlotCell[]): Lot[] {
+export function currentLots(built: readonly PlotCell[], burger = false): Lot[] {
 	const taken = new Set(built.map(key))
 	taken.add(key(LOBBY_CELL))
 	const out: Lot[] = []
-	for (const t of LOT_TEMPLATES) {
+	for (const t of burger
+		? [...LOT_TEMPLATES, ...BURGER_LOT_TEMPLATES]
+		: LOT_TEMPLATES) {
 		const free = t.cells.filter((p) => !taken.has(key(p)))
 		if (!free.length) continue
 		if (free.length === t.cells.length)
@@ -84,7 +102,7 @@ export function currentLots(built: readonly PlotCell[]): Lot[] {
 }
 
 /** The lots that are for sale: those touching a built cell. */
-export function lotsForSale(built: readonly PlotCell[]): Lot[] {
+export function lotsForSale(built: readonly PlotCell[], burger = false): Lot[] {
 	const taken = new Set(built.map(key))
 	taken.add(key(LOBBY_CELL))
 	const touches = (p: PlotCell) =>
@@ -94,7 +112,7 @@ export function lotsForSale(built: readonly PlotCell[]): Lot[] {
 			[0, 1],
 			[0, -1],
 		].some(([dx, dz]) => taken.has(`${p.px + dx},${p.pz + dz}`))
-	return currentLots(built).filter((l) => l.cells.some(touches))
+	return currentLots(built, burger).filter((l) => l.cells.some(touches))
 }
 
 /** World-space bounding box of a set of cells. */

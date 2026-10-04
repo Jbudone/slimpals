@@ -11,7 +11,7 @@ import {
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
-import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
+import { neighbourhoodCols, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import { maxoutFromQuery, maxoutPromo } from "../../../shared/gym3d/maxout"
 import {
 	getRelationshipStage,
@@ -433,7 +433,7 @@ export class Gym3DApp {
 		this.fitView()
 		this.bounds = {
 			x0: 0,
-			x1: NEIGHBOURHOOD_COLS * PW,
+			x1: neighbourhoodCols(this.world.layout.burger?.state === "bought") * PW,
 			z0: 0,
 			z1: this.world.frontZ + 3,
 		}

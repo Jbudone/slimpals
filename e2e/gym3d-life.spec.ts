@@ -1390,8 +1390,39 @@ test("3D gym burger: at 4 stars the Burger Baron is for sale and buying it shrin
 		data: { vibe: "chill" },
 	})
 	expect(vibe.ok()).toBe(true)
+	// the east end is built, so the Baron's lots will touch it
+	const gymRow = await (async () => {
+		const conn = await mysql.createConnection(DB_URL)
+		try {
+			const [g] = await conn.execute(
+				"SELECT g.id FROM user_gyms g JOIN users u ON u.id = g.user_id ORDER BY g.id DESC LIMIT 1",
+			)
+			const gymId = (g as { id: number }[])[0].id
+			const [has] = await conn.execute(
+				"SELECT id FROM gym_plots WHERE gym_id = ? AND px = 6 AND pz = 1",
+				[gymId],
+			)
+			if ((has as unknown[]).length === 0) {
+				const [r] = await conn.execute(
+					"INSERT INTO gym_rooms (gym_id, type, shape, level) VALUES (?, 'empty', 'normal', 1)",
+					[gymId],
+				)
+				await conn.execute(
+					"INSERT INTO gym_plots (gym_id, px, pz, state, lot_shape, room_id) VALUES (?, 6, 1, 'owned', 'normal', ?)",
+					[gymId, (r as { insertId: number }).insertId],
+				)
+			}
+			return gymId
+		} finally {
+			await conn.end()
+		}
+	})()
+	expect(gymRow).toBeGreaterThan(0)
 	await page.goto("/")
 	await waitReady(page)
+	const lotIds = () =>
+		page.evaluate(() => window.gym3d?.layout().lots.map((l) => l.id) ?? [])
+	expect(await lotIds()).not.toContain("big:7,1")
 	await page.getByTestId("gym-stars").click()
 	await expect(page.getByTestId("burger-forsale")).toBeVisible()
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
@@ -1406,4 +1437,10 @@ test("3D gym burger: at 4 stars the Burger Baron is for sale and buying it shrin
 	await page.evaluate(() => window.gym3d?.panTo(13.5, 29))
 	await page.waitForTimeout(1200)
 	await shot(page, "24-burger-bought")
+	// the Baron's old lots are for sale at the east end now
+	expect(await lotIds()).toContain("big:7,1")
+	await page.getByTestId("gym-stars").click()
+	await page.evaluate(() => window.gym3d?.panTo(70, 8))
+	await page.waitForTimeout(1200)
+	await shot(page, "32-burger-lots")
 })
