@@ -79,6 +79,8 @@ type Props = {
 	/** Short feedback ("Sweat spent...") for the host to show (Home puts it
 	 * in the coach's bubble); without it the gym shows its own tip. */
 	onTip?: (text: string, kind: "info" | "error") => void
+	/** Coins waiting in the bubbles, about once a second (the coach mentions a pile). */
+	onWaiting?: (coins: number) => void
 }
 
 let {
@@ -91,6 +93,7 @@ let {
 	onLayout,
 	onSheet,
 	onTip,
+	onWaiting,
 }: Props = $props()
 
 const TYPES: EquipmentRoomType[] = [
@@ -806,6 +809,7 @@ onMount(() => {
 	clockTimer = setInterval(() => {
 		clock = Date.now()
 		waiting = app?.coinsWaiting() ?? 0
+		onWaiting?.(waiting)
 	}, 1000)
 	window.addEventListener("sp:task-done", onTaskDone)
 })

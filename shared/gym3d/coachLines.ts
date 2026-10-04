@@ -54,6 +54,8 @@ export type CoachContext = {
 	hour: number
 	/** A joined challenge: its lines now and then replace the task count. */
 	challenge?: ChallengeStanding
+	/** Coins waiting in the gym's bubbles: a pile now and then gets a nudge. */
+	coinsWaiting?: number
 }
 
 export type CoachSay = { id: string; lead: string; rest: string }
@@ -67,10 +69,28 @@ type Situation =
 	| "morning"
 	| "day"
 	| "evening"
+	| "coins"
+
+/** A pile worth a nudge: from this many waiting coins the coach mentions them. */
+export const COINS_PILE = 150
 
 /** {n} = tasks left (with its noun), {gear} = the gear's name, {s} = the streak. */
 const LINES: Record<CoachVoice, Record<Situation, readonly Variant[]>> = {
 	friendly: {
+		coins: [
+			[
+				"Your coins are piling up.",
+				"There's {c} waiting in the gym. Collect them before they sit any longer.",
+			],
+			[
+				"The till is full.",
+				"{c} coins are waiting. A quick sweep and they're yours.",
+			],
+			[
+				"Money's on the floor.",
+				"{c} coins from the machines. Tap Collect all.",
+			],
+		],
 		gear: [
 			["New gear!", "{gear} is unlocked. Tap Place it and the crew builds it."],
 			["Look what you earned.", "{gear} is ready to place."],
@@ -109,6 +129,11 @@ const LINES: Record<CoachVoice, Record<Situation, readonly Variant[]>> = {
 		],
 	},
 	drill_sergeant: {
+		coins: [
+			["Coins are idle, soldier.", "{c} sitting there. Collect them. Now."],
+			["Unclaimed pay.", "{c} coins on the books. Go and collect your wages."],
+			["Idle cash is wasted cash.", "{c} waiting. Move."],
+		],
 		gear: [
 			["New equipment, recruit.", "{gear} is unlocked. Place it. Now."],
 			["Gear's in.", "{gear}. Assign it a spot."],
@@ -141,6 +166,17 @@ const LINES: Record<CoachVoice, Record<Situation, readonly Variant[]>> = {
 		],
 	},
 	roaster: {
+		coins: [
+			[
+				"Your gym earned {c} coins.",
+				"It's been waiting. Like most of your promises. Collect it.",
+			],
+			[
+				"{c} coins, uncollected.",
+				"The machines work harder than you do. Pick it up.",
+			],
+			["Free money.", "{c} of it, and you walked past. Tap Collect all."],
+		],
 		gear: [
 			[
 				"Oh, new gear.",
@@ -182,6 +218,17 @@ const LINES: Record<CoachVoice, Record<Situation, readonly Variant[]>> = {
 		],
 	},
 	anime_sensei: {
+		coins: [
+			[
+				"The coins gather like leaves.",
+				"{c} wait upon the floor. Gather them, and be at peace.",
+			],
+			[
+				"Patience has paid you.",
+				"{c} coins have ripened. Collect what the gym has grown.",
+			],
+			["A quiet harvest.", "{c} coins rest unclaimed. Bring them in."],
+		],
 		gear: [
 			["A new tool appears.", "{gear} has awakened. Place it, young one."],
 			["The forge has spoken.", "{gear} awaits its place."],
@@ -214,6 +261,20 @@ const LINES: Record<CoachVoice, Record<Situation, readonly Variant[]>> = {
 		],
 	},
 	bro: {
+		coins: [
+			[
+				"Bro, your gym's stacking.",
+				"{c} coins just chilling. Collect all, easy.",
+			],
+			[
+				"Coins are piling up, my guy.",
+				"{c} waiting. Grab them before the next lift.",
+			],
+			[
+				"That's {c} coins on the table.",
+				"You're rich and you don't even know it. Tap Collect all.",
+			],
+		],
 		gear: [
 			["Yo, new gear!", "{gear} just dropped. Place it, let's go."],
 			["Dude.", "{gear} is unlocked. That's sick."],
@@ -271,6 +332,7 @@ function fill(text: string, c: CoachContext): string {
 		.replace("{n}", `${c.left} task${c.left === 1 ? "" : "s"}`)
 		.replace("{gear}", c.pendingGear ?? "New gear")
 		.replace("{s}", String(c.streak ?? 0))
+		.replace("{c}", (c.coinsWaiting ?? 0).toLocaleString("en-US"))
 }
 
 /** A line for the situation that is not one of the `recent` ids when it can
@@ -291,13 +353,20 @@ export function coachLineFor(
 		chance < 0.4
 	)
 		return challengeLineFor(voice, c.challenge, rng, recent)
-	const pool = LINES[voice][sit]
+	// a pile of waiting coins gets a nudge now and then, when nothing urgent is up
+	const nudge =
+		(c.coinsWaiting ?? 0) >= COINS_PILE &&
+		sit !== "gear" &&
+		sit !== "loading" &&
+		rng() < 0.4
+	const pool = LINES[voice][nudge ? "coins" : sit]
+	const lineSit = nudge ? "coins" : sit
 	const fresh = pool
-		.map((v, i) => ({ v, id: `${voice}:${sit}:${i}` }))
+		.map((v, i) => ({ v, id: `${voice}:${lineSit}:${i}` }))
 		.filter((x) => !recent.includes(x.id))
 	const from = fresh.length
 		? fresh
-		: pool.map((v, i) => ({ v, id: `${voice}:${sit}:${i}` }))
+		: pool.map((v, i) => ({ v, id: `${voice}:${lineSit}:${i}` }))
 	const pick = from[Math.floor(rng() * from.length) % from.length]
 	return {
 		id: pick.id,
