@@ -200,7 +200,7 @@ const MONTH_DECOR: Record<string, () => T.Group> = {
 		box(0.4, 0.06, 0.4, C.cream, 0, 0.03, 0, g)
 		ball(g, 0.2, "#2c2f36", 0, 0.26, 0)
 		torus(g, 0.12, 0.035, "#2c2f36", 0, 0.52, 0, 0)
-		box(0.12, 0.07, 0.01, GOLD(), 0, 0.24, 0.2, g, { noCast: true })
+		box(0.12, 0.07, 0.01, "#e0b84a", 0, 0.24, 0.2, g, { noCast: true })
 		return g
 	},
 	// September, an apple crate
