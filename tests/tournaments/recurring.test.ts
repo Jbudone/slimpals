@@ -96,6 +96,11 @@ describe("recurring tournaments (DB)", () => {
 		const rows = await db.select().from(tournaments)
 		expect(rows).toHaveLength(5)
 		expect(rows.every((r) => r.creatorId === null && r.systemKey)).toBe(true)
+		// each new one is announced once, by the system
+		const posts = await db.select().from(socialPosts)
+		expect(posts).toHaveLength(5)
+		expect(posts.every((p) => p.userId === null)).toBe(true)
+		expect(JSON.stringify(posts[0].content)).toContain("is open")
 	})
 
 	it("resolves a system tournament and posts the winner to the feed", async () => {
@@ -131,7 +136,10 @@ describe("recurring tournaments (DB)", () => {
 			.from(tournaments)
 			.where(eq(tournaments.id, week.id))
 		expect(done.winnerId).toBe("sys-w")
-		const posts = await db.select().from(socialPosts)
+		// the openings were posted by the system; the winner gets the result
+		const posts = (await db.select().from(socialPosts)).filter(
+			(p) => p.userId !== null,
+		)
 		expect(posts.map((p) => p.userId)).toEqual(["sys-w"])
 		expect((posts[0].content as { text: string }).text).toContain(week.name)
 	})

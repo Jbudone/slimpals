@@ -4,7 +4,7 @@
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import { recurringPeriods } from "../../../shared/tournaments/recurring.js"
 import type * as schema from "../../db/schema.js"
-import { tournaments } from "../../db/schema.js"
+import { socialPosts, tournaments } from "../../db/schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -24,6 +24,16 @@ export async function ensureRecurringTournaments(
 			rewardDescription: "Bragging rights",
 		})
 		created += res.affectedRows
+		// a new one is announced in the feed (by the system, not a user)
+		if (res.affectedRows > 0) {
+			await db.insert(socialPosts).values({
+				userId: null,
+				type: "milestone",
+				content: {
+					text: `${p.name} is open: ${p.start.toISOString().slice(0, 10)} to ${p.end.toISOString().slice(0, 10)}. Join it from Tournaments. 🏁`,
+				},
+			})
+		}
 	}
 	return { created }
 }

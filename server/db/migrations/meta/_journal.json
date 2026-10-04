@@ -225,6 +225,13 @@
       "when": 1790130000000,
       "tag": "0031_challenge_card",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1790216400000,
+      "tag": "0032_social_post_system",
+      "breakpoints": true
     }
   ]
 }
