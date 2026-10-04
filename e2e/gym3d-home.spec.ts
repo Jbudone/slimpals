@@ -241,6 +241,14 @@ test("gym home: tick a task, collect coins, run the kitchen, come back", async (
 		.poll(() => page.evaluate(() => window.gym3d?.stats().running))
 		.toBe(true)
 
+	// ── the Hall of fame page (nothing finished yet) ──
+	await page.goto("/hall")
+	await expect(page.getByTestId("hall-page")).toBeVisible()
+	await expect(
+		page.getByRole("heading", { name: "Hall of fame" }),
+	).toBeVisible()
+	await expect(page.getByText("No finished campaigns yet")).toBeVisible()
+
 	expect(pageErrors).toEqual([])
 	await admin.dispose()
 	await context.close()

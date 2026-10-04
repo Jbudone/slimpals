@@ -20,6 +20,7 @@ import {
 } from "../../lib/rewardTrack.svelte.js"
 import { story } from "../../lib/story.svelte.js"
 import { loadWallet } from "../../lib/wallet.svelte.js"
+import { page } from "../../router.svelte.js"
 
 let { top = 64, onBought }: { top?: number; onBought?: () => void } = $props()
 
@@ -242,6 +243,17 @@ async function buyBurger() {
 							</li>
 						{/each}
 					</ul>
+					<button
+						type="button"
+						class="link"
+						data-testid="campaign-hall-open"
+						onclick={() => {
+							open = false
+							page("/hall")
+						}}
+					>
+						Open the Hall of fame
+					</button>
 				{/if}
 			{/if}
 			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
@@ -353,6 +365,16 @@ async function buyBurger() {
 	height: 100%;
 	background: #34c973;
 	border-radius: 4px;
+}
+
+.link {
+	background: none;
+	border: 0;
+	padding: 4px 0;
+	color: #8a5a16;
+	font-weight: 700;
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .hint {
