@@ -1295,6 +1295,35 @@ test("3D gym seasons: winter dresses the door and the people, harvest the door o
 	expect(await stat("pumpkins")).toBe(0)
 })
 
+test("3D gym story: the first chapter plays as a card and lands in the story log", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { page } = await setup(request, browser, testInfo, 30, "story")
+	await page.goto("/?story=1&ghost=0")
+	await waitReady(page)
+	await expect(page.getByTestId("story-card")).toBeVisible()
+	await expect(page.getByTestId("story-line")).toContainText(
+		"Welcome to Slim Pals",
+	)
+	await shot(page, "33-story-card")
+	// three lines: Next, Next, Done
+	await page.getByTestId("story-next").click()
+	await expect(page.getByTestId("story-line")).toContainText("Quiet street")
+	await page.getByTestId("story-next").click()
+	await page.getByTestId("story-next").click()
+	await expect(page.getByTestId("story-card")).toHaveCount(0)
+	// it is in the story so far, and the next chapter is not shown early
+	await page.getByTestId("gym-stars").click()
+	await expect(page.getByTestId("story-log")).toContainText("Opening day")
+	await expect(page.getByTestId("story-next-level")).toBeVisible()
+	// a reload does not play it again
+	await page.goto("/?story=1&ghost=0")
+	await waitReady(page)
+	await expect(page.getByTestId("story-card")).toHaveCount(0)
+})
+
 test("3D gym MaxOut: the rival's sign changes during its weekend promo", async ({
 	request,
 	browser,

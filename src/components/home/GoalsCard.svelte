@@ -13,6 +13,7 @@ import {
 	rewardTrack,
 	stepText,
 } from "../../lib/rewardTrack.svelte.js"
+import { story } from "../../lib/story.svelte.js"
 import { loadWallet } from "../../lib/wallet.svelte.js"
 
 let { top = 64, onBought }: { top?: number; onBought?: () => void } = $props()
@@ -163,6 +164,21 @@ async function buyBurger() {
 						</li>
 					{/each}
 				</ul>
+			{/if}
+			{#if story.data && (story.data.log.length > 0 || story.data.nextLevel !== null)}
+				<h3>Story so far</h3>
+				<ul class="outfits" data-testid="story-log">
+					{#each story.data.log as c (c.id)}
+						<li>
+							<span><b>{c.title}.</b> {c.recap}</span>
+						</li>
+					{/each}
+				</ul>
+				{#if story.data.nextLevel !== null}
+					<p class="hint" data-testid="story-next-level">
+						The next chapter opens at gym level {story.data.nextLevel}.
+					</p>
+				{/if}
 			{/if}
 			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
 		</div>
