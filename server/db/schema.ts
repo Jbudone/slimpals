@@ -174,6 +174,22 @@ export const userChallenges = mysqlTable("user_challenges", {
 	completedAt: timestamp("completed_at"),
 })
 
+// The coach's line for each day of a joined challenge (written by the AI when
+// the player joins, shared/challenges/coachDays.ts); a day without a row
+// falls back to the scripted lines.
+export const challengeCoachLines = mysqlTable(
+	"challenge_coach_lines",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		userChallengeId: int("user_challenge_id")
+			.notNull()
+			.references(() => userChallenges.id, { onDelete: "cascade" }),
+		day: int("day").notNull(),
+		line: text("line").notNull(),
+	},
+	(t) => [unique("challenge_coach_lines_uc_day").on(t.userChallengeId, t.day)],
+)
+
 export const dailyCheckins = mysqlTable("daily_checkins", {
 	id: int("id").autoincrement().primaryKey(),
 	userId: varchar("user_id", { length: 36 })

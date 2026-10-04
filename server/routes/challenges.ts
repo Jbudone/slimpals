@@ -4,11 +4,17 @@ import { challengeFraction } from "../../shared/challenges/milestones.js"
 import { isTier, tierGoals } from "../../shared/challenges/tiers.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { db } from "../db/index.js"
-import { challenges, userChallenges } from "../db/schema.js"
+import {
+	challengeCoachLines,
+	challenges,
+	userChallenges,
+	users,
+} from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
 import { checkAndAward, shareBadges } from "../services/badges/index.js"
+import { storeChallengeCoachLines } from "../services/challenges/coachLines.js"
 import { shareChallengeCompletion } from "../services/challenges/feed.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
 import { payChallengeMilestones } from "../services/challenges/milestones.js"
@@ -59,6 +65,22 @@ export function createChallengesRouter(aiService: AIService) {
 			)
 			.limit(1)
 
+		// the coach's line for today, if one was written when the player joined
+		let coachToday: string | null = null
+		if (userChallenge) {
+			const [row] = await db
+				.select({ line: challengeCoachLines.line })
+				.from(challengeCoachLines)
+				.where(
+					and(
+						eq(challengeCoachLines.userChallengeId, userChallenge.id),
+						eq(challengeCoachLines.day, now.getUTCDate()),
+					),
+				)
+				.limit(1)
+			coachToday = row?.line ?? null
+		}
+
 		const tier = userChallenge?.tier ?? "silver"
 		const goals = tierGoals(challenge.tasks as ChallengeGoal[], tier)
 		const progress = (userChallenge?.completedTasks ?? {}) as GoalProgress
@@ -74,6 +96,7 @@ export function createChallengesRouter(aiService: AIService) {
 			theme: challenge.theme,
 			tagline: challenge.tagline,
 			coachIntro: challenge.coachIntro,
+			coachToday,
 			reward: rewardOf(challenge.rewardCosmetic),
 			month: challenge.month,
 			year: challenge.year,
@@ -134,12 +157,32 @@ export function createChallengesRouter(aiService: AIService) {
 			return
 		}
 
-		await db.insert(userChallenges).values({
-			userId,
-			challengeId,
-			completedTasks: {},
-			tier,
-		})
+		const [created] = await db
+			.insert(userChallenges)
+			.values({
+				userId,
+				challengeId,
+				completedTasks: {},
+				tier,
+			})
+			.$returningId()
+
+		// the coach writes a line for every day of the month in their own time:
+		// joining does not wait for it, and the scripted lines cover any gap
+		void (async () => {
+			const [u] = await db
+				.select({ coachPersonality: users.coachPersonality })
+				.from(users)
+				.where(eq(users.id, userId))
+			await storeChallengeCoachLines(db, aiService, {
+				userChallengeId: created.id,
+				personality: u?.coachPersonality ?? "friendly",
+				title: challenge.title,
+				days: new Date(
+					Date.UTC(challenge.year, challenge.month, 0),
+				).getUTCDate(),
+			})
+		})().catch((err) => console.error("[challenges] coach lines:", err))
 
 		res.status(201).json({ joined: true, tier })
 	})
