@@ -13,6 +13,7 @@ import { showBadgeToast } from "../lib/toast.svelte.js"
 import { TOURNAMENT_TYPE_UNITS } from "../lib/tournamentLabels.js"
 import { loadWallet } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
+import ChallengeBanner from "./ChallengeBanner.svelte"
 import Avatar from "./ui/Avatar.svelte"
 import Button from "./ui/Button.svelte"
 import Card from "./ui/Card.svelte"
@@ -31,6 +32,7 @@ type Goal = {
 type Challenge = {
 	id: number
 	title: string
+	theme?: string | null
 	goals: Goal[]
 	joined: boolean
 	progress: Record<string, number>
@@ -171,6 +173,11 @@ onMount(async () => {
 		</div>
 
 		{#if challenge?.joined}
+			<ChallengeBanner
+				theme={challenge.theme ?? null}
+				title={challenge.title}
+				progress={challenge.totalGoals ? challenge.goalsCompleted / challenge.totalGoals : 0}
+			/>
 			<button
 				type="button"
 				class="row"
