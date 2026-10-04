@@ -8,7 +8,7 @@ import {
 	users,
 } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
-import { HIRE, hireCost } from "../../shared/gym3d/hires.js"
+import { HIRE, hireCost, JUICE_TIPS } from "../../shared/gym3d/hires.js"
 import type { GymLayoutDto, GymStaffDto } from "../../shared/types.js"
 import {
 	closeTestDb,
@@ -195,5 +195,25 @@ describe("Hiring staff", () => {
 		expect(card?.bonus).toBeGreaterThan(HIRE.bonus)
 		const after = await getLayout(cookie)
 		expect(rateOf(after)).toBeGreaterThan(rateOf(hired.body))
+	})
+})
+
+describe("Juice tips", () => {
+	it("a barista in the juice room lifts the Slim Kitchen's rate, other hires do not", async () => {
+		const { cookie, gymId, layout } = await setup([
+			"amenity_juice",
+			"cardio_treadmill",
+		])
+		await setCoins(gymId, 5000)
+		const base = layout.kitchen.rate
+		expect(base).toBeGreaterThan(0)
+
+		// a hire elsewhere leaves the kitchen alone
+		const cardio = await hire(cookie, roomOf(layout, "cardio").id).expect(200)
+		expect(cardio.body.kitchen.rate).toBeCloseTo(base, 5)
+
+		const juice = await hire(cookie, roomOf(layout, "juice").id).expect(200)
+		expect(juice.body.kitchen.rate).toBeCloseTo(base * (1 + JUICE_TIPS), 0)
+		expect(juice.body.kitchen.rate).toBeGreaterThan(base)
 	})
 })

@@ -19,7 +19,7 @@ import {
 	machineRate,
 	menuInSeason,
 } from "../../../shared/gym3d/economy.js"
-import { hireBonus } from "../../../shared/gym3d/hires.js"
+import { hireBonus, kitchenTips } from "../../../shared/gym3d/hires.js"
 import { areaMultiplier } from "../../../shared/gym3d/staff.js"
 import { VIBE } from "../../../shared/gym3d/vibes.js"
 import type {
@@ -212,7 +212,9 @@ export async function incomeState(
 	const hired = await hireBonuses(conn, gymId)
 	const vibed = await vibeBonuses(conn, gymId)
 	const deskMult = areaMultiplier("desk", levels)
-	const kitchenMult = areaMultiplier("kitchen", levels)
+	const staffedTypes = [...hired.keys()].map((id) => roomTypes.get(id) ?? "")
+	const kitchenMult =
+		areaMultiplier("kitchen", levels) + kitchenTips(staffedTypes)
 	const sources: GymIncomeSourceDto[] = []
 	for (const p of pieces) {
 		if (!isEarningPiece(p)) continue

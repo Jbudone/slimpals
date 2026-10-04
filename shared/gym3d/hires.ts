@@ -104,9 +104,19 @@ export function hirePost(
  * lifts the mood of everyone in the gym by this much, live (not stored). */
 export const RECOVERY_MOOD = 8
 
+/** A juice room with a barista adds this to the Slim Kitchen's coin rate
+ * (the barista's customers tip). */
+export const JUICE_TIPS = 0.12
+
+/** The kitchen's extra rate from the staffed room types (see JUICE_TIPS). */
+export function kitchenTips(staffedTypes: readonly string[]): number {
+	return staffedTypes.includes("juice") ? JUICE_TIPS : 0
+}
+
 /** The extra a staffed room type brings besides coins, for the Staff page. */
 export const STAFFED_PERK: Readonly<Record<string, string>> = {
 	recovery: `Lifts everyone's mood by ${RECOVERY_MOOD}`,
+	juice: `Tips: the Slim Kitchen earns ${Math.round(JUICE_TIPS * 100)}% more`,
 }
 
 /** The mood bonus for the room types that have a hire (see RECOVERY_MOOD). */
