@@ -1,11 +1,13 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm"
 import { Router } from "express"
 import multer from "multer"
+import { GREAT_MEAL_RATING } from "../../shared/challenges/auto.js"
 import { db } from "../db/index.js"
 import { foodLogs, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { bumpAutoGoals } from "../services/challenges/progress.js"
 import { awardGymXp } from "../services/gym/index.js"
 import { dayKey, mealReward, payReward } from "../services/gym/rewards.js"
 import { createStorageService } from "../services/storage/index.js"
@@ -141,6 +143,9 @@ export function createFoodRouter(aiService: AIService) {
 			gymXp += 10
 		}
 		await awardGymXp(userId, gymXp, "food_log", db)
+		// a great-rated meal counts for any "great meals" goal of this month's challenge
+		if (analysis.rating >= GREAT_MEAL_RATING)
+			await bumpAutoGoals(db, userId, "great_meal")
 		// a meal photo is a diet task: Greens, once per meal type and day
 		const paid = await payReward(
 			userId,

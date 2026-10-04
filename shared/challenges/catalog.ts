@@ -4,6 +4,8 @@
 // an admin can put one in a month. Goals are month-long running totals like
 // the generated ones (`dailyAmount` is added each day the player taps).
 
+import type { AutoGoalKind } from "./auto.js"
+
 export type CatalogGoal = {
 	id: string
 	title: string
@@ -12,6 +14,8 @@ export type CatalogGoal = {
 	unit: string
 	dailyAmount: number
 	dailyPrompt: string
+	/** Counted by the app itself (shared/challenges/auto.ts). */
+	auto?: AutoGoalKind
 }
 
 export type CatalogChallenge = {
@@ -134,11 +138,12 @@ export const CHALLENGE_CATALOG: readonly CatalogChallenge[] = [
 			{
 				id: "goal_2",
 				title: "25 Great Meals",
-				description: "A meal you feel good about, most days",
+				description: "Meal photos the coach rates great, counted for you",
 				target: 25,
 				unit: "meals",
 				dailyAmount: 1,
-				dailyPrompt: "Did you have a meal you feel good about today?",
+				dailyPrompt: "Did you log a meal the coach rated great today?",
+				auto: "great_meal",
 			},
 			{
 				id: "goal_3",

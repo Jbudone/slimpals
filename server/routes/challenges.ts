@@ -1,8 +1,6 @@
 import { and, count, eq } from "drizzle-orm"
 import { Router } from "express"
-import { challengeFraction } from "../../shared/challenges/milestones.js"
 import { isTier, tierGoals } from "../../shared/challenges/tiers.js"
-import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { db } from "../db/index.js"
 import {
 	challengeCoachLines,
@@ -13,24 +11,17 @@ import {
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
-import { checkAndAward, shareBadges } from "../services/badges/index.js"
 import { storeChallengeCoachLines } from "../services/challenges/coachLines.js"
-import { shareChallengeCompletion } from "../services/challenges/feed.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
-import { payChallengeMilestones } from "../services/challenges/milestones.js"
-import { grantCosmetic } from "../services/gym/cosmetics.js"
-import { awardGymXp, getOrCreateGym } from "../services/gym/index.js"
+import {
+	addChallengeProgress,
+	rewardOf,
+} from "../services/challenges/progress.js"
 
 type GoalProgress = Record<string, number>
 type DailyLog = Record<string, string[]>
 
-/** The decor a curated challenge gives for finishing it. */
-function rewardOf(key: string | null): { key: string; name: string } | null {
-	const def = key ? cosmeticOf(key) : null
-	return def ? { key: def.key, name: def.name } : null
-}
-
-function todayIso(): string {
+function _todayIso(): string {
 	return new Date().toISOString().slice(0, 10)
 }
 
@@ -211,142 +202,17 @@ export function createChallengesRouter(aiService: AIService) {
 			return
 		}
 
-		const [challenge] = await db
-			.select()
-			.from(challenges)
-			.where(eq(challenges.id, challengeId))
-			.limit(1)
-
-		if (!challenge) {
-			res.status(404).json({ error: "Challenge not found" })
-			return
-		}
-
-		const [userChallenge] = await db
-			.select()
-			.from(userChallenges)
-			.where(
-				and(
-					eq(userChallenges.userId, userId),
-					eq(userChallenges.challengeId, challengeId),
-				),
-			)
-			.limit(1)
-
-		if (!userChallenge) {
-			res.status(400).json({ error: "You must join the challenge first" })
-			return
-		}
-
-		if (userChallenge.completedAt) {
-			res.status(400).json({ error: "Challenge already completed" })
-			return
-		}
-
-		const goals = tierGoals(
-			challenge.tasks as ChallengeGoal[],
-			userChallenge.tier,
-		)
-		const validIds = new Set(goals.map((g) => g.id))
-		const current = (userChallenge.completedTasks ?? {}) as GoalProgress
-		const dailyLog = (userChallenge.dailyLog ?? {}) as DailyLog
-		const today = todayIso()
-
-		for (const [goalId, value] of Object.entries(dailyProgress)) {
-			if (!validIds.has(goalId)) continue
-			if (typeof value !== "number" || value < 0) continue
-			current[goalId] = (current[goalId] ?? 0) + value
-
-			const loggedDays = dailyLog[goalId] ?? []
-			if (!loggedDays.includes(today)) {
-				dailyLog[goalId] = [...loggedDays, today]
-			}
-		}
-
-		const goalsCompleted = goals.filter(
-			(g) => (current[g.id] ?? 0) >= g.target,
-		).length
-		const isComplete = goalsCompleted >= goals.length
-
-		const updates: Partial<typeof userChallenges.$inferInsert> = {
-			completedTasks: current,
-			dailyLog,
-		}
-		if (isComplete) {
-			updates.completedAt = new Date()
-		}
-
-		await db
-			.update(userChallenges)
-			.set(updates)
-			.where(eq(userChallenges.id, userChallenge.id))
-
-		let newBadges: Awaited<ReturnType<typeof checkAndAward>> = []
-		let gymXpAwarded = 0
-		let cosmeticAwarded: string | null = null
-		let rewardAwarded: string | null = null
-
-		if (isComplete) {
-			const [{ value: totalCompleted }] = await db
-				.select({ value: count() })
-				.from(userChallenges)
-				.where(and(eq(userChallenges.userId, userId)))
-
-			newBadges = await checkAndAward(
-				userId,
-				{ type: "challenge_complete", totalCompleted },
-				db,
-			)
-			await shareBadges(userId, newBadges, db)
-			await shareChallengeCompletion(db, userId, {
-				challengeName: challenge.title,
-				tier: userChallenge.tier,
-				reward: rewardOf(challenge.rewardCosmetic)?.name,
-			})
-
-			gymXpAwarded = 200
-			await awardGymXp(userId, gymXpAwarded, "challenge_complete", db)
-			// the first finished challenge puts a trophy in the gym's inventory
-			cosmeticAwarded = await grantCosmetic(
-				db,
-				(await getOrCreateGym(userId, db)).id,
-				"challenge_trophy",
-				`challenge:${userChallenge.challengeId}`,
-			)
-			// a curated challenge also gives its own decor
-			if (challenge.rewardCosmetic)
-				rewardAwarded = await grantCosmetic(
-					db,
-					(await getOrCreateGym(userId, db)).id,
-					challenge.rewardCosmetic,
-					`challenge:${userChallenge.challengeId}`,
-				)
-		}
-
-		const milestonesPaid = await payChallengeMilestones(
+		const result = await addChallengeProgress(
 			db,
 			userId,
 			challengeId,
-			challengeFraction(goals, current),
-			userChallenge.tier,
+			dailyProgress,
 		)
-
-		res.json({
-			progress: current,
-			dailyLog,
-			milestonesPaid,
-			goalsCompleted,
-			totalGoals: goals.length,
-			overallProgress:
-				goals.length > 0
-					? Math.round((goalsCompleted / goals.length) * 100)
-					: 0,
-			completed: isComplete,
-			newBadges,
-			gymXpAwarded: isComplete ? gymXpAwarded : 0,
-			cosmeticAwarded,
-			rewardAwarded,
-		})
+		if (!result.ok) {
+			res.status(result.status).json({ error: result.error })
+			return
+		}
+		res.json(result.body)
 	})
 
 	router.get("/challenges/next", async (_req, res) => {
