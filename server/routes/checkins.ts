@@ -4,6 +4,7 @@ import { db } from "../db/index.js"
 import { dailyCheckins, socialPosts, users } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { checkAndAward } from "../services/badges/index.js"
+import { bumpAutoGoals } from "../services/challenges/progress.js"
 import { awardGymXp } from "../services/gym/index.js"
 
 export const checkinsRouter = Router()
@@ -132,6 +133,8 @@ checkinsRouter.post("/checkins", async (req, res) => {
 	}
 	// the check-in pays XP and the streak (no Sweat / Greens, see ECONOMY)
 	const award = await awardGymXp(userId, gymXp, "checkin", db)
+	// a check-in counts for any check-in goal of this month's challenge
+	await bumpAutoGoals(db, userId, "checkin")
 
 	if (newBadges.length > 0) {
 		const [user] = await db

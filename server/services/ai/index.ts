@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { eq } from "drizzle-orm"
+import type { AutoGoalKind } from "../../../shared/challenges/auto.js"
 import type { CoachPersonality } from "../../../shared/types.js"
 import { db } from "../../db/index.js"
 import { users } from "../../db/schema.js"
@@ -29,6 +30,8 @@ export type ChallengeGoal = {
 	unit: string
 	dailyAmount: number
 	dailyPrompt: string
+	/** Counted by the app itself, not tapped by the player. */
+	auto?: AutoGoalKind
 	/** Hand-set targets for the bronze and gold tiers (silver is `target`). */
 	tiers?: { bronze?: number; gold?: number }
 }

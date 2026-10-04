@@ -3,6 +3,8 @@
 // back to a curated card instead of putting a broken challenge in front of
 // players. Pure so the rules are unit-tested.
 
+import { type AutoGoalKind, isAutoKind } from "./auto.js"
+
 export type GoalInput = {
 	id: string
 	title: string
@@ -12,6 +14,7 @@ export type GoalInput = {
 	dailyAmount: number
 	dailyPrompt: string
 	tiers?: { bronze?: number; gold?: number }
+	auto?: AutoGoalKind
 }
 
 export type ChallengeInput = {
@@ -76,6 +79,8 @@ export function validateGeneratedChallenge(
 				...(gold !== undefined ? { gold } : {}),
 			}
 		}
+		if (g.auto !== undefined && !isAutoKind(g.auto))
+			return { ok: false, error: `${where}: unknown auto kind` }
 		goals.push({
 			id: g.id,
 			title: g.title.trim(),
@@ -85,6 +90,7 @@ export function validateGeneratedChallenge(
 			dailyAmount: g.dailyAmount,
 			dailyPrompt: g.dailyPrompt.trim(),
 			...(tiers ? { tiers } : {}),
+			...(g.auto ? { auto: g.auto } : {}),
 		})
 	}
 	return {

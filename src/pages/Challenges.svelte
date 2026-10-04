@@ -1,5 +1,9 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import {
+	AUTO_GOAL_NOTE,
+	type AutoGoalKind,
+} from "../../shared/challenges/auto.js"
 import { challengeFraction } from "../../shared/challenges/milestones.js"
 import {
 	CHALLENGE_TIERS,
@@ -27,6 +31,8 @@ type Goal = {
 	unit: string
 	dailyAmount: number
 	dailyPrompt: string
+	/** Counted by the app itself, so there is nothing to tap. */
+	auto?: AutoGoalKind
 }
 type SprintTask = { id: string; title: string }
 
@@ -392,6 +398,8 @@ onMount(loadChallenge)
 
 				{#if done}
 					<span class="done-badge">Done!</span>
+				{:else if goal.auto}
+					<p class="unlock-note" data-testid="goal-auto-{goal.id}">{AUTO_GOAL_NOTE[goal.auto]}</p>
 				{:else if !challenge.completedAt}
 					<Button onclick={() => tapGoal(goal)} disabled={savingGoal === goal.id}>
 						{savingGoal === goal.id ? "Saving…" : goal.dailyPrompt}
