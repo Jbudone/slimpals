@@ -21,17 +21,32 @@ export function isTier(v: unknown): v is ChallengeTier {
 	)
 }
 
-/** A goal's target at a tier (at least 1, whole numbers). */
-export function tierTarget(base: number, tier: ChallengeTier): number {
+/** Targets a goal sets by hand for a tier (silver is always its `target`). */
+export type TierOverrides = Partial<Record<"bronze" | "gold", number>>
+
+/** A goal's target at a tier (at least 1, whole numbers): a hand-set target
+ * for that tier wins over scaling the base. */
+export function tierTarget(
+	base: number,
+	tier: ChallengeTier,
+	overrides?: TierOverrides,
+): number {
+	const set = tier === "silver" ? undefined : overrides?.[tier]
+	if (typeof set === "number" && Number.isFinite(set)) {
+		return Math.max(1, Math.round(set))
+	}
 	return Math.max(1, Math.round(base * TIER_INFO[tier].targetMult))
 }
 
-/** The goals as this tier sees them: the same goals with scaled targets. */
-export function tierGoals<G extends { target: number }>(
+/** The goals as this tier sees them: the same goals with their targets at the tier. */
+export function tierGoals<G extends { target: number; tiers?: TierOverrides }>(
 	goals: readonly G[],
 	tier: ChallengeTier,
 ): G[] {
-	return goals.map((g) => ({ ...g, target: tierTarget(g.target, tier) }))
+	return goals.map((g) => ({
+		...g,
+		target: tierTarget(g.target, tier, g.tiers),
+	}))
 }
 
 export function tierCoins(coins: number, tier: ChallengeTier): number {

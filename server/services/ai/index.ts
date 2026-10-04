@@ -29,6 +29,8 @@ export type ChallengeGoal = {
 	unit: string
 	dailyAmount: number
 	dailyPrompt: string
+	/** Hand-set targets for the bronze and gold tiers (silver is `target`). */
+	tiers?: { bronze?: number; gold?: number }
 }
 
 export type GeneratedChallenge = {
