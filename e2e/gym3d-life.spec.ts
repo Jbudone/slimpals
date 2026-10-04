@@ -97,11 +97,16 @@ async function setup(
 	return { userId, admin, page, context }
 }
 
+/** Opens a person's card the way a player does: a finger held on them (a
+ * quick tap is a poke now, not a card). */
 async function tapPerson(page: Page, key: string) {
 	const pt = await page.evaluate((k) => window.gym3d?.screenOf(k) ?? null, key)
 	const box = await page.locator("[data-testid=gym3d]").boundingBox()
 	if (!pt || !box) throw new Error(`no ${key} on screen`)
-	await page.mouse.click(box.x + pt.x, box.y + pt.y)
+	await page.mouse.move(box.x + pt.x, box.y + pt.y)
+	await page.mouse.down()
+	await page.waitForTimeout(650)
+	await page.mouse.up()
 }
 
 test("3D gym life: event, class, tap chip, bubbles and the cast lineup", async ({
@@ -445,7 +450,7 @@ async function emptySpot(page: Page): Promise<{ x: number; y: number }> {
 const hasLine = async (page: Page, text: string) =>
 	(await bubblesNow(page)).some((b) => b.text.includes(text))
 
-test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
+test("3D gym bubbles: no overlap, lines let taps through, the stat card closes", async ({
 	request,
 	browser,
 }, testInfo) => {
@@ -525,52 +530,23 @@ test("3D gym bubbles: no overlap, tap to pop, the stat card closes", async ({
 	expect(kinds.has("coin")).toBe(true)
 	await shot(page, "10-bubbles-crowd")
 
-	// ── a short tap pops a line (and selects nothing) ──
+	// ── speech lines never catch taps: they pass through to what is under
+	// them (a quick tap on a person is a poke) ──
 	await page.waitForTimeout(6500) // the busy lines run out
 	const key = onScreen[0]
 	await page.evaluate((k) => window.gym3d?.say(k, "Pop me!"), key)
 	await expect.poll(() => hasLine(page, "Pop me!")).toBe(true)
 	await page.waitForTimeout(250) // the entry animation settles
-	const pop = (await bubblesNow(page)).find((b) => b.text.includes("Pop me!"))
-	if (!pop) throw new Error("no line to pop")
 	await shot(page, "11-before-pop")
-	const px = gym.x + pop.x + pop.w / 2
-	const py = gym.y + pop.y + pop.h / 2
-	if (touch) await page.touchscreen.tap(px, py)
-	else await page.mouse.click(px, py)
-	await page.waitForTimeout(90)
-	await shot(page, "12-popping")
-	await expect
-		.poll(() => hasLine(page, "Pop me!"), { timeout: 4000 })
-		.toBe(false)
+	expect(
+		await page.evaluate(() => {
+			const el = document.querySelector(".g3d-say")
+			return el ? getComputedStyle(el).pointerEvents : null
+		}),
+	).toBe("none")
 	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
 	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
 
-	// ── a drag that starts on a bubble pans the camera ──
-	await page.evaluate((k) => window.gym3d?.say(k, "Drag from me"), key)
-	await expect.poll(() => hasLine(page, "Drag from me")).toBe(true)
-	await page.waitForTimeout(250)
-	const dragB = (await bubblesNow(page)).find((b) =>
-		b.text.includes("Drag from me"),
-	)
-	if (!dragB) throw new Error("no line to drag")
-	const before = await page.evaluate(() => window.gym3d?.screenAt(13, 0, 10))
-	const sx = gym.x + dragB.x + dragB.w / 2
-	const sy = gym.y + dragB.y + dragB.h / 2
-	await page.mouse.move(sx, sy)
-	await page.mouse.down()
-	await page.mouse.move(sx + 20, sy + 40, { steps: 4 })
-	await page.mouse.move(sx + 40, sy + 120, { steps: 8 })
-	await page.mouse.up()
-	const after = await page.evaluate(() => window.gym3d?.screenAt(13, 0, 10))
-	if (!before || !after) throw new Error("no screen point")
-	expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(60)
-	// the drag did not pop it (or tap anything under it)
-	expect(
-		(await page.evaluate(() => window.gym3d?.stats()))?.says,
-	).toBeGreaterThan(0)
-	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
-	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
 	await page.evaluate(() => window.gym3d?.panTo(13, 10))
 	await page.waitForTimeout(700)
 
@@ -890,7 +866,7 @@ test("3D gym hustle: tapping a working member until they finish pays a small coi
 	if (!who) return
 
 	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
-	// the first tap opens their machine; quick taps after it hurry them along
+	// quick taps hurry them along (and on a treadmill they may stumble)
 	// (tapped through the gym's own hook, in one go, so the gaps between taps
 	// do not depend on how slowly a software renderer draws frames)
 	await page.evaluate(async (k) => {
@@ -1018,7 +994,7 @@ test("3D gym hiring: a hire walks in, stands in the room and can be trained", as
 	expect(L1?.coins).toBeLessThan(L0.coins)
 	await shot(page, "14-hired")
 
-	// they are in the gym: tap them for the staff card, then train them
+	// they are in the gym: hold a finger on them for the staff card, then train them
 	const key = `hire:${hired?.id}`
 	await expect
 		.poll(async () =>
@@ -1037,7 +1013,8 @@ test("3D gym hiring: a hire walks in, stands in the room and can be trained", as
 			(k) => window.gym3d?.screenOf(k) ?? null,
 			key,
 		)
-		if (pt) await page.mouse.click(box.x + pt.x, box.y + pt.y)
+		// a finger held on them opens the card
+		if (pt) await tapPerson(page, key)
 		card = await page
 			.getByTestId("gym3d-staff-card")
 			.isVisible()
@@ -1562,4 +1539,74 @@ test("3D gym burger: at 4 stars the Burger Baron is for sale and buying it shrin
 	await page.evaluate(() => window.gym3d?.panTo(70, 8))
 	await page.waitForTimeout(1200)
 	await shot(page, "32-burger-lots")
+})
+
+test("3D gym pokes: quick taps on a person hop and talk and never open a card, a hold does", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(180_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		700,
+		"poke",
+	)
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/?ghost=0")
+	await waitReady(page)
+	if (await page.getByTestId("welcome-back").count())
+		await page.getByRole("button", { name: "Later" }).click()
+	await page.waitForTimeout(800)
+	const box = await page.locator("[data-testid=gym3d]").boundingBox()
+	if (!box) throw new Error("no gym")
+	// a named person on screen in the lobby
+	const who = await page.evaluate(
+		({ w, h }) => {
+			const g = window.gym3d
+			return (
+				g?.people().find((k) => {
+					const p = g.screenOf(k)
+					return (
+						k.startsWith("npc:") &&
+						p &&
+						p.x > 50 &&
+						p.x < w - 50 &&
+						p.y > 200 &&
+						p.y < h - 200
+					)
+				}) ?? null
+			)
+		},
+		{ w: box.width, h: box.height },
+	)
+	expect(who).toBeTruthy()
+	if (!who) return
+	const pokes0 = (await page.evaluate(() => window.gym3d?.stats()))?.pokes ?? 0
+	// three quick taps, in one go so frame speed does not matter
+	await page.evaluate(async (k) => {
+		const g = window.gym3d
+		for (let i = 0; i < 3; i++) {
+			const pt = g?.screenOf(k)
+			if (!pt) break
+			g?.tap(pt.x, pt.y)
+			await new Promise((r) => setTimeout(r, 120))
+		}
+	}, who)
+	await expect
+		.poll(async () => (await page.evaluate(() => window.gym3d?.stats()))?.pokes)
+		.toBeGreaterThanOrEqual(pokes0 + 3)
+	await expect(page.getByTestId("gym3d-chip")).toHaveCount(0)
+	await expect(page.getByTestId("gym3d-sheet")).toHaveCount(0)
+	// a finger held on them opens the card
+	await tapPerson(page, who)
+	await expect(page.getByTestId("gym3d-chip")).toBeVisible()
 })

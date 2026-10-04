@@ -78,7 +78,7 @@ async function waitReady(page: Page) {
 	})
 }
 
-test("3D gym boots, names a tapped person, and does not leak on remount", async ({
+test("3D gym boots, names a held person, and does not leak on remount", async ({
 	request,
 	browser,
 }, testInfo) => {
@@ -116,7 +116,7 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	expect(stats?.running).toBe(true)
 
 	// tap a person who is on screen, staff first (a real pointer tap on the
-	// canvas at the person's screen point), and expect a name chip
+	// canvas at the person's screen point), held, and expect a name chip
 	const box = await page.locator("[data-testid=gym3d]").boundingBox()
 	if (!box) throw new Error("no gym box")
 	const pt = await page.evaluate(
@@ -139,7 +139,11 @@ test("3D gym boots, names a tapped person, and does not leak on remount", async 
 	)
 	expect(pt).toBeTruthy()
 	if (!pt) return
-	await page.mouse.click(box.x + pt.x, box.y + pt.y)
+	// a finger held on them opens the card (a quick tap is a poke)
+	await page.mouse.move(box.x + pt.x, box.y + pt.y)
+	await page.mouse.down()
+	await page.waitForTimeout(650)
+	await page.mouse.up()
 	await expect(page.locator(".g3d-chip")).toBeVisible()
 	await expect(page.locator(".g3d-chip-name")).not.toHaveText("")
 

@@ -27,6 +27,11 @@ import {
 } from "../../../shared/gym3d/npcInfo"
 import { firstName } from "../../../shared/gym3d/npcLines"
 import {
+	POKE_GAP_MS,
+	type PokeWho,
+	pokeResult,
+} from "../../../shared/gym3d/pokes"
+import {
 	type EquipmentRoomType,
 	PD,
 	PW,
@@ -101,6 +106,9 @@ const isCostume = (acc: readonly string[]): boolean =>
 const POLL_INTERVAL = 30000
 /** Seconds the tap chip stays open on its own. */
 export const CHIP_TTL = 15
+
+/** Milliseconds a finger holds on a person before their card opens. */
+const CARD_HOLD_MS = 420
 
 /** What the tap chip shows about a person. */
 export type PersonInfo = {
@@ -191,6 +199,8 @@ export type Gym3DStats = {
 	rippling: boolean
 	/** Tap feedbacks played so far (a marker, squash, ripple, buzz). */
 	taps: number
+	/** People poked so far (a hop, a line, now and then a stumble). */
+	pokes: number
 }
 
 /** "sweat": spend 1 Sweat for an hour off; "finish": spend `cost` Sweat. */
@@ -317,6 +327,8 @@ export class Gym3DApp {
 			/** Started on the canvas (not on a bubble). */
 			canvas: boolean
 			panning: boolean
+			/** Held long enough to open a person's card: not also a tap. */
+			held?: boolean
 		}
 	>()
 	private pinch0 = 0
@@ -338,6 +350,8 @@ export class Gym3DApp {
 		targets: PadRef[]
 		target: PadRef | null
 	} | null = null
+	/** A finger held on a person: after a moment it opens their card. */
+	private personPress: ReturnType<typeof setTimeout> | null = null
 	private press: {
 		id: number
 		piece: Piece
@@ -1633,10 +1647,12 @@ export class Gym3DApp {
 		this.world.scene.updateMatrixWorld()
 		const hits: PickHit[] = []
 		this.rayWorker = null
+		this.rayPerson = null
 		const hp = this.ray.intersectObjects(this.people.pickables(), false)[0]
 		if (hp) {
 			const info = hp.object.userData.pick as PickInfo
 			const p = info.kind === "person" ? this.people.find(info.key) : null
+			if (p) this.rayPerson = p
 			if (p && this.canHustle(p)) this.rayWorker = p
 			const using =
 				p && !p.npcKey && p.state === "use" ? p.station?.piece : null
@@ -1788,36 +1804,91 @@ export class Gym3DApp {
 			return null
 		}
 		const s = this.pickAt(x, y)
-		// a working member under the finger: the first tap is the usual one
-		// (their machine gives way to the gear, see picking.ts); more taps in
-		// quick succession hurry them along instead
-		const worker = this.rayWorker
-		if (worker) {
-			const now = performance.now()
-			const last = this.lastWorkerTap
-			const again =
-				last?.key === worker.key && now - last.t < ECONOMY.hustle.gapMs
-			const open = this.sel?.kind === "person" && this.sel.key === worker.key
-			this.lastWorkerTap = { key: worker.key, t: now }
-			if (again || open) {
-				const sel = this.selectionOf(worker)
-				if (!open) this.select(sel)
-				this.hustleTap(worker)
-				this.feedback(sel, this.hitPt)
-				return sel
-			}
-		} else this.lastWorkerTap = null
-		// an open tap chip: a tap elsewhere closes it (and does nothing
-		// else); a tap on another person shows theirs
+		// an open card: a tap anywhere closes it (and does nothing else)
 		if (this.sel?.kind === "person") {
-			const next = s?.kind === "person" && s.key !== this.sel.key ? s : null
-			this.select(next)
-			this.feedback(next, this.hitPt)
-			return next
+			this.select(null)
+			return null
+		}
+		// a person under the finger is poked, never a menu: quick taps are the
+		// gym's toy (a hop, a line, speeding up, a stumble). Their card is a
+		// long press (openCard).
+		const who = this.rayPerson
+		if (who) {
+			this.pokePerson(who)
+			return null
 		}
 		this.select(s)
 		this.feedback(s, this.hitPt)
 		return s
+	}
+
+	/** The person the last pick's ray went through (nearest). */
+	private rayPerson: Person | null = null
+	private pokeRun = new Map<string, { n: number; t: number }>()
+	private pokes = 0
+
+	/** Opens a person's card (a long press): role, mood, what they are doing,
+	 * and Talk (or Train for staff). */
+	private openCard(p: Person): void {
+		const sel = this.selectionOf(p)
+		this.select(sel)
+		this.feedback(sel, this.hitPt)
+	}
+
+	/** Programmatic long press at a canvas point (tests, demos). */
+	pressAt(x: number, y: number): Selection | null {
+		this.pickAt(x, y)
+		const who = this.rayPerson
+		if (!who) return null
+		this.openCard(who)
+		return this.sel
+	}
+
+	/** A tap on a person: a hop, now and then a line, escalating if the player
+	 * keeps going; on gear a member is hurried along (and may stumble). */
+	private pokePerson(p: Person): void {
+		const now = performance.now()
+		const last = this.pokeRun.get(p.key)
+		const n = last && now - last.t < POKE_GAP_MS ? last.n + 1 : 1
+		const worker = this.canHustle(p)
+		const who: PokeWho = worker
+			? p.station?.piece?.itemKey.includes("treadmill")
+				? "treadmill"
+				: "worker"
+			: p.key === "ghost"
+				? "ghost"
+				: p.npcKey || p.kind === "staff"
+					? "staff"
+					: "member"
+		const res = pokeResult(who, n, Math.random(), Math.floor(now))
+		this.pokeRun.set(p.key, { n: res.reset ? 0 : n, t: now })
+		this.pokes++
+		this.taps++
+		buzz()
+		const r = p.rig.root.position
+		this.fx.squash(p.rig.root, 0.12)
+		this.people.react(p, res.effect)
+		// every poke on a working member still counts towards hurrying them
+		if (worker) this.hustleTap(p)
+		if (res.effect === "trip") {
+			this.build.dustAt(r.x, 0.1, r.z, 8, 0.5)
+			// the stumble breaks their rhythm
+			p.boost = 1
+		}
+		// a stumble line wins over the hustle line of the same tap
+		if (res.line) this.life.sayNow(p, res.line, this.clock, 2.2)
+		this.hintCard()
+	}
+
+	/** Said once, ever: how to get at a person's card. */
+	private hintCard(): void {
+		try {
+			if (localStorage.getItem("sp-hint-card")) return
+			localStorage.setItem("sp-hint-card", "1")
+		} catch {
+			return
+		}
+		this.opts.onHint?.("Tip: hold your finger on someone for their card.")
 	}
 
 	/** Taps each member has had at the machine they are on (tap-to-hustle). */
@@ -2226,6 +2297,8 @@ export class Gym3DApp {
 		const cancelPress = () => {
 			if (this.press?.timer) clearTimeout(this.press.timer)
 			this.press = null
+			if (this.personPress) clearTimeout(this.personPress)
+			this.personPress = null
 		}
 		this.on(host, "pointerdown", (e) => {
 			const ev = e as PointerEvent
@@ -2265,6 +2338,19 @@ export class Gym3DApp {
 			// a press on movable gear: drag it when it is already selected (or
 			// being moved), or after a short hold; a quick swipe still pans
 			const s = this.pickAt(x, y)
+			// a finger held on a person opens their card (a quick tap is a poke)
+			const who = this.rayPerson
+			if (who) {
+				const id = ev.pointerId
+				this.personPress = setTimeout(() => {
+					this.personPress = null
+					const pt = this.pointers.get(id)
+					if (!pt || pt.panning || this.drag || this.moving) return
+					pt.held = true
+					this.openCard(who)
+				}, CARD_HOLD_MS)
+				return
+			}
 			if (s?.kind !== "piece") return
 			const p = this.world.pieces.find((q) => q.id === s.id)
 			if (!p?.roomType || p.locked || p.status !== "placed") return
@@ -2307,6 +2393,10 @@ export class Gym3DApp {
 				return
 			}
 			const far = Math.hypot(x - pt.x0, y - pt.y0) > TAP_SLOP
+			if (far && this.personPress) {
+				clearTimeout(this.personPress)
+				this.personPress = null
+			}
 			if (this.press && far) {
 				const pr = this.press
 				cancelPress()
@@ -2349,7 +2439,7 @@ export class Gym3DApp {
 			if (!pt.canvas && (pt.panning || !tap))
 				this.noClickUntil = performance.now() + 400
 			// a short tap on a bubble is its own (its click handler)
-			if (tap && pt.canvas) this.tapAt(pt.x, pt.y)
+			if (tap && pt.canvas && !pt.held) this.tapAt(pt.x, pt.y)
 		}
 		this.on(host, "pointerup", up)
 		this.on(host, "pointercancel", up)
@@ -2430,6 +2520,7 @@ export class Gym3DApp {
 			mark: this.fx.marked,
 			rippling: this.fx.rippling,
 			taps: this.taps,
+			pokes: this.pokes,
 			...this.hap.stats(),
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
