@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import type { CoachPersonality, ViewMode } from "../../shared/types.js"
+import { coachSvg } from "../components/home/icons"
 import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
 import { logout } from "../lib/auth.svelte.js"
@@ -358,6 +359,7 @@ onMount(() => {
 							}}
 						>
 							<div class="personality-header">
+								<span class="personality-face" aria-hidden="true">{@html coachSvg([], option.id)}</span>
 								<span class="personality-name">{option.name}</span>
 								{#if selected}
 									<span class="personality-active">Active</span>
@@ -528,6 +530,19 @@ onMount(() => {
 </div>
 
 <style>
+.personality-face {
+	display: inline-block;
+	width: 44px;
+	height: 44px;
+	margin-right: 10px;
+	flex: none;
+}
+
+.personality-face :global(svg) {
+	width: 100%;
+	height: 100%;
+}
+
 .settings {
 	max-width: 680px;
 	margin: 0 auto;

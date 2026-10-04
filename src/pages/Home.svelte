@@ -44,7 +44,14 @@ let claim3d = $state<{ key: string; n: number } | null>(null)
 let claiming = $state(false)
 let hudBottom = $state(72)
 /** The coach, wearing the outfits the gym owns. */
-const coach = $derived(coachSvg(cosmetics.keys))
+const coach = $derived(
+	coachSvg(
+		cosmetics.keys,
+		isCoachVoice(userProfile.data?.coachPersonality)
+			? userProfile.data.coachPersonality
+			: "friendly",
+	),
+)
 let coachOpen = $state(true)
 let coachTimer: ReturnType<typeof setTimeout> | null = null
 let coachPick = $state(0)
