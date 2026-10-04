@@ -20,6 +20,8 @@ export type BanterContext = {
 	upgraded?: boolean
 	/** The rival gym is running its weekend promo. */
 	maxout?: boolean
+	/** The campaign in play: the exchanges about MaxOut belong to the first. */
+	campaign?: number
 }
 
 export type BanterWhen = "event" | "classes" | "upgraded" | "maxout"
@@ -229,6 +231,7 @@ export function banterFor(
 	extra: readonly Banter[] = [],
 ): Banter[] {
 	const fits = (b: Banter): boolean => {
+		if (b.id.startsWith("maxout") && (ctx.campaign ?? 1) > 1) return false
 		if (b.missingRoom && ctx.rooms.includes(b.missingRoom)) return false
 		if (b.missingGear && ctx.gear.includes(b.missingGear)) return false
 		if (b.crowded && !ctx.crowded) return false
