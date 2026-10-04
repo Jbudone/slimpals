@@ -123,7 +123,7 @@ function chips(r: { coins: number; sweat: number; greens: number }): string[] {
 .track {
 	padding: 14px 0 12px;
 	border-radius: 18px;
-	background: linear-gradient(180deg, #1c3b27, #14291c);
+	background: linear-gradient(180deg, var(--color-surface-2, #1c3b27), var(--color-surface, #14291c));
 	color: #eaf7ee;
 	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
 }

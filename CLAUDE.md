@@ -215,6 +215,14 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
   `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
   `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
+- Event looks (#124, #141): the whole app can wear a look: a joined challenge's theme (arcade, sunrise, greens) first, else the season (spring April, summer July-Aug,
+  Halloween, harvest, winter; `src/lib/eventTheme.ts` pure: `pickEventTheme`, `THEME_EVENTS`, `THEME_ACCENT`; state in `eventTheme.svelte.ts`, read from `/challenges/current`
+  after login and a join). `ThemeLayer.svelte` (mounted in `app.svelte`, behind the page content, off on the gym) draws a slow animated backdrop (arcade: stars, a moving neon
+  grid, scanlines; winter: snow; Halloween: moon and fog; summer: a sun with turning rays; sunrise follows the challenge's progress...) and, every 10-40 s per kind, a tiny
+  event drifting past (an invader, a coin, a bat, a ghost, a butterfly, a falling leaf, a shooting star: `.ev`, removed on `animationend`; none with reduced motion).
+  It sets `data-event` on the root: `styles/app.css` tints the accent for every look and restyles the dark palettes for arcade, Halloween, harvest and winter (not `light`/`cream`);
+  arcade also gives headings a retro mono. The tab bar glows in the accent. `?event=<look>|none` forces one (tests, demos); a switch in Settings
+  (`event-theme-toggle`, localStorage `sp-event-theme`) turns it off. e2e: `gym3d-nav.spec.ts`.
 - Challenge banner (#124): `src/components/ChallengeBanner.svelte` is a CSS-only animated strip by the challenge `theme` (arcade: scrolling stars and a blinking coin;
   sunrise: the sky runs dawn to dusk with progress; greens: drifting leaves; anything else a shimmer), on the unjoined card and above the coach note once joined;
   still under reduced motion. Template components are not covered by `tsc`: `npm run typecheck` also runs `check:svelte-names` (svelte-check, fails on "Cannot find name"),

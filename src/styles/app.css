@@ -248,3 +248,102 @@ body {
 	height: 12px;
 	border-radius: 2px;
 }
+
+/* ── Event looks (src/lib/eventTheme.ts) ─────────────────────
+   A joined challenge's theme or the season tints the accent, and the
+   dark looks (arcade, Halloween, winter, harvest) restyle the dark palettes;
+   the light themes keep their own colours. ThemeLayer sets data-event. */
+
+[data-event="arcade"] {
+	--color-accent: #ff4fd8;
+	--color-accent-hover: #e03bbd;
+	--color-on-accent: #1a0f33;
+	--event-accent: #ff4fd8;
+}
+[data-event="sunrise"] {
+	--color-accent: #ff9f43;
+	--color-accent-hover: #f08a24;
+	--color-on-accent: #2b1503;
+	--event-accent: #ff9f43;
+}
+[data-event="greens"] {
+	--color-accent: #5bd16a;
+	--color-accent-hover: #43b954;
+	--color-on-accent: #07210b;
+	--event-accent: #5bd16a;
+}
+[data-event="spring"] {
+	--color-accent: #ff8fb1;
+	--color-accent-hover: #f5749c;
+	--color-on-accent: #2a0d18;
+	--event-accent: #ff8fb1;
+}
+[data-event="summer"] {
+	--color-accent: #ffc533;
+	--color-accent-hover: #f0b21a;
+	--color-on-accent: #2b2003;
+	--event-accent: #ffc533;
+}
+[data-event="halloween"] {
+	--color-accent: #ff8a1f;
+	--color-accent-hover: #ee7508;
+	--color-on-accent: #2b1203;
+	--event-accent: #ff8a1f;
+}
+[data-event="harvest"] {
+	--color-accent: #d98a2b;
+	--color-accent-hover: #c47819;
+	--color-on-accent: #241403;
+	--event-accent: #d98a2b;
+}
+[data-event="winter"] {
+	--color-accent: #6fc3ff;
+	--color-accent-hover: #4fb0f5;
+	--color-on-accent: #03182b;
+	--event-accent: #6fc3ff;
+}
+
+[data-event="arcade"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #120a24;
+	--color-surface: #1f1440;
+	--color-surface-2: #2a1b57;
+	--color-border: #43307a;
+	--color-text-muted: #a99bd6;
+}
+[data-event="halloween"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #170d1c;
+	--color-surface: #25142b;
+	--color-surface-2: #331b3a;
+	--color-border: #4d2a55;
+	--color-text-muted: #c19ac9;
+}
+[data-event="harvest"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #1c130a;
+	--color-surface: #2b1d10;
+	--color-surface-2: #3a2815;
+	--color-border: #5a3e1f;
+	--color-text-muted: #c9a373;
+}
+[data-event="winter"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #08131f;
+	--color-surface: #0f2236;
+	--color-surface-2: #153049;
+	--color-border: #234a6b;
+	--color-text-muted: #86b7de;
+}
+
+/* the retro look: headings in a chunky monospace, uppercase, a pixel edge */
+[data-event="arcade"] h1,
+[data-event="arcade"] h2 {
+	font-family: ui-monospace, "Courier New", monospace;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	text-shadow: 2px 2px 0 rgba(255, 79, 216, 0.55);
+}
+
+/* the tab bar and HUD pick the accent up too */
+[data-event] .bottom-tab-bar.bottom-tab-bar {
+	box-shadow:
+		0 -2px 0 var(--event-accent),
+		0 -8px 18px -10px var(--event-accent);
+}

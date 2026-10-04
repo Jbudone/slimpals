@@ -19,6 +19,7 @@ import Card from "../components/ui/Card.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 import { challengeNote, challengeStanding } from "../lib/challengeCoach.js"
+import { loadEventTheme } from "../lib/eventTheme.svelte.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
 import { loadWallet } from "../lib/wallet.svelte.js"
@@ -194,6 +195,8 @@ async function joinChallenge() {
 			goalsCompleted: 0,
 			overallProgress: 0,
 		}
+		// the app takes on the challenge's look
+		void loadEventTheme()
 	} finally {
 		joining = false
 	}
