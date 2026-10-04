@@ -1292,6 +1292,27 @@ test("3D gym seasons: winter dresses the door and the people, harvest the door o
 	expect(await stat("pumpkins")).toBe(0)
 })
 
+test("3D gym MaxOut: the rival's sign changes during its weekend promo", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(240_000)
+	const { page } = await setup(request, browser, testInfo, 30, "maxout")
+	const maxout = () => page.evaluate(() => window.gym3d?.stats().maxout)
+	await page.goto("/?maxout=1&ghost=0")
+	await waitReady(page)
+	await expect.poll(maxout).toBe(1)
+	await page.evaluate(() => window.gym3d?.panTo(-4, 30))
+	await page.waitForTimeout(1200)
+	await shot(page, "30-maxout-promo")
+	await page.goto("/?maxout=0&ghost=0")
+	await waitReady(page)
+	await expect.poll(maxout).toBe(0)
+	await page.evaluate(() => window.gym3d?.panTo(-4, 30))
+	await page.waitForTimeout(1200)
+	await shot(page, "31-maxout-normal")
+})
+
 test("3D gym street: passers-by walk along the pavement in front of the gym", async ({
 	request,
 	browser,

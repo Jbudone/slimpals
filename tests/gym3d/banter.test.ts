@@ -57,6 +57,15 @@ describe("ambient banter", () => {
 		expect(ids({}).some((i) => i.startsWith("event"))).toBe(false)
 	})
 
+	it("grumbles about MaxOut's promo only while it runs", () => {
+		const ids = (extra: Partial<BanterContext>) =>
+			banterFor({ ...full, ...extra }).map((b) => b.id)
+		expect(
+			ids({ maxout: true }).every((i) => i.startsWith("maxout-promo")),
+		).toBe(true)
+		expect(ids({}).some((i) => i.startsWith("maxout-promo"))).toBe(false)
+	})
+
 	it("falls back to plain chatter and avoids repeats", () => {
 		const plain = banterFor(full)
 		expect(plain.length).toBeGreaterThan(1)

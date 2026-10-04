@@ -12,6 +12,7 @@ import {
 } from "../../../shared/gym3d/economy"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
+import { maxoutFromQuery, maxoutPromo } from "../../../shared/gym3d/maxout"
 import {
 	getRelationshipStage,
 	getStageLabel,
@@ -160,6 +161,7 @@ export type Gym3DStats = {
 	costumes: number
 	season: string
 	pumpkins: number
+	maxout: number
 	waiting: number
 	/** Coin bubbles showing now. */
 	bubbles: number
@@ -467,6 +469,16 @@ export class Gym3DApp {
 		return seasonFromQuery(q.get("season"), q.get("ghost"))
 	})()
 
+	/** MaxOut's weekend promo is on (by the date, or forced with `?maxout=1|0`). */
+	private forcedMaxout = (() => {
+		const q = new URLSearchParams(globalThis.location?.search ?? "")
+		return maxoutFromQuery(q.get("maxout"))
+	})()
+
+	private maxoutOn(): boolean {
+		return this.forcedMaxout ?? maxoutPromo(new Date()).on
+	}
+
 	private season(): Season | null {
 		const forced = this.forcedSeason
 		if (forced === "none") return null
@@ -490,6 +502,7 @@ export class Gym3DApp {
 			event: this.hap.stats().event !== "",
 			classes: this.hap.stats().classes > 0,
 			upgraded: this.clock - this.lastClaimAt < 180,
+			maxout: this.maxoutOn(),
 			crowded:
 				this.people.people.filter((p) => p.kind === "member").length >= 8,
 		}
@@ -596,6 +609,7 @@ export class Gym3DApp {
 		this.people.costumes = season ? SEASON_HAT[season] : null
 		this.people.ghostStays = season === "halloween"
 		this.hap.syncSeason(season)
+		this.world.setMaxoutPromo(this.maxoutOn())
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(
@@ -2310,6 +2324,7 @@ export class Gym3DApp {
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
 			season: this.season() ?? "none",
+			maxout: this.maxoutOn() ? 1 : 0,
 			pumpkins: this.hap.seasonCount,
 			costumes: this.people.people.filter((q) => isCostume(q.out.acc)).length,
 			waiting: this.people.people.filter((q) => q.after === "wait").length,
