@@ -202,7 +202,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   pays once, also across an admin progress reset) and returns `milestonesPaid`; the Challenges page shows the four-step track and
   a note when one pays. Tiers: the player picks bronze, silver or gold when joining (`user_challenges.tier`, migration 0030, default silver = the challenge as
   generated; `shared/challenges/tiers.ts`): targets x0.6 / x1 / x1.4 and milestone coins x0.75 / x1 / x1.5, applied wherever goals are read
-  (`tierGoals` in the current/progress/admin routes). Not yet from #124: per-task hand-set tier targets, new task types, themed seed challenges, a decor reward per
+  (`tierGoals` in the current/progress/admin routes); a goal may set its own `tiers: {bronze?, gold?}` targets (silver is `target`), which win over the scaling. Not yet from #124: AI-generated hand-set tiers, new task types, themed seed challenges, a decor reward per
   challenge, the dashboard banner.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a

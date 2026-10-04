@@ -25,6 +25,20 @@ describe("challenge tiers", () => {
 		expect(goals[0].target).toBe(100)
 	})
 
+	it("lets a goal set its own bronze and gold targets", () => {
+		const o = { bronze: 3, gold: 30 }
+		expect(tierTarget(20, "bronze", o)).toBe(3)
+		expect(tierTarget(20, "silver", o)).toBe(20)
+		expect(tierTarget(20, "gold", o)).toBe(30)
+		// a tier it leaves out is scaled as usual
+		expect(tierTarget(20, "gold", { bronze: 3 })).toBe(28)
+		const goals = [
+			{ id: "a", target: 20, tiers: o },
+			{ id: "b", target: 10 },
+		]
+		expect(tierGoals(goals, "bronze").map((g) => g.target)).toEqual([3, 6])
+	})
+
 	it("pays more coins at higher tiers, silver being the base, and knows what a tier is", () => {
 		expect(tierCoins(100, "bronze")).toBe(75)
 		expect(tierCoins(100, "silver")).toBe(100)
