@@ -21,6 +21,8 @@ export type BanterContext = {
 	upgraded?: boolean
 	/** The rival gym is running its weekend promo. */
 	maxout?: boolean
+	/** Room types with a game on (sparring, pickup): see `roomPlayLabel`. */
+	playing?: readonly string[]
 	/** The season dressing the gym (October to December). */
 	season?: Season | null
 	/** The campaign in play: the exchanges about MaxOut belong to the first. */
@@ -37,6 +39,8 @@ export type Banter = {
 	missingGear?: string
 	/** Only when the gym is busy. */
 	crowded?: boolean
+	/** Only while a game is on in this room type. */
+	playIn?: string
 	/** Only in this season; counts as plain chatter, so gaps still win. */
 	season?: Season
 	/** Only while this is going on (an event, a class, a fresh upgrade). */
@@ -46,6 +50,34 @@ export type Banter = {
 }
 
 export const BANTER: readonly Banter[] = [
+	{
+		id: "play-sparring",
+		playIn: "boxing",
+		lines: [
+			"Light contact, he said.",
+			"That was light for you.",
+			"My idea of light is different.",
+		],
+	},
+	{
+		id: "play-sparring-coach",
+		playIn: "boxing",
+		lines: ["Hands up. Hands up.", "They are up. The jab found them anyway."],
+	},
+	{
+		id: "play-pickup",
+		playIn: "court",
+		lines: [
+			"Next basket wins.",
+			"You said that two baskets ago.",
+			"Third time lucky.",
+		],
+	},
+	{
+		id: "play-pickup-rules",
+		playIn: "court",
+		lines: ["Is that a foul or a stumble.", "At this level, the same thing."],
+	},
 	{
 		id: "summer-heat",
 		season: "summer",
@@ -326,12 +358,13 @@ export function banterFor(
 		if (b.missingGear && ctx.gear.includes(b.missingGear)) return false
 		if (b.crowded && !ctx.crowded) return false
 		if (b.when && !ctx[b.when]) return false
+		if (b.playIn && !ctx.playing?.includes(b.playIn)) return false
 		if (b.season && b.season !== ctx.season) return false
 		return true
 	}
 	const all = [...BANTER, ...extra].filter(fits)
 	const specific = all.filter(
-		(b) => b.missingRoom || b.missingGear || b.crowded || b.when,
+		(b) => b.missingRoom || b.missingGear || b.crowded || b.when || b.playIn,
 	)
 	return specific.length ? specific : all
 }

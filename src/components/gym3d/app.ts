@@ -540,6 +540,8 @@ export class Gym3DApp {
 	}
 
 	private playT = 0
+	/** Room types with a game on right now (feeds the banter). */
+	private playing: string[] = []
 	/** Staffed boxing and court rooms show a tag while members work at them
 	 * together (checked every couple of seconds). */
 	private syncPlay(dt: number): void {
@@ -563,6 +565,10 @@ export class Gym3DApp {
 			if (text && (at.get(r.id) ?? 0) >= ROOM_PLAY_MIN)
 				plays.push({ roomId: r.id, text, x: r.cx, z: r.cz })
 		}
+		this.playing = plays.flatMap((pl) => {
+			const t = this.world.rooms.find((r) => r.id === pl.roomId)?.type
+			return t ? [t] : []
+		})
 		this.hap.syncRoomPlay(plays)
 	}
 
@@ -600,6 +606,7 @@ export class Gym3DApp {
 			event: this.hap.stats().event !== "",
 			classes: this.hap.stats().classes > 0,
 			upgraded: this.clock - this.lastClaimAt < 180,
+			playing: this.playing,
 			maxout: this.maxoutOn() && (this.world.layout.campaign ?? 1) === 1,
 			campaign: this.world.layout.campaign ?? 1,
 			season: this.season(),
