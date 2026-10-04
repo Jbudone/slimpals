@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
+	allChallengeLines,
 	allCoachLines,
 	COACH_VOICES,
 	type CoachContext,
+	challengeLineFor,
+	challengeStage,
 	coachLineFor,
 	isCoachVoice,
 } from "../../shared/gym3d/coachLines.js"
+import { challengeStanding } from "../../src/lib/challengeCoach.js"
 
 const base: CoachContext = { left: 3, total: 4, loaded: true, hour: 9 }
 const rng = () => 0
@@ -75,5 +79,77 @@ describe("coach lines", () => {
 		expect(isCoachVoice("bro")).toBe(true)
 		expect(isCoachVoice("nope")).toBe(false)
 		expect(isCoachVoice(undefined)).toBe(false)
+	})
+})
+
+describe("challenge commentary", () => {
+	it("staged by the month's pace, with the first and last days special", () => {
+		const st = (day: number, done: number) =>
+			challengeStage({ day, days: 30, done })
+		expect(st(1, 0)).toBe("start")
+		expect(st(29, 0.2)).toBe("finale")
+		expect(st(15, 0.7)).toBe("ahead")
+		expect(st(15, 0.5)).toBe("on")
+		expect(st(15, 0.2)).toBe("behind")
+	})
+
+	it("every voice has lines for every stage, on the player's side, with the days left filled in", () => {
+		const all = allChallengeLines()
+		expect(all).toHaveLength(COACH_VOICES.length * 5 * 2)
+		for (const l of all)
+			expect(`${l.lead} ${l.rest}`.toLowerCase()).not.toMatch(
+				/weight|\bfat\b|lazy|skinny|diet/,
+			)
+		const say = challengeLineFor("bro", { day: 10, days: 30, done: 0.1 }, rng)
+		expect(`${say.lead} ${say.rest}`).not.toContain("{")
+		const left = challengeLineFor(
+			"friendly",
+			{ day: 3, days: 30, done: 0.5 },
+			rng,
+		)
+		expect(left.id).toContain("challenge-ahead")
+	})
+
+	it("now and then replaces the task count, but never over gear, a finished day or a done challenge", () => {
+		const ch = { day: 10, days: 30, done: 0.3 }
+		expect(
+			coachLineFor("friendly", { ...base, challenge: ch }, [], () => 0).id,
+		).toContain(":challenge-")
+		// a roll above the chance keeps the task line
+		expect(
+			coachLineFor("friendly", { ...base, challenge: ch }, [], () => 0.9).id,
+		).toContain(":morning:")
+		expect(
+			coachLineFor(
+				"friendly",
+				{ ...base, challenge: ch, pendingGear: "X" },
+				[],
+				() => 0,
+			).id,
+		).toContain(":gear:")
+		expect(
+			coachLineFor(
+				"friendly",
+				{ ...base, challenge: { ...ch, complete: true } },
+				[],
+				() => 0,
+			).id,
+		).toContain(":morning:")
+	})
+
+	it("works out the standing from the challenge's goals, for this month only", () => {
+		const c = {
+			month: 10,
+			year: 2026,
+			goals: [
+				{ id: "a", target: 10 },
+				{ id: "b", target: 20 },
+			],
+			progress: { a: 10, b: 5 },
+			completedAt: null,
+		}
+		const st = challengeStanding(c, new Date("2026-10-15T12:00:00Z"))
+		expect(st).toEqual({ day: 15, days: 31, done: 0.625, complete: false })
+		expect(challengeStanding(c, new Date("2026-11-02T12:00:00Z"))).toBeNull()
 	})
 })

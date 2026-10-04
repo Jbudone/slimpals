@@ -1,10 +1,13 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { COACH_NAMES, isCoachVoice } from "../../shared/gym3d/coachLines.js"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
+import { challengeNote, challengeStanding } from "../lib/challengeCoach.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
+import { userProfile } from "../lib/user.svelte.js"
 
 type Goal = {
 	id: string
@@ -223,6 +226,16 @@ async function tapGoal(goal: Goal) {
 	}
 }
 
+/** The coach's remark on this month's challenge (one per day). */
+const coachNote = $derived.by(() => {
+	if (!challenge?.joined || challenge.completedAt || justCompleted) return null
+	const st = challengeStanding(challenge)
+	if (!st) return null
+	const raw = userProfile.data?.coachPersonality
+	const voice = isCoachVoice(raw) ? raw : "friendly"
+	return { name: COACH_NAMES[voice], say: challengeNote(voice, st) }
+})
+
 function goalProgress(goal: Goal): number {
 	return Math.min(challenge?.progress[goal.id] ?? 0, goal.target)
 }
@@ -281,6 +294,13 @@ onMount(loadChallenge)
 						</p>
 					{/if}
 				</div>
+			</Card>
+		{/if}
+
+		{#if coachNote}
+			<Card padding="md">
+				<p class="challenge-caption" data-testid="challenge-coach-name">{coachNote.name}</p>
+				<p class="challenge-desc" data-testid="challenge-coach"><b>{coachNote.say.lead}</b> {coachNote.say.rest}</p>
 			</Card>
 		{/if}
 
