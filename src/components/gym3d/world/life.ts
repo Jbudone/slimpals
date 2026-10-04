@@ -12,7 +12,11 @@ import {
 	gearLine,
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
-import { GHOST_LOCKERS, ghostLine } from "../../../../shared/gym3d/ghost"
+import {
+	GHOST_LOCKERS,
+	ghostLine,
+	stayLine,
+} from "../../../../shared/gym3d/ghost"
 import {
 	firstName,
 	pairLines,
@@ -316,6 +320,12 @@ export class Life {
 		if (!line) return
 		this.lastGear = now
 		this.bubbles.say(p, line, this.nameOf(p), now, 3.2)
+	}
+
+	/** The ghost talked a member into one more station: they say so. */
+	ghostStay(p: Person, now: number): void {
+		if (this.paused || this.bubbles.active >= 2 || !this.visible(p)) return
+		this.bubbles.say(p, stayLine(this.rng), this.nameOf(p), now, 3.2)
 	}
 
 	/** One line for a person, or null. */

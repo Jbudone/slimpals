@@ -3,6 +3,7 @@
 // ambient members running the build lab's little AI (walk to a free
 // station, work out, move on or leave).
 import * as T from "three"
+import { GHOST_STAY_CHANCE } from "../../../../shared/gym3d/ghost"
 import { hirePost } from "../../../../shared/gym3d/hires"
 import { PD, PW } from "../../../../shared/gym3d/rooms"
 import { vibePace } from "../../../../shared/gym3d/vibes"
@@ -116,6 +117,8 @@ export class People {
 
 	/** Called for each person removed (speech bubbles let go of them). */
 	onRemove: ((p: Person) => void) | null = null
+	/** The ghost talked a member out of leaving (they say so). */
+	onGhostStay: ((p: Person) => void) | null = null
 	/** A member started a set on upgraded gear (tier 2 or 3). */
 	onUpgradedUse: ((p: Person, tier: number) => void) | null = null
 
@@ -640,8 +643,14 @@ export class People {
 
 	private finishSession(p: Person): void {
 		this.release(p)
-		if (this.rng() < 0.12) this.leave(p)
-		else this.chooseNext(p)
+		if (this.rng() < 0.12) {
+			// in October the ghost talks half of them into one more station
+			if (this.costumes && !p.stayed && this.rng() < GHOST_STAY_CHANCE) {
+				p.stayed = true
+				this.onGhostStay?.(p)
+				this.chooseNext(p)
+			} else this.leave(p)
+		} else this.chooseNext(p)
 	}
 
 	private arrive(p: Person): void {
