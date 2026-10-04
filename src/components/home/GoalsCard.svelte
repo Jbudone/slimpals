@@ -192,7 +192,22 @@ async function buyBurger() {
 						</li>
 					{/each}
 				</ul>
-				{#if story.data.nextLevel !== null}
+				{#if story.data.open && story.data.open.phase === "running"}
+					<p class="hint" data-testid="open-score">
+						The Pavement Street Open: you {story.data.open.you} XP, MaxOut {story.data.open.rival}
+						of {story.data.open.rivalFinal}. {story.data.open.daysLeft} day{story.data.open.daysLeft === 1 ? "" : "s"} left.
+					</p>
+				{:else if story.data.open && story.data.open.phase === "ended"}
+					<p class="hint" data-testid="open-result">
+						The Open ended: you {story.data.open.you} XP against MaxOut's {story.data.open.rivalFinal}.
+						{story.data.open.result === "win" ? "You took the better sign." : "MaxOut took it this time."}
+					</p>
+				{/if}
+				{#if story.data.waitingForOpen}
+					<p class="hint" data-testid="story-next-level">
+						The next chapter opens when the Open ends.
+					</p>
+				{:else if story.data.nextLevel !== null}
 					<p class="hint" data-testid="story-next-level">
 						The next chapter opens at gym level {story.data.nextLevel}.
 					</p>

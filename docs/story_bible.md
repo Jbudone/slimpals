@@ -33,8 +33,11 @@ exclamation marks). The rivalry stays affectionate: nobody is truly evil.
    Victor and Barry were debate-club teammates; Victor bids for the Baron's
    building in public; Marcus takes the notebook to the wall (Victor never saw
    it, Dana printed it); the Pavement Street Open is announced.
-3. **Last rep** (planned): MaxOut's grand opening, a contest the gym can win,
-   a twist about the notebook, and the reason the street needs both gyms.
+3. **The Open** (gym level 17+, four chapters, written): the Pavement Street Open
+   starts and runs for seven days (the gym's score is the XP it earns, MaxOut's a
+   target by level, see `shared/gym3d/open.ts`). A winning or a losing chapter
+   follows (one coin reward each), then the finale: Barry keeps the Baron going,
+   smaller and with a salad; Victor takes the salad.
 
 ## Pacing
 One beat at a time, in order. A beat opens when the gym reaches its level and at
