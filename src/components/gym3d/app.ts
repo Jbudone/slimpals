@@ -1655,14 +1655,12 @@ export class Gym3DApp {
 		this.ray.setFromCamera(this.ndc, this.r.cam)
 		this.world.scene.updateMatrixWorld()
 		const hits: PickHit[] = []
-		this.rayWorker = null
 		this.rayPerson = null
 		const hp = this.ray.intersectObjects(this.people.pickables(), false)[0]
 		if (hp) {
 			const info = hp.object.userData.pick as PickInfo
 			const p = info.kind === "person" ? this.people.find(info.key) : null
 			if (p) this.rayPerson = p
-			if (p && this.canHustle(p)) this.rayWorker = p
 			const using =
 				p && !p.npcKey && p.state === "use" ? p.station?.piece : null
 			if (p)
@@ -1933,11 +1931,6 @@ export class Gym3DApp {
 
 	/** Taps each member has had at the machine they are on (tap-to-hustle). */
 	private hustleTaps = new Map<string, number>()
-	/** The working member the last pick's ray went through, and when a tap
-	 * last landed on one (wall time). */
-	private rayWorker: Person | null = null
-	private lastWorkerTap: { key: string; t: number } | null = null
-
 	/** A member at a working machine can be hurried along. */
 	private canHustle(p: Person): boolean {
 		return (
