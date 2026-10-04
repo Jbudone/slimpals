@@ -1,10 +1,10 @@
-import { and, count, eq } from "drizzle-orm"
+import { and, count, eq, gte, lt, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import { challengeFraction } from "../../../shared/challenges/milestones.js"
 import { tierGoals } from "../../../shared/challenges/tiers.js"
 import { cosmeticOf } from "../../../shared/gym3d/cosmetics.js"
 import type * as schema from "../../db/schema.js"
-import { challenges, userChallenges } from "../../db/schema.js"
+import { challenges, stepRecords, userChallenges } from "../../db/schema.js"
 import type { ChallengeGoal } from "../ai/index.js"
 import { checkAndAward, shareBadges } from "../badges/index.js"
 import { grantCosmetic } from "../gym/cosmetics.js"
@@ -190,6 +190,69 @@ export async function addChallengeProgress(
 			rewardAwarded,
 		},
 	}
+}
+
+/** A total the app knows for the month (the steps imported so far): moves
+ * every goal marked `auto: kind` up to `total`, never down. Never throws. */
+export async function setAutoGoalsTo(
+	db: Db,
+	userId: string,
+	kind: string,
+	total: number,
+	now = new Date(),
+): Promise<void> {
+	try {
+		const [row] = await db
+			.select({
+				challengeId: challenges.id,
+				tasks: challenges.tasks,
+				done: userChallenges.completedTasks,
+				completedAt: userChallenges.completedAt,
+			})
+			.from(userChallenges)
+			.innerJoin(challenges, eq(userChallenges.challengeId, challenges.id))
+			.where(
+				and(
+					eq(userChallenges.userId, userId),
+					eq(challenges.month, now.getUTCMonth() + 1),
+					eq(challenges.year, now.getUTCFullYear()),
+				),
+			)
+			.limit(1)
+		if (!row || row.completedAt) return
+		const have = (row.done ?? {}) as GoalProgress
+		const delta: Record<string, number> = {}
+		for (const g of row.tasks as ChallengeGoal[])
+			if (g.auto === kind && total > (have[g.id] ?? 0))
+				delta[g.id] = total - (have[g.id] ?? 0)
+		if (Object.keys(delta).length === 0) return
+		await addChallengeProgress(db, userId, row.challengeId, delta, {
+			auto: true,
+		})
+	} catch (err) {
+		console.error("[challenges] auto total failed:", err)
+	}
+}
+
+/** The steps imported this month feed the "steps" goals. */
+export async function syncStepGoals(
+	db: Db,
+	userId: string,
+	now = new Date(),
+): Promise<void> {
+	const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+	const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+	const [{ total }] = await db
+		.select({ total: sql<number>`coalesce(sum(${stepRecords.steps}), 0)` })
+		.from(stepRecords)
+		.where(
+			and(
+				eq(stepRecords.userId, userId),
+				gte(stepRecords.recordedAt, start),
+				lt(stepRecords.recordedAt, end),
+			),
+		)
+	await setAutoGoalsTo(db, userId, "steps", Number(total), now)
 }
 
 /** Something the app can count on its own (a great-rated meal photo, a
