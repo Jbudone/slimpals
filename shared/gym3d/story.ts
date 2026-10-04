@@ -6,6 +6,7 @@
 
 import type { OpenResult, OpenState } from "./open.js"
 import { STORY_CAMPUS } from "./storyCampus.js"
+import { STORY_HARBOUR } from "./storyHarbour.js"
 
 export type Speaker = { name: string; color: string }
 
@@ -22,6 +23,8 @@ export const SPEAKERS: Readonly<Record<string, Speaker>> = {
 	barry: { name: "Barry Baron", color: "#d4463a" },
 	quill: { name: "Prof. Quill", color: "#6b4a8a" },
 	tess: { name: "Tess", color: "#d98a3a" },
+	reyes: { name: "Captain Reyes", color: "#2f5f8f" },
+	joe: { name: "Old Joe", color: "#8f7a3a" },
 	narrator: { name: "", color: "#6b5d4f" },
 }
 
@@ -470,6 +473,7 @@ export const STORY: readonly StoryBeat[] = [
 export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
 	1: STORY,
 	2: STORY_CAMPUS,
+	3: STORY_HARBOUR,
 }
 
 export function storyFor(campaign: number): readonly StoryBeat[] {

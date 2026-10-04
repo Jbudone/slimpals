@@ -235,7 +235,7 @@ describe("the stories of later campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(409)
-		// its finale chapter finishes it, and campaign three has no story yet
+		// its finale chapter finishes it, and campaign three has its own story
 		await db.insert(gymRewards).values({
 			gymId: fresh.id,
 			source: "story:c2-graduation",
@@ -252,15 +252,33 @@ describe("the stories of later campaigns", () => {
 		expect(three.body.campaign).toBe(3)
 		expect(three.body.hall).toHaveLength(2)
 		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
-		expect(story.body).toMatchObject({
+		expect(story.body).toMatchObject({ pending: null, log: [], nextLevel: 1 })
+		const g3 = await latest()
+		await db.insert(gymRewards).values({
+			gymId: g3.id,
+			source: "story:c3-harbour-lights",
+			sweat: 0,
+			greens: 0,
+		})
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(200)
+		// campaign four has no story yet
+		const four = await request(app)
+			.get("/api/gym/campaign")
+			.set("Cookie", cookie)
+		expect(four.body.campaign).toBe(4)
+		const none = await request(app).get("/api/gym/story").set("Cookie", cookie)
+		expect(none.body).toMatchObject({
 			pending: null,
 			log: [],
 			nextLevel: null,
 		})
 		// without a story the gym level decides: not yet, then at level 17
-		expect(three.body.canFinish).toBe(false)
-		const g3 = await latest()
-		await db.update(userGyms).set({ level: 17 }).where(eq(userGyms.id, g3.id))
+		expect(four.body.canFinish).toBe(false)
+		const g4 = await latest()
+		await db.update(userGyms).set({ level: 17 }).where(eq(userGyms.id, g4.id))
 		const ready = await request(app)
 			.get("/api/gym/campaign")
 			.set("Cookie", cookie)
