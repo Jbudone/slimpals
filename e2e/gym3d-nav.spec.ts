@@ -62,6 +62,17 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	// five tabs, Compete among them
 	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(5)
 
+	// ── Rewards: from Today, the month's track and what unlocks next ──
+	await page.getByTestId("today-rewards").click()
+	await expect(page).toHaveURL(/\/rewards$/)
+	await expect(page.getByRole("heading", { name: "Rewards" })).toBeVisible()
+	await expect(page.getByTestId("reward-track")).toBeVisible()
+	await expect(page.getByTestId("track-node-1")).toBeVisible()
+	await expect(page.getByTestId("unlock-track")).toBeVisible()
+	// it stays under the Today tab
+	await expect(page.getByTestId("tab-today")).toHaveClass(/active/)
+	await page.getByTestId("tab-today").click()
+
 	// ── Compete: one tap to the challenge, one more to tournaments ──
 	await page.getByTestId("tab-compete").click()
 	await expect(page.getByRole("heading", { name: "Compete" })).toBeVisible()

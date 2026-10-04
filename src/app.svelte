@@ -23,6 +23,7 @@ import Home from "./pages/Home.svelte"
 import Login from "./pages/Login.svelte"
 import Progress from "./pages/Progress.svelte"
 import Register from "./pages/Register.svelte"
+import Rewards from "./pages/Rewards.svelte"
 import Settings from "./pages/Settings.svelte"
 import SocialHub from "./pages/SocialHub.svelte"
 import Today from "./pages/Today.svelte"
@@ -131,6 +132,8 @@ async function handleStopImpersonating() {
 			<div class="slide" in:fly={{ x: slideDir * 36, duration: slideMs }}>
 			{#if currentPath === "/today"}
 				<Today />
+			{:else if currentPath === "/rewards"}
+				<Rewards />
 			{:else if currentPath === "/weight" || currentPath === "/food" || currentPath === "/upgrades"}
 				<Progress />
 			{:else if currentPath === "/tournaments" || currentPath === "/challenges"}

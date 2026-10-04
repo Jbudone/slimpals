@@ -23,7 +23,7 @@ export const TABS: readonly Tab[] = [
 		label: "Today",
 		icon: '<rect x="4" y="4" width="16" height="17" rx="3"/><path d="M8 3v3M16 3v3M8.5 13l2.5 2.5 4.5-5"/>',
 		targetPath: "/today",
-		matchPaths: ["/today"],
+		matchPaths: ["/today", "/rewards"],
 	},
 	{
 		id: "compete",

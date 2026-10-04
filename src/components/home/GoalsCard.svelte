@@ -167,6 +167,17 @@ async function buyBurger() {
 				{#if rewardTrack.error || (!track.canClaim && track.blockedReason)}
 					<p class="hint">{rewardTrack.error || track.blockedReason}</p>
 				{/if}
+				<button
+					type="button"
+					class="link"
+					data-testid="rewards-open"
+					onclick={() => {
+						open = false
+						page("/rewards")
+					}}
+				>
+					See the whole track and what unlocks next
+				</button>
 			{/if}
 			<h3>Sound</h3>
 			<p class="hint">
