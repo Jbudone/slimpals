@@ -8,7 +8,8 @@ import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
-import { checkAndAward } from "../services/badges/index.js"
+import { checkAndAward, shareBadges } from "../services/badges/index.js"
+import { shareChallengeCompletion } from "../services/challenges/feed.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
 import { payChallengeMilestones } from "../services/challenges/milestones.js"
 import { grantCosmetic } from "../services/gym/cosmetics.js"
@@ -253,6 +254,12 @@ export function createChallengesRouter(aiService: AIService) {
 				{ type: "challenge_complete", totalCompleted },
 				db,
 			)
+			await shareBadges(userId, newBadges, db)
+			await shareChallengeCompletion(db, userId, {
+				challengeName: challenge.title,
+				tier: userChallenge.tier,
+				reward: rewardOf(challenge.rewardCosmetic)?.name,
+			})
 
 			gymXpAwarded = 200
 			await awardGymXp(userId, gymXpAwarded, "challenge_complete", db)
