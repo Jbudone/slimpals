@@ -32,6 +32,7 @@ import {
 	upgradePiece,
 } from "../services/gym/build3d.js"
 import { buyBurgerBaron } from "../services/gym/burger.js"
+import { beginNextCampaign, getCampaignDto } from "../services/gym/campaign.js"
 import {
 	appendMemoryEvent,
 	generateContentForUser,
@@ -786,6 +787,29 @@ export function createGymRouter(aiService: AIService) {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		res.json(await buildNpcLines(gym.id, db, MILESTONE_DIALOGS))
+	})
+
+	// Campaigns: the one in play, whether it can be finished, the Hall of fame.
+	router.get("/gym/campaign", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json(await getCampaignDto(db, userId, gym.id))
+	})
+
+	router.post("/gym/campaign/next", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		try {
+			await beginNextCampaign(db, userId, gym.id)
+			const next = await getOrCreateGym(userId, db)
+			res.json(await getCampaignDto(db, userId, next.id))
+		} catch (err) {
+			if (err instanceof BuildError) {
+				res.status(err.status).json({ error: err.message })
+				return
+			}
+			throw err
+		}
 	})
 
 	// The story: the chapter waiting (if any), the ones seen, the next level.

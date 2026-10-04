@@ -7,6 +7,7 @@ import {
 	userGymUpgrades,
 	users,
 } from "../../db/schema.js"
+import { activeGymOf } from "./activeGym.js"
 import { UPGRADE_LAYOUT } from "./layout.js"
 
 type Db = MySql2Database<typeof schema>
@@ -176,10 +177,7 @@ export function deriveProgressionFromDays(
 }
 
 export async function getOrCreateGym(userId: string, db: Db): Promise<Gym> {
-	const [existing] = await db
-		.select()
-		.from(userGyms)
-		.where(eq(userGyms.userId, userId))
+	const [existing] = await db.select().from(userGyms).where(activeGymOf(userId))
 
 	if (existing) {
 		return {
@@ -218,7 +216,7 @@ export async function getOrCreateGym(userId: string, db: Db): Promise<Gym> {
 		const [raceWinner] = await db
 			.select()
 			.from(userGyms)
-			.where(eq(userGyms.userId, userId))
+			.where(activeGymOf(userId))
 		if (!raceWinner) throw err
 		return {
 			...raceWinner,

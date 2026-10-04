@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, gte, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, exists, gte, isNull, or, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
 import {
@@ -14,6 +14,7 @@ import {
 } from "../../db/schema.js"
 import type { AIService, GymEventData } from "../ai/index.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
+import { activeGymOf } from "./activeGym.js"
 import {
 	generateDialogBatch,
 	getCurrentDialogBatch,
@@ -211,10 +212,7 @@ export async function generateContentForUser(
 	event: GymEventData | null
 	portraits: string[]
 }> {
-	const [gymRow] = await db
-		.select()
-		.from(userGyms)
-		.where(eq(userGyms.userId, userId))
+	const [gymRow] = await db.select().from(userGyms).where(activeGymOf(userId))
 
 	if (!gymRow) return { dialogs: [], event: null, portraits: [] }
 
@@ -307,31 +305,34 @@ export async function findActiveGymUserIds(
 		.select({ userId: userGyms.userId })
 		.from(userGyms)
 		.where(
-			or(
-				gte(userGyms.createdAt, since),
-				gte(userGyms.lastOpenAt, since),
-				gte(userGyms.lastGymVisitDate, since),
-				exists(
-					db
-						.select({ one: sql`1` })
-						.from(dailyCheckins)
-						.where(
-							and(
-								eq(dailyCheckins.userId, userGyms.userId),
-								gte(dailyCheckins.date, since),
+			and(
+				isNull(userGyms.archivedAt),
+				or(
+					gte(userGyms.createdAt, since),
+					gte(userGyms.lastOpenAt, since),
+					gte(userGyms.lastGymVisitDate, since),
+					exists(
+						db
+							.select({ one: sql`1` })
+							.from(dailyCheckins)
+							.where(
+								and(
+									eq(dailyCheckins.userId, userGyms.userId),
+									gte(dailyCheckins.date, since),
+								),
 							),
-						),
-				),
-				exists(
-					db
-						.select({ one: sql`1` })
-						.from(sessions)
-						.where(
-							and(
-								eq(sessions.userId, userGyms.userId),
-								gte(sessions.updatedAt, since),
+					),
+					exists(
+						db
+							.select({ one: sql`1` })
+							.from(sessions)
+							.where(
+								and(
+									eq(sessions.userId, userGyms.userId),
+									gte(sessions.updatedAt, since),
+								),
 							),
-						),
+					),
 				),
 			),
 		)

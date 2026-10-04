@@ -224,43 +224,53 @@ export const userBadges = mysqlTable("user_badges", {
 	earnedAt: timestamp("earned_at").notNull().defaultNow(),
 })
 
-export const userGyms = mysqlTable("user_gyms", {
-	id: int("id").autoincrement().primaryKey(),
-	userId: varchar("user_id", { length: 36 })
-		.notNull()
-		.references(() => users.id)
-		.unique(),
-	name: varchar("name", { length: 128 }).notNull(),
-	level: int("level").notNull().default(0),
-	xp: int("xp").notNull().default(0),
-	pendingUpgradeKeys: json("pending_upgrade_keys").notNull().default([]),
-	todayEventData: json("today_event_data"),
-	gymVisitStreak: int("gym_visit_streak").notNull().default(0),
-	lastGymVisitDate: timestamp("last_gym_visit_date"),
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	simulatedHourOverride: int("simulated_hour_override"),
-	// 3D gym (gym3d slice 1): set once the first layout has been seeded from
-	// the gym's unlocked upgrades; null = seed on the next GET /gym/layout.
-	layoutSeededAt: timestamp("layout_seeded_at"),
-	// 3D gym building (gym3d slice 2): the coin balance (every gym XP award
-	// also grants coins; see ECONOMY in shared/gym3d/economy.ts), how many
-	// plots were bought (the next one costs more) and when the one-time
-	// starter coins were granted (null = not yet).
-	coins: int("coins").notNull().default(0),
-	plotsBought: int("plots_bought").notNull().default(0),
-	starterCoinsAt: timestamp("starter_coins_at"),
-	// Gym home (0021): Sweat (exercise tasks) and Greens (diet tasks), see
-	// ECONOMY. Idle coins accrue lazily from the *_collected_at times (null =
-	// since the gym was created); the Slim Kitchen menu is a bitmask over
-	// KITCHEN_MENU. last_open_at drives the "Welcome back" card.
-	sweat: int("sweat").notNull().default(0),
-	greens: int("greens").notNull().default(0),
-	deskCollectedAt: timestamp("desk_collected_at"),
-	kitchenCollectedAt: timestamp("kitchen_collected_at"),
-	kitchenMenu: int("kitchen_menu").notNull().default(1),
-	kitchenRushEndsAt: timestamp("kitchen_rush_ends_at"),
-	lastOpenAt: timestamp("last_open_at"),
-})
+export const userGyms = mysqlTable(
+	"user_gyms",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		userId: varchar("user_id", { length: 36 })
+			.notNull()
+			.references(() => users.id),
+		// A campaign is one gym start to finish (#188): the player's gyms are
+		// numbered 1, 2, ...; finished ones are archived (`archivedAt`) with a
+		// summary for the Hall of fame, and the one without `archivedAt` is the
+		// gym in play.
+		campaign: int("campaign").notNull().default(1),
+		archivedAt: timestamp("archived_at"),
+		archiveSummary: json("archive_summary"),
+		name: varchar("name", { length: 128 }).notNull(),
+		level: int("level").notNull().default(0),
+		xp: int("xp").notNull().default(0),
+		pendingUpgradeKeys: json("pending_upgrade_keys").notNull().default([]),
+		todayEventData: json("today_event_data"),
+		gymVisitStreak: int("gym_visit_streak").notNull().default(0),
+		lastGymVisitDate: timestamp("last_gym_visit_date"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		simulatedHourOverride: int("simulated_hour_override"),
+		// 3D gym (gym3d slice 1): set once the first layout has been seeded from
+		// the gym's unlocked upgrades; null = seed on the next GET /gym/layout.
+		layoutSeededAt: timestamp("layout_seeded_at"),
+		// 3D gym building (gym3d slice 2): the coin balance (every gym XP award
+		// also grants coins; see ECONOMY in shared/gym3d/economy.ts), how many
+		// plots were bought (the next one costs more) and when the one-time
+		// starter coins were granted (null = not yet).
+		coins: int("coins").notNull().default(0),
+		plotsBought: int("plots_bought").notNull().default(0),
+		starterCoinsAt: timestamp("starter_coins_at"),
+		// Gym home (0021): Sweat (exercise tasks) and Greens (diet tasks), see
+		// ECONOMY. Idle coins accrue lazily from the *_collected_at times (null =
+		// since the gym was created); the Slim Kitchen menu is a bitmask over
+		// KITCHEN_MENU. last_open_at drives the "Welcome back" card.
+		sweat: int("sweat").notNull().default(0),
+		greens: int("greens").notNull().default(0),
+		deskCollectedAt: timestamp("desk_collected_at"),
+		kitchenCollectedAt: timestamp("kitchen_collected_at"),
+		kitchenMenu: int("kitchen_menu").notNull().default(1),
+		kitchenRushEndsAt: timestamp("kitchen_rush_ends_at"),
+		lastOpenAt: timestamp("last_open_at"),
+	},
+	(t) => [unique("user_gyms_user_campaign_uq").on(t.userId, t.campaign)],
+)
 
 export const gymUpgradesCatalog = mysqlTable("gym_upgrades_catalog", {
 	id: int("id").autoincrement().primaryKey(),

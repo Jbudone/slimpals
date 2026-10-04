@@ -5,6 +5,11 @@
 // goal pays Sweat or Greens once.
 import { onMount } from "svelte"
 import { api } from "../../lib/api.js"
+import {
+	beginNextCampaign,
+	campaign,
+	loadCampaign,
+} from "../../lib/campaign.svelte.js"
 import { cosmetics, wearOutfit } from "../../lib/cosmetics.svelte.js"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 import {
@@ -32,10 +37,23 @@ const nextBig = $derived(
 
 onMount(() => {
 	void loadRewardTrack()
+	void loadCampaign()
 })
 
 const outfits = $derived(cosmetics.owned.filter((c) => c.kind === "outfit"))
 const burger = $derived(gymGoals.burger)
+let beginning = $state(false)
+async function nextCampaign() {
+	if (
+		!confirm(
+			"Begin the next campaign? Your gym goes to the Hall of fame and you start a fresh one. Your cosmetics and trophies come with you.",
+		)
+	)
+		return
+	beginning = true
+	if (await beginNextCampaign()) location.reload()
+	beginning = false
+}
 let buying = $state(false)
 let burgerError = $state("")
 async function buyBurger() {
@@ -178,6 +196,37 @@ async function buyBurger() {
 					<p class="hint" data-testid="story-next-level">
 						The next chapter opens at gym level {story.data.nextLevel}.
 					</p>
+				{/if}
+			{/if}
+			{#if campaign.data && (campaign.data.canFinish || campaign.data.hall.length > 0 || campaign.data.campaign > 1)}
+				<h3>Campaign {campaign.data.campaign}</h3>
+				{#if campaign.data.canFinish}
+					<p class="hint" data-testid="campaign-done">
+						The story of this campaign is finished. You can begin the next one whenever you like.
+					</p>
+					<button
+						type="button"
+						class="claim"
+						disabled={beginning}
+						onclick={() => void nextCampaign()}
+						data-testid="campaign-next"
+					>
+						Begin the next campaign
+					</button>
+					{#if campaign.error}<p class="hint">{campaign.error}</p>{/if}
+				{/if}
+				{#if campaign.data.hall.length > 0}
+					<p class="hint">Hall of fame</p>
+					<ul class="outfits" data-testid="campaign-hall">
+						{#each campaign.data.hall as h (h.campaign)}
+							<li>
+								<span>
+									<b>Campaign {h.campaign}.</b>
+									{#if h.summary}Level {h.summary.level}, {h.summary.days} days, {h.summary.pieces} pieces.{/if}
+								</span>
+							</li>
+						{/each}
+					</ul>
 				{/if}
 			{/if}
 			<small>{doneCount} of {gymGoals.goals.length} goals done</small>
