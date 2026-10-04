@@ -2,6 +2,7 @@ import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
 import { and, asc, count, desc, eq, like, sql } from "drizzle-orm"
 import { Router } from "express"
+import { tierGoals } from "../../shared/challenges/tiers.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { db } from "../db/index.js"
 import {
@@ -361,7 +362,10 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			)
 			.limit(1)
 
-		const goals = challenge.tasks as ChallengeGoal[]
+		const goals = tierGoals(
+			challenge.tasks as ChallengeGoal[],
+			userChallenge?.tier ?? "silver",
+		)
 		const completedTasks = userChallenge
 			? (userChallenge.completedTasks as Record<string, number>)
 			: null
@@ -380,6 +384,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 				goals,
 			},
 			joined: !!userChallenge,
+			tier: userChallenge?.tier ?? null,
 			completedTasks,
 			completedAt: userChallenge?.completedAt ?? null,
 			goalsCompleted,

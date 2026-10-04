@@ -402,6 +402,83 @@ describe("PATCH /api/challenges/:id/progress", () => {
 	})
 })
 
+describe("challenge tiers", () => {
+	const join = (challengeId: number, cookie: string, body?: object) =>
+		request(app)
+			.post(`/api/challenges/${challengeId}/join`)
+			.set("Cookie", cookie)
+			.send(body ?? {})
+	const current = (cookie: string) =>
+		request(app).get("/api/challenges/current").set("Cookie", cookie)
+
+	it("joins at silver by default and rejects an unknown tier", async () => {
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		expect(
+			(await join(challenge.id, cookie, { tier: "platinum" })).status,
+		).toBe(400)
+		const res = await join(challenge.id, cookie)
+		expect(res.status).toBe(201)
+		expect(res.body.tier).toBe("silver")
+		const cur = await current(cookie)
+		expect(cur.body.tier).toBe("silver")
+		expect(cur.body.goals[0].target).toBe(6)
+	})
+
+	it("scales the targets to the tier the player picked", async () => {
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		await join(challenge.id, cookie, { tier: "gold" })
+		const cur = await current(cookie)
+		expect(cur.body.tier).toBe("gold")
+		// 6 x 1.4, rounded
+		expect(cur.body.goals.map((g: { target: number }) => g.target)).toEqual([
+			8, 8, 8,
+		])
+		// six is no longer enough at gold, eight is
+		const six = await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 6, goal_2: 6, goal_3: 6 } })
+		expect(six.body.completed).toBe(false)
+		const eight = await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 2, goal_2: 2, goal_3: 2 } })
+		expect(eight.body.completed).toBe(true)
+	})
+
+	it("bronze finishes sooner and its milestones pay less", async () => {
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		await join(challenge.id, cookie, { tier: "bronze" })
+		// 6 x 0.6 = 4
+		const first = await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 4 } })
+		expect(first.body.milestonesPaid).toEqual([
+			{ pct: 25, coins: 38, sweat: 0, greens: 0 },
+		])
+		const done = await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_2: 4, goal_3: 4 } })
+		expect(done.body.completed).toBe(true)
+	})
+
+	it("gold milestones pay half as much again", async () => {
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		await join(challenge.id, cookie, { tier: "gold" })
+		const res = await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 8 } })
+		expect(res.body.milestonesPaid[0]).toMatchObject({ pct: 25, coins: 75 })
+	})
+})
+
 describe("POST /api/challenges/generate", () => {
 	it("generates a challenge with goals via AI", async () => {
 		await registerAndLogin()

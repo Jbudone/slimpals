@@ -8,16 +8,22 @@ import {
 	milestoneSource,
 	reachedMilestones,
 } from "../../../shared/challenges/milestones.js"
+import {
+	type ChallengeTier,
+	tierCoins,
+} from "../../../shared/challenges/tiers.js"
 import { gymRewards, userGyms } from "../../db/schema.js"
 import { getOrCreateGym } from "../gym/index.js"
 import type { Db } from "../gym/layout3dStore.js"
 
-/** Returns the milestones this call paid (none when all were paid before). */
+/** Returns the milestones this call paid (none when all were paid before),
+ * with the coins as paid at the player's tier. */
 export async function payChallengeMilestones(
 	db: Db,
 	userId: string,
 	challengeId: number,
 	fraction: number,
+	tier: ChallengeTier = "silver",
 ): Promise<ChallengeMilestone[]> {
 	const reached = reachedMilestones(fraction)
 	if (reached.length === 0) return []
@@ -43,12 +49,12 @@ export async function payChallengeMilestones(
 			await tx
 				.update(userGyms)
 				.set({
-					coins: sql`${userGyms.coins} + ${m.coins}`,
+					coins: sql`${userGyms.coins} + ${tierCoins(m.coins, tier)}`,
 					sweat: sql`${userGyms.sweat} + ${m.sweat}`,
 					greens: sql`${userGyms.greens} + ${m.greens}`,
 				})
 				.where(eq(userGyms.id, gym.id))
-			paid.push(m)
+			paid.push({ ...m, coins: tierCoins(m.coins, tier) })
 		}
 		return paid
 	})

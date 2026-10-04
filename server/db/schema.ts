@@ -161,6 +161,11 @@ export const userChallenges = mysqlTable("user_challenges", {
 	// the calendar days progress was logged, purely for the day-grid
 	// visualization. Server-stamped on write, never client-supplied.
 	dailyLog: json("daily_log"),
+	// Bronze / silver / gold, chosen on joining (shared/challenges/tiers.ts):
+	// scales the goals' targets. Silver = the challenge as generated.
+	tier: mysqlEnum("tier", ["bronze", "silver", "gold"])
+		.notNull()
+		.default("silver"),
 	completedAt: timestamp("completed_at"),
 })
 

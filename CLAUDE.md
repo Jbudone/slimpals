@@ -199,7 +199,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
   reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each
   pays once, also across an admin progress reset) and returns `milestonesPaid`; the Challenges page shows the four-step track and
-  a note when one pays. Not yet from #124: bronze/silver/gold tiers, new task types, themed seed challenges, a decor reward per
+  a note when one pays. Tiers: the player picks bronze, silver or gold when joining (`user_challenges.tier`, migration 0030, default silver = the challenge as
+  generated; `shared/challenges/tiers.ts`): targets x0.6 / x1 / x1.4 and milestone coins x0.75 / x1 / x1.5, applied wherever goals are read
+  (`tierGoals` in the current/progress/admin routes). Not yet from #124: per-task hand-set tier targets, new task types, themed seed challenges, a decor reward per
   challenge, the dashboard banner.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a

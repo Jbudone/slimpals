@@ -41,6 +41,7 @@ type ChallengeData = {
 	year: number
 	goals: Goal[]
 	joined: boolean
+	tier?: ChallengeTier
 	progress: Record<string, number>
 	dailyLog: Record<string, string[]>
 	completedAt: string | null
@@ -67,6 +68,7 @@ let justCompleted = $state(false)
 let gymXpAwarded = $state(0)
 let cosmeticAwarded = $state<string | null>(null)
 let milestoneNote = $state<string | null>(null)
+let pickTier = $state<ChallengeTier>("silver")
 
 function rewardLine(r: {
 	coins: number
@@ -159,10 +161,12 @@ async function joinChallenge() {
 	if (!challenge || joining) return
 	joining = true
 	try {
-		await api.post(`/challenges/${challenge.id}/join`)
+		await api.post(`/challenges/${challenge.id}/join`, { tier: pickTier })
 		challenge = {
 			...challenge,
 			joined: true,
+			tier: pickTier,
+			goals: tierGoals(challenge.goals, pickTier),
 			progress: {},
 			dailyLog: {},
 			goalsCompleted: 0,
@@ -276,7 +280,21 @@ onMount(loadChallenge)
 			{#if challenge.description}
 				<p class="challenge-desc">{challenge.description}</p>
 			{/if}
-			<p class="join-text">Join this month's challenge to start tracking your progress.</p>
+			<p class="join-text">Pick a tier, then join to start tracking your progress.</p>
+			<div class="tiers" data-testid="tier-picker">
+				{#each CHALLENGE_TIERS as t (t)}
+					<button
+						type="button"
+						class="tier"
+						class:picked={pickTier === t}
+						onclick={() => (pickTier = t)}
+						data-testid="tier-{t}"
+					>
+						<b>{TIER_INFO[t].label}</b>
+						<small>{challenge.goals.map((g) => `${tierTarget(g.target, t)} ${g.unit}`).join(" · ")}</small>
+					</button>
+				{/each}
+			</div>
 			<Button onclick={joinChallenge} disabled={joining}>
 				{joining ? "Joining…" : "Join Challenge"}
 			</Button>
@@ -399,6 +417,34 @@ onMount(loadChallenge)
 <style>
 .challenges-tab { display: flex; flex-direction: column; gap: var(--space-4); }
 .muted { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
+.tiers {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 6px;
+	margin: 8px 0;
+}
+
+.tier {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 8px;
+	border: 2px solid transparent;
+	border-radius: 8px;
+	background: rgba(127, 127, 127, 0.12);
+	color: inherit;
+	text-align: center;
+	cursor: pointer;
+}
+
+.tier.picked {
+	border-color: rgba(52, 201, 115, 0.9);
+}
+
+.tier small {
+	font-size: 0.7rem;
+}
 
 .milestones {
 	display: grid;
