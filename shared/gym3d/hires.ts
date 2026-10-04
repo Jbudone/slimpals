@@ -99,3 +99,17 @@ export function hirePost(
 		z: plot.pz * pd + 3,
 	}
 }
+
+/** Staffed rooms' flavour (#130): a recovery room with at least one hire
+ * lifts the mood of everyone in the gym by this much, live (not stored). */
+export const RECOVERY_MOOD = 8
+
+/** The extra a staffed room type brings besides coins, for the Staff page. */
+export const STAFFED_PERK: Readonly<Record<string, string>> = {
+	recovery: `Lifts everyone's mood by ${RECOVERY_MOOD}`,
+}
+
+/** The mood bonus for the room types that have a hire (see RECOVERY_MOOD). */
+export function staffedMoodBonus(staffedTypes: readonly string[]): number {
+	return staffedTypes.includes("recovery") ? RECOVERY_MOOD : 0
+}

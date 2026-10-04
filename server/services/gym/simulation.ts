@@ -1,8 +1,14 @@
 import { and, eq, sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import { staffedMoodBonus } from "../../../shared/gym3d/hires.js"
 import type { GymNpcRole, GymUpgradeCategory } from "../../../shared/types.js"
 import type * as schema from "../../db/schema.js"
-import { gymNpcDailyState, userGymNpcRelationships } from "../../db/schema.js"
+import {
+	gymHires,
+	gymNpcDailyState,
+	gymRooms,
+	userGymNpcRelationships,
+} from "../../db/schema.js"
 
 type Db = MySql2Database<typeof schema>
 
@@ -825,7 +831,18 @@ export async function computeGymSimState(
 		eventHour < todayEvent.activeHours[1]
 	const eventNpcKey = eventActive && todayEvent ? todayEvent.npcKey : null
 	const eventMoodBonus =
-		eventActive && todayEvent ? (todayEvent.effects?.allNpcMoodBonus ?? 0) : 0
+		(eventActive && todayEvent
+			? (todayEvent.effects?.allNpcMoodBonus ?? 0)
+			: 0) +
+		staffedMoodBonus(
+			(
+				await db
+					.selectDistinct({ type: gymRooms.type })
+					.from(gymHires)
+					.innerJoin(gymRooms, eq(gymHires.roomId, gymRooms.id))
+					.where(eq(gymHires.gymId, gymId))
+			).map((r) => r.type),
+		)
 
 	// Phase 7: Build final states
 	const states: NpcSimState[] = []
