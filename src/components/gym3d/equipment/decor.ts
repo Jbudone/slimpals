@@ -54,6 +54,173 @@ function mirrorGlint(g: T.Object3D, x: number, y: number, z: number): void {
 	}
 }
 
+// ── the monthly track's decor for January to September (one per month) ──────
+function ball(
+	g: T.Object3D,
+	r: number,
+	color: string,
+	x: number,
+	y: number,
+	z: number,
+	sx = 1,
+	sy = 1,
+	sz = 1,
+): T.Mesh {
+	const m = new T.Mesh(
+		eqGeo(`mball${r}`, () => new T.SphereGeometry(r, 10, 8)),
+		eqMat(`mdecor_${color}`, () => new T.MeshStandardMaterial({ color })),
+	)
+	m.position.set(x, y, z)
+	m.scale.set(sx, sy, sz)
+	g.add(m)
+	return m
+}
+
+function torus(
+	g: T.Object3D,
+	R: number,
+	r: number,
+	color: string,
+	x: number,
+	y: number,
+	z: number,
+	rx = Math.PI / 2,
+): T.Mesh {
+	const m = new T.Mesh(
+		eqGeo(`mtorus${R}_${r}`, () => new T.TorusGeometry(R, r, 8, 18)),
+		eqMat(`mdecor_${color}`, () => new T.MeshStandardMaterial({ color })),
+	)
+	m.position.set(x, y, z)
+	m.rotation.x = rx
+	g.add(m)
+	return m
+}
+
+function cone(
+	g: T.Object3D,
+	r: number,
+	h: number,
+	color: string,
+	x: number,
+	y: number,
+	z: number,
+	seg = 8,
+	ry = 0,
+): T.Mesh {
+	const m = new T.Mesh(
+		eqGeo(`mcone${r}_${h}_${seg}`, () => new T.ConeGeometry(r, h, seg)),
+		eqMat(`mdecor_${color}`, () => new T.MeshStandardMaterial({ color })),
+	)
+	m.position.set(x, y, z)
+	m.rotation.y = ry
+	g.add(m)
+	return m
+}
+
+const MONTH_DECOR: Record<string, () => T.Group> = {
+	// January, the resolution board: three lines, two ticked
+	month_jan() {
+		const g = group()
+		for (const sx of [-0.28, 0.28])
+			box(0.04, 0.5, 0.04, C.steelD, sx, 0.25, 0, g)
+		box(0.72, 0.5, 0.04, C.cream, 0, 0.58, 0, g)
+		box(0.76, 0.54, 0.02, C.trim, 0, 0.58, -0.02, g)
+		for (const [i, done] of [true, true, false].entries()) {
+			const y = 0.7 - i * 0.12
+			box(0.07, 0.07, 0.01, done ? "#34c973" : "#c9bfae", -0.26, y, 0.03, g, {
+				noCast: true,
+			})
+			box(0.36, 0.03, 0.01, "#7a6f60", 0.04, y, 0.03, g, { noCast: true })
+		}
+		return g
+	},
+	// February, a heart on a pedestal
+	month_feb() {
+		const g = group()
+		box(0.34, 0.3, 0.34, C.cream, 0, 0.15, 0, g)
+		ball(g, 0.15, "#e0415a", -0.1, 0.56, 0)
+		ball(g, 0.15, "#e0415a", 0.1, 0.56, 0)
+		const tip = box(0.27, 0.27, 0.3, "#e0415a", 0, 0.43, 0, g)
+		tip.rotation.z = Math.PI / 4
+		return g
+	},
+	// March, a spring flower pot
+	month_mar() {
+		const g = group()
+		cyl(0.17, 0.26, "#c8683c", 0, 0.13, 0, g, 10)
+		cyl(0.02, 0.4, "#3f9a44", 0, 0.46, 0, g, 6)
+		ball(g, 0.12, "#f08aa8", 0, 0.7, 0)
+		ball(g, 0.05, "#ffd35a", 0, 0.7, 0.1)
+		cone(g, 0.07, 0.22, "#3f9a44", -0.1, 0.42, 0, 4, 0.6)
+		cone(g, 0.07, 0.22, "#3f9a44", 0.1, 0.46, 0, 4, 2.2)
+		return g
+	},
+	// April, an umbrella stand
+	month_apr() {
+		const g = group()
+		cyl(0.17, 0.34, "#4a6a8a", 0, 0.17, 0, g, 12)
+		cyl(0.02, 0.9, C.steelD, 0, 0.7, 0, g, 6)
+		cone(g, 0.4, 0.2, "#ffd35a", 0, 1.1, 0, 10)
+		ball(g, 0.03, C.steelD, 0, 1.22, 0)
+		return g
+	},
+	// May, a camping tent with a flag
+	month_may() {
+		const g = group()
+		cone(g, 0.42, 0.55, "#e8743b", 0, 0.28, 0, 4, Math.PI / 4)
+		box(0.12, 0.26, 0.02, "#3a2a1c", 0, 0.14, 0.26, g, { noCast: true })
+		cyl(0.012, 0.5, C.steelD, 0.3, 0.45, -0.2, g, 5)
+		box(0.14, 0.09, 0.01, "#3aa89a", 0.37, 0.64, -0.2, g, { noCast: true })
+		return g
+	},
+	// June, a surfboard on a stand
+	month_jun() {
+		const g = group()
+		box(0.3, 0.05, 0.3, C.wood, 0, 0.025, 0, g)
+		const board = box(0.16, 0.95, 0.04, "#2ec4d6", 0, 0.5, 0, g)
+		board.rotation.z = 0.12
+		const stripe = box(0.05, 0.9, 0.045, "#ffffff", 0, 0.5, 0, g, {
+			noCast: true,
+		})
+		stripe.rotation.z = 0.12
+		return g
+	},
+	// July, a pool ring with a duck
+	month_jul() {
+		const g = group()
+		torus(g, 0.24, 0.09, "#f06a8a", 0, 0.1, 0)
+		ball(g, 0.1, "#ffd35a", 0.02, 0.28, 0)
+		ball(g, 0.065, "#ffd35a", 0.1, 0.38, 0)
+		box(0.07, 0.03, 0.05, "#f08a24", 0.17, 0.37, 0, g, { noCast: true })
+		return g
+	},
+	// August, a kettlebell trophy
+	month_aug() {
+		const g = group()
+		box(0.4, 0.06, 0.4, C.cream, 0, 0.03, 0, g)
+		ball(g, 0.2, "#2c2f36", 0, 0.26, 0)
+		torus(g, 0.12, 0.035, "#2c2f36", 0, 0.52, 0, 0)
+		box(0.12, 0.07, 0.01, GOLD(), 0, 0.24, 0.2, g, { noCast: true })
+		return g
+	},
+	// September, an apple crate
+	month_sep() {
+		const g = group()
+		box(0.5, 0.22, 0.38, C.wood, 0, 0.11, 0, g)
+		box(0.52, 0.04, 0.4, C.woodD, 0, 0.23, 0, g)
+		for (const [x, z] of [
+			[-0.14, -0.08],
+			[0.06, -0.1],
+			[0.16, 0.06],
+			[-0.06, 0.08],
+			[-0.18, 0.1],
+		] as const)
+			ball(g, 0.075, "#d4463a", x, 0.3, z)
+		cone(g, 0.04, 0.1, "#3f9a44", 0.03, 0.4, 0, 4)
+		return g
+	},
+}
+
 export const DECOR: Readonly<Record<string, () => T.Group>> = {
 	plant: () => plant(0, 0, 1.15),
 	palm() {
@@ -389,4 +556,5 @@ export const DECOR: Readonly<Record<string, () => T.Group>> = {
 		}
 		return g
 	},
+	...MONTH_DECOR,
 }
