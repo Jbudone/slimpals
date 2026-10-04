@@ -1,4 +1,5 @@
 import type { AIService } from "../ai/index.js"
+import { coachLinesType } from "./coachLines.js"
 import { coachPersonalityType } from "./coachPersonality.js"
 import { gymEventsType } from "./gymEvents.js"
 import { gymLayoutType } from "./gymLayout.js"
@@ -45,6 +46,7 @@ export type ContentTuningType = {
 
 export const CONTENT_TUNING_TYPES: ContentTuningType[] = [
 	coachPersonalityType,
+	coachLinesType,
 	sprintsType,
 	monthlyChallengeType,
 	victoryMessageType,
