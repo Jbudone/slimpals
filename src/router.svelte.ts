@@ -12,6 +12,7 @@ export type RoutePath =
 	| "/social"
 	| "/tournaments"
 	| "/badges"
+	| "/hall"
 	| "/settings"
 	| "/admin"
 	| "/ui-kit"
@@ -41,6 +42,7 @@ export function initRouter() {
 	page.redirect("/gym/canvas", "/")
 	page("/tournaments", go("/tournaments"))
 	page("/badges", go("/badges"))
+	page("/hall", go("/hall"))
 	page("/settings", go("/settings"))
 	page("/admin", go("/admin"))
 	if (import.meta.env.DEV) {

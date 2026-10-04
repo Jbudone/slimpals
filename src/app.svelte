@@ -14,6 +14,7 @@ import {
 } from "./lib/user.svelte.js"
 import { loadWallet } from "./lib/wallet.svelte.js"
 import Admin from "./pages/Admin.svelte"
+import HallOfFame from "./pages/HallOfFame.svelte"
 import Home from "./pages/Home.svelte"
 import Login from "./pages/Login.svelte"
 import Progress from "./pages/Progress.svelte"
@@ -101,6 +102,8 @@ async function handleStopImpersonating() {
 				<Progress />
 			{:else if currentPath === "/social" || currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges"}
 				<SocialHub />
+			{:else if currentPath === "/hall"}
+				<HallOfFame />
 			{:else if currentPath === "/settings"}
 				<Settings />
 			{:else if currentPath === "/admin"}
