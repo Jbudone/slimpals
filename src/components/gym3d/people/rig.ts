@@ -1061,6 +1061,25 @@ function dress(r: Rig, out: Outfit): void {
 		mic.position.set(-0.13, y - 0.075, 0.13)
 		r.hairG.add(keep(mic))
 	}
+	if (acc.includes("santa")) {
+		// a red hat with a white band and pom-pom
+		const cap = new T.Mesh(
+			eqGeo("santacap", () => new T.ConeGeometry(0.17, 0.3, 14)),
+			TM("#d4463a"),
+		)
+		cap.position.set(0, y + 0.3, -0.02)
+		cap.rotation.x = 0.35
+		r.hairG.add(keep(cap))
+		const band = new T.Mesh(
+			eqGeo("santaband", () => new T.CylinderGeometry(0.185, 0.185, 0.06, 14)),
+			TM("#f6f1e6"),
+		)
+		band.position.set(0, y + 0.17, 0)
+		r.hairG.add(keep(band))
+		const pom = new T.Mesh(sphGeo(0.05, 8, 6), TM("#f6f1e6"))
+		pom.position.set(0, y + 0.42, -0.1)
+		r.hairG.add(keep(pom))
+	}
 	if (acc.includes("witch")) {
 		// a pointed hat: a wide brim, a cone and a gold band
 		const brim = new T.Mesh(
