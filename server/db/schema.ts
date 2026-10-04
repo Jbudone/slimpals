@@ -554,9 +554,11 @@ export const gymNpcDialogBatches = mysqlTable("gym_npc_dialog_batches", {
 export const tournaments = mysqlTable("tournaments", {
 	id: int("id").autoincrement().primaryKey(),
 	name: varchar("name", { length: 255 }).notNull(),
-	creatorId: varchar("creator_id", { length: 36 })
-		.notNull()
-		.references(() => users.id),
+	// null for system tournaments (see system_key)
+	creatorId: varchar("creator_id", { length: 36 }).references(() => users.id),
+	// Set for tournaments the scheduler creates: "weekly:<monday>" or
+	// "monthly:<YYYY-MM>". Unique, so a period can never get two.
+	systemKey: varchar("system_key", { length: 32 }).unique(),
 	startDate: timestamp("start_date").notNull(),
 	endDate: timestamp("end_date").notNull(),
 	type: mysqlEnum("type", [

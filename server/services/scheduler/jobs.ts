@@ -11,6 +11,7 @@ import { generateNightlyGymContent } from "../gym/content.js"
 import { generateInspirationForAllUsers } from "../inspiration/index.js"
 import { generateSprintsForAllUsers } from "../sprints/index.js"
 import { resolveDueTournaments } from "../tournaments/index.js"
+import { ensureRecurringTournaments } from "../tournaments/recurring.js"
 import { createScheduler, type ScheduledJob, type Scheduler } from "./index.js"
 import { createDbRunStore } from "./store.js"
 
@@ -65,6 +66,14 @@ export function buildScheduledJobs(
 			schedule: { kind: "daily", atMinute: 20 },
 			async run(now) {
 				return generateNightlyGymContent(aiService, db, now)
+			},
+		},
+		{
+			key: "recurring-tournaments",
+			label: "Weekly and monthly tournaments",
+			schedule: { kind: "daily", atMinute: 25 },
+			async run(now) {
+				return ensureRecurringTournaments(db, now)
 			},
 		},
 		{

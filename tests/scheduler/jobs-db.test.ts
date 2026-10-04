@@ -319,6 +319,7 @@ describe("scheduled jobs end to end (stub AI, real DB)", () => {
 		expect(rows.map((r) => `${r.job}:${r.period}`).sort()).toEqual([
 			"monthly-challenge:2026-10",
 			"nightly-gym-content:2026-10-07",
+			"recurring-tournaments:2026-10-07",
 			"tournament-resolve:interval",
 			"weekly-inspiration:week-2026-10-05",
 			"weekly-sprints:week-2026-10-05",
@@ -381,6 +382,7 @@ describe("admin scheduler endpoints", () => {
 			"weekly-sprints",
 			"weekly-inspiration",
 			"nightly-gym-content",
+			"recurring-tournaments",
 			"tournament-resolve",
 		])
 

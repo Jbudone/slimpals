@@ -14,6 +14,7 @@ import { db } from "../../db/index.js"
 import {
 	dailyCheckins,
 	foodLogs,
+	socialPosts,
 	stepRecords,
 	tournamentParticipants,
 	tournaments,
@@ -206,6 +207,18 @@ export async function resolveTournament(
 		.update(tournaments)
 		.set({ winnerId: winner.userId, victoryMessage })
 		.where(eq(tournaments.id, tournamentId))
+
+	// System tournaments have no creator to post about them, so the winner's
+	// feed gets the result.
+	if (tournament.systemKey) {
+		await db.insert(socialPosts).values({
+			userId: winner.userId,
+			type: "milestone",
+			content: {
+				text: `${winnerUser?.name ?? "Someone"} won ${tournament.name}! 🏆`,
+			},
+		})
+	}
 
 	// Award badges
 	const [{ value: totalWins }] = await db

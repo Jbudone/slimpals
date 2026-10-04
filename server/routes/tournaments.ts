@@ -42,6 +42,7 @@ export function createTournamentsRouter(aiService: AIService) {
 				id: t.id,
 				name: t.name,
 				creatorId: t.creatorId,
+				featured: t.systemKey !== null,
 				startDate: t.startDate,
 				endDate: t.endDate,
 				type: t.type,
