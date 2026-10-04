@@ -201,7 +201,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   streak milestone, tasks left by morning/day/evening), skipping the last three it said (`Home.svelte` keeps them). Challenge commentary: with a joined challenge the bubble now and then (2 in 5, when nothing
   urgent is up) speaks about it instead of the task count, and the Challenges page shows the coach's note for the day (`challengeLineFor`,
   stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
-  computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
+  computed on the fly, not stored, since the lines are scripted). Coins piling up: from `COINS_PILE` (150) waiting coins the bubble now and then (2 in 5, never over gear or loading) nudges to collect them (`coins` lines per voice, `{c}` = the count; `Gym3D.svelte` reports `onWaiting` each second, Home keeps it in steps of 50 so the bubble holds still). Not yet: AI-generated per-day commentary,
   portraits per personality, the coach lines in Admin's content tuning.
 - Challenge catalog (#124, second slice): `shared/challenges/catalog.ts` holds curated monthly cards (Burpee Blitz, Sunrise Stride, Green Machine: tagline,
   coach intro, three goals, a decor `rewardCosmetic`: `arcade_cabinet`, `sunrise_mural`, `herb_planter`, builders in `equipment/decor.ts`). Columns `tagline`,

@@ -3,6 +3,7 @@ import {
 	allChallengeLines,
 	allCoachLines,
 	COACH_VOICES,
+	COINS_PILE,
 	type CoachContext,
 	challengeLineFor,
 	challengeStage,
@@ -135,6 +136,35 @@ describe("challenge commentary", () => {
 				() => 0,
 			).id,
 		).toContain(":morning:")
+	})
+
+	it("nudges about a pile of waiting coins now and then, never over gear or loading", () => {
+		const pile = { ...base, coinsWaiting: 1250 }
+		const say = coachLineFor("friendly", pile, [], () => 0)
+		expect(say.id).toContain(":coins:")
+		expect(`${say.lead} ${say.rest}`).toContain("1,250")
+		expect(`${say.lead} ${say.rest}`).not.toContain("{c}")
+		// every voice has coin lines
+		for (const v of COACH_VOICES)
+			expect(coachLineFor(v, pile, [], () => 0).id).toContain(":coins:")
+		// a roll above the chance, a small stash, gear and loading keep their lines
+		expect(coachLineFor("friendly", pile, [], () => 0.9).id).toContain(
+			":morning:",
+		)
+		expect(
+			coachLineFor(
+				"friendly",
+				{ ...base, coinsWaiting: COINS_PILE - 1 },
+				[],
+				() => 0,
+			).id,
+		).toContain(":morning:")
+		expect(
+			coachLineFor("friendly", { ...pile, pendingGear: "X" }, [], () => 0).id,
+		).toContain(":gear:")
+		expect(
+			coachLineFor("friendly", { ...pile, loaded: false }, [], () => 0).id,
+		).toContain(":loading:")
 	})
 
 	it("works out the standing from the challenge's goals, for this month only", () => {
