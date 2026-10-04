@@ -110,4 +110,12 @@ relay supplies up a hundred and twelve steps, Old Joe feeds the crew, a gale
 keeps everyone in the gym for two days and the street collects spare cable.
 Marcus's nine-year-old nephew throws the switch.
 
-Campaign 10 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 10: Pavement Street, a fourth time
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyCapsule.ts`. The street turns
+ten and digs up the tin Barry buried by the lamp post: a list for the next tin,
+Rivera's two-line letter, Victor's banner pole marking the spot, a membership card
+numbered 0001 (Lisa's), a hand-drawn gym map with one treadmill and a large plant,
+forty opening-day photos with Derek in the corner of all of them, and a new tin
+(a stopwatch, a better list, one pickle) buried with a date ten years on.
+
+Campaign 11 onwards have no story yet (they can be finished from gym level 17).

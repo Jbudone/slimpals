@@ -7,6 +7,7 @@
 import type { OpenResult, OpenState } from "./open.js"
 import { STORY_ALUMNI } from "./storyAlumni.js"
 import { STORY_CAMPUS } from "./storyCampus.js"
+import { STORY_CAPSULE } from "./storyCapsule.js"
 import { STORY_EXAMS } from "./storyExams.js"
 import { STORY_HARBOUR } from "./storyHarbour.js"
 import { STORY_LIGHTHOUSE } from "./storyLighthouse.js"
@@ -486,6 +487,7 @@ export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
 	7: STORY_NIGHT,
 	8: STORY_EXAMS,
 	9: STORY_LIGHTHOUSE,
+	10: STORY_CAPSULE,
 }
 
 export function storyFor(campaign: number): readonly StoryBeat[] {
