@@ -204,3 +204,27 @@ describe("POST /api/admin/content-tuning/coach_lines/default/generate", () => {
 		expect(none.body.sample).toContain("No lines")
 	})
 })
+
+describe("POST /api/admin/content-tuning/story_chapters/default/generate", () => {
+	it("shows a chapter of any campaign with its speakers and the style rules", async () => {
+		const { cookie, userId } = await registerAndLogin(
+			"admin-story-gen@slimpals.test",
+			"Admin",
+		)
+		await makeAdmin(userId)
+		const post = (contextParams: Record<string, string>) =>
+			request(app)
+				.post("/api/admin/content-tuning/story_chapters/default/generate")
+				.set("Cookie", cookie)
+				.send({ contextParams })
+		const harbour = await post({ chapter: "c3-captain" })
+		expect(harbour.status).toBe(200)
+		expect(harbour.body.sample).toContain("Harbour Road")
+		expect(harbour.body.sample).toContain("Captain Reyes:")
+		expect(harbour.body.sample).toContain("Style: Each story chapter")
+		const first = await post({ chapter: "a1-opening" })
+		expect(first.body.sample).toContain("campaign 1")
+		const none = await post({ chapter: "nope" })
+		expect(none.body.sample).toContain("No chapter")
+	})
+})
