@@ -59,4 +59,12 @@ The rivalry turns out to be about a 1998 "best campus gym" ranking that FitZone
 lost to a basement. It ends with an exam (the gym that checks in the most keeps
 the quad) and a graduation that points at the next street.
 
-Campaign 3 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 3: Harbour Road
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyHarbour.ts`. A working
+harbour: the rival is Captain Mara Reyes's IronWave (a rowing club that grew a
+weights room, "forty years", Rivera says thirty-nine), the food shop is Old
+Joe's Fish Shack. A 1987 ledger shows IronWave once lost a race to Joe's
+father; the rematch has three crews (the gym, IronWave, Joe's cousins) and one
+harbour trophy, which they end up sharing.
+
+Campaign 4 onwards have no story yet (they can be finished from gym level 17).
