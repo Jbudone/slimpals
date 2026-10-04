@@ -180,7 +180,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   no exclamation marks). `Happenings.syncGhost` (called from the sim poll via `Gym3DApp.ghostOn`) floats a white "Ghost" extra
   in the lobby and drifts it to the next lobby spot every 40 s; `Life` gives it ghost lines and the name "Ghost". `?ghost=1` /
   `?ghost=0` force it on or off (tests, demos); `stats().ghost` is 1 while it is about. e2e: `gym3d-life.spec.ts` ("ghost").
-  Every third drift it stands guard in front of the lockers when they are built (`GHOST_LOCKERS` label, `GHOST_LOCKER_LINES`; not covered by e2e, it needs ~80 s). Not yet: ghosts making early leavers stay, costumes, the costume contest.
+  Every third drift it stands guard in front of the lockers when they are built (`GHOST_LOCKERS` label, `GHOST_LOCKER_LINES`; not covered by e2e, it needs ~80 s). In October about one member or passer-by in four wears a witch hat (`Acc` "witch", `People.costumes` set from `ghostOn()`, picked by a hash of the person's key; `stats().costumes`, `window.gym3d.costumed()`). Not yet: ghosts making early leavers stay, other costumes, the costume contest.
 - Street life (#131, first slice): `People.trickleStreet` (`people/members.ts`) sends a few passers-by (`pass:<n>`, kind `extra`,
   at most half the ambient cap) along the pavement in front of the gym from one edge to the other every 6-12 s; about one in
   eight turns in at the door (`after: "enter"`) and becomes a member. The pavement has street lamps and, across it, a road with a dashed

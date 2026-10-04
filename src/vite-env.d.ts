@@ -18,6 +18,8 @@ declare global {
 			/** Screen point of a person by key (npc:<npcKey>, staff:..., member:n). */
 			screenOf(key: string): { x: number; y: number } | null
 			people(): string[]
+			/** Keys of the people in a seasonal costume. */
+			costumed(): string[]
 			/** The layout the gym is showing (coins, lots, jobs, pieces). */
 			layout(): import("../shared/types").GymLayoutDto
 			/** Screen point (CSS px inside the gym) of a world point. */

@@ -775,6 +775,7 @@ onMount(() => {
 				tap: (x, y) => a.tapAt(x, y),
 				screenOf: (key) => a.screenOf(key),
 				people: () => a.personKeys(),
+				costumed: () => a.costumedKeys(),
 				layout: () => a.layout,
 				screenAt: (x, y, z) => a.screenAt(x, y, z),
 				moveTargets: () => a.moveTargets(),
