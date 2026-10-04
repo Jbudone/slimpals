@@ -4,6 +4,11 @@
 // and "Place it" for unlocked gear. Stays mounted while the player is on
 // other tabs (hidden, so the renderer pauses) to make coming back instant.
 import { onMount } from "svelte"
+import {
+	type CoachSay,
+	coachLineFor,
+	isCoachVoice,
+} from "../../shared/gym3d/coachLines.js"
 import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
 import GoalsCard from "../components/home/GoalsCard.svelte"
@@ -80,36 +85,45 @@ const coachName = $derived(
 
 const pending = $derived(wallet.data?.pendingUpgrades ?? [])
 
-const coachLine = $derived.by((): { lead: string; rest: string } => {
+/** What the coach said lately (a plain list: it only feeds the next pick). */
+const recentCoach: string[] = []
+function seeded(n: number): () => number {
+	let x = (n * 7919 + 13) >>> 0
+	return () => {
+		x = (Math.imul(x, 1664525) + 1013904223) >>> 0
+		return x / 2 ** 32
+	}
+}
+
+const coachSay = $derived.by((): CoachSay => {
 	void coachPick
 	const c = (() => {
 		void checkinState.data
 		void today.daily
 		return todayCounts()
 	})()
-	const left = c.all - c.done
-	if (pending.length)
-		return {
-			lead: "New gear!",
-			rest: `${pending[0].name} is unlocked. Tap Place it and the crew builds it.`,
-		}
-	if (!today.loaded)
-		return { lead: "Hey!", rest: "Your gym is open. Let's get moving." }
-	if (left <= 0)
-		return {
-			lead: "All done today.",
-			rest: "Your gym is buzzing. Tap the coin bubbles to collect.",
-		}
-	const h = new Date().getHours()
-	const hi = h < 12 ? "Morning!" : h < 18 ? "Hey!" : "Evening!"
-	return {
-		lead: hi,
-		rest: `${left} task${left === 1 ? "" : "s"} left today. Every one you tick makes the gym stronger.`,
-	}
+	const voice = isCoachVoice(userProfile.data?.coachPersonality)
+		? userProfile.data.coachPersonality
+		: "friendly"
+	return coachLineFor(
+		voice,
+		{
+			left: c.all - c.done,
+			total: c.all,
+			loaded: today.loaded,
+			pendingGear: pending[0]?.name,
+			streak: checkinState.data?.streakCount,
+			hour: new Date().getHours(),
+		},
+		recentCoach,
+		seeded(coachPick),
+	)
 })
 
 function showCoach(ms = 7000) {
 	coachOpen = true
+	recentCoach.push(coachSay.id)
+	if (recentCoach.length > 3) recentCoach.shift()
 	coachPick++
 	if (coachTimer) clearTimeout(coachTimer)
 	coachTimer = setTimeout(() => {
@@ -291,7 +305,7 @@ onMount(() => {
 			data-testid="coach-say"
 		>
 			<small>{coachName.toUpperCase()}</small>
-			<b>{coachLine.lead}</b> {coachLine.rest}
+			<b>{coachSay.lead}</b> {coachSay.rest}
 		</div>
 	{/if}
 
