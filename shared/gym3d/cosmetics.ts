@@ -40,6 +40,27 @@ export const COSMETICS: readonly CosmeticDef[] = [
 		builder: "trophy",
 	},
 	{
+		key: "arcade_cabinet",
+		name: "Burpee arcade cabinet",
+		kind: "decor",
+		from: "Finishing Burpee Blitz",
+		builder: "arcade",
+	},
+	{
+		key: "sunrise_mural",
+		name: "Sunrise mural",
+		kind: "decor",
+		from: "Finishing Sunrise Stride",
+		builder: "mural",
+	},
+	{
+		key: "herb_planter",
+		name: "Herb garden planter",
+		kind: "decor",
+		from: "Finishing Green Machine",
+		builder: "planter",
+	},
+	{
 		key: "halloween_hat",
 		name: "Witch hat for the coach",
 		kind: "outfit",

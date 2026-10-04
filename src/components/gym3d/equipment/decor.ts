@@ -315,4 +315,78 @@ export const DECOR: Readonly<Record<string, () => T.Group>> = {
 		}
 		return g
 	},
+	// Challenge rewards (finishing a curated monthly challenge)
+	arcade() {
+		const g = group()
+		box(0.5, 1.0, 0.4, "#4a2f7a", 0, 0.5, 0, g)
+		box(0.5, 0.12, 0.46, "#3a2360", 0, 1.06, 0.03, g)
+		box(0.4, 0.26, 0.03, "#1d2230", 0, 0.78, 0.2, g, { noCast: true })
+		const screen = new T.Mesh(
+			eqGeo("arcadescreen", () => new T.PlaneGeometry(0.34, 0.2)),
+			glowM("#7af0c8"),
+		)
+		screen.position.set(0, 0.78, 0.216)
+		g.add(screen)
+		box(0.46, 0.06, 0.2, "#5a3b94", 0, 0.5, 0.26, g)
+		cyl(0.015, 0.1, "#2c2f36", -0.1, 0.58, 0.28, g, 6)
+		const ball = new T.Mesh(
+			eqGeo("arcadeball", () => new T.SphereGeometry(0.035, 8, 6)),
+			eqMat(
+				"arcadeball",
+				() => new T.MeshStandardMaterial({ color: "#ff5a6a" }),
+			),
+		)
+		ball.position.set(-0.1, 0.65, 0.28)
+		g.add(ball)
+		for (const [x, c] of [
+			[0.04, "#ffd35a"],
+			[0.14, "#7ad0ff"],
+		] as const)
+			box(0.06, 0.03, 0.06, c, x, 0.54, 0.28, g, { noCast: true })
+		return g
+	},
+	mural() {
+		const g = group()
+		box(0.7, 0.04, 0.2, C.rubber, 0, 0.02, 0, g)
+		box(0.66, 0.9, 0.04, "#2a2f45", 0, 0.5, 0, g)
+		const bands: [string, number, number][] = [
+			["#ffb347", 0.16, 0.2],
+			["#ff8a5a", 0.5, 0.2],
+			["#f06a7a", 0.68, 0.16],
+			["#8a5ad0", 0.82, 0.14],
+		]
+		for (const [c, y, h] of bands) {
+			const m = new T.Mesh(
+				eqGeo(`muralband${h}`, () => new T.PlaneGeometry(0.6, h)),
+				glowM(c),
+			)
+			m.position.set(0, y + 0.1, 0.025)
+			g.add(m)
+		}
+		const sun = new T.Mesh(
+			eqGeo("muralsun", () => new T.CircleGeometry(0.1, 14)),
+			glowM("#fff1a8"),
+		)
+		sun.position.set(0, 0.42, 0.03)
+		g.add(sun)
+		return g
+	},
+	planter() {
+		const g = group()
+		box(0.6, 0.22, 0.26, "#8a5a30", 0, 0.11, 0, g)
+		box(0.56, 0.03, 0.22, "#3a2a1a", 0, 0.235, 0, g, { noCast: true })
+		for (const [x, c, h] of [
+			[-0.18, "#3f9a44", 0.22],
+			[0, "#62b83f", 0.3],
+			[0.18, "#2f7a3e", 0.2],
+		] as const) {
+			const m = new T.Mesh(
+				eqGeo(`herb${h}`, () => new T.ConeGeometry(0.08, h, 6)),
+				eqMat(`herb_${c}`, () => new T.MeshStandardMaterial({ color: c })),
+			)
+			m.position.set(x, 0.25 + h / 2, 0)
+			g.add(m)
+		}
+		return g
+	},
 }
