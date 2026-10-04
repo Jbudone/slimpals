@@ -6,6 +6,7 @@
 // body, and nobody mentions weight.
 import type { CoachPersonality } from "../types.js"
 import type { Rng } from "./npcLines.js"
+import type { Season } from "./season.js"
 
 export type CoachVoice = CoachPersonality
 
@@ -40,6 +41,8 @@ export type ChallengeStanding = {
 }
 
 export type CoachContext = {
+	/** The season dressing the gym: its lines now and then replace the task count. */
+	season?: Season | null
 	/** Tasks left today (check-in included). */
 	left: number
 	/** Today's tasks in all. */
@@ -70,6 +73,83 @@ type Situation =
 	| "day"
 	| "evening"
 	| "coins"
+
+/** Seasonal remarks, a couple per voice and season (no placeholders). */
+const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
+	friendly: {
+		halloween: [
+			["Spooky season.", "The ghost by the lobby is on our side. Mostly."],
+			["Love the pumpkins.", "Let's earn some treats today."],
+		],
+		harvest: [
+			["Harvest time.", "Good month to collect what you planted all year."],
+			["Hay in the lobby.", "Cosy. Now, a few sets?"],
+		],
+		winter: [
+			["The tree is up.", "Keep the streak going through the holidays."],
+			["Lights are on.", "Warm up well, it's cold out there."],
+		],
+	},
+	drill_sergeant: {
+		halloween: [
+			["Ghosts don't skip leg day.", "Neither do you."],
+			["Pumpkins at the door.", "Orange is the colour of effort. Move."],
+		],
+		harvest: [
+			["Harvest month.", "You reap what you rep. Get going."],
+			["Hay bales are not seats.", "On your feet."],
+		],
+		winter: [
+			["Holiday lights are not an excuse.", "Rest day is not a season."],
+			["Cold out.", "Warm up longer and stay longer."],
+		],
+	},
+	roaster: {
+		halloween: [
+			["Nothing is scarier than your skipped streak.", "Fix it."],
+			["A witch hat.", "Bold. Your form is still the scarier look."],
+		],
+		harvest: [
+			["Hay and pumpkins.", "Your dedication is the only thing out of season."],
+			["Thankful month.", "I'm thankful for your attendance. Let's keep it."],
+		],
+		winter: [
+			[
+				"Fairy lights on the dumbbells.",
+				"They shine more than your effort. For now.",
+			],
+			["Resolutions in January.", "Why not start with a set today."],
+		],
+	},
+	anime_sensei: {
+		halloween: [
+			["The spirits visit.", "Even they train in silence."],
+			["The lantern glows.", "Light the habit, not the fear."],
+		],
+		harvest: [
+			["The leaves fall.", "The wise let go of excuses."],
+			["Autumn is patient.", "So is progress."],
+		],
+		winter: [
+			["Snow settles slowly.", "So does strength. Continue."],
+			["Lights in the dark.", "A small habit is one too."],
+		],
+	},
+	bro: {
+		halloween: [
+			["Spooky szn, dude.", "Pumpkin shake after your sets."],
+			["Ghost in the lobby.", "He spots better than Jordan."],
+		],
+		harvest: [
+			["Harvest vibes.", "Hay bale, apples, gains. Perfect."],
+			["Cosy season.", "Cosy sets. Let's go."],
+		],
+		winter: [
+			["Tree's up, bro.", "Cocoa protein after, you earned it."],
+			["Holiday lights.", "Keep the pump going, dude."],
+		],
+	},
+}
 
 /** A pile worth a nudge: from this many waiting coins the coach mentions them. */
 export const COINS_PILE = 150
@@ -353,6 +433,21 @@ export function coachLineFor(
 		chance < 0.4
 	)
 		return challengeLineFor(voice, c.challenge, rng, recent)
+	// the season, now and then, when nothing urgent is up
+	if (
+		c.season &&
+		(sit === "morning" || sit === "day" || sit === "evening") &&
+		rng() < 0.2
+	) {
+		const pool = SEASON_LINES[voice][c.season]
+		const id = (i: number) => `${voice}:season-${c.season}:${i}`
+		const fresh = pool
+			.map((v, i) => ({ v, i }))
+			.filter((x) => !recent.includes(id(x.i)))
+		const from = fresh.length ? fresh : pool.map((v, i) => ({ v, i }))
+		const pick = from[Math.floor(rng() * from.length) % from.length]
+		return { id: id(pick.i), lead: pick.v[0], rest: pick.v[1] }
+	}
 	// a pile of waiting coins gets a nudge now and then, when nothing urgent is up
 	const nudge =
 		(c.coinsWaiting ?? 0) >= COINS_PILE &&
@@ -377,15 +472,22 @@ export function coachLineFor(
 
 /** Every line template, for tests and the content tuning page. */
 export function allCoachLines(): { id: string; lead: string; rest: string }[] {
-	return COACH_VOICES.flatMap((voice) =>
-		(Object.keys(LINES[voice]) as Situation[]).flatMap((sit) =>
+	return COACH_VOICES.flatMap((voice) => [
+		...(Object.keys(LINES[voice]) as Situation[]).flatMap((sit) =>
 			LINES[voice][sit].map((v, i) => ({
 				id: `${voice}:${sit}:${i}`,
 				lead: v[0],
 				rest: v[1],
 			})),
 		),
-	)
+		...(Object.keys(SEASON_LINES[voice]) as Season[]).flatMap((se) =>
+			SEASON_LINES[voice][se].map((v, i) => ({
+				id: `${voice}:season-${se}:${i}`,
+				lead: v[0],
+				rest: v[1],
+			})),
+		),
+	])
 }
 
 // ── challenge commentary ───────────────────────────────────────────────────

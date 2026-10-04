@@ -29,6 +29,26 @@ describe("coach lines", () => {
 		}
 	})
 
+	it("remarks on the season now and then, never when something is urgent", () => {
+		for (const v of COACH_VOICES)
+			for (const season of ["halloween", "harvest", "winter"] as const) {
+				const say = coachLineFor(v, { ...base, season }, [], rng)
+				expect(say.id).toBe(`${v}:season-${season}:0`)
+				const next = coachLineFor(v, { ...base, season }, [say.id], rng)
+				expect(next.id).toBe(`${v}:season-${season}:1`)
+			}
+		// gear waiting or nothing left to do wins over the season
+		const gear = coachLineFor(
+			"bro",
+			{ ...base, season: "winter", pendingGear: "Rack" },
+			[],
+			rng,
+		)
+		expect(gear.id).toContain(":gear:")
+		// no season, no remark
+		expect(coachLineFor("bro", base, [], rng).id).not.toContain("season")
+	})
+
 	it("fills in the tasks left, the gear and the streak", () => {
 		const say = coachLineFor("friendly", { ...base, left: 1 }, [], rng)
 		expect(`${say.lead} ${say.rest}`).toContain("1 task ")
