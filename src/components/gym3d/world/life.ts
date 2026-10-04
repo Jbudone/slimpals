@@ -276,7 +276,7 @@ export class Life {
 	banterContext: (() => BanterContext) | null = null
 	/** The AI's nightly exchanges, mixed in with the scripted ones. */
 	extraBanter: Banter[] = []
-	private banterTimer = 20
+	private banterTimer = 50
 	private banterSeen: string[] = []
 
 	constructor(
@@ -305,6 +305,18 @@ export class Life {
 	 * takes a bubble and outranks chatter on screen. */
 	sayNow(p: Person, text: string, now: number, dur = 4.2): void {
 		this.bubbles.say(p, text, this.nameOf(p), now, dur, true, true)
+	}
+
+	/** A plain line from someone (a visit): skipped when the pool is busy
+	 * or they are off screen. */
+	say(p: Person, text: string, now: number, dur = 3): void {
+		if (this.paused || this.bubbles.active >= 2 || !this.visible(p)) return
+		this.bubbles.say(p, text, this.nameOf(p), now, dur)
+	}
+
+	/** A reply a moment later. */
+	reply(p: Person, text: string, now: number, after = 1.6): void {
+		this.pending.push({ at: now + after, p, text, name: this.nameOf(p) })
 	}
 
 	private nameOf(p: Person): string | null {
@@ -412,12 +424,13 @@ export class Life {
 		if (this.paused) return
 		this.timer -= dt
 		if (this.timer > 0) return
-		this.timer = (this.calm ? 9 : 3.2) + this.rng() * 3.5
+		// calm on purpose: a line now and then, never a wall of them
+		this.timer = (this.calm ? 18 : 9) + this.rng() * 6
 		this.banterTimer -= this.timer
-		if (this.bubbles.active >= 2 || this.pending.length) return
+		if (this.bubbles.active >= 1 || this.pending.length) return
 		const ps = this.people()
 		if (this.banterTimer <= 0 && this.banter(ps, now)) return
-		if (this.rng() < 0.35) {
+		if (this.rng() < 0.25) {
 			const pair = this.findPair(ps)
 			if (pair) {
 				const [a, b] = pair
@@ -491,7 +504,7 @@ export class Life {
 		const [x, y] = pairs[Math.floor(this.rng() * pairs.length) % pairs.length]
 		this.banterSeen.push(b.id)
 		if (this.banterSeen.length > 6) this.banterSeen.shift()
-		this.banterTimer = (this.calm ? 90 : 55) + this.rng() * 40
+		this.banterTimer = (this.calm ? 150 : 100) + this.rng() * 60
 		b.lines.forEach((text, i) => {
 			const p = i % 2 ? y : x
 			if (i === 0) this.bubbles.say(p, text, this.nameOf(p), now, 3.4)

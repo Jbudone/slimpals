@@ -703,7 +703,8 @@ export class Happenings {
 	frame(dt: number): void {
 		if (this.ghost) {
 			this.ghostT += dt
-			if (this.ghostT > 40) this.placeGhost()
+			// not while it is out on a haunting (it goes back to its spot first)
+			if (this.ghostT > 40 && !this.ghost.visit) this.placeGhost()
 		}
 		this.sparkT -= dt
 		if (this.sparkT > 0) return

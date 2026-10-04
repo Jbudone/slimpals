@@ -165,6 +165,14 @@ export type Person = {
 	pace?: number
 	/** Extra chip line (the class a member is in). */
 	note?: string | null
+	/** A trip to someone (a staff round, the ghost haunting): they walk over,
+	 * stay a moment, then go back to their post. */
+	visit?: {
+		kind: "round" | "haunt"
+		target: Person
+		dwell: number
+		onArrive?: () => void
+	}
 	/** A playful reaction to a tap, playing over their pose. */
 	fx?: { kind: "hop" | "trip" | "spin"; t: number; dur: number; y0: number }
 }

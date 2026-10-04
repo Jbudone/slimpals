@@ -50,6 +50,12 @@ import {
 	type StoryGuestKey,
 	storyGuestNow,
 } from "../../../shared/gym3d/story"
+import {
+	pickPrank,
+	roundReply,
+	roundRoleOf,
+	roundTip,
+} from "../../../shared/gym3d/visits"
 import type {
 	GymIncomeSourceDto,
 	GymJobDto,
@@ -201,6 +207,8 @@ export type Gym3DStats = {
 	taps: number
 	/** People poked so far (a hop, a line, now and then a stumble). */
 	pokes: number
+	/** Trips made so far (staff rounds, ghost hauntings). */
+	visits: number
 }
 
 /** "sweat": spend 1 Sweat for an hour off; "finish": spend `cost` Sweat. */
@@ -495,6 +503,7 @@ export class Gym3DApp {
 		this.people.onUpgradedUse = (p, tier) =>
 			this.life.gearReaction(p, tier, this.clock)
 		this.people.onGhostStay = (p) => this.life.ghostStay(p, this.clock)
+		this.people.onVisit = (p, target, kind) => this.visited(p, target, kind)
 		this.bindInput(host)
 		this.r.start((dt) => this.frame(dt))
 		this.pollTimer = setInterval(() => {
@@ -1880,6 +1889,37 @@ export class Gym3DApp {
 		this.hintCard()
 	}
 
+	private pranksSeen: string[] = []
+
+	/** A visitor reached the person they came to see: a staff round gets a
+	 * tip and a thank-you, the ghost plays a prank. */
+	private visited(p: Person, target: Person, kind: "round" | "haunt"): void {
+		const rng = Math.random
+		if (kind === "round") {
+			const role = roundRoleOf(
+				p.npcKey,
+				p.role ?? CAST[p.npcKey ?? ""]?.title ?? null,
+			)
+			this.life.say(p, roundTip(role, rng), this.clock)
+			this.life.reply(target, roundReply(rng), this.clock)
+			return
+		}
+		const prank = pickPrank(
+			!!target.station?.piece?.itemKey.includes("treadmill"),
+			this.pranksSeen,
+			rng,
+		)
+		this.pranksSeen.push(prank.id)
+		if (this.pranksSeen.length > 4) this.pranksSeen.shift()
+		this.people.react(target, prank.effect)
+		if (prank.effect === "trip") {
+			const r = target.rig.root.position
+			this.build.dustAt(r.x, 0.1, r.z, 8, 0.5)
+		}
+		this.life.say(p, prank.ghost, this.clock)
+		this.life.reply(target, prank.victim, this.clock, 1.5)
+	}
+
 	/** Said once, ever: how to get at a person's card. */
 	private hintCard(): void {
 		try {
@@ -2521,6 +2561,7 @@ export class Gym3DApp {
 			rippling: this.fx.rippling,
 			taps: this.taps,
 			pokes: this.pokes,
+			visits: this.people.visits,
 			...this.hap.stats(),
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,

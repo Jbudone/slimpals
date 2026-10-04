@@ -9,6 +9,12 @@ import { GHOST_STAY_CHANCE } from "../../../../shared/gym3d/ghost"
 import { hirePost } from "../../../../shared/gym3d/hires"
 import { PD, PW } from "../../../../shared/gym3d/rooms"
 import { vibePace } from "../../../../shared/gym3d/vibes"
+import {
+	delayIn,
+	HAUNT_EVERY,
+	ROUND_EVERY,
+	VISIT_DWELL,
+} from "../../../../shared/gym3d/visits"
 import type { GymHireDto, GymLayoutRoomDto } from "../../../../shared/types"
 import {
 	angLerp,
@@ -66,6 +72,14 @@ export class People {
 	staffHat: "witch" | "santa" | null = null
 	/** Most ambient members right now (follows the quality level). */
 	cap = 6
+	/** Trips made so far (staff rounds, ghost hauntings). */
+	visits = 0
+	/** A visitor reached the person they came to see (lines, a prank). */
+	onVisit:
+		| ((p: Person, target: Person, kind: "round" | "haunt") => void)
+		| null = null
+	private roundT = 25
+	private hauntT = 18
 
 	constructor(private w: GymWorld) {
 		this.rng = mulberry32(hashString(`people:${w.layout.gymId}`))
@@ -574,6 +588,7 @@ export class People {
 		const st = p.station
 		if (!st) return
 		const r = p.rig.root
+		p.visit = undefined
 		p.state = "use"
 		p.path = []
 		p.fin = null
@@ -638,6 +653,7 @@ export class People {
 	}
 
 	private leave(p: Person): void {
+		p.visit = undefined
 		const s = this.w.spawn
 		this.release(p)
 		p.fixed = null
@@ -682,11 +698,56 @@ export class People {
 			p.name = "Member"
 			p.key = `member:${++this.memberN}`
 			this.chooseNext(p)
+		} else if (p.visit) {
+			// at the person they came to see: face them, stay a moment
+			const v = p.visit
+			const a = p.rig.root.position
+			const b = v.target.rig.root.position
+			p.state = "idle"
+			p.idle = v.dwell
+			p.rig.root.rotation.y = Math.atan2(b.x - a.x, b.z - a.z)
+			const cb = v.onArrive
+			v.onArrive = undefined
+			if (this.people.includes(v.target)) {
+				cb?.()
+				this.onVisit?.(p, v.target, v.kind)
+			}
 		} else {
 			p.state = "idle"
 			p.idle = 1.5
 			if (p.home) p.rig.root.rotation.y = p.home.face
 		}
+	}
+
+	/** Sends `p` to stand beside `target` for a moment (a staff round, a
+	 * haunting), then back to their post. Their station stays theirs. */
+	visit(
+		p: Person,
+		target: Person,
+		kind: "round" | "haunt",
+		dwell: number,
+	): boolean {
+		if (p.state === "walk" || p.visit || p.leaving || target.leaving)
+			return false
+		const st = target.station
+		const ap = st ? this.approachFor(st)?.[0] : null
+		const tx = ap?.x ?? target.rig.root.position.x
+		const tz = ap?.z ?? target.rig.root.position.z
+		if (p.fixed?.piece && p.state === "use") p.exitFrom = p.fixed
+		if (!this.walkTo(p, tx, tz, "idle", 0.8)) return false
+		p.visit = { kind, target, dwell }
+		this.visits++
+		return true
+	}
+
+	/** Their trip is over: back to the station (or the spot) they came from. */
+	private endVisit(p: Person): void {
+		p.visit = undefined
+		if (p.fixed) {
+			if (!this.claim(p, p.fixed)) this.claimSnap(p, p.fixed)
+		} else if (p.home) {
+			if (!this.walkTo(p, p.home.x, p.home.z, "idle")) p.idle = 2
+		} else p.idle = 2
 	}
 
 	/** Hurries a working member along: their workout speeds up for a while. */
@@ -800,7 +861,8 @@ export class People {
 		} else {
 			if (!lite) POSES.idle(r, p.t, null)
 			p.idle -= dt
-			if (p.idle <= 0 && p.kind === "member") this.chooseNext(p)
+			if (p.idle <= 0 && p.visit) this.endVisit(p)
+			else if (p.idle <= 0 && p.kind === "member") this.chooseNext(p)
 		}
 	}
 
@@ -814,6 +876,7 @@ export class People {
 		for (const p of this.people.slice()) this.step(p, pd, p.onscr === false)
 		this.trickleStreet(dt)
 		this.boardWaiters(dt)
+		this.tripTimers(dt)
 		this.spawnT -= dt
 		if (this.spawnT <= 0) {
 			this.spawnT = 3
@@ -830,6 +893,76 @@ export class People {
 				this.chooseNext(m)
 			}
 		}
+	}
+
+	// ── trips: staff rounds and the ghost's hauntings ─────────────────────
+
+	private tripTimers(dt: number): void {
+		this.roundT -= dt
+		if (this.roundT <= 0) {
+			this.roundT = delayIn(ROUND_EVERY, this.rng)
+			this.startRound()
+		}
+		if (!this.ghostStays) return
+		this.hauntT -= dt
+		if (this.hauntT <= 0) {
+			this.hauntT = delayIn(HAUNT_EVERY, this.rng)
+			this.startHaunt()
+		}
+	}
+
+	/** Members hard at it, on screen: who a visitor might stop by. */
+	private workers(): Person[] {
+		return this.people.filter(
+			(m) =>
+				m.kind === "member" &&
+				m.state === "use" &&
+				!!m.station?.piece &&
+				!m.leaving &&
+				m.onscr !== false,
+		)
+	}
+
+	/** One of the staff (named or not) walks over to the nearest member who
+	 * is working out, says a word and goes back to their post. */
+	private startRound(): void {
+		const ws = this.workers()
+		if (!ws.length) return
+		const who = this.people.filter(
+			(q) =>
+				(q.kind === "npc" || q.kind === "staff") &&
+				q.name !== "Swimmer" &&
+				q.state !== "walk" &&
+				!q.visit &&
+				!q.leaving &&
+				q.onscr !== false,
+		)
+		if (!who.length) return
+		const p = who[Math.floor(this.rng() * who.length) % who.length]
+		const a = p.rig.root.position
+		let best: Person | null = null
+		let bd = 18
+		for (const m of ws) {
+			const b = m.rig.root.position
+			const d = Math.hypot(a.x - b.x, a.z - b.z)
+			if (d < bd) {
+				bd = d
+				best = m
+			}
+		}
+		if (best) this.visit(p, best, "round", VISIT_DWELL)
+	}
+
+	/** The October ghost drifts over to a member in another part of the gym
+	 * for a prank. */
+	private startHaunt(): void {
+		const g = this.find("ghost")
+		if (!g || g.state === "walk" || g.visit) return
+		const ws = this.workers()
+		if (!ws.length) return
+		const m = ws[Math.floor(this.rng() * ws.length) % ws.length]
+		g.speed = 0.75
+		this.visit(g, m, "haunt", VISIT_DWELL)
 	}
 
 	// ── extras: class groups, the cast lineup ─────────────────────────────
