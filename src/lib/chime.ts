@@ -9,8 +9,28 @@ export function noteTimes(n: number, gap = 0.09): number[] {
 	return Array.from({ length: n }, (_, i) => i * gap)
 }
 
+const KEY = "sp-sound"
+
+/** Sound is on unless the player turned it off (kept in this browser only). */
+export function soundOn(): boolean {
+	try {
+		return localStorage.getItem(KEY) !== "off"
+	} catch {
+		return true
+	}
+}
+
+export function setSound(on: boolean): void {
+	try {
+		localStorage.setItem(KEY, on ? "on" : "off")
+	} catch {
+		// not remembered, still works for this visit
+	}
+}
+
 export function playClaimChime(): void {
 	try {
+		if (!soundOn()) return
 		if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return
 		const Ctx =
 			window.AudioContext ??

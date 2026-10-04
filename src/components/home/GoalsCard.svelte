@@ -10,6 +10,7 @@ import {
 	campaign,
 	loadCampaign,
 } from "../../lib/campaign.svelte.js"
+import { playClaimChime, setSound, soundOn } from "../../lib/chime.js"
 import { cosmetics, wearOutfit } from "../../lib/cosmetics.svelte.js"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 import {
@@ -24,6 +25,7 @@ import { page } from "../../router.svelte.js"
 
 let { top = 64, onBought }: { top?: number; onBought?: () => void } = $props()
 
+let sound = $state(soundOn())
 let open = $state(false)
 
 const rating = $derived(gymGoals.rating)
@@ -166,6 +168,21 @@ async function buyBurger() {
 					<p class="hint">{rewardTrack.error || track.blockedReason}</p>
 				{/if}
 			{/if}
+			<h3>Sound</h3>
+			<p class="hint">
+				<button
+					type="button"
+					class="claim"
+					data-testid="sound-toggle"
+					onclick={() => {
+						sound = !sound
+						setSound(sound)
+						if (sound) playClaimChime()
+					}}
+				>
+					{sound ? "Sound on" : "Sound off"}
+				</button>
+			</p>
 			{#if outfits.length}
 				<h3>Coach outfit</h3>
 				<ul class="outfits" data-testid="outfits">
