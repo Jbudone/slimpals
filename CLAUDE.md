@@ -201,6 +201,8 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
   `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
   `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
+- Challenge feed post (#124): finishing a challenge posts a `challenge_completion` to the feed for users with auto-share on (`server/services/challenges/feed.ts`,
+  content carries `challengeName`, `tier`, `reward`), and badges earned on the finish are shared through `shareBadges` like the check-in route does.
 - Challenge milestones (#124, first slice): a monthly challenge pays the gym at 25/50/75/100% of its goals' average completion
   (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
   reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each
