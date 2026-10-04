@@ -19,6 +19,7 @@ import {
 	type Part,
 	pBox,
 	pGeo,
+	releaseMesh,
 	sphGeo,
 } from "../engine/helpers"
 import type { People } from "../people/members"
@@ -93,6 +94,7 @@ export class Happenings {
 	private ghost: Person | null = null
 	private ghostSlot = 0
 	private ghostT = 0
+	private seasonG: T.Mesh | null = null
 	private v = new T.Vector3()
 
 	constructor(
@@ -275,6 +277,78 @@ export class Happenings {
 		}
 		if (this.ghost && this.people.find("ghost")) return
 		this.placeGhost()
+	}
+
+	/** Pumpkins by the door now (tests). */
+	get seasonCount(): number {
+		return this.seasonG ? 4 : 0
+	}
+
+	/** October dressing by the door: a few jack-o'-lanterns on the pavement
+	 * (`on` false takes them away). */
+	syncSeason(on: boolean): void {
+		if (!on) {
+			if (this.seasonG) releaseMesh(this.seasonG)
+			this.seasonG = null
+			return
+		}
+		if (this.seasonG) return
+		const parts: Part[] = []
+		const pumpkin = (dx: number, dz: number, s: number) => {
+			const x = this.w.doorX + dx
+			const z = this.w.frontZ + dz
+			pGeo(
+				parts,
+				sphGeo(0.28, 10, 8),
+				"#f08a24",
+				x,
+				0.24 * s,
+				z,
+				0,
+				0,
+				0,
+				s,
+				0.82 * s,
+				s,
+			)
+			pBox(parts, 0.07 * s, 0.14 * s, 0.07 * s, "#3f6b2a", x, 0.5 * s, z)
+			// a carved face toward the street
+			pBox(
+				parts,
+				0.07 * s,
+				0.07 * s,
+				0.05,
+				"#2b1a0a",
+				x - 0.09 * s,
+				0.3 * s,
+				z + 0.27 * s,
+			)
+			pBox(
+				parts,
+				0.07 * s,
+				0.07 * s,
+				0.05,
+				"#2b1a0a",
+				x + 0.09 * s,
+				0.3 * s,
+				z + 0.27 * s,
+			)
+			pBox(
+				parts,
+				0.18 * s,
+				0.05 * s,
+				0.05,
+				"#2b1a0a",
+				x,
+				0.17 * s,
+				z + 0.28 * s,
+			)
+		}
+		pumpkin(-1.9, 1.0, 1)
+		pumpkin(-1.45, 0.75, 0.7)
+		pumpkin(1.9, 1.0, 1.15)
+		pumpkin(1.4, 0.7, 0.75)
+		this.seasonG = batchMesh(parts, undefined, { noCast: true })
 	}
 
 	private placeGhost(): void {
@@ -478,6 +552,7 @@ export class Happenings {
 	}
 
 	dispose(): void {
+		this.syncSeason(false)
 		this.clearEvent()
 		for (const v of this.classes.values()) this.dropClass(v)
 		this.classes.clear()

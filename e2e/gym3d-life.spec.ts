@@ -1209,6 +1209,11 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 		.toBe(1)
 	await page.waitForTimeout(1200)
 	await shot(page, "19-ghost")
+	// pumpkins by the door
+	expect(await page.evaluate(() => window.gym3d?.stats().pumpkins)).toBe(4)
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
+	await page.waitForTimeout(1200)
+	await shot(page, "27-pumpkins")
 	// some members and passers-by wear witch hats in October
 	await expect
 		.poll(
@@ -1248,6 +1253,7 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 	await waitReady(page)
 	expect(await page.evaluate(() => window.gym3d?.stats().ghost)).toBe(0)
 	expect(await page.evaluate(() => window.gym3d?.stats().costumes)).toBe(0)
+	expect(await page.evaluate(() => window.gym3d?.stats().pumpkins)).toBe(0)
 })
 
 test("3D gym street: passers-by walk along the pavement in front of the gym", async ({
