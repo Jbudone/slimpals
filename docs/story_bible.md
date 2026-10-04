@@ -75,4 +75,12 @@ leaflets, and Barry reveals that the Burger Baron's secret is the pickle. The
 street votes on a mural, ties between a pigeon and a burger, and paints a pigeon
 holding a burger together; the arc ends in a street party.
 
-Campaign 5 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 5: Campus Row again
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyAlumni.ts`. The second
+street some years after graduation, for alumni weekend: Professor Quill runs a
+"longitudinal study" of the gym, Tess has added a mezzanine to the cafe, and
+the alumni committee wants a fun run. The two gyms map a route through the
+quad that passes the old library twice, two hundred people sign up (half of
+them have not run since graduation) and the run ends with cake on the quad.
+
+Campaign 6 onwards have no story yet (they can be finished from gym level 17).
