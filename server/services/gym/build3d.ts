@@ -5,6 +5,7 @@
 // user's gym row (SELECT ... FOR UPDATE), settles finished jobs, validates
 // everything and only then writes.
 import { and, asc, eq, sql } from "drizzle-orm"
+import { BURGER_SOURCE } from "../../../shared/gym3d/burger.js"
 import {
 	ECONOMY,
 	FLOOR_TINTS,
@@ -29,6 +30,7 @@ import {
 	gymJobs,
 	gymPieces,
 	gymPlots,
+	gymRewards,
 	gymRooms,
 	gymUpgradesCatalog,
 	userGyms,
@@ -182,7 +184,13 @@ export async function buyLot(
 			.select({ px: gymPlots.px, pz: gymPlots.pz })
 			.from(gymPlots)
 			.where(eq(gymPlots.gymId, gymId))
-		const lot = lotsForSale(built).find((l) => l.id === lotId)
+		const [bought] = await tx
+			.select({ id: gymRewards.id })
+			.from(gymRewards)
+			.where(
+				and(eq(gymRewards.gymId, gymId), eq(gymRewards.source, BURGER_SOURCE)),
+			)
+		const lot = lotsForSale(built, !!bought).find((l) => l.id === lotId)
 		if (!lot) throw new BuildError(409, "That plot is not for sale")
 		const shape = lot.shape as LotShape
 		const price = plotPrice(shape, gym.plotsBought)
