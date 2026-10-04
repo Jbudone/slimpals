@@ -8,7 +8,12 @@ import {
 	users,
 } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
-import { HIRE, hireCost, JUICE_TIPS } from "../../shared/gym3d/hires.js"
+import {
+	HIRE,
+	hireCost,
+	JUICE_TIPS,
+	STAFFED_RATE,
+} from "../../shared/gym3d/hires.js"
 import type { GymLayoutDto, GymStaffDto } from "../../shared/types.js"
 import {
 	closeTestDb,
@@ -215,5 +220,35 @@ describe("Juice tips", () => {
 		const juice = await hire(cookie, roomOf(layout, "juice").id).expect(200)
 		expect(juice.body.kitchen.rate).toBeCloseTo(base * (1 + JUICE_TIPS), 0)
 		expect(juice.body.kitchen.rate).toBeGreaterThan(base)
+	})
+})
+
+describe("Staffed room rates", () => {
+	it("a hire in a boxing or court room adds that room's own flavour rate", async () => {
+		const { cookie, gymId, layout } = await setup([
+			"punching_bags_heavy_bag_row",
+			"court_hoop",
+			"weights_dumbbells",
+		])
+		await setCoins(gymId, 9000)
+		let l = layout
+		for (const [type, extra] of [
+			["boxing", STAFFED_RATE.boxing],
+			["court", STAFFED_RATE.court],
+			["weights", 0],
+		] as const) {
+			const room = roomOf(l, type)
+			const machine = l.pieces.find(
+				(p) =>
+					p.kind === "equipment" && p.roomId === room.id && p.spotIndex != null,
+			)
+			const rateOf = (x: GymLayoutDto) =>
+				x.income.find((s) => s.pieceId === machine?.id)?.rate ?? 0
+			const base = rateOf(l)
+			expect(base).toBeGreaterThan(0)
+			l = (await hire(cookie, room.id).expect(200)).body
+			expect(rateOf(l)).toBeCloseTo(base * (1 + HIRE.bonus + extra), 0)
+			if (extra > 0) expect(rateOf(l)).toBeGreaterThan(base * (1 + HIRE.bonus))
+		}
 	})
 })

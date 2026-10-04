@@ -19,7 +19,11 @@ import {
 	machineRate,
 	menuInSeason,
 } from "../../../shared/gym3d/economy.js"
-import { hireBonus, kitchenTips } from "../../../shared/gym3d/hires.js"
+import {
+	hireBonus,
+	kitchenTips,
+	staffedRate,
+} from "../../../shared/gym3d/hires.js"
 import { areaMultiplier } from "../../../shared/gym3d/staff.js"
 import { VIBE } from "../../../shared/gym3d/vibes.js"
 import type {
@@ -166,9 +170,13 @@ export async function hireBonuses(
 		.select({ roomId: gymHires.roomId, level: gymHires.level })
 		.from(gymHires)
 		.where(eq(gymHires.gymId, gymId))
+	const types = await roomTypesOf(conn, gymId)
 	const out = new Map<number, number>()
 	for (const r of rows)
 		out.set(r.roomId, (out.get(r.roomId) ?? 0) + hireBonus(r.level))
+	// a staffed room's own flavour rate (boxing, court), once per room
+	for (const id of out.keys())
+		out.set(id, (out.get(id) ?? 0) + staffedRate(types.get(id) ?? ""))
 	return out
 }
 

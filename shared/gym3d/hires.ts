@@ -113,10 +113,24 @@ export function kitchenTips(staffedTypes: readonly string[]): number {
 	return staffedTypes.includes("juice") ? JUICE_TIPS : 0
 }
 
+/** Rooms whose own machines earn more once the room has a hire (#130):
+ * Boxing's sparring purses and the Court's pickup-game fees. */
+export const STAFFED_RATE: Readonly<Record<string, number>> = {
+	boxing: 0.1,
+	court: 0.1,
+}
+
+/** The extra rate a staffed room of `roomType` gives its machines. */
+export function staffedRate(roomType: string): number {
+	return STAFFED_RATE[roomType] ?? 0
+}
+
 /** The extra a staffed room type brings besides coins, for the Staff page. */
 export const STAFFED_PERK: Readonly<Record<string, string>> = {
 	recovery: `Lifts everyone's mood by ${RECOVERY_MOOD}`,
 	juice: `Tips: the Slim Kitchen earns ${Math.round(JUICE_TIPS * 100)}% more`,
+	boxing: `Sparring purses: this room's machines earn ${Math.round(STAFFED_RATE.boxing * 100)}% more`,
+	court: `Pickup-game fees: this room's machines earn ${Math.round(STAFFED_RATE.court * 100)}% more`,
 }
 
 /** The mood bonus for the room types that have a hire (see RECOVERY_MOOD). */
