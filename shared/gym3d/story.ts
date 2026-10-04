@@ -4,6 +4,8 @@
 // Tone: dry and supportive, nothing about bodies, no exclamation marks. See
 // docs/story_bible.md for the plan the beats follow.
 
+import type { OpenResult, OpenState } from "./open.js"
+
 export type Speaker = { name: string; color: string }
 
 /** Everyone who speaks (NPC keys where the person is on the roster). */
@@ -31,6 +33,11 @@ export type StoryBeat = {
 	/** One line for the "Story so far" list. */
 	recap: string
 	lines: readonly StoryLine[]
+	/** Waits for the Pavement Street Open: its result (win or lose, the other
+	 * one is skipped) or just that it has ended. */
+	needs?: "open-win" | "open-lose" | "open-ended"
+	/** Paid once when the chapter is seen. */
+	reward?: { coins: number }
 }
 
 /** Hours that must pass after one beat before the next can open. */
@@ -358,6 +365,102 @@ export const STORY: readonly StoryBeat[] = [
 			},
 		],
 	},
+	{
+		id: "a3-start",
+		act: 3,
+		level: 17,
+		title: "Seven days",
+		recap:
+			"The Pavement Street Open begins: seven days, and the gym with the most XP earned takes the better sign.",
+		lines: [
+			{
+				who: "lisa",
+				text: "The Open starts now. Seven days. Most XP earned takes the better sign.",
+			},
+			{
+				who: "dana",
+				text: "We have a pool. You have a notebook. Let's see which one wins.",
+			},
+			{ who: "marcus", text: "Page one is mine. I'll take that bet." },
+			{ who: "victor", text: "May the better gym win. Mine, obviously." },
+			{ who: "narrator", text: "Seven days. Everything the gym earns counts." },
+		],
+	},
+	{
+		id: "a3-win",
+		act: 3,
+		level: 17,
+		needs: "open-win",
+		reward: { coins: 1500 },
+		title: "The better sign",
+		recap: "Slim Pals won the Open and took the better sign.",
+		lines: [
+			{ who: "dana", text: "Final numbers are in. You beat us." },
+			{
+				who: "victor",
+				text: "Statistically it was close. Emotionally it was not.",
+			},
+			{
+				who: "barry",
+				text: "I made a banner. It says congratulations, in ketchup.",
+			},
+			{
+				who: "lisa",
+				text: "The sign is ours. We will hang it crooked, for charm.",
+			},
+		],
+	},
+	{
+		id: "a3-lose",
+		act: 3,
+		level: 17,
+		needs: "open-lose",
+		reward: { coins: 400 },
+		title: "A narrow thing",
+		recap:
+			"MaxOut took the Open by a little. Slim Pals will earn the sign back.",
+		lines: [
+			{
+				who: "dana",
+				text: "We took it. Narrowly. Your last day was honest, I'll say that.",
+			},
+			{
+				who: "victor",
+				text: "The better sign is ours. The better notebook is yours.",
+			},
+			{ who: "marcus", text: "Next time. I have a better programme." },
+			{
+				who: "lisa",
+				text: "We will earn it back. Somebody put the kettle on.",
+			},
+		],
+	},
+	{
+		id: "a3-finale",
+		act: 3,
+		level: 17,
+		needs: "open-ended",
+		title: "The whole street",
+		recap:
+			"Barry keeps the Baron going, smaller and with a salad. Victor takes the salad.",
+		lines: [
+			{
+				who: "barry",
+				text: "I've decided. The Baron stays a burger place. A smaller one, with a salad.",
+			},
+			{ who: "victor", text: "A salad. You." },
+			{
+				who: "barry",
+				text: "Debate club taught me to compromise. At the end.",
+			},
+			{ who: "victor", text: "I'll take the salad." },
+			{ who: "alex", text: "Welcome to Pavement Street. All of it." },
+			{
+				who: "narrator",
+				text: "That is the first story. The street keeps going, and so does the gym.",
+			},
+		],
+	},
 ]
 
 export type StoryDto = {
@@ -374,6 +477,10 @@ export type StoryDto = {
 	}[]
 	/** The gym level that opens the next chapter (null at the end). */
 	nextLevel: number | null
+	/** The next chapter waits for the Open to end, not for a level. */
+	waitingForOpen: boolean
+	/** The Pavement Street Open, once it has started. */
+	open: OpenState | null
 }
 
 export type StorySeen = { id: string; at: Date }
@@ -385,30 +492,43 @@ export type StoryState = {
 	log: StoryBeat[]
 	/** The gym level that opens the next beat (null at the end of the story). */
 	nextLevel: number | null
+	/** The next beat waits for the Open to end. */
+	waitingForOpen: boolean
 }
 
+/** The beat the other result skips (win or lose chapter that does not apply). */
+const skipped = (b: StoryBeat, open: OpenResult | null): boolean =>
+	(b.needs === "open-win" && open === "lose") ||
+	(b.needs === "open-lose" && open === "win")
+
 /** Which beat is waiting: the first unseen one in order, once the gym is at
- * its level and enough time has passed since the last beat. */
+ * its level, enough time has passed since the last beat and, for the Open's
+ * chapters, the Open has ended (the chapter for the other result is skipped). */
 export function storyState(
 	level: number,
 	seen: readonly StorySeen[],
 	now: Date,
+	open: OpenResult | null = null,
 ): StoryState {
 	const seenIds = new Set(seen.map((s) => s.id))
 	const log = STORY.filter((b) => seenIds.has(b.id))
-	const next = STORY.find((b) => !seenIds.has(b.id)) ?? null
-	if (!next) return { pending: null, log, nextLevel: null }
+	const next =
+		STORY.find((b) => !seenIds.has(b.id) && !skipped(b, open)) ?? null
+	if (!next)
+		return { pending: null, log, nextLevel: null, waitingForOpen: false }
 	const last = seen.reduce<Date | null>(
 		(m, s) => (!m || s.at > m ? s.at : m),
 		null,
 	)
 	const gapOk =
 		!last || now.getTime() - last.getTime() >= MIN_BEAT_GAP_HOURS * 3_600_000
-	const ready = level >= next.level && gapOk
+	const openOk = !next.needs || open !== null
+	const ready = level >= next.level && gapOk && openOk
 	return {
 		pending: ready ? next : null,
 		log,
 		nextLevel: next.level,
+		waitingForOpen: !!next.needs && open === null,
 	}
 }
 
@@ -501,6 +621,9 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"a2-sale": "barry",
 	"a2-rival": "dana",
 	"a2-deal": "victor",
+	"a3-start": "dana",
+	"a3-win": "barry",
+	"a3-finale": "barry",
 }
 export const GUEST_MINUTES = 12
 

@@ -2,6 +2,7 @@
 // records it as seen, see shared/gym3d/story.ts).
 import type { StoryDto } from "../../shared/gym3d/story"
 import { api } from "./api.js"
+import { loadWallet } from "./wallet.svelte.js"
 
 export const story = $state<{ data: StoryDto | null }>({ data: null })
 
@@ -26,6 +27,8 @@ export async function loadStory(): Promise<void> {
 export async function markStorySeen(id: string): Promise<void> {
 	try {
 		story.data = await api.post<StoryDto>(`/gym/story/${id}/seen`, {})
+		// a chapter can pay coins
+		void loadWallet()
 	} catch {
 		// seen again on the next load if this failed
 		if (story.data?.pending?.id === id)
