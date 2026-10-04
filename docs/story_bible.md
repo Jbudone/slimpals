@@ -21,14 +21,18 @@ exclamation marks). The rivalry stays affectionate: nobody is truly evil.
 - **Coach Rivera**, **Derek**: the gym's chorus.
 - **Victor Maxwell** (MaxOut): charming, coat too good, "everyone has a number".
 - **Barry Baron** (Burger Baron): loud, warm, quietly worried about MaxOut too.
+- **Dana Voss** (MaxOut head coach): precise, dry; Rivera's old rival (Rivera's first name is Marian).
 
 ## Acts (campaign 1)
 1. **Welcome to the street** (gym levels 1-8, eight beats): the street changes,
    Victor makes an offer, Marcus's history comes up. Ends on a hook: Barry's
    lease is being sold, to a buyer whose name starts with V.
-2. **The bidding** (planned): the Baron goes on sale at four stars; whoever owns
-   it decides how the street looks. Marcus faces his old programme. Barry and
-   Victor turn out to have been at school together.
+2. **The bidding** (gym levels 9-16, eight beats, written): the Baron goes on
+   sale; MaxOut runs a half price weekend; Dana Voss, MaxOut's head coach, turns
+   out to be Coach Rivera's old rival; Dr. Kim's fries; a school photo shows
+   Victor and Barry were debate-club teammates; Victor bids for the Baron's
+   building in public; Marcus takes the notebook to the wall (Victor never saw
+   it, Dana printed it); the Pavement Street Open is announced.
 3. **Last rep** (planned): MaxOut's grand opening, a contest the gym can win,
    a twist about the notebook, and the reason the street needs both gyms.
 

@@ -36,6 +36,7 @@ import {
 import {
 	STORY_GUESTS,
 	type StoryGuest,
+	type StoryGuestKey,
 	storyGuestNow,
 } from "../../../shared/gym3d/story"
 import type {
@@ -489,7 +490,7 @@ export class Gym3DApp {
 	})()
 
 	/** The story guest now: from the chapters seen lately, or forced for tests
-	 * and demos with `?storyguest=victor|barry|none`. */
+	 * and demos with `?storyguest=victor|barry|dana|none`. */
 	private forcedGuest = (() => {
 		const q = new URLSearchParams(globalThis.location?.search ?? "")
 		return q.get("storyguest")
@@ -498,7 +499,7 @@ export class Gym3DApp {
 	private storyGuest(): StoryGuest | null {
 		const f = this.forcedGuest
 		if (f === "none") return null
-		if (f === "victor" || f === "barry") return STORY_GUESTS[f]
+		if (f && f in STORY_GUESTS) return STORY_GUESTS[f as StoryGuestKey]
 		return storyGuestNow(story.data?.log ?? [], new Date())
 	}
 
