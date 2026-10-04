@@ -58,7 +58,9 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	page.on("pageerror", (e) => errors.push(e.message))
 
 	await page.goto("/today")
-	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
+	await expect(
+		page.getByRole("heading", { name: "Today", exact: true }),
+	).toBeVisible()
 	// five tabs, Compete among them
 	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(5)
 
@@ -90,7 +92,9 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 
 	// ── swipes: Today -> Compete (challenges -> tournaments) -> Progress ──
 	await page.getByTestId("tab-today").click()
-	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
+	await expect(
+		page.getByRole("heading", { name: "Today", exact: true }),
+	).toBeVisible()
 	await swipe(page, ".dashboard h1", 320, 110)
 	await expect(page).toHaveURL(/\/challenges$/)
 	await swipe(page, ".hub-page h1", 320, 110)
@@ -159,7 +163,9 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 			timeout: 20_000,
 		})
 		.toBeGreaterThan(0)
-	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
+	await expect(
+		page.getByRole("heading", { name: "Today", exact: true }),
+	).toBeVisible()
 
 	// "none" turns it off
 	await page.goto("/today?event=none")
