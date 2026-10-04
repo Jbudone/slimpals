@@ -239,6 +239,13 @@
       "when": 1790302800000,
       "tag": "0033_challenge_coach_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1790389200000,
+      "tag": "0034_banter_pool",
+      "breakpoints": true
     }
   ]
 }

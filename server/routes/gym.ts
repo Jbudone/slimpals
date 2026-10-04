@@ -19,6 +19,7 @@ import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward, shareBadges } from "../services/badges/index.js"
+import { loadBanterPool } from "../services/gym/banterPool.js"
 import {
 	BuildError,
 	buyLot,
@@ -784,6 +785,11 @@ export function createGymRouter(aiService: AIService) {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		res.json(await buildNpcLines(gym.id, db, MILESTONE_DIALOGS))
+	})
+
+	// The AI's nightly banter exchanges, shared by every gym.
+	router.get("/gym/banter", async (_req, res) => {
+		res.json({ banter: await loadBanterPool(db) })
 	})
 
 	router.get("/gym/npc/:key", async (req, res) => {

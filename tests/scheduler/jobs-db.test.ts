@@ -318,6 +318,7 @@ describe("scheduled jobs end to end (stub AI, real DB)", () => {
 		const rows = await db.select().from(scheduledJobRuns)
 		expect(rows.map((r) => `${r.job}:${r.period}`).sort()).toEqual([
 			"monthly-challenge:2026-10",
+			"nightly-banter:2026-10-07",
 			"nightly-gym-content:2026-10-07",
 			"recurring-tournaments:2026-10-07",
 			"tournament-resolve:interval",
@@ -381,6 +382,7 @@ describe("admin scheduler endpoints", () => {
 			"monthly-challenge",
 			"weekly-sprints",
 			"weekly-inspiration",
+			"nightly-banter",
 			"nightly-gym-content",
 			"recurring-tournaments",
 			"tournament-resolve",

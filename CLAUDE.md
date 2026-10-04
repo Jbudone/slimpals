@@ -169,7 +169,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   exclamation marks) picked to fit the gym (`BanterContext`: finished room types, placed gear, a crowd, today's event, a running class, gear upgraded in the last 3 minutes): a missing pool,
   sauna, ring or megaformer gets talked about, plain chatter is the fallback, recent ids are not repeated. `Life.banter`
   plays one between two nearby people about once a minute as alternating bubbles through the normal bubble pool
-  (`app.banterContext()` feeds it). Admin's content tuning has an "NPC Banter" type (`contentTuning/npcBanter.ts`, style doc `docs/npc_banter.md`; a sample is a few exchanges for a chosen situation). Not yet: the nightly AI batch that would feed it into the game, relationships.
+  (`app.banterContext()` feeds it). Admin's content tuning has an "NPC Banter" type (`contentTuning/npcBanter.ts`, style doc `docs/npc_banter.md`; a sample is a few exchanges for a chosen situation). The nightly AI batch: the `nightly-banter` job (`services/gym/banterPool.ts`) asks the AI (optional `generateBanter`, the banter style doc, scenarios in `contentTuning/npcBanter.ts` `BANTER_SCENARIOS`) for exchanges per situation, keeps those that pass `cleanBanterLines` (`shared/gym3d/banterAi.ts`) in `banter_pool` (migration 0034, the newest 8 per situation, shared by every gym); `GET /api/gym/banter` serves them and `Life.setExtraBanter` mixes them into the scripted pool (`pickBanter(..., extra)`), so they appear only where the situation fits. Not yet: relationships.
 - Upgrade look (gh-134, first slice): `equipment/tiers.ts` `applyTier` still recolours and adds the edge and pennant, and
   now `addUpgradeParts` gives every upgraded machine real parts: tier 2 a floor mat and a console (screen on a stand), tier 3
   a bigger gold screen, speakers and an overhead light arch. Generic for all gear (sized from the piece footprint); the
@@ -272,7 +272,7 @@ No external cron: `server/index.ts` starts an in-process scheduler (`server/serv
 every minute when `SCHEDULER_ENABLED` is on (unset = on only with `NODE_ENV=production`; `1`/`0` force it;
 Playwright sets `0`, Vitest never starts it). Jobs (`scheduler/jobs.ts`, all UTC): monthly challenge (1st,
 00:05), weekly sprints (Mon 00:05), weekly inspiration (Mon 00:10), nightly gym content + NPC dialog for gyms
-active in the last 7 days (00:20, `findActiveGymUserIds`), recurring tournaments (daily 00:25: this and next week plus this and next month, `server/services/tournaments/recurring.ts`,
+active in the last 7 days (00:20, `findActiveGymUserIds`), nightly NPC banter pool (00:40, global), recurring tournaments (daily 00:25: this and next week plus this and next month, `server/services/tournaments/recurring.ts`,
 pure periods and type rotation in `shared/tournaments/recurring.ts`; system tournaments have `creator_id` null and a unique `system_key`, show as
 "Featured" on the Tournaments page, get a livelier name and prize line from the AI when it can (optional `generateTournamentFlavor`, checked by `cleanTournamentFlavor` in `shared/tournaments/flavor.ts`; otherwise the plain deterministic name stays), announce themselves in the feed when created and post the winner when resolved; announcements are system posts: `social_posts.user_id` is nullable (migration 0032), the feed and admin lists show them as "SlimPals"), tournament auto-resolve (every 15 min). Each run is
 claimed per period in `scheduled_job_runs` (unique job+period), so restarts/double ticks never rerun a period;

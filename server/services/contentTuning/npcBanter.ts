@@ -2,7 +2,11 @@ import type { ContentTuningType } from "./registry.js"
 
 // Situations the gym can be in (mirrors the cases `shared/gym3d/banter.ts`
 // picks for); the tuning doc holds the style rules.
-const SITUATIONS: Record<string, string> = {
+export const BANTER_SCENARIOS: Record<string, string> = {
+	maxout:
+		"The rival gym across the street, MaxOut, has a fifty percent off sign up this weekend.",
+	event:
+		"A themed event is on in the lobby today, with its host standing by the door.",
 	no_pool:
 		"The gym has no swimming pool. The rival gym across the street, MaxOut, has one.",
 	crowded: "Every machine in the cardio room is taken and people are waiting.",
@@ -13,6 +17,8 @@ const SITUATIONS: Record<string, string> = {
 }
 
 const LABELS: Record<string, string> = {
+	maxout: "MaxOut's promo",
+	event: "An event in the lobby",
 	no_pool: "No pool (MaxOut has one)",
 	crowded: "A crowded room",
 	class_running: "A class is running",
@@ -51,6 +57,6 @@ export const npcBanterType: ContentTuningType = {
 	generateSample: ({ contextParams, tuningDocText, aiService }) =>
 		aiService.generateCoachSample(
 			tuningDocText,
-			SITUATIONS[contextParams.situation] ?? SITUATIONS.quiet,
+			BANTER_SCENARIOS[contextParams.situation] ?? BANTER_SCENARIOS.quiet,
 		),
 }

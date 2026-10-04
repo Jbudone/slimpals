@@ -65,6 +65,7 @@ import {
 import { Bubbles, Life } from "./world/life"
 import {
 	activeEvent,
+	loadBanter,
 	loadLayout,
 	loadLines,
 	loadRoster,
@@ -371,6 +372,11 @@ export class Gym3DApp {
 		loadLines()
 			.then((l) => {
 				if (!app.disposed) app.life.setLines(l)
+			})
+			.catch(() => {})
+		loadBanter()
+			.then((b) => {
+				if (!app.disposed) app.life.setExtraBanter(b)
 			})
 			.catch(() => {})
 		try {

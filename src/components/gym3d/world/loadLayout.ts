@@ -65,6 +65,16 @@ export async function loadLines(): Promise<NpcLines[]> {
 	return d.npcs ?? []
 }
 
+/** The AI's nightly banter exchanges (a nicety: empty when there are none). */
+export async function loadBanter(): Promise<
+	{ id: number; situation: string; lines: string[] }[]
+> {
+	const d = await api.get<{
+		banter?: { id: number; situation: string; lines: string[] }[]
+	}>("/gym/banter")
+	return d.banter ?? []
+}
+
 export async function loadSim(): Promise<SimState> {
 	const d = await api.get<{
 		npcs?: SimNpc[]

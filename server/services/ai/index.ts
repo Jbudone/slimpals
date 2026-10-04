@@ -78,6 +78,10 @@ export interface AIService {
 		systemInstruction: string,
 		scenarioText: string,
 	): Promise<string>
+	/** Three short banter exchanges for a situation, in the "A:/B:" text the
+	 * banter style doc asks for (optional: without it only the scripted
+	 * banter is used). */
+	generateBanter?(scenarioText: string): Promise<string>
 	/** A fun name and prize line for a system tournament (optional: without
 	 * it the deterministic name is kept). */
 	generateTournamentFlavor?(
@@ -459,6 +463,19 @@ Write exactly ${days} coach lines for the monthly challenge "${challengeTitle}",
 		if (!match)
 			throw new Error(`No JSON array in AI response: ${text.slice(0, 200)}`)
 		return JSON.parse(match[0]) as string[]
+	}
+
+	async generateBanter(scenarioText: string): Promise<string> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+			systemInstruction: readTuningDoc(
+				"server/services/contentTuning/docs/npc_banter.md",
+			),
+		})
+		const result = await model.generateContent(
+			`Situation: ${scenarioText}\n\nWrite the three exchanges now.`,
+		)
+		return result.response.text().trim()
 	}
 
 	async generateCoachSample(

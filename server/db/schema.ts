@@ -744,3 +744,16 @@ export const scheduledJobRuns = mysqlTable(
 	},
 	(t) => [unique("scheduled_job_runs_job_period_uq").on(t.job, t.period)],
 )
+
+// Banter exchanges the AI writes each night (shared/gym3d/banterAi.ts), shared
+// by every gym: `lines` is a JSON array of 2-3 strings for `situation`.
+export const banterPool = mysqlTable(
+	"banter_pool",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		situation: varchar("situation", { length: 32 }).notNull(),
+		lines: json("lines").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [index("banter_pool_situation_idx").on(t.situation)],
+)
