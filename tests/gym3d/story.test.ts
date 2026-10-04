@@ -64,8 +64,10 @@ describe("campaign stories", () => {
 		expect(storyFinaleOf(6)).toBe("c6-regatta")
 		expect(storyFor(7)[0].id).toBe("c7-notice")
 		expect(storyFinaleOf(7)).toBe("c7-final")
-		expect(storyFor(8)).toEqual([])
-		expect(storyFinaleOf(8)).toBeNull()
+		expect(storyFor(8)[0].id).toBe("c8-week")
+		expect(storyFinaleOf(8)).toBe("c8-summer")
+		expect(storyFor(9)).toEqual([])
+		expect(storyFinaleOf(9)).toBeNull()
 		// campaign two plays from gym level 1 through the same state rules
 		const c2 = storyFor(2)
 		expect(storyState(1, [], t0, null, c2).pending?.id).toBe("c2-arrival")
