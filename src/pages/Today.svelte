@@ -1,11 +1,12 @@
 <script lang="ts">
 // The Today tab: the day's tasks (check-in, daily and weekly missions, with
-// add / edit / archive), the coach's weekly note, the streak, what you are
-// in the running for and the gym's day. Weight and food tiles live on
+// add / edit / archive), today's challenge goals and tournaments, the
+// coach's weekly note, the streak and the gym's day. Weight and food tiles live on
 // Progress.
-import { Dumbbell, Trophy } from "@lucide/svelte"
+import { Dumbbell } from "@lucide/svelte"
 import { onMount } from "svelte"
 import type { CoachPersonality } from "../../shared/types.js"
+import CompeteCard from "../components/CompeteCard.svelte"
 import GymActivityCard from "../components/GymActivityCard.svelte"
 import TodayList from "../components/home/TodayList.svelte"
 import Avatar from "../components/ui/Avatar.svelte"
@@ -14,10 +15,8 @@ import Card from "../components/ui/Card.svelte"
 import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
-import { authState } from "../lib/auth.svelte.js"
 import { checkinState, loadCheckinStatus } from "../lib/checkin.svelte.js"
 import { loadToday } from "../lib/today.svelte.js"
-import { TOURNAMENT_TYPE_UNITS } from "../lib/tournamentLabels.js"
 import { claimAsk } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
 
@@ -31,36 +30,6 @@ type GymDailySummary = {
 	xpIntoLevel: number
 	xpForLevel: number
 }
-
-type TournamentListItem = {
-	id: number
-	name: string
-	type: string
-	endDate: string
-	resolvedAt: string | null
-}
-
-type LeaderboardEntry = { userId: string; userName: string; score: number }
-
-type LeaderboardResponse = {
-	tournament: { id: number; name: string; type: string; endDate: string }
-	leaderboard: LeaderboardEntry[]
-}
-
-type TournamentStanding = {
-	name: string
-	rank: number
-	totalParticipants: number
-	gapText: string | null
-	daysLeft: number
-}
-
-type ChallengeCurrent = {
-	title: string
-	joined: boolean
-	goalsCompleted: number
-	totalGoals: number
-} | null
 
 type WeeklyInspiration = {
 	id: number
@@ -81,15 +50,8 @@ const COACH_NAMES: Record<CoachPersonality, string> = {
 let loading = $state(true)
 let inspiration = $state<WeeklyInspiration>(null)
 let gymSummary = $state<GymDailySummary | null>(null)
-let tournamentStanding = $state<TournamentStanding | null>(null)
-let challengeCurrent = $state<ChallengeCurrent>(null)
 
 const MILESTONES = [7, 30, 100]
-
-// The Today screen only needs a handful of active tournaments checked before
-// giving up on finding one the user is actually in — this is a small
-// dashboard widget, not a full tournament browser.
-const MAX_TOURNAMENTS_TO_CHECK = 5
 
 async function loadInspiration() {
 	try {
@@ -107,58 +69,6 @@ async function loadGymSummary() {
 	}
 }
 
-async function loadTournamentStanding() {
-	try {
-		const tournaments = await api.get<TournamentListItem[]>("/tournaments")
-		const active = tournaments
-			.filter((t) => t.resolvedAt === null)
-			.sort(
-				(a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime(),
-			)
-			.slice(0, MAX_TOURNAMENTS_TO_CHECK)
-
-		const myId = authState.user?.id
-		if (!myId) return
-
-		for (const t of active) {
-			const res = await api.get<LeaderboardResponse>(
-				`/tournaments/${t.id}/leaderboard`,
-			)
-			const rank = res.leaderboard.findIndex((e) => e.userId === myId)
-			if (rank === -1) continue
-
-			const unit = TOURNAMENT_TYPE_UNITS[t.type] ?? ""
-			const gapText =
-				rank === 0
-					? null
-					: `${formatScore(res.leaderboard[rank - 1].score - res.leaderboard[rank].score)} ${unit} behind ${res.leaderboard[rank - 1].userName}`
-			const daysLeft = Math.max(
-				0,
-				Math.ceil((new Date(t.endDate).getTime() - Date.now()) / 86_400_000),
-			)
-
-			tournamentStanding = {
-				name: t.name,
-				rank: rank + 1,
-				totalParticipants: res.leaderboard.length,
-				gapText,
-				daysLeft,
-			}
-			return
-		}
-	} catch {
-		// ignore — row stays hidden
-	}
-}
-
-async function loadChallengeCurrent() {
-	try {
-		challengeCurrent = await api.get<ChallengeCurrent>("/challenges/current")
-	} catch {
-		// ignore — row stays hidden
-	}
-}
-
 /** Home plays the claim build for the next unlocked upgrade. */
 function placeUpgrade() {
 	claimAsk.n++
@@ -173,10 +83,6 @@ function ringMax(streak: number): number {
 	return nextMilestone(streak) ?? Math.max(streak, 1)
 }
 
-function formatScore(n: number): string {
-	return Number.isInteger(n) ? String(n) : n.toFixed(1)
-}
-
 onMount(() => {
 	loadCheckinStatus().finally(() => {
 		loading = false
@@ -184,8 +90,6 @@ onMount(() => {
 	loadInspiration()
 	loadGymSummary()
 	void loadToday()
-	loadTournamentStanding()
-	loadChallengeCurrent()
 })
 </script>
 
@@ -193,6 +97,8 @@ onMount(() => {
 	<h1>Today</h1>
 
 	<div class="tasks"><TodayList editable /></div>
+
+	<CompeteCard />
 
 	{#if inspiration}
 		<section class="card inspiration-card">
@@ -252,43 +158,9 @@ onMount(() => {
 		</Card>
 	{/if}
 
-	{#if tournamentStanding || (challengeCurrent?.joined ?? false) || (gymSummary?.pendingUpgrades.length ?? 0) > 0}
+	{#if (gymSummary?.pendingUpgrades.length ?? 0) > 0}
 		<Card>
-			<h2 class="running-heading">In the running</h2>
-
-			{#if tournamentStanding}
-				<div class="running-row">
-					<Avatar tone="accent" initials={String(tournamentStanding.rank)} />
-					<div class="running-copy">
-						<span class="running-title">
-							{tournamentStanding.name} · {tournamentStanding.rank === 1 ? "1st" : `${tournamentStanding.rank}${tournamentStanding.rank === 2 ? "nd" : tournamentStanding.rank === 3 ? "rd" : "th"}`} of {tournamentStanding.totalParticipants}
-						</span>
-						<span class="running-subtext">
-							{tournamentStanding.gapText ?? "In the lead"} · {tournamentStanding.daysLeft} day{tournamentStanding.daysLeft === 1 ? "" : "s"} left
-						</span>
-					</div>
-				</div>
-			{/if}
-
-			{#if challengeCurrent?.joined}
-				<div class="running-row">
-					<Avatar tone="accent">
-						{#snippet icon()}
-							<Trophy size={18} />
-						{/snippet}
-					</Avatar>
-					<div class="running-copy">
-						<span class="running-title">
-							{challengeCurrent.title} · {challengeCurrent.goalsCompleted}/{challengeCurrent.totalGoals}
-						</span>
-						<ProgressBar
-							variant="linear"
-							value={challengeCurrent.goalsCompleted}
-							max={challengeCurrent.totalGoals}
-						/>
-					</div>
-				</div>
-			{/if}
+			<h2 class="running-heading">Ready for you</h2>
 
 			{#if gymSummary && gymSummary.pendingUpgrades.length > 0}
 				<div class="running-row">

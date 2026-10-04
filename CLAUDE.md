@@ -10,8 +10,10 @@
 
 ## Key paths
 - `src/` — Svelte frontend (components, pages, stores, lib)
-- `src/pages/` — Top-level pages: Home (the gym), Today, Progress (Weight/Food/Gym levels), SocialHub
-  (Feed/Challenges/Tournaments/Badges), Settings, Admin
+- `src/pages/` — Top-level pages: Home (the gym), Today, CompeteHub (Challenges/Tournaments), Progress (Weight/Food/Gym levels),
+  SocialHub (Feed/Badges), Settings, Admin. Five tabs in swipe order (`src/lib/tabs.ts`): Gym · Today · Compete · Progress · Social;
+  a sideways swipe on a page walks them (`src/lib/swipe.ts`; not on the gym, which pans; the hubs swipe between their segments first).
+  Today has a "Compete today" card (`CompeteCard.svelte`): the challenge's goals still to log (one tap) and the tournaments you are in.
 - `src/components/home/` — gym home shell: Hud, TodayDrawer, TodayList, LevelUp, icons; state in
   `src/lib/wallet.svelte.ts` (HUD numbers) and `src/lib/today.svelte.ts` (tasks); reward chips in `src/lib/fly.ts`
 - `src/components/gym3d/` — the three.js gym (Gym3D.svelte, app.ts, NpcDialog, engine/, equipment/, people/, world/)
@@ -55,7 +57,7 @@ screenshots. Labels, bubbles, sheets and `NpcDialog` are DOM overlays.
 ## Gym home (3D gym)
 The 3D gym is home (`/`, `src/pages/Home.svelte`): full screen under the fixed HUD, with a coach line, the
 Today drawer (peeks above the tab bar) and "Place new gear" for pending upgrades. Tabs: Gym · Today ·
-Progress · Social (`/gym` and `/gym/canvas` redirect to `/`). Home stays mounted on other tabs (hidden, so
+Compete · Progress · Social (`/gym` and `/gym/canvas` redirect to `/`). Home stays mounted on other tabs (hidden, so
 the renderer pauses); `Gym3D.svelte` is loaded with a dynamic import. No WebGL2 (or a failed load) shows a
 friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Layout comes from `GET /api/gym/layout` (tables `gym_rooms`/`gym_plots`/`gym_pieces`, seeded lazily

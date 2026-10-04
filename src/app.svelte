@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { fly } from "svelte/transition"
 import AvatarMenu from "./components/AvatarMenu.svelte"
 import BottomTabBar from "./components/BottomTabBar.svelte"
 import Hud from "./components/home/Hud.svelte"
@@ -7,6 +8,8 @@ import LevelUp from "./components/home/LevelUp.svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
+import { swipe } from "./lib/swipe.js"
+import { neighbourPath, tabIndexOf } from "./lib/tabs.js"
 import {
 	fetchUserProfile,
 	stopImpersonating,
@@ -14,6 +17,7 @@ import {
 } from "./lib/user.svelte.js"
 import { loadWallet } from "./lib/wallet.svelte.js"
 import Admin from "./pages/Admin.svelte"
+import CompeteHub from "./pages/CompeteHub.svelte"
 import HallOfFame from "./pages/HallOfFame.svelte"
 import Home from "./pages/Home.svelte"
 import Login from "./pages/Login.svelte"
@@ -66,6 +70,30 @@ $effect(() => {
 	}
 })
 
+// A page slides in from the side its tab sits on (none with reduced motion).
+const tabIdx = $derived(tabIndexOf(currentPath))
+let prevTab = -1
+let slideDir = $state(1)
+$effect.pre(() => {
+	if (tabIdx !== prevTab) {
+		if (prevTab >= 0 && tabIdx >= 0) slideDir = tabIdx > prevTab ? 1 : -1
+		prevTab = tabIdx
+	}
+})
+const slideMs =
+	typeof window !== "undefined" &&
+	window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+		? 0
+		: 180
+
+/** A swipe on a page goes to the next tab (or the one before). */
+function swipeTab(dir: 1 | -1): boolean {
+	const to = neighbourPath(currentPath, dir)
+	if (!to) return false
+	page(to)
+	return true
+}
+
 async function handleStopImpersonating() {
 	await stopImpersonating()
 	await fetchSession()
@@ -95,12 +123,19 @@ async function handleStopImpersonating() {
 		<Hud />
 		<div class="acct"><AvatarMenu /></div>
 		<Home active={currentPath === "/"} />
-		<main class="app-content">
+		<main
+			class="app-content"
+			use:swipe={{ left: () => swipeTab(1), right: () => swipeTab(-1) }}
+		>
+			{#key tabIdx}
+			<div class="slide" in:fly={{ x: slideDir * 36, duration: slideMs }}>
 			{#if currentPath === "/today"}
 				<Today />
 			{:else if currentPath === "/weight" || currentPath === "/food" || currentPath === "/upgrades"}
 				<Progress />
-			{:else if currentPath === "/social" || currentPath === "/tournaments" || currentPath === "/challenges" || currentPath === "/badges"}
+			{:else if currentPath === "/tournaments" || currentPath === "/challenges"}
+				<CompeteHub />
+			{:else if currentPath === "/social" || currentPath === "/badges"}
 				<SocialHub />
 			{:else if currentPath === "/hall"}
 				<HallOfFame />
@@ -117,6 +152,8 @@ async function handleStopImpersonating() {
 					<ContentTuning />
 				{/await}
 			{/if}
+			</div>
+			{/key}
 			<Toast />
 		</main>
 		<LevelUp />
@@ -178,6 +215,10 @@ async function handleStopImpersonating() {
 	/* the gym is fixed full screen; nothing scrolls behind it */
 	height: 100dvh;
 	overflow: hidden;
+}
+
+.slide {
+	min-height: 1px;
 }
 
 .app-content {

@@ -1,23 +1,25 @@
 <script lang="ts">
-// The Social tab: the pals' feed and badges. Challenges and tournaments have
-// their own tab now (Compete); gym levels live on Progress.
+// The Compete tab: this month's challenge and the tournaments, one tap from
+// the tab bar (and a swipe apart).
 import SegmentedTabs from "../components/ui/SegmentedTabs.svelte"
 import { swipe } from "../lib/swipe.js"
 import { nav, page } from "../router.svelte.js"
-import Badges from "./Badges.svelte"
-import Social from "./Social.svelte"
+import Challenges from "./Challenges.svelte"
+import Tournaments from "./Tournaments.svelte"
 
 const TABS = [
-	{ id: "feed", label: "Feed" },
-	{ id: "badges", label: "Badges" },
+	{ id: "challenge", label: "Challenges" },
+	{ id: "tournaments", label: "Tournaments" },
 ]
 
 const TAB_TO_PATH = {
-	feed: "/social",
-	badges: "/badges",
+	challenge: "/challenges",
+	tournaments: "/tournaments",
 } as const
 
-let activeTab = $derived(nav.path === "/badges" ? "badges" : "feed")
+let activeTab = $derived(
+	nav.path === "/tournaments" ? "tournaments" : "challenge",
+)
 
 function selectTab(id: string) {
 	page(TAB_TO_PATH[id as keyof typeof TAB_TO_PATH])
@@ -28,24 +30,24 @@ function selectTab(id: string) {
 	class="hub-page"
 	use:swipe={{
 		left: () => {
-			if (activeTab !== "feed") return false
-			selectTab("badges")
+			if (activeTab !== "challenge") return false
+			selectTab("tournaments")
 			return true
 		},
 		right: () => {
-			if (activeTab !== "badges") return false
-			selectTab("feed")
+			if (activeTab !== "tournaments") return false
+			selectTab("challenge")
 			return true
 		},
 	}}
 >
-	<h1>Social</h1>
+	<h1>Compete</h1>
 	<SegmentedTabs options={TABS} selected={activeTab} onselect={selectTab} fullWidth />
 
-	{#if activeTab === "badges"}
-		<Badges />
+	{#if activeTab === "tournaments"}
+		<Tournaments />
 	{:else}
-		<Social embedded />
+		<Challenges />
 	{/if}
 </div>
 
