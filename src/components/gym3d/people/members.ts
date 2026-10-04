@@ -2,7 +2,9 @@
 // state, anonymous staff on staff stations, swimmers in pools, and a few
 // ambient members running the build lab's little AI (walk to a free
 // station, work out, move on or leave).
+
 import * as T from "three"
+import { HAT_STAFF } from "../../../../shared/gym3d/cosmetics"
 import { GHOST_STAY_CHANCE } from "../../../../shared/gym3d/ghost"
 import { hirePost } from "../../../../shared/gym3d/hires"
 import { PD, PW } from "../../../../shared/gym3d/rooms"
@@ -87,7 +89,7 @@ export class People {
 			hashString(o.key) % 4 === 0
 		)
 			o = { ...o, out: { ...o.out, acc: [...o.out.acc, this.costumes] } }
-		if (this.staffHat !== null && o.npcKey === "specialist_coach")
+		if (this.staffHat !== null && o.npcKey != null && HAT_STAFF.has(o.npcKey))
 			o = { ...o, out: { ...o.out, acc: [...o.out.acc, this.staffHat] } }
 		const rig = makeRig(o.out)
 		const proxy = new T.Mesh(boxGeo(0.55, 1.3, 0.55), ctx().assets.HIT)
