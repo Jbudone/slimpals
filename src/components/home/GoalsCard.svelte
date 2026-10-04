@@ -57,12 +57,17 @@ async function buyBurger() {
 		type="button"
 		class="star"
 		style="top:{top}px"
-		aria-label="Gym rating {stars} of 5 stars. Goals"
+		aria-label="Gym rating {stars} of 5 stars. Goals{track?.canClaim
+			? ". Today's reward track step is ready"
+			: ''}"
 		aria-expanded={open}
 		onclick={() => (open = !open)}
 		data-testid="gym-stars"
 	>
 		<span aria-hidden="true">★</span><b>{stars}</b>
+		{#if track?.canClaim}
+			<i class="dot" data-testid="track-dot" aria-hidden="true"></i>
+		{/if}
 	</button>
 	{#if open}
 		<div class="card" style="top:{top + 56}px" role="dialog" aria-label="Gym goals" data-testid="goals-card">
@@ -198,6 +203,26 @@ async function buyBurger() {
 	justify-content: space-between;
 	gap: 8px;
 	margin: 4px 0;
+}
+
+.dot {
+	position: absolute;
+	top: -3px;
+	right: -3px;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	background: #34c973;
+	animation: dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+	50% { transform: scale(1.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dot { animation: none; }
 }
 
 .star span {
