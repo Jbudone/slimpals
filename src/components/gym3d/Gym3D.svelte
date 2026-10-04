@@ -232,6 +232,17 @@ $effect(() => {
 	if (ready) app?.setInsets(top + 8, bottom)
 })
 
+/** True (and says what is missing) when `have` cannot pay `cost`: a button
+ * that is only dimmed and does nothing leaves the player guessing why. */
+function lacks(cost: number, have: number, unit = "coins"): boolean {
+	if (have >= cost) return false
+	say(
+		`You need ${(cost - have).toLocaleString("en-US")} more ${unit} for that.`,
+		"error",
+	)
+	return true
+}
+
 function say(text: string, kind: "info" | "error" = "info") {
 	if (onTip) {
 		onTip(text, kind)
@@ -619,15 +630,45 @@ async function chooseType() {
 	say(`${roomLabel(t, r.shape)} is open! Tap a glowing spot to add gear.`)
 }
 
+let paintSeq = 0
+/** Paints the room. The change shows at once (the server only has to agree
+ * later), and a quick run of taps never waits on the one before: only the
+ * newest answer is applied. */
 async function paint(p: {
 	wall?: string
 	floorStyle?: string
 	floorColor?: string
 }) {
 	const r = room
-	if (!r) return
-	const next = await act(`rooms/${r.id}/paint`, p)
-	if (next) app?.sparkleRoom(r.id, p.wall ?? p.floorColor ?? "#ffffff")
+	const L = layout
+	if (!r || !L || !app) return
+	const now = {
+		...L,
+		rooms: L.rooms.map((q) =>
+			q.id === r.id ? { ...q, paint: { ...q.paint, ...p } } : q,
+		),
+	}
+	app.applyLayout(now)
+	setLayout(now)
+	app.sparkleRoom(r.id, p.wall ?? p.floorColor ?? "#ffffff")
+	const seq = ++paintSeq
+	try {
+		const next = await api.post<GymLayoutDto>(
+			`/gym/layout/rooms/${r.id}/paint`,
+			p,
+		)
+		if (destroyed || !app || seq !== paintSeq) return
+		app.applyLayout(next)
+		setLayout(next)
+	} catch (e) {
+		say(e instanceof Error ? e.message : "Something went wrong", "error")
+		// the server did not take it: show what it has
+		try {
+			if (app && !destroyed) setLayout(await app.reload())
+		} catch {
+			// keep what is on screen
+		}
+	}
 }
 
 /** A whole-room look in one tap (the same paint call as the swatches). */
@@ -983,8 +1024,12 @@ const kitchenView = $derived.by(() => {
 						<button
 							type="button"
 							class="g3d-train"
-							disabled={training || (layout?.coins ?? 0) < card.trainCost}
-							onclick={() => trainStaffMember(card.npcKey, name)}
+							class:short={(layout?.coins ?? 0) < card.trainCost}
+							disabled={training}
+							onclick={() => {
+								if (card.trainCost != null && lacks(card.trainCost, layout?.coins ?? 0)) return
+								void trainStaffMember(card.npcKey, name)
+							}}
 							data-testid="gym3d-train"
 						>
 							Train <span class="cur">{@html COIN_SVG}</span>{card.trainCost.toLocaleString("en-US")}
@@ -1026,6 +1071,7 @@ const kitchenView = $derived.by(() => {
 			aria-label="Gym builder"
 		>
 			<button type="button" class="g3d-x" onclick={close} aria-label="Close">×</button>
+			{#if busy}<span class="g3d-busy" role="status" aria-label="Working"></span>{/if}
 
 			{#if sheet === "lot" && lot}
 				{@const info = SHAPE_INFO[lot.shape as keyof typeof SHAPE_INFO]}
@@ -1091,8 +1137,11 @@ const kitchenView = $derived.by(() => {
 								<button
 									type="button"
 									class="g3d-btn primary"
-									disabled={busy || greens < m.cost}
-									onclick={() => unlockItem(m.key)}
+									class:short={greens < m.cost}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(m.cost, greens, "Greens")) void unlockItem(m.key)
+									}}
 									data-testid="kitchen-add-{m.key}"
 								>
 									Add <span class="cur">{@html GREENS_SVG}</span>{m.cost}
@@ -1286,8 +1335,11 @@ const kitchenView = $derived.by(() => {
 								<button
 									type="button"
 									class="g3d-btn primary"
-									disabled={busy || (layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
-									onclick={() => openWallTo(w.ref)}
+									class:short={(layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(layout?.nextWallCost ?? 0, layout?.coins ?? 0)) void openWallTo(w.ref)
+									}}
 									data-testid="gym3d-open-wall"
 								>
 									Open <span class="cur">{@html COIN_SVG}</span>{(layout?.nextWallCost ?? 0).toLocaleString("en-US")}
@@ -1325,8 +1377,11 @@ const kitchenView = $derived.by(() => {
 								<button
 									type="button"
 									class="g3d-btn primary"
-									disabled={busy || (layout?.coins ?? 0) < (layout?.nextHireCost ?? 0)}
-									onclick={hireHere}
+									class:short={(layout?.coins ?? 0) < (layout?.nextHireCost ?? 0)}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(layout?.nextHireCost ?? 0, layout?.coins ?? 0)) void hireHere()
+									}}
 									data-testid="gym3d-hire"
 								>
 									Hire <span class="cur">{@html COIN_SVG}</span>{(layout?.nextHireCost ?? 0).toLocaleString("en-US")}
@@ -1344,7 +1399,7 @@ const kitchenView = $derived.by(() => {
 					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
 				>
 				<h3>Customize</h3>
-				<p class="lbl">Style</p>
+				<p class="lbl">Style <small class="free">free</small></p>
 				<div class="chips" data-testid="room-styles">
 					{#each STYLES as st (st.key)}
 						<button
@@ -1357,7 +1412,7 @@ const kitchenView = $derived.by(() => {
 						>
 					{/each}
 				</div>
-				<p class="lbl">Vibe</p>
+				<p class="lbl">Vibe <small class="free">{VIBE.cost} coins</small></p>
 				<div class="chips" data-testid="room-vibes">
 					<button
 						type="button"
@@ -1372,16 +1427,24 @@ const kitchenView = $derived.by(() => {
 							type="button"
 							class="g3d-chipbtn"
 							class:on={room.vibe === v.key}
-							disabled={busy || room.vibe === v.key || (layout?.coins ?? 0) < VIBE.cost}
-							onclick={() => setVibe(v.key)}
-							data-testid="room-vibe-{v.key}">{v.name}</button
+							class:short={room.vibe !== v.key && (layout?.coins ?? 0) < VIBE.cost}
+							disabled={busy || room.vibe === v.key}
+							onclick={() => {
+								if (!lacks(VIBE.cost, layout?.coins ?? 0)) void setVibe(v.key)
+							}}
+							data-testid="room-vibe-{v.key}"
+							>{v.name}{#if room.vibe !== v.key}<small class="vcost"><span class="g3d-coin"></span>{VIBE.cost}</small>{/if}</button
 						>
 					{/each}
 				</div>
-				<p class="hint">
-					{room.vibe
-						? (VIBES[room.vibe]?.blurb ?? "")
-						: `A vibe costs ${VIBE.cost} coins. It tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars.`}
+				<p class="hint" class:warn={(layout?.coins ?? 0) < VIBE.cost} data-testid="room-vibe-hint">
+					{#if (layout?.coins ?? 0) < VIBE.cost}
+						A vibe costs {VIBE.cost} coins and you have {(layout?.coins ?? 0).toLocaleString("en-US")}: {VIBE.cost - (layout?.coins ?? 0)} more to go. Your gym earns coins by itself, so check back soon.
+					{:else if room.vibe}
+						{VIBES[room.vibe]?.blurb ?? ""}
+					{:else}
+						A vibe costs {VIBE.cost} coins. It tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars.
+					{/if}
 				</p>
 				<p class="lbl">Walls</p>
 				<div class="sws">
@@ -1556,8 +1619,11 @@ const kitchenView = $derived.by(() => {
 							<button
 								type="button"
 								class="g3d-btn primary"
-								disabled={busy || coins < u.cost}
-								onclick={upgrade}
+								class:short={coins < u.cost}
+								disabled={busy}
+								onclick={() => {
+									if (!lacks(u.cost, coins)) void upgrade()
+								}}
 								data-testid="gym3d-upgrade"
 							>
 								Tier {u.toTier} <span class="g3d-coin"></span>{u.cost} · {u.hours}h
@@ -2109,18 +2175,68 @@ const kitchenView = $derived.by(() => {
 	opacity: 0.7;
 }
 
+/* Sticky, not absolute: a long page (Customize) scrolls, and a close button
+ * that scrolls away leaves no way out. */
 .g3d-x {
-	position: absolute;
-	top: 6px;
-	right: 6px;
+	position: sticky;
+	top: 0;
+	float: right;
+	z-index: 3;
 	width: 44px;
 	height: 44px;
+	margin: -8px -10px -36px 0;
 	border: none;
-	background: none;
+	border-radius: 50%;
+	background: rgba(255, 247, 234, 0.94);
 	font-size: 26px;
 	line-height: 1;
 	color: var(--ink);
 	cursor: pointer;
+}
+
+.g3d-busy {
+	position: sticky;
+	top: 12px;
+	float: right;
+	z-index: 3;
+	width: 16px;
+	height: 16px;
+	margin: 2px 4px 0 0;
+	border: 2px solid rgba(58, 38, 34, 0.25);
+	border-top-color: #e8743b;
+	border-radius: 50%;
+	animation: g3d-spin 0.7s linear infinite;
+}
+
+@keyframes g3d-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.g3d-sheet .free {
+	margin-left: 4px;
+	font-weight: 700;
+	text-transform: none;
+	letter-spacing: 0;
+	color: #3f7d3a;
+}
+
+.g3d-sheet .vcost {
+	margin-left: 6px;
+	font-size: 11px;
+	font-weight: 800;
+	opacity: 0.8;
+}
+
+.g3d-sheet .hint.warn {
+	color: #b3412c;
+	opacity: 1;
+	font-weight: 700;
+}
+
+.g3d-sheet button.short {
+	opacity: 0.6;
 }
 
 .g3d-btn {
