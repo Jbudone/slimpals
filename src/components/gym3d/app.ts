@@ -33,11 +33,17 @@ import {
 	seasonFromQuery,
 	seasonOf,
 } from "../../../shared/gym3d/season"
+import {
+	STORY_GUESTS,
+	type StoryGuest,
+	storyGuestNow,
+} from "../../../shared/gym3d/story"
 import type {
 	GymIncomeSourceDto,
 	GymJobDto,
 	GymLayoutDto,
 } from "../../../shared/types"
+import { story } from "../../lib/story.svelte.js"
 import { AssetCache } from "./engine/assets"
 import { batchMesh, mulberry32, type Part, pBox } from "./engine/helpers"
 import { GymRenderer, hasWebGL2 } from "./engine/renderer"
@@ -157,6 +163,7 @@ export type Gym3DStats = {
 	classPeople: number
 	heroes: number
 	ghost: number
+	storyGuest: string
 	cars: number
 	dogs: number
 	costumes: number
@@ -481,6 +488,20 @@ export class Gym3DApp {
 		return maxoutFromQuery(q.get("maxout"))
 	})()
 
+	/** The story guest now: from the chapters seen lately, or forced for tests
+	 * and demos with `?storyguest=victor|barry|none`. */
+	private forcedGuest = (() => {
+		const q = new URLSearchParams(globalThis.location?.search ?? "")
+		return q.get("storyguest")
+	})()
+
+	private storyGuest(): StoryGuest | null {
+		const f = this.forcedGuest
+		if (f === "none") return null
+		if (f === "victor" || f === "barry") return STORY_GUESTS[f]
+		return storyGuestNow(story.data?.log ?? [], new Date())
+	}
+
 	private maxoutOn(): boolean {
 		return this.forcedMaxout ?? maxoutPromo(new Date()).on
 	}
@@ -616,6 +637,7 @@ export class Gym3DApp {
 		this.people.ghostStays = season === "halloween"
 		this.hap.syncSeason(season)
 		this.world.setMaxoutPromo(this.maxoutOn())
+		this.hap.syncStoryGuest(this.storyGuest())
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(

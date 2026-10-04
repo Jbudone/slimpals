@@ -30,6 +30,9 @@ export default defineConfig({
 			DEV_AUTOLOGIN_EMAIL: "",
 			// Never let the in-process scheduler generate content mid-run.
 			SCHEDULER_ENABLED: "0",
+			// Story cutscene cards would sit over the gym in every spec: off
+			// here, and the story spec turns it on with ?story=1.
+			VITE_STORY: "off",
 		},
 	},
 	projects: [
