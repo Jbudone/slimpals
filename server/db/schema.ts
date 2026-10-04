@@ -598,9 +598,8 @@ export const tournamentParticipants = mysqlTable("tournament_participants", {
 
 export const socialPosts = mysqlTable("social_posts", {
 	id: int("id").autoincrement().primaryKey(),
-	userId: varchar("user_id", { length: 36 })
-		.notNull()
-		.references(() => users.id),
+	// null for posts the system makes (a recurring tournament opening)
+	userId: varchar("user_id", { length: 36 }).references(() => users.id),
 	type: mysqlEnum("type", [
 		"food_photo",
 		"ai_message",

@@ -91,6 +91,31 @@ describe("GET /api/social/feed — empty", () => {
 	})
 })
 
+describe("system posts (no user)", () => {
+	it("show in the feed as SlimPals and can be reacted to", async () => {
+		const db = await getTestDb()
+		const cookie = await registerAndLogin("a@sp.test", "Alice", "INVITE-A")
+		await db.insert(socialPosts).values({
+			userId: null,
+			type: "milestone",
+			content: { text: "Weekly Steps is open" },
+		})
+		const feed = await request(app)
+			.get("/api/social/feed")
+			.set("Cookie", cookie)
+		expect(feed.status).toBe(200)
+		expect(feed.body).toHaveLength(1)
+		expect(feed.body[0].userName).toBe("SlimPals")
+		expect(feed.body[0].userId).toBeNull()
+		const react = await request(app)
+			.post("/api/social/react")
+			.set("Cookie", cookie)
+			.send({ postId: feed.body[0].id, emoji: "🔥" })
+		expect(react.status).toBe(200)
+		expect(react.body.reactions["🔥"].count).toBe(1)
+	})
+})
+
 // ── Behavior 2: posts from all users, newest first ────────────────────────────
 
 describe("GET /api/social/feed — ordering and multi-user", () => {

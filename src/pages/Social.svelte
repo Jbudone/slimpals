@@ -47,7 +47,7 @@ const TYPE_LABELS: Record<PostType, string> = {
 
 type FeedPost = {
 	id: number
-	userId: string
+	userId: string | null
 	userName: string
 	type: PostType
 	content: Record<string, unknown>

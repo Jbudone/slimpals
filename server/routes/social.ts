@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm"
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm"
 import { Router } from "express"
 import { db } from "../db/index.js"
 import {
@@ -74,13 +74,13 @@ socialRouter.get("/social/feed", async (req, res) => {
 		.select({
 			id: socialPosts.id,
 			userId: socialPosts.userId,
-			userName: users.name,
+			userName: sql<string>`coalesce(${users.name}, 'SlimPals')`,
 			type: socialPosts.type,
 			content: socialPosts.content,
 			createdAt: socialPosts.createdAt,
 		})
 		.from(socialPosts)
-		.innerJoin(users, eq(socialPosts.userId, users.id))
+		.leftJoin(users, eq(socialPosts.userId, users.id))
 		.orderBy(desc(socialPosts.createdAt))
 
 	if (posts.length === 0) {
@@ -173,7 +173,7 @@ socialRouter.post("/social/react", async (req, res) => {
 
 		// Post owner earns a "reaction received" badge
 		const postOwnerId = post.userId
-		if (postOwnerId !== userId) {
+		if (postOwnerId && postOwnerId !== userId) {
 			const reactionsOnPost = postReactions.length
 			const ownerBadges = await checkAndAward(
 				postOwnerId,

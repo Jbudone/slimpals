@@ -1672,13 +1672,13 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			.select({
 				id: socialPosts.id,
 				userId: socialPosts.userId,
-				userName: users.name,
+				userName: sql<string>`coalesce(${users.name}, 'SlimPals')`,
 				type: socialPosts.type,
 				content: socialPosts.content,
 				createdAt: socialPosts.createdAt,
 			})
 			.from(socialPosts)
-			.innerJoin(users, eq(socialPosts.userId, users.id))
+			.leftJoin(users, eq(socialPosts.userId, users.id))
 			.orderBy(desc(socialPosts.createdAt))
 
 		if (posts.length === 0) {
