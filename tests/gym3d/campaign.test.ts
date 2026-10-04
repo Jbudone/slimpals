@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
@@ -149,12 +149,12 @@ describe("campaigns", () => {
 			.post("/api/gym/campaign/next")
 			.set("Cookie", cookie)
 			.expect(409)
-		// the authored story belongs to campaign one: the new gym has none yet
+		// campaign two has its own story, starting at gym level 1
 		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
 		expect(story.body).toMatchObject({
 			pending: null,
 			log: [],
-			nextLevel: null,
+			nextLevel: 1,
 		})
 		// everything that reads "the gym" now reads the new one
 		const wallet = await request(app)
@@ -191,5 +191,80 @@ describe("admin: finish the story", () => {
 			.post("/api/admin/users/nobody/gym/finish-story")
 			.set("Cookie", cookie)
 			.expect(404)
+	})
+})
+
+describe("the stories of later campaigns", () => {
+	it("campaign two plays its own chapters and its finale finishes it", async () => {
+		const { db, cookie, userId, gym } = await setup()
+		await db.insert(gymRewards).values({
+			gymId: gym.id,
+			source: `story:${CAMPAIGN_FINALE}`,
+			sweat: 0,
+			greens: 0,
+		})
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(200)
+		const latest = async () =>
+			(
+				await db
+					.select()
+					.from(userGyms)
+					.where(eq(userGyms.userId, userId))
+					.orderBy(desc(userGyms.campaign))
+					.limit(1)
+			)[0]
+		const fresh = await latest()
+		expect(fresh.campaign).toBe(2)
+		await db.update(userGyms).set({ level: 1 }).where(eq(userGyms.id, fresh.id))
+		const first = await request(app).get("/api/gym/story").set("Cookie", cookie)
+		expect(first.body.pending.id).toBe("c2-arrival")
+		// the campaign cannot be finished by level alone: it has a story
+		await db
+			.update(userGyms)
+			.set({ level: 30 })
+			.where(eq(userGyms.id, fresh.id))
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(409)
+		// its finale chapter finishes it, and campaign three has no story yet
+		await db.insert(gymRewards).values({
+			gymId: fresh.id,
+			source: "story:c2-graduation",
+			sweat: 0,
+			greens: 0,
+		})
+		await request(app)
+			.post("/api/gym/campaign/next")
+			.set("Cookie", cookie)
+			.expect(200)
+		const three = await request(app)
+			.get("/api/gym/campaign")
+			.set("Cookie", cookie)
+		expect(three.body.campaign).toBe(3)
+		expect(three.body.hall).toHaveLength(2)
+		const story = await request(app).get("/api/gym/story").set("Cookie", cookie)
+		expect(story.body).toMatchObject({
+			pending: null,
+			log: [],
+			nextLevel: null,
+		})
+		// without a story the gym level decides: not yet, then at level 17
+		expect(three.body.canFinish).toBe(false)
+		const g3 = await latest()
+		await db.update(userGyms).set({ level: 17 }).where(eq(userGyms.id, g3.id))
+		const ready = await request(app)
+			.get("/api/gym/campaign")
+			.set("Cookie", cookie)
+		expect(ready.body.canFinish).toBe(true)
+		// the admin tool says so when there is no story to finish
+		await db.update(users).set({ isAdmin: true }).where(eq(users.id, userId))
+		const fin = await request(app)
+			.post(`/api/admin/users/${userId}/gym/finish-story`)
+			.set("Cookie", cookie)
+		expect(fin.status).toBe(409)
 	})
 })

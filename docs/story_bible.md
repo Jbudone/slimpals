@@ -49,3 +49,14 @@ burn the story. Seeing a beat is recorded once (`gym_rewards` `story:<id>`); the
 Seasonal stories, in-world scripted events (people walking in), art for the
 speakers (initials for now), acts 2 and 3, and moving to a new location after
 an arc (campaign system, see #188).
+
+## Campaign 2: Campus Row
+A shorter arc (nine chapters, gym levels 1-9) in `shared/gym3d/storyCampus.ts`.
+The staff are the same; the street is new. The rival is Professor Ada Quill's
+FitZone, a "research facility"; next door is her sister Tess's Campus Cafe
+(Tess does the pastries, Ada does the squats, together they run the street).
+The rivalry turns out to be about a 1998 "best campus gym" ranking that FitZone
+lost to a basement. It ends with an exam (the gym that checks in the most keeps
+the quad) and a graduation that points at the next street.
+
+Campaign 3 onwards have no story yet (they can be finished from gym level 17).
