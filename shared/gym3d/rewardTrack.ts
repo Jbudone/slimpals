@@ -48,6 +48,8 @@ const THEMES = [
 /** Cosmetics the first big steps of a month give, by month (1-12). */
 const MONTH_COSMETICS: Readonly<Record<number, readonly string[]>> = {
 	10: ["halloween_lantern", "halloween_cobwebs", "halloween_hat"],
+	11: ["harvest_basket", "harvest_hay", "gratitude_scarf"],
+	12: ["winter_tree", "winter_lights", "winter_hat"],
 }
 
 /** YYYY-MM (UTC). */

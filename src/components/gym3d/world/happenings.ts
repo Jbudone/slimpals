@@ -11,6 +11,7 @@ import {
 	classRoomType,
 } from "../../../../shared/gym3d/npcInfo"
 import { CELL, PD, PW } from "../../../../shared/gym3d/rooms"
+import type { Season } from "../../../../shared/gym3d/season"
 import {
 	batchMesh,
 	cylGeo,
@@ -279,24 +280,27 @@ export class Happenings {
 		this.placeGhost()
 	}
 
-	/** Pumpkins by the door now (tests). */
+	/** Props by the door now (tests). */
 	get seasonCount(): number {
 		return this.seasonG ? 4 : 0
 	}
 
-	/** October dressing by the door: a few jack-o'-lanterns on the pavement
-	 * (`on` false takes them away). */
-	syncSeason(on: boolean): void {
-		if (!on) {
-			if (this.seasonG) releaseMesh(this.seasonG)
-			this.seasonG = null
-			return
-		}
-		if (this.seasonG) return
+	private seasonNow: Season | null = null
+
+	/** The season's dressing by the door: jack-o'-lanterns in October,
+	 * pumpkins and hay in November, two lit trees and presents in December
+	 * (null takes it away). */
+	syncSeason(season: Season | null): void {
+		if (season === this.seasonNow) return
+		this.seasonNow = season
+		if (this.seasonG) releaseMesh(this.seasonG)
+		this.seasonG = null
+		if (!season) return
 		const parts: Part[] = []
-		const pumpkin = (dx: number, dz: number, s: number) => {
-			const x = this.w.doorX + dx
-			const z = this.w.frontZ + dz
+		const at = (dx: number, dz: number) =>
+			[this.w.doorX + dx, this.w.frontZ + dz] as const
+		const pumpkin = (dx: number, dz: number, s: number, face: boolean) => {
+			const [x, z] = at(dx, dz)
 			pGeo(
 				parts,
 				sphGeo(0.28, 10, 8),
@@ -312,27 +316,21 @@ export class Happenings {
 				s,
 			)
 			pBox(parts, 0.07 * s, 0.14 * s, 0.07 * s, "#3f6b2a", x, 0.5 * s, z)
+			if (!face) return
 			// a carved face toward the street
-			pBox(
-				parts,
-				0.07 * s,
-				0.07 * s,
-				0.05,
-				"#2b1a0a",
-				x - 0.09 * s,
-				0.3 * s,
-				z + 0.27 * s,
-			)
-			pBox(
-				parts,
-				0.07 * s,
-				0.07 * s,
-				0.05,
-				"#2b1a0a",
-				x + 0.09 * s,
-				0.3 * s,
-				z + 0.27 * s,
-			)
+			const eye = (ex: number) =>
+				pBox(
+					parts,
+					0.07 * s,
+					0.07 * s,
+					0.05,
+					"#2b1a0a",
+					x + ex * s,
+					0.3 * s,
+					z + 0.27 * s,
+				)
+			eye(-0.09)
+			eye(0.09)
 			pBox(
 				parts,
 				0.18 * s,
@@ -344,10 +342,76 @@ export class Happenings {
 				z + 0.28 * s,
 			)
 		}
-		pumpkin(-1.9, 1.0, 1)
-		pumpkin(-1.45, 0.75, 0.7)
-		pumpkin(1.9, 1.0, 1.15)
-		pumpkin(1.4, 0.7, 0.75)
+		const hay = (dx: number, dz: number) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.7, 0.4, 0.45, "#d9b04a", x, 0.2, z)
+			for (const hx of [-0.18, 0.18])
+				pBox(parts, 0.04, 0.41, 0.46, "#8a5a30", x + hx, 0.205, z)
+		}
+		const tree = (dx: number, dz: number, s: number) => {
+			const [x, z] = at(dx, dz)
+			pGeo(parts, cylGeo(0.07 * s, 0.3 * s, 6), "#6b4a2a", x, 0.15 * s, z)
+			const cones: [number, number, number][] = [
+				[0.5, 0.7, 0.5],
+				[0.4, 0.62, 0.95],
+				[0.28, 0.55, 1.35],
+			]
+			for (const [r, h, y] of cones) {
+				pGeo(
+					parts,
+					cylGeo(r * s, h * s, 8),
+					"#2f7a3e",
+					x,
+					y * s,
+					z,
+					0,
+					0,
+					0,
+					1,
+					1,
+					1,
+				)
+				pBox(parts, 2 * r * s * 0.5, 0.04, 0.04, "#2f7a3e", x, y * s, z)
+			}
+			const cols = ["#ffd35a", "#ff6a5a", "#7ad0ff"]
+			for (let i = 0; i < 6; i++) {
+				const a = i * 2.1
+				const ry = 0.45 + (i / 6) * 0.9
+				pBox(
+					parts,
+					0.07,
+					0.07,
+					0.07,
+					cols[i % cols.length],
+					x + Math.cos(a) * (0.42 - ry * 0.25) * s,
+					ry * s,
+					z + Math.sin(a) * (0.42 - ry * 0.25) * s,
+				)
+			}
+			pBox(parts, 0.12 * s, 0.12 * s, 0.12 * s, "#ffe27a", x, 1.7 * s, z)
+		}
+		const present = (dx: number, dz: number, c: string) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.3, 0.24, 0.3, c, x, 0.12, z)
+			pBox(parts, 0.32, 0.05, 0.06, "#f6f1e6", x, 0.25, z)
+			pBox(parts, 0.06, 0.05, 0.32, "#f6f1e6", x, 0.25, z)
+		}
+		if (season === "halloween") {
+			pumpkin(-1.9, 1.0, 1, true)
+			pumpkin(-1.45, 0.75, 0.7, true)
+			pumpkin(1.9, 1.0, 1.15, true)
+			pumpkin(1.4, 0.7, 0.75, true)
+		} else if (season === "harvest") {
+			hay(-1.9, 1.0)
+			pumpkin(-1.4, 0.75, 0.75, false)
+			hay(1.9, 1.0)
+			pumpkin(1.4, 0.75, 0.9, false)
+		} else {
+			tree(-1.9, 1.0, 1)
+			present(-1.4, 0.8, "#d4463a")
+			tree(1.9, 1.0, 1.15)
+			present(1.4, 0.8, "#4a78c8")
+		}
 		this.seasonG = batchMesh(parts, undefined, { noCast: true })
 	}
 
@@ -552,7 +616,7 @@ export class Happenings {
 	}
 
 	dispose(): void {
-		this.syncSeason(false)
+		this.syncSeason(null)
 		this.clearEvent()
 		for (const v of this.classes.values()) this.dropClass(v)
 		this.classes.clear()

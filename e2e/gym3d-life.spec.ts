@@ -1256,6 +1256,42 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 	expect(await page.evaluate(() => window.gym3d?.stats().pumpkins)).toBe(0)
 })
 
+test("3D gym seasons: winter dresses the door and the people, harvest the door only", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(240_000)
+	const { page } = await setup(request, browser, testInfo, 30, "season")
+	const stat = (k: "season" | "pumpkins" | "ghost" | "costumes") =>
+		page.evaluate((key) => window.gym3d?.stats()[key], k)
+	// winter: trees and presents by the door, holiday hats, no ghost
+	await page.goto("/?season=winter")
+	await waitReady(page)
+	await expect.poll(() => stat("season")).toBe("winter")
+	await expect.poll(() => stat("pumpkins")).toBe(4)
+	expect(await stat("ghost")).toBe(0)
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
+	await page.waitForTimeout(1200)
+	await shot(page, "28-winter-door")
+	await expect
+		.poll(() => stat("costumes"), { timeout: 90_000 })
+		.toBeGreaterThan(0)
+	// harvest: hay and pumpkins by the door, no hats
+	await page.goto("/?season=harvest")
+	await waitReady(page)
+	await expect.poll(() => stat("season")).toBe("harvest")
+	await expect.poll(() => stat("pumpkins")).toBe(4)
+	expect(await stat("costumes")).toBe(0)
+	await page.evaluate(() => window.gym3d?.panTo(13.5, 21))
+	await page.waitForTimeout(1200)
+	await shot(page, "29-harvest-door")
+	// out of season: nothing
+	await page.goto("/?season=none")
+	await waitReady(page)
+	await expect.poll(() => stat("season")).toBe("none")
+	expect(await stat("pumpkins")).toBe(0)
+})
+
 test("3D gym street: passers-by walk along the pavement in front of the gym", async ({
 	request,
 	browser,

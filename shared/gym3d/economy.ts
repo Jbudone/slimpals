@@ -56,6 +56,22 @@ export const KITCHEN_MENU = [
 		cost: 10,
 		months: [9, 10, 11],
 	},
+	// seasonal (winter), added after the autumn ones: the menu is a bitmask
+	// over this list, so new items only ever go at the end
+	{
+		key: "cocoa",
+		name: "Hot cocoa protein",
+		rate: 11,
+		cost: 10,
+		months: [12, 1, 2],
+	},
+	{
+		key: "ginger",
+		name: "Gingerbread oats",
+		rate: 12,
+		cost: 12,
+		months: [12, 1, 2],
+	},
 ] as const
 
 type MenuItem = { readonly key: string; readonly months?: readonly number[] }

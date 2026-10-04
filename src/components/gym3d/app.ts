@@ -10,7 +10,6 @@ import {
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
-import { ghostSeason } from "../../../shared/gym3d/ghost"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { NEIGHBOURHOOD_COLS, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
@@ -27,6 +26,12 @@ import {
 	RT,
 	roomSpots,
 } from "../../../shared/gym3d/rooms"
+import {
+	SEASON_HAT,
+	type Season,
+	seasonFromQuery,
+	seasonOf,
+} from "../../../shared/gym3d/season"
 import type {
 	GymIncomeSourceDto,
 	GymJobDto,
@@ -74,7 +79,11 @@ import { Traffic } from "./world/traffic"
 import type { Person, Piece } from "./world/types"
 import { GymWorld, type PickInfo } from "./world/world"
 
-export const POLL_INTERVAL = 30000
+export /** A seasonal hat (witch, santa) among the accessories. */
+const isCostume = (acc: readonly string[]): boolean =>
+	acc.includes("witch") || acc.includes("santa")
+
+const POLL_INTERVAL = 30000
 /** Seconds the tap chip stays open on its own. */
 export const CHIP_TTL = 15
 
@@ -149,6 +158,7 @@ export type Gym3DStats = {
 	cars: number
 	dogs: number
 	costumes: number
+	season: string
 	pumpkins: number
 	waiting: number
 	/** Coin bubbles showing now. */
@@ -449,15 +459,20 @@ export class Gym3DApp {
 		}, POLL_INTERVAL)
 	}
 
-	/** The October ghost is about (`?ghost=1` / `?ghost=0` force it, for
-	 * tests and demos). */
+	/** The season now: by the calendar (UTC month), or forced for tests and
+	 * demos with `?season=halloween|harvest|winter|none` (`?ghost=1` / `?ghost=0`
+	 * still mean Halloween / none). */
+	private season(): Season | null {
+		const q = new URLSearchParams(globalThis.location?.search ?? "")
+		const forced = seasonFromQuery(q.get("season"), q.get("ghost"))
+		if (forced === "none") return null
+		if (forced) return forced
+		return seasonOf(new Date().getUTCMonth() + 1)
+	}
+
+	/** The October ghost is about. */
 	private ghostOn(): boolean {
-		const q = new URLSearchParams(globalThis.location?.search ?? "").get(
-			"ghost",
-		)
-		if (q === "1") return true
-		if (q === "0") return false
-		return ghostSeason(new Date().getUTCMonth() + 1)
+		return this.season() === "halloween"
 	}
 
 	/** The gym as banter sees it: finished room types, placed gear, a crowd. */
@@ -573,8 +588,10 @@ export class Gym3DApp {
 				p.speed = moodSpeed(bySim.get(p.npcKey)?.mood ?? 50)
 		this.hap.setEvent(ev)
 		this.hap.syncGhost(this.ghostOn())
-		this.people.costumes = this.ghostOn()
-		this.hap.syncSeason(this.ghostOn())
+		const season = this.season()
+		this.people.costumes = season ? SEASON_HAT[season] : null
+		this.people.ghostStays = season === "halloween"
+		this.hap.syncSeason(season)
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(
@@ -2045,7 +2062,7 @@ export class Gym3DApp {
 	/** Keys of the people wearing a seasonal costume (tests). */
 	costumedKeys(): string[] {
 		return this.people.people
-			.filter((p) => p.out.acc.includes("witch"))
+			.filter((p) => isCostume(p.out.acc))
 			.map((p) => p.key)
 	}
 
@@ -2288,9 +2305,9 @@ export class Gym3DApp {
 			...this.hap.stats(),
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
+			season: this.season() ?? "none",
 			pumpkins: this.hap.seasonCount,
-			costumes: this.people.people.filter((q) => q.out.acc.includes("witch"))
-				.length,
+			costumes: this.people.people.filter((q) => isCostume(q.out.acc)).length,
 			waiting: this.people.people.filter((q) => q.after === "wait").length,
 		}
 	}

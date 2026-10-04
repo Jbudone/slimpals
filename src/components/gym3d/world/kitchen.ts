@@ -27,6 +27,8 @@ const ITEM_COLOR: Record<string, string> = {
 	salad: "#4f9a3a",
 	pumpkin: "#e8743b",
 	oats: "#d9a35f",
+	cocoa: "#7a4a2a",
+	ginger: "#c9803a",
 }
 
 export class Kitchen {

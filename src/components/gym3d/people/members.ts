@@ -55,8 +55,11 @@ export class People {
 	private reduce: boolean
 	/** Set when a bus runs: waiters at the stop board it when it pulls in. */
 	busAtStop: (() => boolean) | null = null
-	/** October: about one in four members and passers-by wear a witch hat. */
-	costumes = false
+	/** October: the ghost talks some leavers into staying. */
+	ghostStays = false
+	/** The season's hat (witch, santa) on about one in four members and
+	 * passers-by; null the rest of the year. */
+	costumes: "witch" | "santa" | null = null
 	/** Most ambient members right now (follows the quality level). */
 	cap = 6
 
@@ -77,11 +80,11 @@ export class People {
 
 	add(o: AddOpts): Person {
 		if (
-			this.costumes &&
+			this.costumes !== null &&
 			(o.kind === "member" || o.key.startsWith("pass:")) &&
 			hashString(o.key) % 4 === 0
 		)
-			o = { ...o, out: { ...o.out, acc: [...o.out.acc, "witch"] } }
+			o = { ...o, out: { ...o.out, acc: [...o.out.acc, this.costumes] } }
 		const rig = makeRig(o.out)
 		const proxy = new T.Mesh(boxGeo(0.55, 1.3, 0.55), ctx().assets.HIT)
 		proxy.position.y = 0.65
@@ -645,7 +648,7 @@ export class People {
 		this.release(p)
 		if (this.rng() < 0.12) {
 			// in October the ghost talks half of them into one more station
-			if (this.costumes && !p.stayed && this.rng() < GHOST_STAY_CHANCE) {
+			if (this.ghostStays && !p.stayed && this.rng() < GHOST_STAY_CHANCE) {
 				p.stayed = true
 				this.onGhostStay?.(p)
 				this.chooseNext(p)

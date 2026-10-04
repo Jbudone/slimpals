@@ -45,6 +45,46 @@ export const COSMETICS: readonly CosmeticDef[] = [
 		kind: "outfit",
 		from: "Halloween track",
 	},
+	{
+		key: "harvest_basket",
+		name: "Harvest basket",
+		kind: "decor",
+		from: "Gratitude track",
+		builder: "basket",
+	},
+	{
+		key: "harvest_hay",
+		name: "Hay bale",
+		kind: "decor",
+		from: "Gratitude track",
+		builder: "hay",
+	},
+	{
+		key: "gratitude_scarf",
+		name: "Autumn scarf for the coach",
+		kind: "outfit",
+		from: "Gratitude track",
+	},
+	{
+		key: "winter_tree",
+		name: "Holiday tree",
+		kind: "decor",
+		from: "Winter track",
+		builder: "tree",
+	},
+	{
+		key: "winter_lights",
+		name: "String lights",
+		kind: "decor",
+		from: "Winter track",
+		builder: "lights",
+	},
+	{
+		key: "winter_hat",
+		name: "Holiday hat for the coach",
+		kind: "outfit",
+		from: "Winter track",
+	},
 ]
 
 export function cosmeticOf(key: string): CosmeticDef | null {
