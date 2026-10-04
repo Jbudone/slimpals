@@ -694,12 +694,54 @@ export class People {
 		p.boost = Math.max(p.boost ?? 1, boost)
 	}
 
+	/** A playful reaction to a tap: a hop, a stumble (they tip forward and
+	 * recover) or a dizzy spin. Skipped with reduced motion. */
+	react(p: Person, kind: "hop" | "trip" | "spin"): void {
+		if (this.reduce) return
+		if (p.fx?.kind === "trip" && kind === "hop") return
+		const dur = kind === "trip" ? 1.4 : kind === "spin" ? 0.8 : 0.3
+		// pitch after yaw, so a tilt leans along the way they face
+		p.rig.root.rotation.order = "YXZ"
+		p.fx = { kind, t: 0, dur, y0: p.fx?.y0 ?? p.rig.root.position.y }
+	}
+
+	private applyFx(p: Person, dt: number): void {
+		const f = p.fx
+		if (!f) return
+		f.t += dt
+		const k = Math.min(1, f.t / f.dur)
+		const root = p.rig.root
+		if (f.kind === "hop") root.position.y = f.y0 + Math.sin(k * Math.PI) * 0.16
+		else if (f.kind === "trip") {
+			// tip forward fast, hang there a beat, then straighten up
+			const tilt = k < 0.3 ? (k / 0.3) ** 2 : k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3
+			root.rotation.x = tilt * 0.95
+			root.position.y = f.y0 + Math.sin(k * Math.PI) * 0.1
+		} else root.rotation.y += ((Math.PI * 2) / f.dur) * dt
+		if (k >= 1) {
+			root.rotation.x = 0
+			root.position.y = f.y0
+			p.fx = undefined
+		}
+	}
+
 	/** Ends a working member's session now (they walk off as usual). */
 	hurry(p: Person): void {
 		if (p.state === "use" && p.kind === "member") p.timer = 0
 	}
 
 	private step(p: Person, dt: number, lite: boolean): void {
+		this.stepCore(p, dt, lite)
+		if (p.fx && !lite && this.people.includes(p)) this.applyFx(p, dt)
+		else if (p.fx && lite) {
+			// off screen: finish the reaction at once
+			p.rig.root.rotation.x = 0
+			p.rig.root.position.y = p.fx.y0
+			p.fx = undefined
+		}
+	}
+
+	private stepCore(p: Person, dt: number, lite: boolean): void {
 		const r = p.rig
 		// a hustled member works out faster, then settles back
 		if (p.boost && p.boost > 1) p.boost = Math.max(1, p.boost - dt * 0.5)

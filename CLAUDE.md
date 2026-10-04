@@ -162,8 +162,8 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   managed label in `world/labels.ts`, placed each frame by `world/bubbleLayout.ts` (pure, unit-tested): priority
   chip > timers > coins > player-caused lines > NPC lines > ambient, no overlap (slide up/aside or hide), clamped
   between `setInsets` top/bottom, capped (2 lines on a phone). Input listens on the gym host: a drag that starts on
-  a bubble pans, only a short tap reaches it. Tapping a line pops it; the tap chip is a stat card (Role, Mood,
-  Doing, Bond; never body weight) closing on a tap outside, a pan or after `CHIP_TTL`. Event / class banners,
+  a bubble pans, only a short tap reaches it. Speech lines and tags let taps through to what is under them (`labels.ts`); coin bubbles, timers and cards still take them. The person's card is a stat card (Role, Mood,
+  Doing, Bond; never body weight) opened by a long press, closing on a tap outside, a pan or after `CHIP_TTL`. Event / class banners,
   hero and name tags are managed too (kind `tag`, below speech and above ambient, take no taps, not counted in the cap): on screen,
   clear of bubbles, banners wrap.
 - Ambient banter (gh-140, first slice): `shared/gym3d/banter.ts` holds short scripted exchanges (2-3 dry lines, no
@@ -235,12 +235,17 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   around a room/lot) while selected, a squash, one pooled floor ripple, `navigator.vibrate(10)`; DOM badges and
   coin bubbles get `.g3d-tapped`. Reduced motion: marker only. A room tap opens the room action menu (info, Upgrade
   gear, Staff, Customize = paint + decor; `Selection.view`), never paint first.
-- Tap-to-hustle: taps in quick succession (`ECONOMY.hustle.gapMs`) on a member who is working out speed up their
+- Poking people (`shared/gym3d/pokes.ts`, `Gym3DApp.pokePerson`): a tap on a person is never a menu. It makes them hop (`People.react`) and now and then
+  say a line, escalating if the player keeps going (greeting, playful, annoyed; the 6th poke spins them dizzy); on a treadmill the 3rd poke on can tip them
+  forward and they recover (a stumble, always by the 6th; other gear from the 5th; dust puff and a line; `stats().pokes`). Their card (role, mood, doing,
+  Talk, Train) is a finger held about 420 ms (`CARD_HOLD_MS`, `openCard`, `window.gym3d.press(x, y)`); a one-time hint says so. A tap with a card open just closes it.
+  Machines open from tapping the machine itself, not the person on it.
+- Tap-to-hustle: pokes in quick succession (`ECONOMY.hustle.gapMs`) on a member who is working out speed up their
   reps and make them say a line (`shared/gym3d/hustleLines.ts`); after `ECONOMY.hustle.taps` they finish early and
   the host asks `POST /api/gym/layout/hustle/:pieceId` (`server/services/gym/hustle.ts`) for a few coins. The server
   decides: the piece must be a working machine, the daily count is claimed in `gym_rewards` (`hustle:<day>:<n>`),
-  the payout shrinks through the day (`hustleCoins`) and stops at `dailyCap`. The first tap is the usual one (their
-  machine's sheet, see `picking.ts`); the gesture is in `Gym3DApp.tapAt` (`rayWorker`, `hustleTap`).
+  the payout shrinks through the day (`hustleCoins`) and stops at `dailyCap`. Every poke counts (a stumble too); the gesture is in
+  `Gym3DApp.tapAt` / `pokePerson` (`hustleTap`).
 - Spot sheet (tap an empty pad): a locked spot says how many room points the room has of the points its level needs
   (`LV_TH`); an open one lists stored and still-locked gear with a picture each (`Gym3DApp.gearPreview` ->
   `World.previewGear`: built like a placed piece, drawn once offscreen, cached per key; the shared geometries stay in

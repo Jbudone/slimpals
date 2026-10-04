@@ -845,6 +845,7 @@ onMount(() => {
 				bubbles: () => a.shownBubbles(),
 				say: (key, text) => a.sayTo(key, text),
 				pick: (x, y) => a.pickAt(x, y),
+				press: (x, y) => a.pressAt(x, y),
 			}
 			ready = true
 			void loadStaff()
@@ -2722,9 +2723,8 @@ const kitchenView = $derived.by(() => {
 	font-weight: 600;
 	line-height: 1.25;
 	color: #23262e;
-	/* a short tap pops it; a drag pans (app.ts) */
-	pointer-events: auto;
-	cursor: pointer;
+	/* taps go through to the person under it (a quick tap is a poke) */
+	pointer-events: none;
 	contain: layout;
 }
 

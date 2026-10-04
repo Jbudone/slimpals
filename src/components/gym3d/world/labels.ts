@@ -128,8 +128,11 @@ export class LabelLayer {
 			tx: -1,
 			id: nextId++,
 		}
-		// tags let taps through to the world (the person under a hero tag)
-		if (owned && ((L.bubble && L.bubble !== "tag") || L.soft))
+		// tags and speech lines let taps through to the world (the person under
+		// a tag, or under a line they are saying: a quick tap there is a poke)
+		const passThrough =
+			L.bubble === "tag" || L.bubble === "speech" || L.bubble === "ambient"
+		if (owned && ((L.bubble && !passThrough) || L.soft))
 			el.style.pointerEvents = "auto"
 		// bubbles show once the layout has placed them
 		if (L.bubble) {

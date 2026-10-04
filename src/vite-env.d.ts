@@ -60,6 +60,11 @@ declare global {
 				x: number,
 				y: number,
 			): import("./components/gym3d/app").Selection | null
+			/** A long press on a person at a canvas point: opens their card. */
+			press(
+				x: number,
+				y: number,
+			): import("./components/gym3d/app").Selection | null
 		}
 	}
 }
