@@ -78,6 +78,13 @@ export interface AIService {
 		systemInstruction: string,
 		scenarioText: string,
 	): Promise<string>
+	/** One short line per day of a challenge in the coach's voice (optional:
+	 * without it the scripted lines are used). */
+	generateChallengeCoachLines?(
+		personality: string,
+		challengeTitle: string,
+		days: number,
+	): Promise<string[]>
 	refineTuningDoc(
 		params: TuningRefinementParams,
 	): Promise<TuningRefinementResult>
@@ -394,6 +401,34 @@ ${activityLines.join("\n")}`
 			console.warn("[portrait] generation skipped:", (err as Error).message)
 			return null
 		}
+	}
+
+	async generateChallengeCoachLines(
+		personality: string,
+		challengeTitle: string,
+		days: number,
+	): Promise<string[]> {
+		const coachKey = (
+			PERSONALITY_KEYS.includes(personality as CoachPersonality)
+				? personality
+				: "friendly"
+		) as CoachPersonality
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+			systemInstruction: getPersonalityPrompt(coachKey),
+		})
+		const rulesDoc = readTuningDoc(
+			"server/services/contentTuning/docs/coach_lines.md",
+		)
+		const prompt = `${rulesDoc}
+
+Write exactly ${days} coach lines for the monthly challenge "${challengeTitle}", one for each day from day 1 to day ${days}. Each is one or two short sentences (under 25 words) that fits where the player is in the month: a fresh start in the first days, steady encouragement in the middle, a push near the end. Vary them; none may repeat. No exclamation marks. Respond with a JSON array of ${days} strings only (no markdown, no explanation).`
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\[[\s\S]*\]/)
+		if (!match)
+			throw new Error(`No JSON array in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as string[]
 	}
 
 	async generateCoachSample(
