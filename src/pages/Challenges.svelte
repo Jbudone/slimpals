@@ -1,6 +1,15 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { challengeFraction } from "../../shared/challenges/milestones.js"
+import {
+	CHALLENGE_TIERS,
+	type ChallengeTier,
+	TIER_INFO,
+	tierGoals,
+	tierTarget,
+} from "../../shared/challenges/tiers.js"
 import { COACH_NAMES, isCoachVoice } from "../../shared/gym3d/coachLines.js"
+import ChallengeBanner from "../components/ChallengeBanner.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
@@ -8,6 +17,7 @@ import { api } from "../lib/api.js"
 import { challengeNote, challengeStanding } from "../lib/challengeCoach.js"
 import { showBadgeToast } from "../lib/toast.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
+import { loadWallet } from "../lib/wallet.svelte.js"
 
 type Goal = {
 	id: string
@@ -287,6 +297,7 @@ onMount(loadChallenge)
 		</Card>
 	{:else if !challenge.joined}
 		<Card>
+			<ChallengeBanner theme={challenge.theme} title={challenge.title} />
 			<p class="challenge-caption">{monthNames[challenge.month - 1]} {challenge.year}</p>
 			<h2 class="goal-heading">{challenge.title}</h2>
 			{#if challenge.tagline}
@@ -340,6 +351,8 @@ onMount(loadChallenge)
 				</div>
 			</Card>
 		{/if}
+
+		<ChallengeBanner theme={challenge.theme} title={challenge.title} progress={fraction} />
 
 		{#if coachNote}
 			<Card padding="md">
