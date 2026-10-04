@@ -128,7 +128,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `challenge_trophy` (first completion only; the challenge page says so). Outfits are worn by default and can be taken off: `gym_cosmetics.worn`
   (migration 0028), `POST /api/gym/cosmetics/:key/wear {worn}` (`wearCosmetic`, outfits only), a "Coach outfit" toggle in
   `GoalsCard.svelte`; the coach avatar (`coachSvg` in `components/home/icons.ts`, worn keys from `src/lib/cosmetics.svelte.ts`) wears the
-  witch hat while it is on. The group coach NPC (Coach Rivera) wears the worn Halloween witch hat or winter holiday hat too (`OUTFIT_HAT`/`staffHatOf`, `AppOpts.outfits` from `cosmetics.keys`, `People.staffHat`; applied when the person is built, so it shows from the next mount). Not yet: other staff outfits, per-challenge decor and
+  witch hat while it is on. The group coach NPC (Coach Rivera) and the receptionist (Lisa) wear the worn Halloween witch hat or winter holiday hat too (`OUTFIT_HAT`/`staffHatOf`/`HAT_STAFF`, `AppOpts.outfits` from `cosmetics.keys`, `People.staffHat`; applied when the person is built, so it shows from the next mount). Not yet: other staff outfits, per-challenge decor and
   tiers/milestones (#124), a standalone inventory screen. e2e: `gym3d-life.spec.ts` ("cosmetics").
 - Monthly decor (#126, #135): January to September each have one decor cosmetic on the reward track (`jan_decor`…`sep_decor`, `MONTH_COSMETICS` in `shared/gym3d/rewardTrack.ts`, first big step of the month), built in `equipment/decor.ts` (`MONTH_DECOR`) and placed like the lantern; every month 1-12 now has a track cosmetic (test in `reward-track.test.ts`).
 - Staff growth: the named staff (Marcus, Lisa, Coach Rivera, Dr. Kim, Jordan, Alex) have a level 1-5, three stats
