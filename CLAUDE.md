@@ -235,7 +235,9 @@ No external cron: `server/index.ts` starts an in-process scheduler (`server/serv
 every minute when `SCHEDULER_ENABLED` is on (unset = on only with `NODE_ENV=production`; `1`/`0` force it;
 Playwright sets `0`, Vitest never starts it). Jobs (`scheduler/jobs.ts`, all UTC): monthly challenge (1st,
 00:05), weekly sprints (Mon 00:05), weekly inspiration (Mon 00:10), nightly gym content + NPC dialog for gyms
-active in the last 7 days (00:20, `findActiveGymUserIds`), tournament auto-resolve (every 15 min). Each run is
+active in the last 7 days (00:20, `findActiveGymUserIds`), recurring tournaments (daily 00:25: this and next week plus this and next month, `server/services/tournaments/recurring.ts`,
+pure periods and type rotation in `shared/tournaments/recurring.ts`; system tournaments have `creator_id` null and a unique `system_key`, show as
+"Featured" on the Tournaments page, and post the winner to the feed), tournament auto-resolve (every 15 min). Each run is
 claimed per period in `scheduled_job_runs` (unique job+period), so restarts/double ticks never rerun a period;
 failures retry after 1h, max 3 tries. Admin → "Scheduled jobs" shows last run/next due and "Run now"
 (`GET /admin/scheduler`, `POST /admin/scheduler/:job/run`). The cron-style endpoints

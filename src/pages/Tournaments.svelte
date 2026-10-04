@@ -15,7 +15,8 @@ import {
 type Tournament = {
 	id: number
 	name: string
-	creatorId: string
+	creatorId: string | null
+	featured: boolean
 	startDate: string
 	endDate: string
 	type: string
@@ -158,6 +159,15 @@ function tournamentStatus(t: Tournament): "upcoming" | "live" | "ended" {
 	return "live"
 }
 
+/** Featured (system-run) tournaments that are still going come first. */
+const ordered = $derived(
+	[...tournaments].sort(
+		(a, b) =>
+			Number(b.featured && tournamentStatus(b) !== "ended") -
+			Number(a.featured && tournamentStatus(a) !== "ended"),
+	),
+)
+
 onMount(load)
 </script>
 
@@ -173,13 +183,14 @@ onMount(load)
 			<p class="muted">No tournaments yet. Start one to get the group going!</p>
 		</Card>
 	{:else}
-		{#each tournaments as t (t.id)}
+		{#each ordered as t (t.id)}
 			{@const status = tournamentStatus(t)}
 			{@const board = leaderboards[t.id]}
 			{@const joined = board?.leaderboard.some((e) => e.userId === myId) ?? false}
 			<Card>
 				<div class="card-top">
 					<h3>{t.name}</h3>
+					{#if t.featured}<Pill tone="accent">Featured</Pill>{/if}
 					<Pill tone={status === "live" ? "accent" : "neutral"}>
 						{status.charAt(0).toUpperCase() + status.slice(1)}
 					</Pill>
