@@ -331,60 +331,91 @@ export async function getGymLayoutDto(
 	db: Db,
 ): Promise<GymLayoutDto> {
 	const now = new Date()
-	const [gym] = await db
-		.select({
-			coins: userGyms.coins,
-			plotsBought: userGyms.plotsBought,
-			sweat: userGyms.sweat,
-			greens: userGyms.greens,
-			campaign: userGyms.campaign,
-		})
-		.from(userGyms)
-		.where(eq(userGyms.id, gymId))
-	const rooms = await db
-		.select()
-		.from(gymRooms)
-		.where(eq(gymRooms.gymId, gymId))
-		.orderBy(asc(gymRooms.id))
-	const plots = await db
-		.select()
-		.from(gymPlots)
-		.where(eq(gymPlots.gymId, gymId))
-		.orderBy(asc(gymPlots.id))
-	const pieces = await db
-		.select()
-		.from(gymPieces)
-		.where(eq(gymPieces.gymId, gymId))
-		.orderBy(asc(gymPieces.id))
-	const jobs = await db
-		.select()
-		.from(gymJobs)
-		.where(
-			and(
-				eq(gymJobs.gymId, gymId),
-				or(
-					eq(gymJobs.status, "active"),
-					gte(gymJobs.finishedAt, new Date(now.getTime() - 86_400_000)),
+	// Everything the layout needs that does not depend on anything else is
+	// read at once: this runs after every build action, and a round trip per
+	// query added up to a slow-feeling menu on a remote database.
+	const [
+		[gym],
+		rooms,
+		plots,
+		pieces,
+		jobs,
+		plan,
+		unlocked,
+		catalog,
+		openWalls,
+		hires,
+		paidRows,
+		[boughtRow],
+	] = await Promise.all([
+		db
+			.select({
+				coins: userGyms.coins,
+				plotsBought: userGyms.plotsBought,
+				sweat: userGyms.sweat,
+				greens: userGyms.greens,
+				campaign: userGyms.campaign,
+			})
+			.from(userGyms)
+			.where(eq(userGyms.id, gymId)),
+		db
+			.select()
+			.from(gymRooms)
+			.where(eq(gymRooms.gymId, gymId))
+			.orderBy(asc(gymRooms.id)),
+		db
+			.select()
+			.from(gymPlots)
+			.where(eq(gymPlots.gymId, gymId))
+			.orderBy(asc(gymPlots.id)),
+		db
+			.select()
+			.from(gymPieces)
+			.where(eq(gymPieces.gymId, gymId))
+			.orderBy(asc(gymPieces.id)),
+		db
+			.select()
+			.from(gymJobs)
+			.where(
+				and(
+					eq(gymJobs.gymId, gymId),
+					or(
+						eq(gymJobs.status, "active"),
+						gte(gymJobs.finishedAt, new Date(now.getTime() - 86_400_000)),
+					),
 				),
+			)
+			.orderBy(asc(gymJobs.id)),
+		readPlan(db, gymId),
+		unlockedUpgrades(db, gymId),
+		db
+			.select({
+				key: gymUpgradesCatalog.key,
+				name: gymUpgradesCatalog.name,
+				category: gymUpgradesCatalog.category,
+				requiredXp: gymUpgradesCatalog.requiredXp,
+				sortOrder: gymUpgradesCatalog.sortOrder,
+			})
+			.from(gymUpgradesCatalog)
+			.orderBy(asc(gymUpgradesCatalog.sortOrder)),
+		openWallRefs(db, gymId),
+		hireDtos(db, gymId),
+		db
+			.select({ source: gymRewards.source })
+			.from(gymRewards)
+			.where(
+				and(eq(gymRewards.gymId, gymId), like(gymRewards.source, "goal:%")),
 			),
-		)
-		.orderBy(asc(gymJobs.id))
-
-	const plan = await readPlan(db, gymId)
-	const unlocked = await unlockedUpgrades(db, gymId)
+		db
+			.select({ id: gymRewards.id })
+			.from(gymRewards)
+			.where(
+				and(eq(gymRewards.gymId, gymId), eq(gymRewards.source, BURGER_SOURCE)),
+			),
+	])
 	const unplacedKeys = placeNewUnlocks(plan, unlocked, {
 		newRooms: false,
 	}).unplaced
-	const catalog = await db
-		.select({
-			key: gymUpgradesCatalog.key,
-			name: gymUpgradesCatalog.name,
-			category: gymUpgradesCatalog.category,
-			requiredXp: gymUpgradesCatalog.requiredXp,
-			sortOrder: gymUpgradesCatalog.sortOrder,
-		})
-		.from(gymUpgradesCatalog)
-		.orderBy(asc(gymUpgradesCatalog.sortOrder))
 	const byKey = new Map(catalog.map((c) => [c.key, c]))
 	const nameOf = (k: string) => byKey.get(k)?.name
 	const roomTypeOf = (k: string | null): string | null => {
@@ -446,8 +477,6 @@ export async function getGymLayoutDto(
 	})
 
 	// Rating and goals read the layout; a goal that is newly met pays once.
-	const openWalls = await openWallRefs(db, gymId)
-	const hires = await hireDtos(db, gymId)
 	const goalIn: RatingInput = {
 		openWalls: openWalls.length,
 		hires: hires.length,
@@ -460,10 +489,6 @@ export async function getGymLayoutDto(
 		})),
 	}
 	const gs = goalState(goalIn)
-	const paidRows = await db
-		.select({ source: gymRewards.source })
-		.from(gymRewards)
-		.where(and(eq(gymRewards.gymId, gymId), like(gymRewards.source, "goal:%")))
 	const paid = new Set(paidRows.map((r) => r.source.slice("goal:".length)))
 	const goalsPaid: NonNullable<GymLayoutDto["goalsPaid"]> = []
 	let paidSweat = 0
@@ -489,13 +514,6 @@ export async function getGymLayoutDto(
 		paidGreens += got.greens
 		goalsPaid.push({ id: g.id, title: g.title, reward: got })
 	}
-
-	const [boughtRow] = await db
-		.select({ id: gymRewards.id })
-		.from(gymRewards)
-		.where(
-			and(eq(gymRewards.gymId, gymId), eq(gymRewards.source, BURGER_SOURCE)),
-		)
 
 	return {
 		gymId,

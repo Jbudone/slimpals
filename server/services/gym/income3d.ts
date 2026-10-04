@@ -209,16 +209,18 @@ export async function incomeState(
 	now: Date,
 ): Promise<IncomeState> {
 	const nowMs = now.getTime()
-	const g = await gymIncomeRow(conn, gymId)
-	const pieces = await conn
-		.select()
-		.from(gymPieces)
-		.where(eq(gymPieces.gymId, gymId))
-	const rooms = await finishedRooms(conn, gymId)
-	const levels = await staffLevels(conn, gymId)
-	const roomTypes = await roomTypesOf(conn, gymId)
-	const hired = await hireBonuses(conn, gymId)
-	const vibed = await vibeBonuses(conn, gymId)
+	// independent reads: one round trip's worth of waiting, not seven
+	const [g, pieces, rooms, levels, roomTypes, hired, vibed] = await Promise.all(
+		[
+			gymIncomeRow(conn, gymId),
+			conn.select().from(gymPieces).where(eq(gymPieces.gymId, gymId)),
+			finishedRooms(conn, gymId),
+			staffLevels(conn, gymId),
+			roomTypesOf(conn, gymId),
+			hireBonuses(conn, gymId),
+			vibeBonuses(conn, gymId),
+		],
+	)
 	const deskMult = areaMultiplier("desk", levels)
 	const staffedTypes = [...hired.keys()].map((id) => roomTypes.get(id) ?? "")
 	const kitchenMult =

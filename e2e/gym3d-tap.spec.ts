@@ -248,6 +248,23 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	await expect(page.locator(".g3d-sheet .sw2").first()).toBeVisible()
 	await page.waitForTimeout(300)
 	await shot(page, "03-customize")
+	// a long page scrolls, and the close button stays in view (it used to
+	// scroll away with the content, leaving no way out)
+	await page.evaluate(() => {
+		const el = document.querySelector(".g3d-sheet")
+		if (el) el.scrollTop = el.scrollHeight
+	})
+	await page.waitForTimeout(200)
+	const closeBox = await page.evaluate(() => {
+		const sh = document.querySelector(".g3d-sheet")?.getBoundingClientRect()
+		const x = document.querySelector(".g3d-x")?.getBoundingClientRect()
+		return sh && x ? { inside: x.top >= sh.top && x.bottom <= sh.bottom } : null
+	})
+	expect(closeBox?.inside).toBe(true)
+	await page.evaluate(() => {
+		const el = document.querySelector(".g3d-sheet")
+		if (el) el.scrollTop = 0
+	})
 	const wall0 = room.paint.wall
 	const swatch = page.locator(".g3d-sheet .sw2:not(.on)").first()
 	await swatch.click()
