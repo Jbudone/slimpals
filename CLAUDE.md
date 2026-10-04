@@ -5,7 +5,7 @@
 - **Backend**: Express + TypeScript, port 3000
 - **Database**: MariaDB via Drizzle ORM (`server/db/schema.ts`, migrations in `server/db/migrations/`)
 - **Auth**: Better Auth
-- **Tests**: Vitest (`npm test`), Biome for lint/format (`npm run check`)
+- **Tests**: Vitest (`npm test`), Biome for lint/format (`npm run check`); `npm run typecheck` also checks `.svelte` for undefined names
 - **Dev server**: `npm run dev` — starts both Vite and Express via concurrently
 
 ## Key paths
@@ -208,6 +208,10 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
   `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
   `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
+- Challenge banner (#124): `src/components/ChallengeBanner.svelte` is a CSS-only animated strip by the challenge `theme` (arcade: scrolling stars and a blinking coin;
+  sunrise: the sky runs dawn to dusk with progress; greens: drifting leaves; anything else a shimmer), on the unjoined card and above the coach note once joined;
+  still under reduced motion. Template components are not covered by `tsc`: `npm run typecheck` also runs `check:svelte-names` (svelte-check, fails on "Cannot find name"),
+  which caught missing imports in `Challenges.svelte` that had been broken since the milestones slice.
 - Challenge feed post (#124): finishing a challenge posts a `challenge_completion` to the feed for users with auto-share on (`server/services/challenges/feed.ts`,
   content carries `challengeName`, `tier`, `reward`), and badges earned on the finish are shared through `shareBadges` like the check-in route does.
 - Challenge generator (#124): `shared/challenges/validate.ts` (`validateGeneratedChallenge`, pure) checks what the AI returns (1-5 goals `goal_N`, positive numbers,
