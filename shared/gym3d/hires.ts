@@ -133,6 +133,17 @@ export const STAFFED_PERK: Readonly<Record<string, string>> = {
 	court: `Pickup-game fees: this room's machines earn ${Math.round(STAFFED_RATE.court * 100)}% more`,
 }
 
+/** The tag over a staffed room whose members are at it together (#130):
+ * sparring in boxing, a pickup game on the court; null for the rest. */
+export function roomPlayLabel(roomType: string): string | null {
+	if (roomType === "boxing") return "🥊 Sparring"
+	if (roomType === "court") return "🏀 Pickup game"
+	return null
+}
+
+/** How many members at their stations make it a game. */
+export const ROOM_PLAY_MIN = 2
+
 /** The mood bonus for the room types that have a hire (see RECOVERY_MOOD). */
 export function staffedMoodBonus(staffedTypes: readonly string[]): number {
 	return staffedTypes.includes("recovery") ? RECOVERY_MOOD : 0
