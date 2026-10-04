@@ -429,6 +429,18 @@ export class Happenings {
 			pBox(parts, 0.14, 0.14, 0.14, bloom, x - 0.06, 0.66, z)
 			pBox(parts, 0.14, 0.14, 0.14, bloom, x + 0.06, 0.74, z)
 		}
+		// a striped patio umbrella and a cooler box
+		const umbrella = (dx: number, dz: number, c: string) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.05, 1.3, 0.05, "#cfcfcf", x, 0.65, z)
+			pBox(parts, 0.9, 0.06, 0.9, c, x, 1.32, z)
+			pBox(parts, 0.9, 0.065, 0.3, "#fffaf0", x, 1.321, z)
+		}
+		const cooler = (dx: number, dz: number) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.42, 0.28, 0.28, "#2f6fd0", x, 0.14, z)
+			pBox(parts, 0.44, 0.06, 0.3, "#f4f4f4", x, 0.31, z)
+		}
 		const present = (dx: number, dz: number, c: string) => {
 			const [x, z] = at(dx, dz)
 			pBox(parts, 0.3, 0.24, 0.3, c, x, 0.12, z)
@@ -445,6 +457,11 @@ export class Happenings {
 			pot(-1.4, 0.75, "#ffd35a")
 			pot(1.9, 1.0, "#b99cff")
 			pot(1.4, 0.75, "#ff6a5a")
+		} else if (season === "summer") {
+			umbrella(-1.9, 1.0, "#ff6a5a")
+			cooler(-1.35, 0.75)
+			umbrella(1.9, 1.0, "#3aa0e0")
+			cooler(1.4, 0.75)
 		} else if (season === "harvest") {
 			hay(-1.9, 1.0)
 			pumpkin(-1.4, 0.75, 0.75, false)
