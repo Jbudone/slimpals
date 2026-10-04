@@ -15,6 +15,7 @@ import {
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
 import { banterFromAi } from "../../../../shared/gym3d/banterAi"
+import { bondBetween } from "../../../../shared/gym3d/bonds"
 import { contestLine } from "../../../../shared/gym3d/costumeContest"
 import {
 	GHOST_LOCKERS,
@@ -499,9 +500,20 @@ export class Life {
 					pairs.push([near[i], near[j]])
 			}
 		if (!pairs.length) return false
-		const b = pickBanter(ctx, this.banterSeen, this.rng, this.extraBanter)
+		// a pair with a bond between them often talks to each other
+		const bonded = pairs.find(([p, q]) =>
+			bondBetween(p.npcKey, q.npcKey, this.banterSeen),
+		)
+		const bond = bonded && this.rng() < 0.6 ? bonded : null
+		const b = bond
+			? bondBetween(bond[0].npcKey, bond[1].npcKey, this.banterSeen)
+			: pickBanter(ctx, this.banterSeen, this.rng, this.extraBanter)
 		if (!b) return false
-		const [x, y] = pairs[Math.floor(this.rng() * pairs.length) % pairs.length]
+		// a bond's first line is `a`'s: put that person first
+		const [x, y] =
+			bond && "a" in b && bond[0].npcKey !== b.a
+				? [bond[1], bond[0]]
+				: (bond ?? pairs[Math.floor(this.rng() * pairs.length) % pairs.length])
 		this.banterSeen.push(b.id)
 		if (this.banterSeen.length > 6) this.banterSeen.shift()
 		this.banterTimer = (this.calm ? 150 : 100) + this.rng() * 60
