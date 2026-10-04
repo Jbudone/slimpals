@@ -15,6 +15,7 @@ import {
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
+import { ROOM_PLAY_MIN, roomPlayLabel } from "../../../shared/gym3d/hires"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { neighbourhoodCols, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import { maxoutFromQuery, maxoutPromo } from "../../../shared/gym3d/maxout"
@@ -171,6 +172,7 @@ export type Gym3DStats = {
 	ghost: number
 	storyGuest: string
 	contest: string
+	plays: number
 	cars: number
 	dogs: number
 	costumes: number
@@ -537,6 +539,33 @@ export class Gym3DApp {
 		return key
 	}
 
+	private playT = 0
+	/** Staffed boxing and court rooms show a tag while members work at them
+	 * together (checked every couple of seconds). */
+	private syncPlay(dt: number): void {
+		this.playT -= dt
+		if (this.playT > 0) return
+		this.playT = 2
+		const staffed = new Set(this.world.layout.hires.map((h) => h.roomId))
+		const at = new Map<number, number>()
+		for (const p of this.people.people) {
+			if (p.kind !== "member" || p.state !== "use") continue
+			const id = this.world.roomIdAt(
+				p.rig.root.position.x,
+				p.rig.root.position.z,
+			)
+			if (id != null) at.set(id, (at.get(id) ?? 0) + 1)
+		}
+		const plays: { roomId: number; text: string; x: number; z: number }[] = []
+		for (const r of this.world.rooms) {
+			if (r.building || !staffed.has(r.id)) continue
+			const text = roomPlayLabel(r.type)
+			if (text && (at.get(r.id) ?? 0) >= ROOM_PLAY_MIN)
+				plays.push({ roomId: r.id, text, x: r.cx, z: r.cz })
+		}
+		this.hap.syncRoomPlay(plays)
+	}
+
 	private storyGuest(): StoryGuest | null {
 		const f = this.forcedGuest
 		if (f === "none") return null
@@ -735,6 +764,7 @@ export class Gym3DApp {
 		this.clock += dt
 		if (this.claiming) this.claimTick(dt)
 		this.hap.frame(dt)
+		this.syncPlay(dt)
 		this.life.tick(dt, this.clock)
 		this.says.frame(this.clock)
 		// the tap chip closes by itself after a while

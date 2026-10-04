@@ -581,6 +581,33 @@ export class Happenings {
 		return n
 	}
 
+	// ── room play (staffed boxing and court rooms) ─────────────────────────
+
+	private playTags = new Map<number, Label>()
+
+	/** A tag over each room where members are at it together; rooms not in
+	 * `plays` lose theirs. */
+	syncRoomPlay(
+		plays: readonly { roomId: number; text: string; x: number; z: number }[],
+	): void {
+		const keep = new Set(plays.map((p) => p.roomId))
+		for (const [id, L] of this.playTags)
+			if (!keep.has(id)) {
+				this.labels.remove(L)
+				this.playTags.delete(id)
+			}
+		for (const p of plays) {
+			if (this.playTags.has(p.roomId)) continue
+			const el = tag("g3d-class", p.text)
+			el.dataset.testid = "gym3d-play"
+			const anchor = new T.Vector3(p.x, 2.0, p.z)
+			this.playTags.set(
+				p.roomId,
+				this.labels.add(el, () => anchor, TAG),
+			)
+		}
+	}
+
 	// ── costume contest ───────────────────────────────────────────────────
 
 	private contestTag: { key: string; label: Label } | null = null
@@ -666,6 +693,7 @@ export class Happenings {
 		ghost: number
 		storyGuest: string
 		contest: string
+		plays: number
 	} {
 		return {
 			event: this.eventKey,
@@ -675,6 +703,7 @@ export class Happenings {
 			ghost: this.ghost ? 1 : 0,
 			storyGuest: this.storyKey ?? "",
 			contest: this.contestTag?.key ?? "",
+			plays: this.playTags.size,
 		}
 	}
 
@@ -682,6 +711,7 @@ export class Happenings {
 		this.syncStoryGuest(null)
 		this.syncSeason(null)
 		this.syncContest(null)
+		this.syncRoomPlay([])
 		this.clearEvent()
 		for (const v of this.classes.values()) this.dropClass(v)
 		this.classes.clear()

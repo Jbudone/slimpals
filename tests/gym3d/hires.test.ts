@@ -50,3 +50,16 @@ describe("hires", () => {
 		expect(a.x).not.toBe(b.x)
 	})
 })
+
+describe("room play tags", () => {
+	it("only boxing and the court have one, and it takes a pair", async () => {
+		const { roomPlayLabel, ROOM_PLAY_MIN } = await import(
+			"../../shared/gym3d/hires.js"
+		)
+		expect(roomPlayLabel("boxing")).toContain("Sparring")
+		expect(roomPlayLabel("court")).toContain("Pickup")
+		for (const t of ["cardio", "weights", "pool", "recovery", "juice", "lobby"])
+			expect(roomPlayLabel(t)).toBeNull()
+		expect(ROOM_PLAY_MIN).toBe(2)
+	})
+})
