@@ -221,7 +221,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   grid, scanlines; winter: snow; Halloween: moon and fog; summer: a sun with turning rays; sunrise follows the challenge's progress...) and, every 10-40 s per kind, a tiny
   event drifting past (an invader, a coin, a bat, a ghost, a butterfly, a falling leaf, a shooting star: `.ev`, removed on `animationend`; none with reduced motion).
   It sets `data-event` on the root: `styles/app.css` tints the accent for every look and restyles the dark palettes for arcade, Halloween, harvest and winter (not `light`/`cream`);
-  arcade also gives headings a retro mono. The tab bar glows in the accent. `?event=<look>|none` forces one (tests, demos); a switch in Settings
+  arcade also gives headings a retro mono. The tab bar and the gym HUD glow in the accent (the HUD body is tinted too for the dark looks; Today's Compete card carries the joined challenge's `ChallengeBanner`). `?event=<look>|none` forces one (tests, demos); a switch in Settings
   (`event-theme-toggle`, localStorage `sp-event-theme`) turns it off. e2e: `gym3d-nav.spec.ts`.
 - Challenge banner (#124): `src/components/ChallengeBanner.svelte` is a CSS-only animated strip by the challenge `theme` (arcade: scrolling stars and a blinking coin;
   sunrise: the sky runs dawn to dusk with progress; greens: drifting leaves; anything else a shimmer), on the unjoined card and above the coach note once joined;

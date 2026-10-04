@@ -176,6 +176,12 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 	await page.goto("/?event=winter")
 	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
 	expect(await look()).toBe("winter")
+	// the HUD wears it: the accent glow is part of its shadow
+	const hudShadow = await page
+		.locator(".hud")
+		.first()
+		.evaluate((el) => getComputedStyle(el).boxShadow)
+	expect(hudShadow).toContain("0px 0px 16px -4px")
 
 	// Settings has a switch for the season's and challenge's look
 	await page.goto("/settings")

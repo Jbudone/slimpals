@@ -347,3 +347,41 @@ body {
 		0 -2px 0 var(--event-accent),
 		0 -8px 18px -10px var(--event-accent);
 }
+
+/* the gym HUD wears the look too: an accent edge and glow on every look, and
+   a tinted body for the dark ones (the doubled class beats its scoped rule) */
+[data-event] .hud.hud {
+	box-shadow:
+		0 6px 18px rgba(15, 32, 22, 0.28),
+		0 0 0 2px var(--event-accent),
+		0 0 16px -4px var(--event-accent),
+		inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-event="arcade"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(38, 20, 72, 0.96),
+		rgba(22, 12, 44, 0.96)
+	);
+}
+[data-event="halloween"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(48, 28, 14, 0.96),
+		rgba(26, 16, 10, 0.96)
+	);
+}
+[data-event="harvest"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(62, 40, 18, 0.96),
+		rgba(38, 25, 12, 0.96)
+	);
+}
+[data-event="winter"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(24, 50, 78, 0.96),
+		rgba(16, 34, 56, 0.96)
+	);
+}
