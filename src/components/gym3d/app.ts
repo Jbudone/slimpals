@@ -4,6 +4,7 @@
 import * as T from "three"
 import type { BanterContext } from "../../../shared/gym3d/banter"
 import { celebrationFor } from "../../../shared/gym3d/celebrations"
+import { staffHatOf } from "../../../shared/gym3d/cosmetics"
 import {
 	ECONOMY,
 	finishCost,
@@ -208,6 +209,8 @@ export type AppOpts = {
 	/** Coin bubbles tapped (income source keys); `from` is where the coins
 	 * fly from. The UI posts the collect and applies the answer. */
 	onCollect?: (keys: string[], from: HTMLElement | null) => void
+	/** Outfit cosmetics the gym wears (the group coach gets the hat). */
+	outfits?: readonly string[]
 }
 
 function newRoomBadge(): HTMLButtonElement {
@@ -409,6 +412,7 @@ export class Gym3DApp {
 			this.r.renderer.setClearColor(this.world.location.sky)
 			this.blobs = new BlobShadows(this.world.scene)
 			this.people = new People(this.world)
+			this.people.staffHat = staffHatOf(opts.outfits ?? [])
 			this.labels = new LabelLayer(host)
 			this.build = new BuildLayer(this.world)
 			this.hap = new Happenings(

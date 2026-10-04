@@ -60,6 +60,8 @@ export class People {
 	/** The season's hat (witch, santa) on about one in four members and
 	 * passers-by; null the rest of the year. */
 	costumes: "witch" | "santa" | null = null
+	/** A worn outfit cosmetic: the group coach wears this hat. */
+	staffHat: "witch" | "santa" | null = null
 	/** Most ambient members right now (follows the quality level). */
 	cap = 6
 
@@ -85,6 +87,8 @@ export class People {
 			hashString(o.key) % 4 === 0
 		)
 			o = { ...o, out: { ...o.out, acc: [...o.out.acc, this.costumes] } }
+		if (this.staffHat !== null && o.npcKey === "specialist_coach")
+			o = { ...o, out: { ...o.out, acc: [...o.out.acc, this.staffHat] } }
 		const rig = makeRig(o.out)
 		const proxy = new T.Mesh(boxGeo(0.55, 1.3, 0.55), ctx().assets.HIT)
 		proxy.position.y = 0.65
