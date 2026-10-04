@@ -1610,3 +1610,56 @@ test("3D gym pokes: quick taps on a person hop and talk and never open a card, a
 	await tapPerson(page, who)
 	await expect(page.getByTestId("gym3d-chip")).toBeVisible()
 })
+
+test("3D gym visits: staff walk over to members and the ghost goes haunting", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(300_000)
+	const { userId, admin, page } = await setup(
+		request,
+		browser,
+		testInfo,
+		700,
+		"visit",
+	)
+	// 6pm: the gym is busy, so there are members at their machines to visit
+	expect(
+		(
+			await admin.patch(`/api/admin/users/${userId}/gym/hour-override`, {
+				headers: { Origin: AUTH_ORIGIN },
+				data: { hour: 18 },
+			})
+		).ok(),
+	).toBe(true)
+	await page.goto("/?ghost=1")
+	await waitReady(page)
+	if (await page.getByTestId("welcome-back").count())
+		await page.getByRole("button", { name: "Later" }).click()
+	// a trip starts every half minute or so, but only to members who are on
+	// screen: pan around the rooms so there is always someone in view
+	const L = await page.evaluate(() => window.gym3d?.layout())
+	if (!L) throw new Error("no layout")
+	const centers = L.rooms
+		.filter((r) => !r.building && r.type !== "empty" && r.type !== "lobby")
+		.map((r) => ({
+			x: r.cells[0].px * PW + PW / 2,
+			z: r.cells[0].pz * PD + PD / 2,
+		}))
+	let at = 0
+	await expect
+		.poll(
+			async () => {
+				const c = centers[at++ % centers.length]
+				await page.evaluate(([a, b]) => window.gym3d?.panTo(a, b), [
+					c.x,
+					c.z,
+				] as const)
+				return (await page.evaluate(() => window.gym3d?.stats()))?.visits ?? 0
+			},
+			{ timeout: 240_000, intervals: [4000] },
+		)
+		.toBeGreaterThan(0)
+	const st = await page.evaluate(() => window.gym3d?.stats())
+	expect(st?.ghost).toBe(1)
+})
