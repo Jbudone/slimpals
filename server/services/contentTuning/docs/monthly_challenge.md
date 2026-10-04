@@ -29,3 +29,4 @@ Generate exactly 3 goals. Each goal is a cumulative monthly total built from a s
 - Goal IDs: goal_1, goal_2, goal_3.
 - tiers sets the bronze (gentler) and gold (harder) monthly totals for the goal; target is silver. Keep bronze below target and gold above it, roughly 60% and 140%.
 - Output that does not follow this shape (wrong goal ids, targets that are not positive numbers, bronze above target, gold below it) is rejected and a curated challenge is used for the month instead.
+- Optional: a goal may set "auto": "great_meal" (counted when a meal photo is rated great) or "auto": "checkin" (counted by the daily check-in); the player taps nothing for it, so use it only for goals that match, and keep its target realistic for a month.
