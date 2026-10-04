@@ -83,4 +83,10 @@ the alumni committee wants a fun run. The two gyms map a route through the
 quad that passes the old library twice, two hundred people sign up (half of
 them have not run since graduation) and the run ends with cake on the quad.
 
-Campaign 6 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 6: Harbour Road again
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyTides.ts`. The third street
+some years on: Captain Reyes has retired (and is on the quay anyway), Old Joe's
+shack has a queue he cannot explain, the road floods at spring tides and a storm
+leaves the crew's boat in the car park. The arc ends in a small regatta.
+
+Campaign 7 onwards have no story yet (they can be finished from gym level 17).
