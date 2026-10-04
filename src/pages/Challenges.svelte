@@ -49,6 +49,8 @@ type ChallengeData = {
 	theme: string | null
 	tagline?: string | null
 	coachIntro?: string | null
+	/** The coach's line for today, written when the player joined. */
+	coachToday?: string | null
 	reward?: { key: string; name: string } | null
 	month: number
 	year: number
@@ -259,7 +261,11 @@ const coachNote = $derived.by(() => {
 	if (!st) return null
 	const raw = userProfile.data?.coachPersonality
 	const voice = isCoachVoice(raw) ? raw : "friendly"
-	return { name: COACH_NAMES[voice], say: challengeNote(voice, st) }
+	// a line the coach wrote for today beats the scripted one
+	const say = challenge.coachToday
+		? { id: "written", lead: "", rest: challenge.coachToday }
+		: challengeNote(voice, st)
+	return { name: COACH_NAMES[voice], say }
 })
 
 function goalProgress(goal: Goal): number {
