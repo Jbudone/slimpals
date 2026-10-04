@@ -3,6 +3,7 @@
 import type { GymRewardTrackDto } from "../../shared/types"
 import { chipHtml } from "../components/home/icons.js"
 import { api } from "./api.js"
+import { playClaimChime } from "./chime.js"
 import { burstAt, centerOf, flyChip } from "./fly.js"
 import { showBadgeToast } from "./toast.svelte.js"
 import { loadWallet } from "./wallet.svelte.js"
@@ -34,6 +35,7 @@ export async function claimRewardStep(from?: HTMLElement): Promise<void> {
 		// the reward flies to the HUD, then the HUD numbers catch up
 		const at = from ? centerOf(from) : { x: innerWidth / 2, y: innerHeight / 2 }
 		burstAt(at.x, at.y, ["#f2c14a", "#34c973", "#5bc0eb"])
+		playClaimChime()
 		const chips: Promise<void>[] = []
 		const { coins, sweat, greens } = r.paid.reward
 		if (coins) chips.push(flyChip("co", chipHtml("co", coins), at, 0))
