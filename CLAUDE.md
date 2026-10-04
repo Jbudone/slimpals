@@ -150,7 +150,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   as cards keyed `hire:<id>` and train through the same endpoint; `income3d.ts` adds their bonus to the room's
   machines. The people system (`People.syncHires`) stands each hire at a post in their room (they walk in from
   the door when new) with their role as the chip title; the intro line comes from `hireIntro`. UI: the room menu's
-  Staff page has the Hire button. The first hire pays the `hire-1` goal. e2e: `gym3d-life.spec.ts` ("hiring").
+  Staff page has the Hire button. The first hire pays the `hire-1` goal. Staffed flavour (#130): a recovery room with at least one hire lifts every NPC's mood by `RECOVERY_MOOD` (8), live on top of the stored daily mood (`staffedMoodBonus` in `shared/gym3d/hires.ts`, added in `computeGymSimState` next to the event bonus; the Staff page says so, `STAFFED_PERK`). Not yet: Juice tips, Boxing sparring payouts, Court pickup games. e2e: `gym3d-life.spec.ts` ("hiring").
 - Life (slice 3): named NPC looks, titles, homes and signature lines live in one file,
   `src/components/gym3d/people/cast.ts` (staff wear `STAFF_UNIFORM`). Speech bubbles (`world/life.ts`, 3 pooled DOM
   bubbles) use lines from `GET /api/gym/npc-lines` (cached dialog batches + fired milestones, never the AI) plus

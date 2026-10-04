@@ -20,7 +20,12 @@ import {
 	upgradeInfo,
 	WALL_COLORS,
 } from "../../../shared/gym3d/economy"
-import { HIRE, HIRE_ROLES, hireIntro } from "../../../shared/gym3d/hires"
+import {
+	HIRE,
+	HIRE_ROLES,
+	hireIntro,
+	STAFFED_PERK,
+} from "../../../shared/gym3d/hires"
 import { SHAPE_INFO } from "../../../shared/gym3d/lots"
 import {
 	type EquipmentRoomType,
@@ -1313,7 +1318,7 @@ const kitchenView = $derived.by(() => {
 					{/each}
 					{#if hireRole}
 						<li>
-							<span><b>Hire a {hireRole.role.toLowerCase()}</b><small class="earn">Makes this room's machines earn more</small></span>
+							<span><b>Hire a {hireRole.role.toLowerCase()}</b><small class="earn">Makes this room's machines earn more{room && STAFFED_PERK[room.type] ? `. ${STAFFED_PERK[room.type]}` : ""}</small></span>
 							{#if roomHires.length >= HIRE.perRoom}
 								<small>Full</small>
 							{:else}
