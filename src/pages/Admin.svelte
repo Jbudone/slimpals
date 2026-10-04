@@ -1018,6 +1018,20 @@ const EXTRAS: Record<string, string> = {
 	cosmetics: "cosmetics and the decor on show",
 }
 
+/** Test tool: marks the gym's story finished so the next campaign can begin. */
+async function finishGymStory(userId: string) {
+	gymCoinsStatus = null
+	try {
+		await api.post(`/admin/users/${userId}/gym/finish-story`, {})
+		gymCoinsStatus = { ok: true, text: "Story marked finished." }
+	} catch (e) {
+		gymCoinsStatus = {
+			ok: false,
+			text: e instanceof Error ? e.message : "Failed",
+		}
+	}
+}
+
 /** Test tool: wipes staff levels, hires, open walls or today's hustle bonuses. */
 async function resetGymExtras(
 	userId: string,
@@ -1944,6 +1958,13 @@ onMount(async () => {
 																	data-testid="admin-gym-reset-milestones"
 																>
 																	Reset challenge milestones
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => finishGymStory(user.id)}
+																	data-testid="admin-gym-finish-story"
+																>
+																	Finish story (campaign)
 																</button>
 																<button
 																	class="btn sm"

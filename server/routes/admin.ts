@@ -5,6 +5,7 @@ import { Router } from "express"
 import { catalogChallenge } from "../../shared/challenges/catalog.js"
 import { tierGoals } from "../../shared/challenges/tiers.js"
 import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
+import { CAMPAIGN_FINALE } from "../../shared/gym3d/campaign.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { db } from "../db/index.js"
@@ -50,6 +51,7 @@ import {
 	createCatalogChallenge,
 	generateChallengeForMonth,
 } from "../services/challenges/index.js"
+import { activeGymOf } from "../services/gym/activeGym.js"
 import { grantCosmetic } from "../services/gym/cosmetics.js"
 import {
 	deriveRelationshipFromDays,
@@ -662,10 +664,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 	adminRouter.get("/admin/users/:id/gym/npcs", async (req, res) => {
 		const { id } = req.params
 
-		const [gym] = await db
-			.select()
-			.from(userGyms)
-			.where(eq(userGyms.userId, id))
+		const [gym] = await db.select().from(userGyms).where(activeGymOf(id))
 
 		const catalog = await db.select().from(gymNpcs)
 
@@ -847,7 +846,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ simulatedHourOverride: userGyms.simulatedHourOverride })
 			.from(userGyms)
-			.where(eq(userGyms.userId, id))
+			.where(activeGymOf(id))
 
 		res.json({
 			hasGym: !!gym,
@@ -985,10 +984,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 	adminRouter.get("/admin/users/:id/gym/upgrades", async (req, res) => {
 		const { id } = req.params
 
-		const [gym] = await db
-			.select()
-			.from(userGyms)
-			.where(eq(userGyms.userId, id))
+		const [gym] = await db.select().from(userGyms).where(activeGymOf(id))
 
 		const catalog = await db
 			.select()
@@ -1141,7 +1137,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, req.params.id))
+			.where(activeGymOf(req.params.id))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
@@ -1168,7 +1164,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			const [gym] = await db
 				.select({ id: userGyms.id })
 				.from(userGyms)
-				.where(eq(userGyms.userId, String(req.params.id)))
+				.where(activeGymOf(String(req.params.id)))
 			if (!gym) {
 				res.status(404).json({ error: "User has no gym" })
 				return
@@ -1201,7 +1197,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, String(req.params.id)))
+			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
@@ -1241,7 +1237,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, String(req.params.id)))
+			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
@@ -1324,6 +1320,29 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		res.json({ removed })
 	})
 
+	// Test tool (campaigns): marks the gym's story as finished, so the next
+	// campaign can be begun without playing through all of it.
+	adminRouter.post("/admin/users/:id/gym/finish-story", async (req, res) => {
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(activeGymOf(String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		await db
+			.insert(gymRewards)
+			.ignore()
+			.values({
+				gymId: gym.id,
+				source: `story:${CAMPAIGN_FINALE}`,
+				sweat: 0,
+				greens: 0,
+			})
+		res.json({ ok: true })
+	})
+
 	// Test tool (cosmetics): gives the user's gym a cosmetic by key. Answers
 	// { granted } with its name, or null when they already had it.
 	adminRouter.post("/admin/users/:id/gym/cosmetic", async (req, res) => {
@@ -1335,7 +1354,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, String(req.params.id)))
+			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
@@ -1354,7 +1373,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, String(req.params.id)))
+			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
@@ -1375,7 +1394,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		const [gym] = await db
 			.select({ id: userGyms.id })
 			.from(userGyms)
-			.where(eq(userGyms.userId, String(req.params.id)))
+			.where(activeGymOf(String(req.params.id)))
 		if (!gym) {
 			res.status(404).json({ error: "User has no gym" })
 			return
