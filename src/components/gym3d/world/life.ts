@@ -27,6 +27,10 @@ import {
 	ROLE_LINES,
 	relationOf,
 } from "../../../../shared/gym3d/npcLines"
+import {
+	STORY_GUESTS,
+	type StoryGuestKey,
+} from "../../../../shared/gym3d/story"
 import { CAST } from "../people/cast"
 import { PLAYER_BOOST } from "./bubbleLayout"
 import type { Label, LabelLayer } from "./labels"
@@ -303,6 +307,7 @@ export class Life {
 
 	private nameOf(p: Person): string | null {
 		if (p.key === "ghost") return "Ghost"
+		if (p.key.startsWith("story:")) return p.name
 		if (!p.npcKey) return null
 		return firstName(this.names.get(p.npcKey) ?? p.name)
 	}
@@ -334,6 +339,10 @@ export class Life {
 
 	/** One line for a person, or null. */
 	lineFor(p: Person): string | null {
+		if (p.key.startsWith("story:")) {
+			const g = STORY_GUESTS[p.key.slice(6) as StoryGuestKey]
+			return g ? g.lines[Math.floor(this.rng() * g.lines.length)] : null
+		}
 		if (p.key === "ghost")
 			return ghostLine(this.rng, p.fixed?.label === GHOST_LOCKERS)
 		const recent = this.recent.get(p.key) ?? []

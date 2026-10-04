@@ -12,6 +12,7 @@ import {
 } from "../../../../shared/gym3d/npcInfo"
 import { CELL, PD, PW } from "../../../../shared/gym3d/rooms"
 import type { Season } from "../../../../shared/gym3d/season"
+import type { StoryGuest } from "../../../../shared/gym3d/story"
 import {
 	batchMesh,
 	cylGeo,
@@ -278,6 +279,33 @@ export class Happenings {
 		}
 		if (this.ghost && this.people.find("ghost")) return
 		this.placeGhost()
+	}
+
+	private storyGuest: Person | null = null
+	private storyKey: string | null = null
+
+	/** A story guest (Victor, Barry) after a chapter that features them: an
+	 * extra in the lobby or on the pavement (null sends them away). */
+	syncStoryGuest(g: StoryGuest | null): void {
+		if (!g) {
+			if (this.storyGuest) this.people.remove(this.storyGuest)
+			this.storyGuest = null
+			this.storyKey = null
+			return
+		}
+		if (this.storyKey === g.who && this.people.find(`story:${g.who}`)) return
+		if (this.storyGuest) this.people.remove(this.storyGuest)
+		const s = g.where === "lobby" ? this.w.lobbySpot(5) : this.w.eventSpot()
+		const out = staffOutfit(`story:${g.who}`)
+		Object.assign(out, g.look, { beard: false, lashes: false })
+		this.storyGuest = this.people.addExtra({
+			key: `story:${g.who}`,
+			name: g.name,
+			out,
+			st: floorStation(s.x, s.z, s.face, "idle", `${g.name} is visiting`),
+			note: g.name,
+		})
+		this.storyKey = g.who
 	}
 
 	/** Props by the door now (tests). */
@@ -605,6 +633,7 @@ export class Happenings {
 		classPeople: number
 		heroes: number
 		ghost: number
+		storyGuest: string
 	} {
 		return {
 			event: this.eventKey,
@@ -612,10 +641,12 @@ export class Happenings {
 			classPeople: this.classPeople,
 			heroes: this.heroTags.size,
 			ghost: this.ghost ? 1 : 0,
+			storyGuest: this.storyKey ?? "",
 		}
 	}
 
 	dispose(): void {
+		this.syncStoryGuest(null)
 		this.syncSeason(null)
 		this.clearEvent()
 		for (const v of this.classes.values()) this.dropClass(v)

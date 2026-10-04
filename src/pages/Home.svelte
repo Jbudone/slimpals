@@ -16,12 +16,14 @@ import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
 import GoalsCard from "../components/home/GoalsCard.svelte"
 import { coachSvg } from "../components/home/icons"
+import StoryCard from "../components/home/StoryCard.svelte"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import { api } from "../lib/api.js"
 import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
 import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
+import { loadStory, story } from "../lib/story.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
 import {
@@ -221,6 +223,16 @@ async function loadChallengeStanding() {
 	}
 }
 
+// a level-up can open the next chapter
+let storyLevel = -1
+$effect(() => {
+	const lv = wallet.data?.level ?? -1
+	if (lv !== storyLevel) {
+		storyLevel = lv
+		void loadStory()
+	}
+})
+
 onMount(() => {
 	void loadOwnedCosmetics()
 	void loadChallengeStanding()
@@ -297,6 +309,9 @@ onMount(() => {
 	</button>
 	{#if !failed}
 		<GoalsCard top={hudBottom + 62} onBought={() => mountKey++} />
+	{/if}
+	{#if active && !failed && !claiming && !sheetUp && story.data?.pending}
+		<StoryCard />
 	{/if}
 	{#if tip}
 		<div

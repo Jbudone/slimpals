@@ -1014,6 +1014,7 @@ const EXTRAS: Record<string, string> = {
 	hustle: "today's hustle bonuses",
 	burger: "the Burger Baron purchase",
 	milestones: "challenge milestone payouts",
+	story: "story chapters seen",
 	cosmetics: "cosmetics and the decor on show",
 }
 
@@ -1027,6 +1028,7 @@ async function resetGymExtras(
 		| "hustle"
 		| "burger"
 		| "milestones"
+		| "story"
 		| "cosmetics",
 ) {
 	gymCoinsStatus = null
@@ -1942,6 +1944,13 @@ onMount(async () => {
 																	data-testid="admin-gym-reset-milestones"
 																>
 																	Reset challenge milestones
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "story")}
+																	data-testid="admin-gym-reset-story"
+																>
+																	Reset story chapters
 																</button>
 																<button
 																	class="btn sm"
