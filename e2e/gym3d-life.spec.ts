@@ -27,8 +27,12 @@ const DB_URL =
 	process.env.DATABASE_URL ??
 	"mysql://slimpals:slimpalspass@127.0.0.1:3307/slimpals"
 
-async function shot(page: Page, name: string) {
-	if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png` })
+async function shot(
+	page: Page,
+	name: string,
+	clip?: { x: number; y: number; width: number; height: number },
+) {
+	if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, clip })
 }
 
 async function waitReady(page: Page) {
@@ -1196,7 +1200,7 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 	request,
 	browser,
 }, testInfo) => {
-	test.setTimeout(150_000)
+	test.setTimeout(240_000)
 	const { page } = await setup(request, browser, testInfo, 30, "ghost")
 	await page.goto("/?ghost=1")
 	await waitReady(page)
@@ -1205,10 +1209,45 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 		.toBe(1)
 	await page.waitForTimeout(1200)
 	await shot(page, "19-ghost")
+	// some members and passers-by wear witch hats in October
+	await expect
+		.poll(
+			async () => page.evaluate(() => window.gym3d?.stats().costumes ?? 0),
+			{
+				timeout: 90_000,
+			},
+		)
+		.toBeGreaterThan(0)
+	// a close-up of one of them, once one walks into view
+	const seen: { at: { x: number; y: number } | null } = { at: null }
+	await expect
+		.poll(
+			async () => {
+				seen.at = await page.evaluate(() => {
+					for (const k of window.gym3d?.costumed() ?? []) {
+						const p = window.gym3d?.screenOf(k)
+						if (p && p.x > 60 && p.x < 330 && p.y > 200 && p.y < 560) return p
+					}
+					return null
+				})
+				return seen.at !== null
+			},
+			{ timeout: 90_000 },
+		)
+		.toBe(true)
+	const hat = seen.at
+	if (hat)
+		await shot(page, "26-costumes", {
+			x: Math.max(0, hat.x - 110),
+			y: Math.max(0, hat.y - 200),
+			width: 220,
+			height: 260,
+		})
 	// and off again with ?ghost=0
 	await page.goto("/?ghost=0")
 	await waitReady(page)
 	expect(await page.evaluate(() => window.gym3d?.stats().ghost)).toBe(0)
+	expect(await page.evaluate(() => window.gym3d?.stats().costumes)).toBe(0)
 })
 
 test("3D gym street: passers-by walk along the pavement in front of the gym", async ({

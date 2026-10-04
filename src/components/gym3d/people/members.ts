@@ -54,6 +54,8 @@ export class People {
 	private reduce: boolean
 	/** Set when a bus runs: waiters at the stop board it when it pulls in. */
 	busAtStop: (() => boolean) | null = null
+	/** October: about one in four members and passers-by wear a witch hat. */
+	costumes = false
 	/** Most ambient members right now (follows the quality level). */
 	cap = 6
 
@@ -73,6 +75,12 @@ export class People {
 	// ── spawning ───────────────────────────────────────────────────────────
 
 	add(o: AddOpts): Person {
+		if (
+			this.costumes &&
+			(o.kind === "member" || o.key.startsWith("pass:")) &&
+			hashString(o.key) % 4 === 0
+		)
+			o = { ...o, out: { ...o.out, acc: [...o.out.acc, "witch"] } }
 		const rig = makeRig(o.out)
 		const proxy = new T.Mesh(boxGeo(0.55, 1.3, 0.55), ctx().assets.HIT)
 		proxy.position.y = 0.65

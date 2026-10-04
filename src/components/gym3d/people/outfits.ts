@@ -134,6 +134,8 @@ export type Acc =
 	| "whistle"
 	| "lanyard"
 	| "earrings"
+	// seasonal costume (October), not in the random pool
+	| "witch"
 export const ACC_SETS: readonly (readonly Acc[])[] = [
 	[],
 	["glasses"],

@@ -1061,6 +1061,28 @@ function dress(r: Rig, out: Outfit): void {
 		mic.position.set(-0.13, y - 0.075, 0.13)
 		r.hairG.add(keep(mic))
 	}
+	if (acc.includes("witch")) {
+		// a pointed hat: a wide brim, a cone and a gold band
+		const brim = new T.Mesh(
+			eqGeo("witchbrim", () => new T.CylinderGeometry(0.25, 0.25, 0.014, 18)),
+			TM("#3b2a55"),
+		)
+		brim.position.set(0, y + 0.15, 0)
+		r.hairG.add(keep(brim))
+		const cone = new T.Mesh(
+			eqGeo("witchcone", () => new T.ConeGeometry(0.14, 0.32, 14)),
+			TM("#4b3470"),
+		)
+		cone.position.set(0, y + 0.31, 0)
+		cone.rotation.x = -0.12
+		r.hairG.add(keep(cone))
+		const band = new T.Mesh(
+			eqGeo("witchband", () => new T.CylinderGeometry(0.145, 0.15, 0.04, 14)),
+			TM("#f2a03a"),
+		)
+		band.position.set(0, y + 0.18, 0)
+		r.hairG.add(keep(band))
+	}
 	if (acc.includes("whistle") || acc.includes("lanyard")) {
 		const cord = new T.Mesh(
 			eqGeo("lanyard", () => new T.TorusGeometry(0.09, 0.006, 5, 18)),
