@@ -5,9 +5,11 @@ import AvatarMenu from "./components/AvatarMenu.svelte"
 import BottomTabBar from "./components/BottomTabBar.svelte"
 import Hud from "./components/home/Hud.svelte"
 import LevelUp from "./components/home/LevelUp.svelte"
+import ThemeLayer from "./components/ThemeLayer.svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
+import { loadEventTheme } from "./lib/eventTheme.svelte.js"
 import { swipe } from "./lib/swipe.js"
 import { neighbourPath, tabIndexOf } from "./lib/tabs.js"
 import {
@@ -51,6 +53,7 @@ $effect(() => {
 	if (id && id !== walletFor) {
 		walletFor = id
 		void loadWallet()
+		void loadEventTheme()
 		loadCheckinStatus()
 	}
 })
@@ -124,6 +127,7 @@ async function handleStopImpersonating() {
 		<Hud />
 		<div class="acct"><AvatarMenu /></div>
 		<Home active={currentPath === "/"} />
+		<ThemeLayer show={currentPath !== "/"} />
 		<main
 			class="app-content"
 			use:swipe={{ left: () => swipeTab(1), right: () => swipeTab(-1) }}
@@ -226,6 +230,7 @@ async function handleStopImpersonating() {
 
 .app-content {
 	position: relative;
+	z-index: 1;
 	/* a too-wide page must not widen the phone viewport (the fixed HUD
 	   and tab bar would slide off screen) */
 	overflow-x: clip;

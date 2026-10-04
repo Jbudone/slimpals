@@ -58,7 +58,7 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	page.on("pageerror", (e) => errors.push(e.message))
 
 	await page.goto("/today")
-	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
+	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
 	// five tabs, Compete among them
 	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(5)
 
@@ -90,7 +90,7 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 
 	// ── swipes: Today -> Compete (challenges -> tournaments) -> Progress ──
 	await page.getByTestId("tab-today").click()
-	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
+	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
 	await swipe(page, ".dashboard h1", 320, 110)
 	await expect(page).toHaveURL(/\/challenges$/)
 	await swipe(page, ".hub-page h1", 320, 110)
@@ -104,5 +104,80 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	await expect(page).toHaveURL(/\/today$/)
 	await swipe(page, ".dashboard h1", 100, 330)
 	await expect(page).toHaveURL(/\/$/)
+	expect(errors).toEqual([])
+})
+
+test("event looks: a themed backdrop with an accent, off in the gym and when switched off", async ({
+	request,
+	browser,
+}, testInfo) => {
+	test.setTimeout(120_000)
+	const use = testInfo.project.use
+	const baseURL = use.baseURL ?? "http://localhost:5173"
+	const inviteCode = await mintInviteCode(request)
+	const runId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+	await registerUser(request, {
+		name: `Look ${runId}`,
+		email: `e2e-look-${runId}@slimpals.test`,
+		password: "E2ePassword1!",
+		inviteCode,
+	})
+	const context = await browser.newContext({
+		baseURL,
+		viewport: use.viewport,
+		deviceScaleFactor: use.deviceScaleFactor,
+		isMobile: use.isMobile,
+		hasTouch: use.hasTouch,
+		userAgent: use.userAgent,
+		storageState: await request.storageState(),
+	})
+	const page = await context.newPage()
+	const errors: string[] = []
+	page.on("pageerror", (e) => errors.push(e.message))
+	const look = () =>
+		page.evaluate(() => document.documentElement.dataset.event ?? "")
+
+	// forced with ?event=: the backdrop is there, the root carries the look
+	await page.goto("/today?event=arcade")
+	await expect(page.getByTestId("theme-layer")).toHaveAttribute(
+		"data-event",
+		"arcade",
+	)
+	expect(await look()).toBe("arcade")
+	// it takes no taps and sits behind the content
+	expect(
+		await page.evaluate(
+			() =>
+				getComputedStyle(
+					document.querySelector("[data-testid=theme-layer]") as Element,
+				).pointerEvents,
+		),
+	).toBe("none")
+	// a tiny event drifts past within a few seconds (not under reduced motion)
+	await expect
+		.poll(() => page.locator("[data-testid=theme-layer] .ev").count(), {
+			timeout: 20_000,
+		})
+		.toBeGreaterThan(0)
+	await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible()
+
+	// "none" turns it off
+	await page.goto("/today?event=none")
+	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
+	expect(await look()).toBe("")
+
+	// the gym itself has no backdrop, but the accent follows
+	await page.goto("/?event=winter")
+	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
+	expect(await look()).toBe("winter")
+
+	// Settings has a switch for the season's and challenge's look
+	await page.goto("/settings")
+	const toggle = page.getByTestId("event-theme-toggle")
+	await expect(toggle).toBeChecked()
+	await toggle.uncheck()
+	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
+	expect(await look()).toBe("")
+	await toggle.check()
 	expect(errors).toEqual([])
 })

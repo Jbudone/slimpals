@@ -6,6 +6,7 @@ import ThemeSwitcher from "../components/ThemeSwitcher.svelte"
 import { api } from "../lib/api.js"
 import { logout } from "../lib/auth.svelte.js"
 import { checkinState } from "../lib/checkin.svelte.js"
+import { eventLook, setEventThemeOn } from "../lib/eventTheme.svelte.js"
 import {
 	type UserProfile,
 	updateCoachPersonality,
@@ -241,6 +242,18 @@ onMount(() => {
 		<h2>Appearance</h2>
 		<p class="section-desc">Choose a theme. Your choice is saved to your profile.</p>
 		<ThemeSwitcher />
+		<label class="event-toggle">
+			<input
+				type="checkbox"
+				checked={eventLook.on}
+				onchange={(e) => setEventThemeOn(e.currentTarget.checked)}
+				data-testid="event-theme-toggle"
+			/>
+			<span>
+				Seasonal and challenge looks
+				<small>A themed backdrop with tiny things drifting past, for the season or your challenge.</small>
+			</span>
+		</label>
 	</section>
 
 	{#if userProfile.data}
@@ -530,6 +543,19 @@ onMount(() => {
 </div>
 
 <style>
+.event-toggle {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-top: 1rem;
+	cursor: pointer;
+}
+
+.event-toggle small {
+	display: block;
+	color: var(--color-text-muted);
+}
+
 .personality-face {
 	display: inline-block;
 	width: 44px;
