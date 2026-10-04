@@ -1,6 +1,7 @@
 import { and, count, eq } from "drizzle-orm"
 import { Router } from "express"
 import { challengeFraction } from "../../shared/challenges/milestones.js"
+import { isTier, tierGoals } from "../../shared/challenges/tiers.js"
 import { db } from "../db/index.js"
 import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
@@ -50,7 +51,8 @@ export function createChallengesRouter(aiService: AIService) {
 			)
 			.limit(1)
 
-		const goals = challenge.tasks as ChallengeGoal[]
+		const tier = userChallenge?.tier ?? "silver"
+		const goals = tierGoals(challenge.tasks as ChallengeGoal[], tier)
 		const progress = (userChallenge?.completedTasks ?? {}) as GoalProgress
 		const dailyLog = (userChallenge?.dailyLog ?? {}) as DailyLog
 		const goalsCompleted = goals.filter(
@@ -66,6 +68,7 @@ export function createChallengesRouter(aiService: AIService) {
 			year: challenge.year,
 			goals,
 			joined: !!userChallenge,
+			tier,
 			progress,
 			dailyLog,
 			completedAt: userChallenge?.completedAt ?? null,
@@ -114,13 +117,20 @@ export function createChallengesRouter(aiService: AIService) {
 			return
 		}
 
+		const tier = (req.body as { tier?: unknown } | undefined)?.tier ?? "silver"
+		if (!isTier(tier)) {
+			res.status(400).json({ error: "tier must be bronze, silver or gold" })
+			return
+		}
+
 		await db.insert(userChallenges).values({
 			userId,
 			challengeId,
 			completedTasks: {},
+			tier,
 		})
 
-		res.status(201).json({ joined: true })
+		res.status(201).json({ joined: true, tier })
 	})
 
 	router.patch("/challenges/:id/progress", async (req, res) => {
@@ -179,7 +189,10 @@ export function createChallengesRouter(aiService: AIService) {
 			return
 		}
 
-		const goals = challenge.tasks as ChallengeGoal[]
+		const goals = tierGoals(
+			challenge.tasks as ChallengeGoal[],
+			userChallenge.tier,
+		)
 		const validIds = new Set(goals.map((g) => g.id))
 		const current = (userChallenge.completedTasks ?? {}) as GoalProgress
 		const dailyLog = (userChallenge.dailyLog ?? {}) as DailyLog
@@ -246,6 +259,7 @@ export function createChallengesRouter(aiService: AIService) {
 			userId,
 			challengeId,
 			challengeFraction(goals, current),
+			userChallenge.tier,
 		)
 
 		res.json({
