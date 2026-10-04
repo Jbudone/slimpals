@@ -15,6 +15,7 @@ export const SPEAKERS: Readonly<Record<string, Speaker>> = {
 	rivera: { name: "Coach Rivera", color: "#c85a3c" },
 	derek: { name: "Derek", color: "#8a6bb5" },
 	victor: { name: "Victor Maxwell", color: "#2b3440" },
+	dana: { name: "Dana Voss", color: "#2a8f8f" },
 	barry: { name: "Barry Baron", color: "#d4463a" },
 	narrator: { name: "", color: "#6b5d4f" },
 }
@@ -198,6 +199,165 @@ export const STORY: readonly StoryBeat[] = [
 			},
 		],
 	},
+	{
+		id: "a2-sale",
+		act: 2,
+		level: 9,
+		title: "Downsizing",
+		recap:
+			"Barry puts the Baron up for sale and admits someone made him an offer.",
+		lines: [
+			{
+				who: "barry",
+				text: "I'm downsizing. That's the word on the sign. The word in my stomach is different.",
+			},
+			{ who: "kim", text: "You are selling the Baron?" },
+			{ who: "barry", text: "Someone made me an offer I can't pronounce." },
+			{ who: "alex", text: "Pronounce it slowly. We have time." },
+		],
+	},
+	{
+		id: "a2-promo",
+		act: 2,
+		level: 10,
+		title: "Half price",
+		recap:
+			"MaxOut runs a weekend promo. Marcus spots his programme on the flyer.",
+		lines: [
+			{
+				who: "derek",
+				text: "MaxOut has half price this weekend. I'm only mentioning it.",
+			},
+			{
+				who: "marcus",
+				text: "That is my warm-up on their flyer. Step for step.",
+			},
+			{
+				who: "lisa",
+				text: "The notebook is still in my drawer, Marcus. Dated and everything.",
+			},
+		],
+	},
+	{
+		id: "a2-rival",
+		act: 2,
+		level: 11,
+		title: "Old rivals",
+		recap:
+			"Dana Voss, MaxOut's head coach, turns out to be Coach Rivera's old rival.",
+		lines: [
+			{ who: "dana", text: "Nice place. You have done well with very little." },
+			{ who: "rivera", text: "Dana." },
+			{ who: "dana", text: "Marian. Still counting your reps out loud." },
+			{ who: "rivera", text: "Somebody has to count them honestly." },
+		],
+	},
+	{
+		id: "a2-fries",
+		act: 2,
+		level: 12,
+		title: "Research",
+		recap:
+			"Dr. Kim is caught with the Baron's large fries. She calls it research.",
+		lines: [
+			{ who: "barry", text: "Dr. Kim, your usual. Large fries, extra salt." },
+			{ who: "kim", text: "That is research." },
+			{ who: "derek", text: "That is my line." },
+			{ who: "kim", text: "You may have it back when you have a doctorate." },
+		],
+	},
+	{
+		id: "a2-school",
+		act: 2,
+		level: 13,
+		title: "Class of 99",
+		recap:
+			"A photo shows Victor and Barry were on the same debating team at school.",
+		lines: [
+			{
+				who: "lisa",
+				text: "Found this in the lease folder. Maxwell and Baron. Debate club.",
+			},
+			{ who: "alex", text: "They were on the same team." },
+			{
+				who: "barry",
+				text: "He always spoke second. He always had the last word.",
+			},
+			{
+				who: "victor",
+				text: "And you always left the room before I'd finished.",
+			},
+		],
+	},
+	{
+		id: "a2-deal",
+		act: 2,
+		level: 14,
+		title: "The deal",
+		recap:
+			"Victor offers to buy Barry's building in front of everyone. Barry says not yet.",
+		lines: [
+			{
+				who: "victor",
+				text: "Barry. Twice what it is worth. Sign today and keep the fryer.",
+			},
+			{ who: "barry", text: "Not yet." },
+			{
+				who: "alex",
+				text: "If anyone buys that building, it should be someone who keeps the street as it is.",
+			},
+			{
+				who: "lisa",
+				text: "Or someone who makes the sign smaller, and a lot friendlier.",
+			},
+		],
+	},
+	{
+		id: "a2-wall",
+		act: 2,
+		level: 15,
+		title: "The wall",
+		recap:
+			"Marcus takes his notebook to MaxOut. Victor never saw the wall before opening day.",
+		lines: [
+			{
+				who: "marcus",
+				text: "I brought the notebook. Page one is on your wall, word for word.",
+			},
+			{
+				who: "victor",
+				text: "I never saw that wall until opening day. Dana had it printed.",
+			},
+			{ who: "dana", text: "Standard procedure. Nobody told me whose it was." },
+			{
+				who: "marcus",
+				text: "Now you know. Put my name under it, or take it down.",
+			},
+		],
+	},
+	{
+		id: "a2-poster",
+		act: 2,
+		level: 16,
+		title: "The poster",
+		recap:
+			"A poster announces the Pavement Street Open: MaxOut against Slim Pals, winner keeps the better sign.",
+		lines: [
+			{
+				who: "lisa",
+				text: "There is a poster on every lamp post. The Pavement Street Open.",
+			},
+			{
+				who: "alex",
+				text: "MaxOut against Slim Pals. Winner keeps the better sign.",
+			},
+			{ who: "marcus", text: "We could use a better sign." },
+			{
+				who: "narrator",
+				text: "End of act two. The street is about to be settled in public.",
+			},
+		],
+	},
 ]
 
 export type StoryDto = {
@@ -257,7 +417,7 @@ export function storyState(
 // while after it was seen (an extra standing in the lobby or on the pavement
 // with a couple of lines of their own).
 
-export type StoryGuestKey = "victor" | "barry"
+export type StoryGuestKey = "victor" | "barry" | "dana"
 
 export type StoryGuest = {
 	who: StoryGuestKey
@@ -276,6 +436,24 @@ export type StoryGuest = {
 }
 
 export const STORY_GUESTS: Readonly<Record<StoryGuestKey, StoryGuest>> = {
+	dana: {
+		who: "dana",
+		name: "Dana",
+		where: "lobby",
+		look: {
+			skin: "#f0c8a0",
+			hair: "#d8b24a",
+			top: "#2a8f8f",
+			bottom: "#1d4f50",
+			shoes: "#ffffff",
+		},
+		lines: [
+			"Solid floor. Honest rubber.",
+			"I would put the squat rack by the window.",
+			"No hard feelings. Mostly.",
+			"Is Marian counting out loud again.",
+		],
+	},
 	victor: {
 		who: "victor",
 		name: "Victor",
@@ -320,6 +498,9 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"a1-samples": "barry",
 	"a1-offer": "victor",
 	"a1-friend": "barry",
+	"a2-sale": "barry",
+	"a2-rival": "dana",
+	"a2-deal": "victor",
 }
 export const GUEST_MINUTES = 12
 
