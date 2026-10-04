@@ -5,9 +5,12 @@
 // other tabs (hidden, so the renderer pauses) to make coming back instant.
 import { onMount } from "svelte"
 import {
+	type ChallengeStanding,
+	COACH_NAMES,
 	type CoachSay,
 	coachLineFor,
 	isCoachVoice,
+	seededRng,
 } from "../../shared/gym3d/coachLines.js"
 import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
@@ -15,6 +18,7 @@ import GoalsCard from "../components/home/GoalsCard.svelte"
 import { coachSvg } from "../components/home/icons"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import { api } from "../lib/api.js"
+import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
 import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
@@ -71,14 +75,6 @@ function onTip(text: string, kind: "info" | "error") {
 	}, 4000)
 }
 
-const COACH_NAMES: Record<string, string> = {
-	friendly: "Coach Sam",
-	drill_sergeant: "Sarge",
-	roaster: "The Roaster",
-	anime_sensei: "Sensei",
-	bro: "Bro",
-}
-
 const coachName = $derived(
 	COACH_NAMES[userProfile.data?.coachPersonality ?? "friendly"] ?? "Coach Sam",
 )
@@ -87,14 +83,7 @@ const pending = $derived(wallet.data?.pendingUpgrades ?? [])
 
 /** What the coach said lately (a plain list: it only feeds the next pick). */
 const recentCoach: string[] = []
-function seeded(n: number): () => number {
-	let x = (n * 7919 + 13) >>> 0
-	return () => {
-		x = (Math.imul(x, 1664525) + 1013904223) >>> 0
-		return x / 2 ** 32
-	}
-}
-
+let challengeStand = $state<ChallengeStanding | null>(null)
 const coachSay = $derived.by((): CoachSay => {
 	void coachPick
 	const c = (() => {
@@ -114,9 +103,10 @@ const coachSay = $derived.by((): CoachSay => {
 			pendingGear: pending[0]?.name,
 			streak: checkinState.data?.streakCount,
 			hour: new Date().getHours(),
+			challenge: challengeStand ?? undefined,
 		},
 		recentCoach,
-		seeded(coachPick),
+		seededRng(coachPick),
 	)
 })
 
@@ -209,8 +199,21 @@ function hasWebGL2(): boolean {
 	}
 }
 
+/** The joined monthly challenge, so the coach can speak about it now and then. */
+async function loadChallengeStanding() {
+	try {
+		const c = await api.get<
+			(Parameters<typeof challengeStanding>[0] & { joined: boolean }) | null
+		>("/challenges/current")
+		challengeStand = c?.joined ? challengeStanding(c) : null
+	} catch {
+		// the coach just stays on the day's tasks
+	}
+}
+
 onMount(() => {
 	void loadOwnedCosmetics()
+	void loadChallengeStanding()
 	if (!hasWebGL2()) failed = "webgl"
 	else load()
 	void loadToday()

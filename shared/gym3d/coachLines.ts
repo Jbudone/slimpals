@@ -9,6 +9,36 @@ import type { Rng } from "./npcLines.js"
 
 export type CoachVoice = CoachPersonality
 
+export const COACH_NAMES: Record<CoachVoice, string> = {
+	friendly: "Coach Sam",
+	drill_sergeant: "Sarge",
+	roaster: "The Roaster",
+	anime_sensei: "Sensei",
+	bro: "Bro",
+}
+
+/** A small seeded random source: the same seed always gives the same line, so
+ * a bubble or card holds still until something changes. */
+export function seededRng(seed: number): Rng {
+	let x = (seed * 7919 + 13) >>> 0
+	return () => {
+		x = (Math.imul(x, 1664525) + 1013904223) >>> 0
+		return x / 2 ** 32
+	}
+}
+
+/** Where the player stands in this month's challenge. */
+export type ChallengeStanding = {
+	/** Day of the month, 1-based. */
+	day: number
+	/** Days in the month. */
+	days: number
+	/** Average completion of the goals, 0-1. */
+	done: number
+	/** The challenge is finished (nothing to nag about). */
+	complete?: boolean
+}
+
 export type CoachContext = {
 	/** Tasks left today (check-in included). */
 	left: number
@@ -22,6 +52,8 @@ export type CoachContext = {
 	streak?: number
 	/** Local hour 0-23. */
 	hour: number
+	/** A joined challenge: its lines now and then replace the task count. */
+	challenge?: ChallengeStanding
 }
 
 export type CoachSay = { id: string; lead: string; rest: string }
@@ -250,6 +282,15 @@ export function coachLineFor(
 	rng: Rng,
 ): CoachSay {
 	const sit = situationOf(c)
+	// once in a while, when nothing urgent is up, the challenge gets the floor
+	const chance = rng()
+	if (
+		c.challenge &&
+		!c.challenge.complete &&
+		(sit === "morning" || sit === "day" || sit === "evening") &&
+		chance < 0.4
+	)
+		return challengeLineFor(voice, c.challenge, rng, recent)
 	const pool = LINES[voice][sit]
 	const fresh = pool
 		.map((v, i) => ({ v, id: `${voice}:${sit}:${i}` }))
@@ -271,6 +312,187 @@ export function allCoachLines(): { id: string; lead: string; rest: string }[] {
 		(Object.keys(LINES[voice]) as Situation[]).flatMap((sit) =>
 			LINES[voice][sit].map((v, i) => ({
 				id: `${voice}:${sit}:${i}`,
+				lead: v[0],
+				rest: v[1],
+			})),
+		),
+	)
+}
+
+// ── challenge commentary ───────────────────────────────────────────────────
+
+export type ChallengeStage = "start" | "ahead" | "on" | "behind" | "finale"
+
+/** Where the standing falls: the first and last days get their own lines,
+ * otherwise ahead / on track / behind the month's pace. */
+export function challengeStage(c: ChallengeStanding): ChallengeStage {
+	if (c.day <= 2) return "start"
+	if (c.days - c.day <= 2) return "finale"
+	const elapsed = c.day / c.days
+	if (c.done >= elapsed + 0.1) return "ahead"
+	if (c.done < elapsed - 0.15) return "behind"
+	return "on"
+}
+
+/** {d} = days left in the month. */
+const CHALLENGE_LINES: Record<
+	CoachVoice,
+	Record<ChallengeStage, readonly Variant[]>
+> = {
+	friendly: {
+		start: [
+			["A fresh challenge.", "{d} days to go. Small steps add up."],
+			["Here we go.", "One day at a time and you'll get there."],
+		],
+		ahead: [
+			["You're ahead of pace.", "Keep it easy and steady. {d} days left."],
+			["Look at you go.", "Ahead of the month already."],
+		],
+		on: [
+			["Right on track.", "Keep doing what you're doing. {d} days left."],
+			["Steady progress.", "The challenge is going well."],
+		],
+		behind: [
+			[
+				"A little behind, no stress.",
+				"A good day catches you up. {d} days left.",
+			],
+			["Still plenty of time.", "Pick one goal and do that today."],
+		],
+		finale: [
+			["Final stretch.", "{d} days left. You've got this."],
+			["Almost there.", "Finish strong, I'm cheering for you."],
+		],
+	},
+	drill_sergeant: {
+		start: [
+			["New challenge, recruit.", "{d} days. Make them count."],
+			["Day one.", "Set the pace now."],
+		],
+		ahead: [
+			["Ahead of schedule.", "Don't ease off. {d} days left."],
+			["Good pace.", "Hold it."],
+		],
+		on: [
+			["On schedule.", "Maintain. {d} days left."],
+			["Holding steady.", "Keep your head down and work."],
+		],
+		behind: [
+			["You're behind.", "Close the gap today. {d} days left."],
+			["Falling short of pace.", "Fix it. One goal, right now."],
+		],
+		finale: [
+			["Final days.", "{d} left. Leave nothing on the table."],
+			["Last push.", "Finish the mission."],
+		],
+	},
+	roaster: {
+		start: [
+			["A brand-new challenge.", "Bold of you to join. {d} days, no pressure."],
+			[
+				"Day one of a month of effort.",
+				"Let's see how long the motivation lasts.",
+			],
+		],
+		ahead: [
+			["Ahead of pace?", "Who gave you permission. {d} days left."],
+			["Overachiever.", "Save some effort for the rest of us."],
+		],
+		on: [
+			["Right on pace.", "Aggressively average. I mean that nicely."],
+			["Holding steady.", "Quietly doing fine. Suspicious."],
+		],
+		behind: [
+			[
+				"Little behind, huh.",
+				"{d} days left. The goals are not going anywhere.",
+			],
+			["The challenge misses you.", "Do one thing today. Anything."],
+		],
+		finale: [
+			["Deadline energy.", "{d} days left. This is your moment."],
+			["The final stretch.", "Procrastinators do their best work now."],
+		],
+	},
+	anime_sensei: {
+		start: [
+			["A new trial begins.", "{d} days lie ahead. Walk them well."],
+			["The first step.", "Every master began here."],
+		],
+		ahead: [
+			["You walk ahead of the path.", "Do not rush. {d} days remain."],
+			["Swift, but steady.", "Your discipline shows."],
+		],
+		on: [
+			["Your pace is true.", "Continue. {d} days remain."],
+			["Steady as the river.", "The challenge bends to patience."],
+		],
+		behind: [
+			[
+				"The path winds behind you.",
+				"A single good day returns you to it. {d} remain.",
+			],
+			["Do not despair.", "Begin again today."],
+		],
+		finale: [
+			["The final days.", "{d} remain. Show what you have learned."],
+			["The summit is near.", "Finish what you began."],
+		],
+	},
+	bro: {
+		start: [
+			["New challenge, let's go.", "{d} days. We're getting this done."],
+			["Day one, bro.", "Strong start, strong month."],
+		],
+		ahead: [
+			["Ahead of pace, nice.", "Keep cooking. {d} days left."],
+			["Crushing it.", "You're ahead of the month."],
+		],
+		on: [
+			["Right on pace.", "Solid. {d} days left."],
+			["Steady gains.", "Keep stacking days."],
+		],
+		behind: [
+			["Little behind, no biggie.", "One good day and you're back. {d} left."],
+			["Time to catch up.", "Pick one goal and smash it today."],
+		],
+		finale: [
+			["Final stretch, bro.", "{d} days. Finish strong."],
+			["Home stretch.", "Don't coast now."],
+		],
+	},
+}
+
+/** The coach's remark on the monthly challenge. `rng` picks among a stage's
+ * lines; the Challenges page seeds it by day so the line holds all day. */
+export function challengeLineFor(
+	voice: CoachVoice,
+	c: ChallengeStanding,
+	rng: Rng,
+	recent: readonly string[] = [],
+): CoachSay {
+	const stage = challengeStage(c)
+	const pool = CHALLENGE_LINES[voice][stage].map((v, i) => ({
+		v,
+		id: `${voice}:challenge-${stage}:${i}`,
+	}))
+	const fresh = pool.filter((x) => !recent.includes(x.id))
+	const from = fresh.length ? fresh : pool
+	const pick = from[Math.floor(rng() * from.length) % from.length]
+	const left = String(Math.max(0, c.days - c.day))
+	const f = (t: string) => t.replace("{d}", left)
+	return { id: pick.id, lead: f(pick.v[0]), rest: f(pick.v[1]) }
+}
+
+export function allChallengeLines(): {
+	id: string
+	lead: string
+	rest: string
+}[] {
+	return COACH_VOICES.flatMap((voice) =>
+		(Object.keys(CHALLENGE_LINES[voice]) as ChallengeStage[]).flatMap((st) =>
+			CHALLENGE_LINES[voice][st].map((v, i) => ({
+				id: `${voice}:challenge-${st}:${i}`,
 				lead: v[0],
 				rest: v[1],
 			})),

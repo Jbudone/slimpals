@@ -190,9 +190,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   lacks a pool or sauna. Burger Baron sale: at `BURGER.stars` (4) the billboard reads FOR SALE (`shared/gym3d/burger.ts`, `burgerState`); `POST /api/gym/layout/burger/buy` (`services/gym/burger.ts`, under the gym row lock) charges `BURGER.cost` once (claim `gym_rewards` `burger:bought`) and the sign becomes "BARON Jr." and smaller. The layout carries `burger`; the stars card (`GoalsCard.svelte`) has the Buy button. Bus stop: a roofed shelter on the pavement `BUS_STOP_DX` (7) east of the door (`world.ts` `buildGround`) and a yellow bus in `world/traffic.ts` that pulls in at it for 5 s on each pass (counted in `stats().cars`). Not yet: the lot becoming a plot with a street door, a MaxOut event. Bus waiters: about one passer-by in five (never more than one at a time, none with reduced motion) walks to the stop and waits (`after: "wait"`, `People.addWaiter`, `boardWaiters`; `stats().waiting`); when the bus is in (`Traffic.busAtStop`, wired as `People.busAtStop`) they walk to it and are gone, or wander off after 2 minutes. Dog walker: about 3 in 10 passers-by who walk on past have a small dog on a lead (`People.addDog`, `Person.dog`, a child mesh of the rig root, freed in `remove`; `stats().dogs`). e2e: `gym3d-life.spec.ts` ("street", "burger").
 - Coach bubble (#125, first slice): the coach's line on the gym home comes from `shared/gym3d/coachLines.ts` (`coachLineFor`): a line in the
   voice of the chosen personality (friendly, drill sergeant, roaster, anime sensei, bro) for the situation (new gear, loading, all done,
-  streak milestone, tasks left by morning/day/evening), skipping the last three it said (`Home.svelte` keeps them). Not yet: lines
-  for coins piling up and challenge progress, per-day challenge commentary generated when joining, portraits per personality,
-  the coach lines in Admin's content tuning.
+  streak milestone, tasks left by morning/day/evening), skipping the last three it said (`Home.svelte` keeps them). Challenge commentary: with a joined challenge the bubble now and then (2 in 5, when nothing
+  urgent is up) speaks about it instead of the task count, and the Challenges page shows the coach's note for the day (`challengeLineFor`,
+  stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
+  computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
+  portraits per personality, the coach lines in Admin's content tuning.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
