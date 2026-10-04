@@ -20,6 +20,23 @@ export const GHOST_LINES: readonly string[] = [
 	"I'm only here for the form checks.",
 ]
 
+/** Half of the members about to head home in October stay for one more
+ * station, and say so. */
+export const GHOST_STAY_CHANCE = 0.5
+
+/** What a member says when the ghost talks them into staying. */
+export const STAY_LINES: readonly string[] = [
+	"The ghost says one more set. Fine.",
+	"I felt a chill. And a deadline. One more.",
+	"Okay, okay. One more round.",
+	"Something told me to stay. It was cold.",
+	"Fine. The ghost has a point.",
+]
+
+export function stayLine(rng: Rng): string {
+	return STAY_LINES[Math.floor(rng() * STAY_LINES.length) % STAY_LINES.length]
+}
+
 /** The ghost's activity label while it stands guard at the lockers. */
 export const GHOST_LOCKERS = "guarding the lockers"
 

@@ -440,6 +440,7 @@ export class Gym3DApp {
 		this.life.banterContext = () => this.banterContext()
 		this.people.onUpgradedUse = (p, tier) =>
 			this.life.gearReaction(p, tier, this.clock)
+		this.people.onGhostStay = (p) => this.life.ghostStay(p, this.clock)
 		this.bindInput(host)
 		this.r.start((dt) => this.frame(dt))
 		this.pollTimer = setInterval(() => {
@@ -2319,6 +2320,7 @@ export class Gym3DApp {
 		this.labels.dispose()
 		this.people.onRemove = null
 		this.people.onUpgradedUse = null
+		this.people.onGhostStay = null
 		this.people.dispose()
 		this.build.dispose()
 		this.blobs.dispose()

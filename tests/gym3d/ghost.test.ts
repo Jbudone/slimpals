@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest"
 import {
 	GHOST_LINES,
 	GHOST_LOCKER_LINES,
+	GHOST_STAY_CHANCE,
 	ghostLine,
 	ghostSeason,
+	STAY_LINES,
+	stayLine,
 } from "../../shared/gym3d/ghost.js"
 
 describe("the October ghost", () => {
@@ -20,5 +23,15 @@ describe("the October ghost", () => {
 		expect(ghostLine(() => 0)).toBe(GHOST_LINES[0])
 		expect(ghostLine(() => 0, true)).toBe(GHOST_LOCKER_LINES[0])
 		expect(ghostLine(() => 0.999)).toBe(GHOST_LINES[GHOST_LINES.length - 1])
+	})
+
+	it("talks half of the leavers into one more set, in short dry lines", () => {
+		expect(GHOST_STAY_CHANCE).toBe(0.5)
+		for (const l of STAY_LINES) {
+			expect(l.length).toBeLessThanOrEqual(60)
+			expect(l).not.toContain("!")
+		}
+		expect(stayLine(() => 0)).toBe(STAY_LINES[0])
+		expect(stayLine(() => 0.999)).toBe(STAY_LINES[STAY_LINES.length - 1])
 	})
 })
