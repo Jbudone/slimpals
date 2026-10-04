@@ -103,4 +103,11 @@ stamp, Tess's all-night cafe with a quiet corner, Dr. Kim's breathing advice and
 a chair by the results door. The arc ends with two hundred stamps and the Row
 sleeping in.
 
-Campaign 9 onwards have no story yet (they can be finished from gym level 17).
+## Campaign 9: Harbour Road, a third time
+Nine chapters (gym levels 1-9) in `shared/gym3d/storyLighthouse.ts`. The winter the
+old lighthouse is restored: Captain Reyes counts eleven dark years, volunteers
+relay supplies up a hundred and twelve steps, Old Joe feeds the crew, a gale
+keeps everyone in the gym for two days and the street collects spare cable.
+Marcus's nine-year-old nephew throws the switch.
+
+Campaign 10 onwards have no story yet (they can be finished from gym level 17).
