@@ -31,7 +31,12 @@ describe("coach lines", () => {
 
 	it("remarks on the season now and then, never when something is urgent", () => {
 		for (const v of COACH_VOICES)
-			for (const season of ["halloween", "harvest", "winter"] as const) {
+			for (const season of [
+				"spring",
+				"halloween",
+				"harvest",
+				"winter",
+			] as const) {
 				const say = coachLineFor(v, { ...base, season }, [], rng)
 				expect(say.id).toBe(`${v}:season-${season}:0`)
 				const next = coachLineFor(v, { ...base, season }, [say.id], rng)
