@@ -5,6 +5,7 @@
 import * as T from "three"
 import { BURGER_SIGN, type BurgerState } from "../../../../shared/gym3d/burger"
 import { NEIGHBOURHOOD_COLS } from "../../../../shared/gym3d/lots"
+import { MAXOUT_PROMO_SIGN, MAXOUT_SIGN } from "../../../../shared/gym3d/maxout"
 import {
 	DOOR_HALF,
 	isRoomType,
@@ -676,17 +677,35 @@ export class GymWorld implements NavSource {
 	 * road: plain blocks with a billboard on the roof that faces the camera. */
 	private buildStreetShops(roadZ: number): void {
 		this.roadZ = roadZ
-		this.makeShop({
+		this.drawMaxout()
+		this.setBurger(this.layout.burger?.state ?? "closed")
+	}
+
+	private maxoutG: T.Group | null = null
+	private maxoutOn = false
+
+	/** MaxOut's weekend promo: its billboard changes while it runs. */
+	setMaxoutPromo(on: boolean): void {
+		if (on === this.maxoutOn) return
+		this.maxoutOn = on
+		this.drawMaxout()
+	}
+
+	private drawMaxout(): void {
+		if (this.maxoutG) {
+			this.clearGroup(this.maxoutG)
+			this.maxoutG.removeFromParent()
+		}
+		this.maxoutG = this.makeShop({
 			x: this.doorX - 17,
 			w: 9,
 			h: 3.4,
 			wall: "#8a93a6",
 			trim: "#4a5060",
-			label: "MAXOUT",
-			bg: "#2b3440",
-			fg: "#7fe0d0",
+			label: this.maxoutOn ? MAXOUT_PROMO_SIGN : MAXOUT_SIGN,
+			bg: this.maxoutOn ? "#c0392b" : "#2b3440",
+			fg: this.maxoutOn ? "#fff1c2" : "#7fe0d0",
 		})
-		this.setBurger(this.layout.burger?.state ?? "closed")
 	}
 
 	/** The Burger Baron follows the gym's progress: its sign says FOR SALE at

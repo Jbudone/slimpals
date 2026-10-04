@@ -18,9 +18,11 @@ export type BanterContext = {
 	classes?: boolean
 	/** The player upgraded or placed gear a moment ago. */
 	upgraded?: boolean
+	/** The rival gym is running its weekend promo. */
+	maxout?: boolean
 }
 
-export type BanterWhen = "event" | "classes" | "upgraded"
+export type BanterWhen = "event" | "classes" | "upgraded" | "maxout"
 
 export type Banter = {
 	id: string
@@ -37,6 +39,32 @@ export type Banter = {
 }
 
 export const BANTER: readonly Banter[] = [
+	{
+		id: "maxout-promo-sign",
+		when: "maxout",
+		lines: [
+			"MaxOut has a fifty percent off sign up.",
+			"Fifty percent off of what, exactly.",
+			"The contract, probably. Not the fine print.",
+		],
+	},
+	{
+		id: "maxout-promo-loyal",
+		when: "maxout",
+		lines: [
+			"Half the street is queuing at MaxOut today.",
+			"I'm staying. The lockers here close properly.",
+		],
+	},
+	{
+		id: "maxout-promo-tempted",
+		when: "maxout",
+		lines: [
+			"I looked at the MaxOut promo for a full minute.",
+			"And?",
+			"Then I came back here and did my sets.",
+		],
+	},
 	{
 		id: "no-pool",
 		missingRoom: "pool",
