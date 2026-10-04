@@ -115,8 +115,8 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `GoalsCard.svelte` (`src/lib/rewardTrack.svelte.ts`); taking a step bursts and flies the reward chips to the HUD, then the
   wallet reloads (e2e: `gym3d-life.spec.ts` "reward track"). Admin: `POST /admin/users/:id/gym/track-step {step}` sets this month's progress without paying (0 resets;
   Admin's gym section). Badges: a claim awards `track_first`, `track_week` (7 steps in a month) and `track_full` (every step) through `checkAndAward`
-  (`track_step` context; the claim response carries `newBadges`, shown as toasts, and `shareBadges` posts them to the feed as milestones for users with auto-share on). Not yet: NPC/coach rewards beyond the hat, the
-  dashboard/HUD placement, admin authoring of tracks.
+  (`track_step` context; the claim response carries `newBadges`, shown as toasts, and `shareBadges` posts them to the feed as milestones for users with auto-share on). The stars button on the gym home carries a pulsing green dot while today's step can be taken (`track-dot`). Not yet: NPC/coach rewards beyond the hat, the
+  dashboard placement, admin authoring of tracks.
 - Cosmetics inventory (#135, first slice): `gym_cosmetics` (migration 0027; one row per gym and key, source recorded)
   holds what a gym owns besides gear; the catalog is `shared/gym3d/cosmetics.ts` (October's Jack-o'-lantern, Cobweb neon
   and the coach's witch hat). The reward track grants them: its first three big steps of a month give that month's cosmetics

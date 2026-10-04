@@ -1174,6 +1174,8 @@ test("3D gym reward track: after a check-in the card takes a step and the coins 
 	await page.goto("/")
 	await waitReady(page)
 	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	// the star shows a dot while today's step is waiting
+	await expect(page.getByTestId("track-dot")).toBeVisible()
 	await page.getByTestId("gym-stars").click()
 	await expect(page.getByTestId("track-progress")).toContainText("Step 0 of")
 	await page.getByTestId("track-claim").click()
@@ -1181,8 +1183,9 @@ test("3D gym reward track: after a check-in the card takes a step and the coins 
 		timeout: 15_000,
 	})
 	await shot(page, "20-track-claimed")
-	// a second try the same day is blocked
+	// a second try the same day is blocked, and the dot goes
 	await expect(page.getByTestId("track-claim")).toBeDisabled()
+	await expect(page.getByTestId("track-dot")).toHaveCount(0)
 	await expect
 		.poll(
 			async () =>
