@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
+	gymPlots,
+	gymRooms,
 	invites,
 	userGyms,
 	userGymUpgrades,
@@ -10,6 +12,13 @@ import {
 import { GYM_UPGRADES } from "../../server/db/seed.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import { BURGER, burgerState } from "../../shared/gym3d/burger.js"
+import {
+	BURGER_LOT_TEMPLATES,
+	currentLots,
+	lotsForSale,
+	NEIGHBOURHOOD_COLS,
+	neighbourhoodCols,
+} from "../../shared/gym3d/lots.js"
 import type { GymLayoutDto } from "../../shared/types.js"
 import {
 	closeTestDb,
@@ -112,6 +121,24 @@ describe("Burger Baron rules", () => {
 	})
 })
 
+describe("the Baron's lots", () => {
+	it("only exist once he is bought, past the east end, and sell next to a built plot", () => {
+		const east = [{ px: 6, pz: 1 }]
+		const ids = (lots: { id: string }[]) => lots.map((l) => l.id)
+		expect(neighbourhoodCols(false)).toBe(NEIGHBOURHOOD_COLS)
+		expect(neighbourhoodCols(true)).toBeGreaterThan(NEIGHBOURHOOD_COLS)
+		for (const t of BURGER_LOT_TEMPLATES)
+			for (const c of t.cells)
+				expect(c.px).toBeGreaterThanOrEqual(NEIGHBOURHOOD_COLS)
+		// not before
+		expect(ids(currentLots(east)).some((i) => i.endsWith(":7,1"))).toBe(false)
+		expect(ids(lotsForSale(east)).some((i) => i.endsWith(":7,1"))).toBe(false)
+		// after: for sale when touching a built cell, not otherwise
+		expect(ids(lotsForSale(east, true))).toContain("big:7,1")
+		expect(ids(lotsForSale([{ px: 0, pz: 2 }], true))).not.toContain("big:7,1")
+	})
+})
+
 describe("Burger Baron route", () => {
 	it("is closed for a small gym and cannot be bought", async () => {
 		const { cookie, layout } = await setup(["cardio_treadmill"])
@@ -133,6 +160,46 @@ describe("Burger Baron route", () => {
 		expect(bought.coins).toBe(5000 - BURGER.cost)
 		await buy(cookie).expect(409)
 		expect((await getLayout(cookie)).coins).toBe(5000 - BURGER.cost)
+	})
+
+	it("opens the Baron's lots for sale once bought, and not before", async () => {
+		const { cookie, gymId, layout } = await setup(
+			GYM_UPGRADES.map((u) => u.key),
+		)
+		const db = await getTestDb()
+		// make sure the east end is built so the new lots touch it
+		if (!layout.plots.some((p) => p.px === 6 && p.pz === 1)) {
+			const [room] = await db
+				.insert(gymRooms)
+				.values({ gymId, type: "empty", shape: "normal", level: 1 })
+				.$returningId()
+			await db.insert(gymPlots).values({
+				gymId,
+				px: 6,
+				pz: 1,
+				state: "owned",
+				lotShape: "normal",
+				roomId: room.id,
+			})
+		}
+		await db
+			.update(userGyms)
+			.set({ coins: 20000 })
+			.where(eq(userGyms.id, gymId))
+		const lotIds = async () => (await getLayout(cookie)).lots.map((l) => l.id)
+		expect(await lotIds()).not.toContain("big:7,1")
+		// not for sale before the Baron is his
+		await request(app)
+			.post("/api/gym/layout/lots/big:7,1/buy")
+			.set("Cookie", cookie)
+			.expect(409)
+		await buy(cookie).expect(200)
+		expect(await lotIds()).toContain("big:7,1")
+		await request(app)
+			.post("/api/gym/layout/lots/big:7,1/buy")
+			.set("Cookie", cookie)
+			.expect(200)
+		expect(await lotIds()).not.toContain("big:7,1")
 	})
 
 	it("refuses when there are not enough coins", async () => {

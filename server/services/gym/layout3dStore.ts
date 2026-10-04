@@ -547,7 +547,7 @@ export async function getGymLayoutDto(
 			}),
 		),
 		unplaced: unplacedKeys.map((k) => ({ key: k, name: nameOf(k) ?? k })),
-		lots: lotsForSale(built).map((l) => ({
+		lots: lotsForSale(built, !!boughtRow).map((l) => ({
 			id: l.id,
 			shape: l.shape,
 			cells: l.cells,
