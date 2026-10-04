@@ -57,6 +57,19 @@ describe("ambient banter", () => {
 		expect(ids({}).some((i) => i.startsWith("event"))).toBe(false)
 	})
 
+	it("talks about a game only while one is on in that room type", () => {
+		const ids = (playing: string[]) =>
+			banterFor({ ...full, playing }).map((b) => b.id)
+		expect(ids([]).some((i) => i.startsWith("play"))).toBe(false)
+		expect(ids(["boxing"]).every((i) => i.startsWith("play-sparring"))).toBe(
+			true,
+		)
+		expect(ids(["court"]).every((i) => i.startsWith("play-pickup"))).toBe(true)
+		expect(ids(["boxing", "court"]).every((i) => i.startsWith("play"))).toBe(
+			true,
+		)
+	})
+
 	it("grumbles about MaxOut's promo only while it runs", () => {
 		const ids = (extra: Partial<BanterContext>) =>
 			banterFor({ ...full, ...extra }).map((b) => b.id)
