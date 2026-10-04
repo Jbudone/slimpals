@@ -994,7 +994,7 @@ test("3D gym hiring: a hire walks in, stands in the room and can be trained", as
 	expect(L1?.coins).toBeLessThan(L0.coins)
 	await shot(page, "14-hired")
 
-	// they are in the gym: tap them for the staff card, then train them
+	// they are in the gym: hold a finger on them for the staff card, then train them
 	const key = `hire:${hired?.id}`
 	await expect
 		.poll(async () =>
@@ -1013,7 +1013,8 @@ test("3D gym hiring: a hire walks in, stands in the room and can be trained", as
 			(k) => window.gym3d?.screenOf(k) ?? null,
 			key,
 		)
-		if (pt) await page.mouse.click(box.x + pt.x, box.y + pt.y)
+		// a finger held on them opens the card
+		if (pt) await tapPerson(page, key)
 		card = await page
 			.getByTestId("gym3d-staff-card")
 			.isVisible()
