@@ -12,6 +12,7 @@ import {
 	isCoachVoice,
 	seededRng,
 } from "../../shared/gym3d/coachLines.js"
+import { seasonFromQuery, seasonOf } from "../../shared/gym3d/season.js"
 import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
 import GoalsCard from "../components/home/GoalsCard.svelte"
@@ -92,6 +93,13 @@ const pending = $derived(wallet.data?.pendingUpgrades ?? [])
 
 /** What the coach said lately (a plain list: it only feeds the next pick). */
 const recentCoach: string[] = []
+/** The season (UTC month, or forced with ?season= like the gym's dressing). */
+function seasonNow() {
+	const q = new URLSearchParams(globalThis.location?.search ?? "")
+	const forced = seasonFromQuery(q.get("season"), q.get("ghost"))
+	if (forced === "none") return null
+	return forced ?? seasonOf(new Date().getUTCMonth() + 1)
+}
 let challengeStand = $state<ChallengeStanding | null>(null)
 /** Coins waiting in the gym, in steps of 50 so the bubble holds still as they grow. */
 let coinsWaiting = $state(0)
@@ -116,6 +124,7 @@ const coachSay = $derived.by((): CoachSay => {
 			hour: new Date().getHours(),
 			challenge: challengeStand ?? undefined,
 			coinsWaiting,
+			season: seasonNow(),
 		},
 		recentCoach,
 		seededRng(coachPick),
