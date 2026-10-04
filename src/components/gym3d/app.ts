@@ -171,6 +171,7 @@ export type Gym3DStats = {
 	season: string
 	pumpkins: number
 	maxout: number
+	location: string
 	waiting: number
 	/** Coin bubbles showing now. */
 	bubbles: number
@@ -405,6 +406,7 @@ export class Gym3DApp {
 		this.r = new GymRenderer(host)
 		try {
 			this.world = new GymWorld(layout, this.assets)
+			this.r.renderer.setClearColor(this.world.location.sky)
 			this.blobs = new BlobShadows(this.world.scene)
 			this.people = new People(this.world)
 			this.labels = new LabelLayer(host)
@@ -530,7 +532,8 @@ export class Gym3DApp {
 			event: this.hap.stats().event !== "",
 			classes: this.hap.stats().classes > 0,
 			upgraded: this.clock - this.lastClaimAt < 180,
-			maxout: this.maxoutOn(),
+			maxout: this.maxoutOn() && (this.world.layout.campaign ?? 1) === 1,
+			campaign: this.world.layout.campaign ?? 1,
 			crowded:
 				this.people.people.filter((p) => p.kind === "member").length >= 8,
 		}
@@ -2354,6 +2357,7 @@ export class Gym3DApp {
 			dogs: this.people.people.filter((q) => q.dog).length,
 			season: this.season() ?? "none",
 			maxout: this.maxoutOn() ? 1 : 0,
+			location: this.world.location.name,
 			pumpkins: this.hap.seasonCount,
 			costumes: this.people.people.filter((q) => isCostume(q.out.acc)).length,
 			waiting: this.people.people.filter((q) => q.after === "wait").length,

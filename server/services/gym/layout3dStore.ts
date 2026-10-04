@@ -337,6 +337,7 @@ export async function getGymLayoutDto(
 			plotsBought: userGyms.plotsBought,
 			sweat: userGyms.sweat,
 			greens: userGyms.greens,
+			campaign: userGyms.campaign,
 		})
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
@@ -498,6 +499,7 @@ export async function getGymLayoutDto(
 
 	return {
 		gymId,
+		campaign: gym?.campaign ?? 1,
 		coins: gym?.coins ?? 0,
 		sweat: (gym?.sweat ?? 0) + paidSweat,
 		greens: (gym?.greens ?? 0) + paidGreens,
