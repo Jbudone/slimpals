@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { challenges, invites, userGyms, users } from "../../server/db/schema.js"
+import {
+	challenges,
+	invites,
+	socialPosts,
+	userGyms,
+	users,
+} from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	closeTestDb,
@@ -324,6 +330,53 @@ describe("PATCH /api/challenges/:id/progress", () => {
 		expect(inv.body.map((c: { key: string }) => c.key)).toEqual([
 			"challenge_trophy",
 		])
+	})
+
+	it("posts a finished challenge to the feed, unless auto-share is off", async () => {
+		const db = await getTestDb()
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		await request(app)
+			.post(`/api/challenges/${challenge.id}/join`)
+			.set("Cookie", cookie)
+			.send({ tier: "gold" })
+		await request(app)
+			.patch(`/api/challenges/${challenge.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 99, goal_2: 99, goal_3: 99 } })
+		const posts = await db
+			.select()
+			.from(socialPosts)
+			.where(eq(socialPosts.type, "challenge_completion"))
+		expect(posts).toHaveLength(1)
+		expect(posts[0].content).toMatchObject({
+			challengeName: challenge.title,
+			tier: "gold",
+		})
+
+		// the same finish with auto-share off posts nothing
+		await db.delete(socialPosts)
+		await db.update(users).set({ autoShareBadges: false })
+		await db.insert(challenges).values({
+			title: "Old Wellness",
+			description: "Another month",
+			month: MONTH === 1 ? 2 : 1,
+			year: YEAR,
+			theme: "wellness",
+			tasks: sampleGoals(),
+		})
+		const [second] = await db
+			.select()
+			.from(challenges)
+			.where(eq(challenges.title, "Old Wellness"))
+		await request(app)
+			.post(`/api/challenges/${second.id}/join`)
+			.set("Cookie", cookie)
+		await request(app)
+			.patch(`/api/challenges/${second.id}/progress`)
+			.set("Cookie", cookie)
+			.send({ dailyProgress: { goal_1: 99, goal_2: 99, goal_3: 99 } })
+		expect(await db.select().from(socialPosts)).toHaveLength(0)
 	})
 
 	it("pays each milestone (25/50/75/100%) once, as the goals fill", async () => {

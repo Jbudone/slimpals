@@ -263,6 +263,12 @@ onMount(loadFeed)
 						{:else if post.type === "challenge_completion"}
 							<p class="content-line">
 								✅ Completed challenge: <strong>{post.content.challengeName}</strong>
+								{#if post.content.tier}
+									on {post.content.tier}
+								{/if}
+								{#if post.content.reward}
+									· won {post.content.reward}
+								{/if}
 							</p>
 						{/if}
 					</div>

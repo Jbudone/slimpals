@@ -212,6 +212,8 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   sunrise: the sky runs dawn to dusk with progress; greens: drifting leaves; anything else a shimmer), on the unjoined card and above the coach note once joined;
   still under reduced motion. Template components are not covered by `tsc`: `npm run typecheck` also runs `check:svelte-names` (svelte-check, fails on "Cannot find name"),
   which caught missing imports in `Challenges.svelte` that had been broken since the milestones slice.
+- Challenge feed post (#124): finishing a challenge posts a `challenge_completion` to the feed for users with auto-share on (`server/services/challenges/feed.ts`,
+  content carries `challengeName`, `tier`, `reward`), and badges earned on the finish are shared through `shareBadges` like the check-in route does.
 - Challenge milestones (#124, first slice): a monthly challenge pays the gym at 25/50/75/100% of its goals' average completion
   (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
   reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each
