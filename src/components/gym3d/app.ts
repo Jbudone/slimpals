@@ -149,6 +149,7 @@ export type Gym3DStats = {
 	cars: number
 	dogs: number
 	costumes: number
+	pumpkins: number
 	waiting: number
 	/** Coin bubbles showing now. */
 	bubbles: number
@@ -572,6 +573,7 @@ export class Gym3DApp {
 		this.hap.setEvent(ev)
 		this.hap.syncGhost(this.ghostOn())
 		this.people.costumes = this.ghostOn()
+		this.hap.syncSeason(this.ghostOn())
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(
@@ -2285,6 +2287,7 @@ export class Gym3DApp {
 			...this.hap.stats(),
 			cars: this.traffic.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
+			pumpkins: this.hap.seasonCount,
 			costumes: this.people.people.filter((q) => q.out.acc.includes("witch"))
 				.length,
 			waiting: this.people.people.filter((q) => q.after === "wait").length,
