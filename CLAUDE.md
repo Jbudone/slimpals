@@ -14,6 +14,7 @@
   SocialHub (Feed/Badges), Settings, Admin. Five tabs in swipe order (`src/lib/tabs.ts`): Gym · Today · Compete · Progress · Social;
   a sideways swipe on a page walks them (`src/lib/swipe.ts`; not on the gym, which pans; the hubs swipe between their segments first).
   Today has a "Compete today" card (`CompeteCard.svelte`): the challenge's goals still to log (one tap) and the tournaments you are in.
+  Rewards page (`/rewards`, under the Today tab, `pages/Rewards.svelte`): the month's reward track as a path you walk (`components/home/RewardTrack.svelte`: a node a day, big chests on milestone days with their rewards on show, today's step glowing, opens on the next step) and "Coming up" (`UnlockTrack.svelte`, `lib/unlocks.ts` `upcomingUnlocks`: the next gear by XP, from the layout's `lockedGear` kept in `gymGoals.locked`). Reached from the stars card (`rewards-open`) and a row at the top of Today (`today-rewards`).
 - `src/components/home/` — gym home shell: Hud, TodayDrawer, TodayList, LevelUp, icons; state in
   `src/lib/wallet.svelte.ts` (HUD numbers) and `src/lib/today.svelte.ts` (tasks); reward chips in `src/lib/fly.ts`
 - `src/components/gym3d/` — the three.js gym (Gym3D.svelte, app.ts, NpcDialog, engine/, equipment/, people/, world/)

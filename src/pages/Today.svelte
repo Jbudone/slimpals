@@ -16,6 +16,7 @@ import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 import { checkinState, loadCheckinStatus } from "../lib/checkin.svelte.js"
+import { loadRewardTrack, rewardTrack } from "../lib/rewardTrack.svelte.js"
 import { loadToday } from "../lib/today.svelte.js"
 import { claimAsk } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
@@ -90,15 +91,33 @@ onMount(() => {
 	loadInspiration()
 	loadGymSummary()
 	void loadToday()
+	void loadRewardTrack()
 })
 </script>
 
 <div class="dashboard">
 	<h1>Today</h1>
 
-	<div class="tasks"><TodayList editable /></div>
-
 	<CompeteCard />
+
+	{#if rewardTrack.data}
+		{@const t = rewardTrack.data}
+		<button
+			type="button"
+			class="rewards-row"
+			onclick={() => page("/rewards")}
+			data-testid="today-rewards"
+		>
+			<span class="gift" aria-hidden="true">🎁</span>
+			<span class="rw-copy">
+				<b>{t.theme} track · {t.claimed}/{t.steps.length}</b>
+				<small>{t.canClaim ? "Today's step is ready" : "See what is coming up"}</small>
+			</span>
+			<span class="rw-go" aria-hidden="true">›</span>
+		</button>
+	{/if}
+
+	<div class="tasks"><TodayList editable /></div>
 
 	{#if inspiration}
 		<section class="card inspiration-card">
@@ -190,6 +209,41 @@ onMount(() => {
 </div>
 
 <style>
+.rewards-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	width: 100%;
+	padding: 0.75rem 1rem;
+	border: 2px solid rgba(242, 193, 74, 0.45);
+	border-radius: var(--radius-lg, 16px);
+	background: linear-gradient(180deg, #1f3f2a, #17301f);
+	color: var(--color-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.rewards-row .gift {
+	font-size: 1.6rem;
+}
+
+.rw-copy {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+}
+
+.rw-copy small {
+	color: var(--color-text-muted);
+}
+
+.rw-go {
+	font-size: 1.5rem;
+	color: #f2c14a;
+}
+
 .dashboard {
 	max-width: 480px;
 	margin: 0 auto;

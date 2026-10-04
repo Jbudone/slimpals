@@ -3,6 +3,7 @@ import page from "page"
 export type RoutePath =
 	| "/"
 	| "/today"
+	| "/rewards"
 	| "/upgrades"
 	| "/login"
 	| "/register"
@@ -36,6 +37,7 @@ export function initRouter() {
 	page("/challenges", go("/challenges"))
 	page("/social", go("/social"))
 	page("/today", go("/today"))
+	page("/rewards", go("/rewards"))
 	page("/upgrades", go("/upgrades"))
 	// the gym is home now (old links and bookmarks)
 	page.redirect("/gym", "/")
