@@ -178,7 +178,9 @@ async function tapRoom(page: Page, touch: boolean, roomId: number) {
 				() => true,
 				() => false,
 			)
-		if (ok) return p
+		// a tap that popped a speech line (or hit a person) counts as a tap but
+		// does not select the room: try another point
+		if (ok && (await stats(page))?.mark === "outline") return p
 	}
 	throw new Error(`room ${roomId} never took a tap`)
 }
@@ -233,9 +235,11 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	const calls1 = (await stats(page))?.drawCalls ?? 0
 	console.log(`gym3d tap draw calls: idle ${calls0}, room selected ${calls1}`)
 	expect(calls1 - calls0).toBeLessThan(20)
+	// the phone budget: a fully built gym with the street (cars, bus, shops)
+	// is about 265 draw calls; it was 250 before the street was added
 	if (testInfo.project.use.isMobile) {
-		expect(calls0).toBeLessThan(250)
-		expect(calls1).toBeLessThan(250)
+		expect(calls0).toBeLessThan(300)
+		expect(calls1).toBeLessThan(300)
 	}
 
 	// ── Customize reaches paint (and Back returns to the menu) ──
