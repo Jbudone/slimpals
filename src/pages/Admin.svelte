@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { CHALLENGE_CATALOG } from "../../shared/challenges/catalog.js"
 import { COSMETICS } from "../../shared/gym3d/cosmetics.js"
 import { api } from "../lib/api.js"
 import { fetchSession } from "../lib/auth.svelte.js"
@@ -1166,6 +1167,25 @@ async function seedChallenge(userId: string) {
 	}
 }
 
+let catalogKey = $state("")
+
+/** Puts a curated challenge in this month (409 when it has one). */
+async function seedCatalogChallenge(userId: string, key: string) {
+	seedStatus = null
+	try {
+		const r = await api.post<{ title: string }>("/admin/challenges/catalog", {
+			key,
+		})
+		seedStatus = { text: `Put "${r.title}" in this month.`, ok: true }
+		await loadChallengeState(userId)
+	} catch (e) {
+		seedStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
+
 async function forceGenerateChallenge(userId: string) {
 	seedStatus = null
 	try {
@@ -2022,6 +2042,22 @@ onMount(async () => {
 													Global action — creates the current month's AI challenge
 													for all users, not just this one.
 												</p>
+												<div class="field-row">
+													<select bind:value={catalogKey} data-testid="admin-challenge-catalog">
+														<option value="">Curated challenge...</option>
+														{#each CHALLENGE_CATALOG as c (c.key)}
+															<option value={c.key}>{c.title}</option>
+														{/each}
+													</select>
+													<button
+														class="btn outline sm"
+														disabled={!catalogKey}
+														onclick={() => seedCatalogChallenge(user.id, catalogKey)}
+														data-testid="admin-challenge-catalog-seed"
+													>
+														Use in this month (global)
+													</button>
+												</div>
 
 												<div class="field-row">
 													<label>

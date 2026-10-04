@@ -37,6 +37,9 @@ type ChallengeData = {
 	title: string
 	description: string | null
 	theme: string | null
+	tagline?: string | null
+	coachIntro?: string | null
+	reward?: { key: string; name: string } | null
 	month: number
 	year: number
 	goals: Goal[]
@@ -67,6 +70,7 @@ let savingGoal = $state<string | null>(null)
 let justCompleted = $state(false)
 let gymXpAwarded = $state(0)
 let cosmeticAwarded = $state<string | null>(null)
+let rewardAwarded = $state<string | null>(null)
 let milestoneNote = $state<string | null>(null)
 let pickTier = $state<ChallengeTier>("silver")
 
@@ -191,6 +195,7 @@ async function tapGoal(goal: Goal) {
 			newBadges: NewBadge[]
 			gymXpAwarded: number
 			cosmeticAwarded: string | null
+			rewardAwarded?: string | null
 			milestonesPaid?: {
 				pct: number
 				coins: number
@@ -223,12 +228,19 @@ async function tapGoal(goal: Goal) {
 			justCompleted = true
 			gymXpAwarded = res.gymXpAwarded
 			cosmeticAwarded = res.cosmeticAwarded
+			rewardAwarded = res.rewardAwarded ?? null
 			for (const b of res.newBadges) showBadgeToast(b)
 		}
 	} finally {
 		savingGoal = null
 	}
 }
+
+const coachVoice = $derived(
+	isCoachVoice(userProfile.data?.coachPersonality)
+		? userProfile.data.coachPersonality
+		: "friendly",
+)
 
 /** The coach's remark on this month's challenge (one per day). */
 const coachNote = $derived.by(() => {
@@ -277,8 +289,17 @@ onMount(loadChallenge)
 		<Card>
 			<p class="challenge-caption">{monthNames[challenge.month - 1]} {challenge.year}</p>
 			<h2 class="goal-heading">{challenge.title}</h2>
+			{#if challenge.tagline}
+				<p class="challenge-tagline" data-testid="challenge-tagline">{challenge.tagline}</p>
+			{/if}
 			{#if challenge.description}
 				<p class="challenge-desc">{challenge.description}</p>
+			{/if}
+			{#if challenge.coachIntro}
+				<p class="challenge-desc" data-testid="challenge-intro"><b>{COACH_NAMES[coachVoice]}:</b> {challenge.coachIntro}</p>
+			{/if}
+			{#if challenge.reward}
+				<p class="challenge-desc" data-testid="challenge-reward">Finish it to earn: <b>{challenge.reward.name}</b> for your gym.</p>
 			{/if}
 			<p class="join-text">Pick a tier, then join to start tracking your progress.</p>
 			<div class="tiers" data-testid="tier-picker">
@@ -306,6 +327,11 @@ onMount(loadChallenge)
 					<div class="celebration-icon">🏆</div>
 					<h3>Challenge Complete!</h3>
 					<p>You hit every goal this month. +{gymXpAwarded || 200} Gym XP earned!</p>
+					{#if rewardAwarded}
+						<p data-testid="challenge-reward-awarded">
+							{rewardAwarded} added to your gym's decor. Put it on show from a room's Customize page.
+						</p>
+					{/if}
 					{#if cosmeticAwarded}
 						<p data-testid="challenge-cosmetic">
 							{cosmeticAwarded} added to your gym's decor. Put it on show from a room's Customize page.
@@ -444,6 +470,12 @@ onMount(loadChallenge)
 
 .tier small {
 	font-size: 0.7rem;
+}
+
+.challenge-tagline {
+	margin: 2px 0 8px;
+	font-style: italic;
+	opacity: 0.85;
 }
 
 .milestones {

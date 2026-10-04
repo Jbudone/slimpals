@@ -2,6 +2,7 @@ import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
 import { and, asc, count, desc, eq, like, sql } from "drizzle-orm"
 import { Router } from "express"
+import { catalogChallenge } from "../../shared/challenges/catalog.js"
 import { tierGoals } from "../../shared/challenges/tiers.js"
 import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
@@ -45,7 +46,10 @@ import type {
 	GymEventData,
 	SprintTask,
 } from "../services/ai/index.js"
-import { generateChallengeForMonth } from "../services/challenges/index.js"
+import {
+	createCatalogChallenge,
+	generateChallengeForMonth,
+} from "../services/challenges/index.js"
 import { grantCosmetic } from "../services/gym/cosmetics.js"
 import {
 	deriveRelationshipFromDays,
@@ -2031,6 +2035,37 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 				? (userChallenge.completedTasks as Record<string, number>)
 				: null,
 			completedAt: userChallenge?.completedAt ?? null,
+		})
+	})
+
+	// Puts a curated card (shared/challenges/catalog.ts) in a month (default:
+	// this one); 409 when the month already has a challenge.
+	adminRouter.post("/admin/challenges/catalog", async (req, res) => {
+		const now = new Date()
+		const {
+			key,
+			month = now.getUTCMonth() + 1,
+			year = now.getUTCFullYear(),
+		} = req.body as { key?: string; month?: number; year?: number }
+		const card = catalogChallenge(String(key ?? ""))
+		if (!card) {
+			res.status(400).json({ error: "Unknown catalog challenge" })
+			return
+		}
+		if (!Number.isInteger(month) || month < 1 || month > 12) {
+			res.status(400).json({ error: "month must be 1-12" })
+			return
+		}
+		const result = await createCatalogChallenge(db, card, month, year)
+		if (result.status === "conflict") {
+			res.status(409).json({ error: "That month already has a challenge" })
+			return
+		}
+		res.status(201).json({
+			id: result.challenge.id,
+			title: result.challenge.title,
+			month,
+			year,
 		})
 	})
 

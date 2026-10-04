@@ -2,6 +2,7 @@ import { and, count, eq } from "drizzle-orm"
 import { Router } from "express"
 import { challengeFraction } from "../../shared/challenges/milestones.js"
 import { isTier, tierGoals } from "../../shared/challenges/tiers.js"
+import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { db } from "../db/index.js"
 import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
@@ -15,6 +16,12 @@ import { awardGymXp, getOrCreateGym } from "../services/gym/index.js"
 
 type GoalProgress = Record<string, number>
 type DailyLog = Record<string, string[]>
+
+/** The decor a curated challenge gives for finishing it. */
+function rewardOf(key: string | null): { key: string; name: string } | null {
+	const def = key ? cosmeticOf(key) : null
+	return def ? { key: def.key, name: def.name } : null
+}
 
 function todayIso(): string {
 	return new Date().toISOString().slice(0, 10)
@@ -64,6 +71,9 @@ export function createChallengesRouter(aiService: AIService) {
 			title: challenge.title,
 			description: challenge.description,
 			theme: challenge.theme,
+			tagline: challenge.tagline,
+			coachIntro: challenge.coachIntro,
+			reward: rewardOf(challenge.rewardCosmetic),
 			month: challenge.month,
 			year: challenge.year,
 			goals,
@@ -230,6 +240,7 @@ export function createChallengesRouter(aiService: AIService) {
 		let newBadges: Awaited<ReturnType<typeof checkAndAward>> = []
 		let gymXpAwarded = 0
 		let cosmeticAwarded: string | null = null
+		let rewardAwarded: string | null = null
 
 		if (isComplete) {
 			const [{ value: totalCompleted }] = await db
@@ -252,6 +263,14 @@ export function createChallengesRouter(aiService: AIService) {
 				"challenge_trophy",
 				`challenge:${userChallenge.challengeId}`,
 			)
+			// a curated challenge also gives its own decor
+			if (challenge.rewardCosmetic)
+				rewardAwarded = await grantCosmetic(
+					db,
+					(await getOrCreateGym(userId, db)).id,
+					challenge.rewardCosmetic,
+					`challenge:${userChallenge.challengeId}`,
+				)
 		}
 
 		const milestonesPaid = await payChallengeMilestones(
@@ -276,6 +295,7 @@ export function createChallengesRouter(aiService: AIService) {
 			newBadges,
 			gymXpAwarded: isComplete ? gymXpAwarded : 0,
 			cosmeticAwarded,
+			rewardAwarded,
 		})
 	})
 
