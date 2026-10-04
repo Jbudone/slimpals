@@ -73,7 +73,7 @@ export function buildScheduledJobs(
 			label: "Weekly and monthly tournaments",
 			schedule: { kind: "daily", atMinute: 25 },
 			async run(now) {
-				return ensureRecurringTournaments(db, now)
+				return ensureRecurringTournaments(db, now, aiService)
 			},
 		},
 		{

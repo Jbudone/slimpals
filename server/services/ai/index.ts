@@ -78,6 +78,13 @@ export interface AIService {
 		systemInstruction: string,
 		scenarioText: string,
 	): Promise<string>
+	/** A fun name and prize line for a system tournament (optional: without
+	 * it the deterministic name is kept). */
+	generateTournamentFlavor?(
+		type: string,
+		kind: "weekly" | "monthly",
+		periodLabel: string,
+	): Promise<{ name: string; reward: string }>
 	/** One short line per day of a challenge in the coach's voice (optional:
 	 * without it the scripted lines are used). */
 	generateChallengeCoachLines?(
@@ -401,6 +408,29 @@ ${activityLines.join("\n")}`
 			console.warn("[portrait] generation skipped:", (err as Error).message)
 			return null
 		}
+	}
+
+	async generateTournamentFlavor(
+		type: string,
+		kind: "weekly" | "monthly",
+		periodLabel: string,
+	): Promise<{ name: string; reward: string }> {
+		const model = this.client.getGenerativeModel({
+			model: "gemini-2.5-flash",
+		})
+		const labels: Record<string, string> = {
+			weight_loss: "weight loss progress",
+			step_count: "total steps",
+			streak: "daily check-in streak",
+			food_challenge: "food photo quality",
+		}
+		const prompt = `Name a ${kind} wellness tournament for the app's players. It runs ${periodLabel} and is won on ${labels[type] ?? type}. Respond with a JSON object only (no markdown, no explanation): {"name": "a playful 2-4 word tournament name (under 40 characters)", "reward": "a one-line joke prize, such as bragging rights with a twist (under 100 characters)"}. Friendly and a little dry, no exclamation marks, nothing about body weight, diets or body size.`
+		const result = await model.generateContent(prompt)
+		const text = result.response.text().trim()
+		const match = text.match(/\{[\s\S]*\}/)
+		if (!match)
+			throw new Error(`No JSON object in AI response: ${text.slice(0, 200)}`)
+		return JSON.parse(match[0]) as { name: string; reward: string }
 	}
 
 	async generateChallengeCoachLines(

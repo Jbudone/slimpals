@@ -12,6 +12,7 @@ import {
 import type { AIService } from "../../server/services/ai/index.js"
 import { resolveDueTournaments } from "../../server/services/tournaments/index.js"
 import { ensureRecurringTournaments } from "../../server/services/tournaments/recurring.js"
+import { cleanTournamentFlavor } from "../../shared/tournaments/flavor.js"
 import {
 	monthlyPeriod,
 	recurringPeriods,
@@ -25,6 +26,39 @@ import {
 } from "../helpers/db.js"
 
 const DAY = 24 * 60 * 60 * 1000
+
+describe("cleanTournamentFlavor", () => {
+	it("keeps a good name and prize and rejects the rest", () => {
+		expect(
+			cleanTournamentFlavor({
+				name: "  Step   Stampede ",
+				reward: "Bragging rights and a free high five",
+			}),
+		).toEqual({
+			name: "Step Stampede",
+			reward: "Bragging rights and a free high five",
+		})
+		expect(cleanTournamentFlavor(null)).toBeNull()
+		expect(
+			cleanTournamentFlavor({ name: "Hi", reward: "A fine prize here" }),
+		).toBeNull()
+		expect(
+			cleanTournamentFlavor({
+				name: "Step Stampede!",
+				reward: "A fine prize here",
+			}),
+		).toBeNull()
+		expect(
+			cleanTournamentFlavor({
+				name: "The Fat Burner Cup",
+				reward: "A fine prize",
+			}),
+		).toBeNull()
+		expect(
+			cleanTournamentFlavor({ name: "Step Stampede", reward: 42 }),
+		).toBeNull()
+	})
+})
 
 describe("recurring tournament periods", () => {
 	it("a week runs Monday to Monday (UTC) and is keyed by its Monday", () => {
@@ -101,6 +135,42 @@ describe("recurring tournaments (DB)", () => {
 		expect(posts).toHaveLength(5)
 		expect(posts.every((p) => p.userId === null)).toBe(true)
 		expect(JSON.stringify(posts[0].content)).toContain("is open")
+	})
+
+	it("takes the AI's name and prize for a new tournament, and keeps the plain name when it fails or answers badly", async () => {
+		const db = await getTestDb()
+		const now = new Date("2026-10-07T10:00:00Z")
+		let n = 0
+		const ai = {
+			generateTournamentFlavor: async () => {
+				n++
+				if (n === 1)
+					return { name: "Step Stampede", reward: "A free high five" }
+				if (n === 2) throw new Error("down")
+				return { name: "x", reward: "" }
+			},
+		} as unknown as AIService
+		await ensureRecurringTournaments(db, now, ai)
+		const rows = await db.select().from(tournaments)
+		const named = rows.filter((r) => r.name === "Step Stampede")
+		expect(named).toHaveLength(1)
+		expect(named[0].rewardDescription).toBe("A free high five")
+		const plain = recurringPeriods(now).map((p) => p.name)
+		const others = rows.filter((r) => r.name !== "Step Stampede")
+		expect(others).toHaveLength(3)
+		expect(others.every((r) => r.rewardDescription === "Bragging rights")).toBe(
+			true,
+		)
+		expect(others.every((r) => plain.includes(r.name))).toBe(true)
+		// the announcement uses the final name
+		const posts = await db.select().from(socialPosts)
+		expect(JSON.stringify(posts.map((p) => p.content))).toContain(
+			"Step Stampede is open",
+		)
+		// a rerun asks nobody again
+		const before = n
+		await ensureRecurringTournaments(db, now, ai)
+		expect(n).toBe(before)
 	})
 
 	it("resolves a system tournament and posts the winner to the feed", async () => {
