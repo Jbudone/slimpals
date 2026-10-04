@@ -119,6 +119,57 @@ describe("curated challenges in the app", () => {
 		expect(r.challenge.aiGenerated).toBe(false)
 	})
 
+	it("falls back too when the AI answers with a malformed challenge", async () => {
+		const db = await getTestDb()
+		const sloppyAI = {
+			generateMonthlyChallenge: async () => ({
+				title: "Broken",
+				description: "x",
+				theme: "t",
+				goals: [{ id: "goal_9", title: "x", target: -1 }],
+			}),
+		} as unknown as AIService
+		const r = await generateChallengeForMonth(sloppyAI, 4, 2031, db)
+		expect(r.status).toBe("created")
+		if (r.status !== "created") return
+		expect(r.challenge.title).toBe(catalogForMonth(4, 2031).title)
+		expect(r.challenge.aiGenerated).toBe(false)
+	})
+
+	it("stores the tagline, coach intro and tier targets a good AI answer carries", async () => {
+		const db = await getTestDb()
+		const goodAI = {
+			generateMonthlyChallenge: async () => ({
+				title: "Hydration Hero",
+				description: "Drink up.",
+				theme: "wellness",
+				tagline: "Sip happens.",
+				coachIntro: "Water first.",
+				goals: [
+					{
+						id: "goal_1",
+						title: "120 Glasses",
+						description: "Hydrate",
+						target: 120,
+						unit: "glasses",
+						dailyAmount: 6,
+						dailyPrompt: "Did you drink?",
+						tiers: { bronze: 72, gold: 168 },
+					},
+				],
+			}),
+		} as unknown as AIService
+		const r = await generateChallengeForMonth(goodAI, 5, 2031, db)
+		if (r.status !== "created") throw new Error("not created")
+		expect(r.challenge.tagline).toBe("Sip happens.")
+		expect(r.challenge.coachIntro).toBe("Water first.")
+		expect(r.challenge.aiGenerated).toBe(true)
+		expect((r.challenge.tasks as { tiers?: unknown }[])[0].tiers).toEqual({
+			bronze: 72,
+			gold: 168,
+		})
+	})
+
 	it("an admin puts a card in this month, once, and refuses unknown or non-admin", async () => {
 		const admin = await login(true)
 		const post = (cookie: string, body: object) =>
