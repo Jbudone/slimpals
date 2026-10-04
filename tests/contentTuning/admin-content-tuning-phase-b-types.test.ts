@@ -177,3 +177,30 @@ describe("POST /api/admin/content-tuning/npc_banter/default/generate", () => {
 		expect(res.body.sample).toContain("MaxOut")
 	})
 })
+
+describe("POST /api/admin/content-tuning/coach_lines/default/generate", () => {
+	it("lists the scripted lines of a voice for a situation, with the style rules", async () => {
+		const { cookie, userId } = await registerAndLogin(
+			"admin-coachlines-gen@slimpals.test",
+			"Admin",
+		)
+		await makeAdmin(userId)
+		const post = (contextParams: Record<string, string>) =>
+			request(app)
+				.post("/api/admin/content-tuning/coach_lines/default/generate")
+				.set("Cookie", cookie)
+				.send({ contextParams })
+		const morning = await post({ voice: "roaster", situation: "morning" })
+		expect(morning.status).toBe(200)
+		expect(morning.body.sample).toContain("The Roaster")
+		expect(morning.body.sample).toContain("Style: Each line is a bold lead")
+		expect(morning.body.sample).toContain("{n}")
+		const stage = await post({
+			voice: "bro",
+			situation: "challenge-behind",
+		})
+		expect(stage.body.sample).toContain("Challenge: ")
+		const none = await post({ voice: "bro", situation: "nope" })
+		expect(none.body.sample).toContain("No lines")
+	})
+})

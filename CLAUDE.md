@@ -202,7 +202,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   urgent is up) speaks about it instead of the task count, and the Challenges page shows the coach's note for the day (`challengeLineFor`,
   stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
   computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
-  portraits per personality, the coach lines in Admin's content tuning.
+  portraits per personality. Admin's content tuning has a "Coach Lines" type (`contentTuning/coachLines.ts`, style doc `docs/coach_lines.md`): pick a voice and a situation (or challenge stage) and it lists the scripted lines next to the style rules (no AI call, the lines are scripted).
 - Challenge catalog (#124, second slice): `shared/challenges/catalog.ts` holds curated monthly cards (Burpee Blitz, Sunrise Stride, Green Machine: tagline,
   coach intro, three goals, a decor `rewardCosmetic`: `arcade_cabinet`, `sunrise_mural`, `herb_planter`, builders in `equipment/decor.ts`). Columns `tagline`,
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
