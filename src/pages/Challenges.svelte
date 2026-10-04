@@ -66,6 +66,23 @@ let savingGoal = $state<string | null>(null)
 let justCompleted = $state(false)
 let gymXpAwarded = $state(0)
 let cosmeticAwarded = $state<string | null>(null)
+let milestoneNote = $state<string | null>(null)
+
+function rewardLine(r: {
+	coins: number
+	sweat: number
+	greens: number
+}): string {
+	const parts = [`+${r.coins} coins`]
+	if (r.sweat) parts.push(`+${r.sweat} Sweat`)
+	if (r.greens) parts.push(`+${r.greens} Greens`)
+	return parts.join(", ")
+}
+
+/** How far along the challenge is (0-1), for the milestone track. */
+const fraction = $derived(
+	challenge ? challengeFraction(challenge.goals, challenge.progress) : 0,
+)
 
 let sprint = $state<SprintData | null>(null)
 let sprintSaving = $state<string | null>(null)
@@ -170,6 +187,12 @@ async function tapGoal(goal: Goal) {
 			newBadges: NewBadge[]
 			gymXpAwarded: number
 			cosmeticAwarded: string | null
+			milestonesPaid?: {
+				pct: number
+				coins: number
+				sweat: number
+				greens: number
+			}[]
 		}>(`/challenges/${challenge.id}/progress`, {
 			dailyProgress: { [goal.id]: goal.dailyAmount },
 		})
@@ -182,6 +205,14 @@ async function tapGoal(goal: Goal) {
 			totalGoals: res.totalGoals,
 			overallProgress: res.overallProgress,
 			completedAt: res.completed ? new Date().toISOString() : null,
+		}
+
+		if (res.milestonesPaid?.length) {
+			const m = res.milestonesPaid.at(-1)
+			milestoneNote = `${m?.pct}% of the challenge! ${res.milestonesPaid
+				.map((p) => rewardLine(p))
+				.join(" · ")}`
+			void loadWallet()
 		}
 
 		if (res.completed) {
@@ -368,6 +399,33 @@ onMount(loadChallenge)
 <style>
 .challenges-tab { display: flex; flex-direction: column; gap: var(--space-4); }
 .muted { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
+.milestones {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 6px;
+	margin: 8px 0;
+}
+
+.milestone {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 6px;
+	border-radius: 8px;
+	background: rgba(127, 127, 127, 0.12);
+	opacity: 0.6;
+	text-align: center;
+}
+
+.milestone.reached {
+	background: rgba(52, 201, 115, 0.2);
+	opacity: 1;
+}
+
+.milestone small {
+	font-size: 0.7rem;
+}
 
 .challenge-caption {
 	font-size: var(--font-size-xs); color: var(--color-text-muted);

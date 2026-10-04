@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { challenges, invites, users } from "../../server/db/schema.js"
+import { challenges, invites, userGyms, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	closeTestDb,
@@ -324,6 +324,59 @@ describe("PATCH /api/challenges/:id/progress", () => {
 		expect(inv.body.map((c: { key: string }) => c.key)).toEqual([
 			"challenge_trophy",
 		])
+	})
+
+	it("pays each milestone (25/50/75/100%) once, as the goals fill", async () => {
+		const challenge = await seedChallenge()
+		const cookie = await registerAndLogin()
+		const db = await getTestDb()
+		await request(app)
+			.post(`/api/challenges/${challenge.id}/join`)
+			.set("Cookie", cookie)
+		const patch = (dailyProgress: Record<string, number>) =>
+			request(app)
+				.patch(`/api/challenges/${challenge.id}/progress`)
+				.set("Cookie", cookie)
+				.send({ dailyProgress })
+		const gym = async () => {
+			const [u] = await db
+				.select()
+				.from(users)
+				.where(eq(users.email, "challenger@slimpals.test"))
+			const [g] = await db
+				.select()
+				.from(userGyms)
+				.where(eq(userGyms.userId, u.id))
+			return g
+		}
+
+		// a third of the work: the 25% milestone
+		const a = await patch({ goal_1: 6 })
+		expect(a.body.milestonesPaid.map((m: { pct: number }) => m.pct)).toEqual([
+			25,
+		])
+		expect((await gym()).coins).toBe(50)
+		// two thirds: 50%, with a Sweat
+		const b = await patch({ goal_2: 6 })
+		expect(b.body.milestonesPaid.map((m: { pct: number }) => m.pct)).toEqual([
+			50,
+		])
+		expect((await gym()).coins).toBe(150)
+		expect((await gym()).sweat).toBe(1)
+		// nothing new: nothing more is paid
+		const c = await patch({ goal_1: 0 })
+		expect(c.body.milestonesPaid).toEqual([])
+		expect((await gym()).coins).toBe(150)
+		// finishing pays 75% and 100% together
+		const d = await patch({ goal_3: 6 })
+		expect(d.body.completed).toBe(true)
+		expect(d.body.milestonesPaid.map((m: { pct: number }) => m.pct)).toEqual([
+			75, 100,
+		])
+		const g = await gym()
+		expect(g.coins).toBe(150 + 150 + 250)
+		expect(g.sweat).toBe(1 + 2)
+		expect(g.greens).toBe(1 + 2)
 	})
 
 	it("prevents updating after completion", async () => {

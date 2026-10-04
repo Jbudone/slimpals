@@ -1,5 +1,6 @@
 import { and, count, eq } from "drizzle-orm"
 import { Router } from "express"
+import { challengeFraction } from "../../shared/challenges/milestones.js"
 import { db } from "../db/index.js"
 import { challenges, userChallenges } from "../db/schema.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
@@ -7,6 +8,7 @@ import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService, ChallengeGoal } from "../services/ai/index.js"
 import { checkAndAward } from "../services/badges/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
+import { payChallengeMilestones } from "../services/challenges/milestones.js"
 import { grantCosmetic } from "../services/gym/cosmetics.js"
 import { awardGymXp, getOrCreateGym } from "../services/gym/index.js"
 
@@ -239,9 +241,17 @@ export function createChallengesRouter(aiService: AIService) {
 			)
 		}
 
+		const milestonesPaid = await payChallengeMilestones(
+			db,
+			userId,
+			challengeId,
+			challengeFraction(goals, current),
+		)
+
 		res.json({
 			progress: current,
 			dailyLog,
+			milestonesPaid,
 			goalsCompleted,
 			totalGoals: goals.length,
 			overallProgress:

@@ -195,6 +195,12 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   stage = start / ahead / on pace / behind / finale from the goals' average completion against the month's pace, `src/lib/challengeCoach.ts`;
   computed on the fly, not stored, since the lines are scripted). Not yet: lines for coins piling up, AI-generated per-day commentary,
   portraits per personality, the coach lines in Admin's content tuning.
+- Challenge milestones (#124, first slice): a monthly challenge pays the gym at 25/50/75/100% of its goals' average completion
+  (`shared/challenges/milestones.ts`: coins, and Sweat/Greens on later steps). `PATCH /api/challenges/:id/progress` pays what was
+  reached (`server/services/challenges/milestones.ts`, a `gym_rewards` claim `challenge:<id>:m<pct>` under the gym row lock, so each
+  pays once, also across an admin progress reset) and returns `milestonesPaid`; the Challenges page shows the four-step track and
+  a note when one pays. Not yet from #124: bronze/silver/gold tiers, new task types, themed seed challenges, a decor reward per
+  challenge, the dashboard banner.
 - Taps (`world/picking.ts`): people > equipment (pieces, spots, sites, kiosk) > room (floor, walls, lots) > open
   ground, nearest within a category; `TAP_SLOP` (6px) is both the pan start and the tap limit, so a drag (or a
   pinch) never selects. Feedback (`world/tapFx.ts`): a pooled marker (ring under a person/piece/spot/kiosk, outline
