@@ -46,6 +46,9 @@ function skip() {
 					<span class="said narrator"><span>{line.text}</span></span>
 				{/if}
 			</button>
+			{#if last && beat.reward}
+				<p class="reward" data-testid="story-reward">+{beat.reward.coins.toLocaleString("en-US")} coins</p>
+			{/if}
 			<div class="foot">
 				<button type="button" class="skip" onclick={skip} data-testid="story-skip">Skip</button>
 				<span class="dots" aria-hidden="true">
@@ -123,6 +126,12 @@ function skip() {
 .narrator {
 	font-style: italic;
 	opacity: 0.85;
+}
+
+.reward {
+	margin: 6px 0 0;
+	font: 800 14px system-ui, sans-serif;
+	color: #b8862a;
 }
 
 .foot {
