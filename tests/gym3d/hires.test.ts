@@ -53,7 +53,7 @@ describe("hires", () => {
 
 describe("room play tags", () => {
 	it("only boxing and the court have one, and it takes a pair", async () => {
-		const { roomPlayLabel, ROOM_PLAY_MIN } = await import(
+		const { roomPlayLabel, ROOM_PLAY_MIN, PLAY_PACE } = await import(
 			"../../shared/gym3d/hires.js"
 		)
 		expect(roomPlayLabel("boxing")).toContain("Sparring")
@@ -61,5 +61,8 @@ describe("room play tags", () => {
 		for (const t of ["cardio", "weights", "pool", "recovery", "juice", "lobby"])
 			expect(roomPlayLabel(t)).toBeNull()
 		expect(ROOM_PLAY_MIN).toBe(2)
+		// a game is a livelier workout, not a sprint
+		expect(PLAY_PACE).toBeGreaterThan(1)
+		expect(PLAY_PACE).toBeLessThan(1.5)
 	})
 })

@@ -144,6 +144,10 @@ export function roomPlayLabel(roomType: string): string | null {
 /** How many members at their stations make it a game. */
 export const ROOM_PLAY_MIN = 2
 
+/** Members in a room with a game on work out a little livelier (on top of
+ * the room's vibe pace). */
+export const PLAY_PACE = 1.25
+
 /** The mood bonus for the room types that have a hire (see RECOVERY_MOOD). */
 export function staffedMoodBonus(staffedTypes: readonly string[]): number {
 	return staffedTypes.includes("recovery") ? RECOVERY_MOOD : 0
