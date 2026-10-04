@@ -4,6 +4,7 @@
 // room, with a label) and visiting heroes (a gold tag over their head and
 // sparkles while they are on the spotlight stage).
 import * as T from "three"
+import { CONTEST_TAG } from "../../../../shared/gym3d/costumeContest"
 import { GHOST_LOCKERS } from "../../../../shared/gym3d/ghost"
 import {
 	classFormation,
@@ -580,6 +581,36 @@ export class Happenings {
 		return n
 	}
 
+	// ── costume contest ───────────────────────────────────────────────────
+
+	private contestTag: { key: string; label: Label } | null = null
+
+	/** A gold "Best costume" tag over today's winner while they are in the
+	 * gym (null clears it). */
+	syncContest(winnerKey: string | null): void {
+		if (this.contestTag && this.contestTag.key !== winnerKey) {
+			this.labels.remove(this.contestTag.label)
+			this.contestTag = null
+		}
+		if (!winnerKey || this.contestTag) return
+		const p = this.people.find(winnerKey)
+		if (!p) return
+		const v = new T.Vector3()
+		const el = tag("g3d-hero", CONTEST_TAG)
+		el.dataset.testid = "gym3d-contest"
+		this.contestTag = {
+			key: winnerKey,
+			label: this.labels.add(
+				el,
+				() => {
+					const r = p.rig.root.position
+					return v.set(r.x, r.y + 1.78, r.z)
+				},
+				TAG,
+			),
+		}
+	}
+
 	// ── heroes ────────────────────────────────────────────────────────────
 
 	/** Gold tags over visiting heroes who are in. */
@@ -634,6 +665,7 @@ export class Happenings {
 		heroes: number
 		ghost: number
 		storyGuest: string
+		contest: string
 	} {
 		return {
 			event: this.eventKey,
@@ -642,12 +674,14 @@ export class Happenings {
 			heroes: this.heroTags.size,
 			ghost: this.ghost ? 1 : 0,
 			storyGuest: this.storyKey ?? "",
+			contest: this.contestTag?.key ?? "",
 		}
 	}
 
 	dispose(): void {
 		this.syncStoryGuest(null)
 		this.syncSeason(null)
+		this.syncContest(null)
 		this.clearEvent()
 		for (const v of this.classes.values()) this.dropClass(v)
 		this.classes.clear()

@@ -6,6 +6,10 @@ import type { BanterContext } from "../../../shared/gym3d/banter"
 import { celebrationFor } from "../../../shared/gym3d/celebrations"
 import { staffHatOf } from "../../../shared/gym3d/cosmetics"
 import {
+	contestDay,
+	pickContestWinner,
+} from "../../../shared/gym3d/costumeContest"
+import {
 	ECONOMY,
 	finishCost,
 	levelProgress,
@@ -166,6 +170,7 @@ export type Gym3DStats = {
 	heroes: number
 	ghost: number
 	storyGuest: string
+	contest: string
 	cars: number
 	dogs: number
 	costumes: number
@@ -502,6 +507,36 @@ export class Gym3DApp {
 		return q.get("storyguest")
 	})()
 
+	/** The costume contest: while a season hat is about, one costumed person
+	 * present wears "Best costume" (members first, a passer-by when there is
+	 * no costumed member). The winner is kept while they are in; when they
+	 * leave the next one is picked, and each person says their line once. */
+	private contestKey: string | null = null
+	private contestSaid = new Set<string>()
+	private contestWinner(): string | null {
+		if (this.people.costumes === null) {
+			this.contestKey = null
+			return null
+		}
+		if (this.contestKey && this.people.find(this.contestKey))
+			return this.contestKey
+		const costumed = this.people.people.filter((p) => isCostume(p.out.acc))
+		const members = costumed.filter((p) => p.kind === "member")
+		const from = members.length ? members : costumed
+		const key = pickContestWinner(
+			from.map((p) => p.key),
+			contestDay(new Date()),
+			this.world.layout.gymId,
+		)
+		this.contestKey = key
+		const p = key ? this.people.find(key) : null
+		if (p && key && !this.contestSaid.has(key)) {
+			this.contestSaid.add(key)
+			this.life.contestWin(p, this.clock)
+		}
+		return key
+	}
+
 	private storyGuest(): StoryGuest | null {
 		const f = this.forcedGuest
 		if (f === "none") return null
@@ -647,6 +682,7 @@ export class Gym3DApp {
 		this.hap.syncSeason(season)
 		this.world.setMaxoutPromo(this.maxoutOn())
 		this.hap.syncStoryGuest(this.storyGuest())
+		this.hap.syncContest(this.contestWinner())
 		this.hap.setClasses(sim.activeClasses)
 		this.hap.syncHeroes(
 			new Set(
