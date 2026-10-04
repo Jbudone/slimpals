@@ -138,7 +138,8 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   the waiting coin bubbles first (so the new rate only counts from then) and charges the coins (`server/services/gym/
   staff.ts`). UI: the tap chip of a staff NPC (`Gym3D.svelte`) shows level, perk, stat meters and Train. Admin: `POST
   /admin/users/:id/gym/staff-level {npcKey|"all"|"hire:<id>", level}` and `POST /admin/users/:id/gym/reset-extras
-  {what: staff|hires|walls|hustle}` (hustle = today's bonuses); buttons in Admin's gym section. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`,
+  {what: staff|hires|walls|hustle|burger|milestones|cosmetics}` (hustle = today's bonuses, burger = un-buy the Burger Baron, milestones = challenge
+  milestone payouts, cosmetics = owned cosmetics and their decor) and `POST /admin/users/:id/gym/cosmetic {key}` (grant one); buttons in Admin's gym section. Tests: `tests/gym3d/staff.test.ts`, `staff-route.test.ts`,
   `admin-extras.test.ts`, e2e in `gym3d-life.spec.ts`.
 - Hiring: any finished, typed room except the lobby takes up to `HIRE.perRoom` (2) hires: a coach, lifeguard,
   therapist or barista (`shared/gym3d/hires.ts`: `HIRE_ROLES`, `hireCost` = 300 + 150 per hire already made in the

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { COSMETICS } from "../../shared/gym3d/cosmetics.js"
 import { api } from "../lib/api.js"
 import { fetchSession } from "../lib/auth.svelte.js"
 import { fetchUserProfile } from "../lib/user.svelte.js"
@@ -981,18 +982,51 @@ async function setAllGymStaffLevel(userId: string, level: number) {
 }
 
 let trackStepInput = $state<number | string>("")
+let cosmeticInput = $state("")
+
+/** Test tool: gives the user's gym a cosmetic. */
+async function grantGymCosmetic(userId: string, key: string) {
+	gymCoinsStatus = null
+	try {
+		const r = await api.post<{ granted: string | null }>(
+			`/admin/users/${userId}/gym/cosmetic`,
+			{ key },
+		)
+		gymCoinsStatus = {
+			text: r.granted
+				? `Granted ${r.granted}. Reload the gym to see it.`
+				: "They already had it.",
+			ok: true,
+		}
+	} catch (e) {
+		gymCoinsStatus = {
+			text: `Error: ${e instanceof Error ? e.message : "Failed"}`,
+			ok: false,
+		}
+	}
+}
 
 const EXTRAS: Record<string, string> = {
 	staff: "trained staff levels",
 	hires: "hires",
 	walls: "open walls",
 	hustle: "today's hustle bonuses",
+	burger: "the Burger Baron purchase",
+	milestones: "challenge milestone payouts",
+	cosmetics: "cosmetics and the decor on show",
 }
 
 /** Test tool: wipes staff levels, hires, open walls or today's hustle bonuses. */
 async function resetGymExtras(
 	userId: string,
-	what: "staff" | "hires" | "walls" | "hustle",
+	what:
+		| "staff"
+		| "hires"
+		| "walls"
+		| "hustle"
+		| "burger"
+		| "milestones"
+		| "cosmetics",
 ) {
 	gymCoinsStatus = null
 	try {
@@ -1872,6 +1906,45 @@ onMount(async () => {
 																	data-testid="admin-gym-reset-hustle"
 																>
 																	Reset today's hustle
+																</button>
+															</div>
+															<div class="field-row">
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "burger")}
+																	data-testid="admin-gym-reset-burger"
+																>
+																	Un-buy the Burger Baron
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "milestones")}
+																	data-testid="admin-gym-reset-milestones"
+																>
+																	Reset challenge milestones
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "cosmetics")}
+																	data-testid="admin-gym-reset-cosmetics"
+																>
+																	Remove cosmetics
+																</button>
+															</div>
+															<div class="field-row">
+																<select bind:value={cosmeticInput} data-testid="admin-gym-cosmetic">
+																	<option value="">Cosmetic...</option>
+																	{#each COSMETICS as c (c.key)}
+																		<option value={c.key}>{c.name}</option>
+																	{/each}
+																</select>
+																<button
+																	class="btn sm"
+																	disabled={!cosmeticInput}
+																	onclick={() => grantGymCosmetic(user.id, cosmeticInput)}
+																	data-testid="admin-gym-cosmetic-grant"
+																>
+																	Grant cosmetic
 																</button>
 															</div>
 															<div class="field-row">

@@ -3,6 +3,8 @@ import { hashPassword } from "better-auth/crypto"
 import { and, asc, count, desc, eq, like, sql } from "drizzle-orm"
 import { Router } from "express"
 import { tierGoals } from "../../shared/challenges/tiers.js"
+import { BURGER_SOURCE } from "../../shared/gym3d/burger.js"
+import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
 import { db } from "../db/index.js"
 import {
@@ -11,6 +13,7 @@ import {
 	challenges,
 	dailyCheckins,
 	foodLogs,
+	gymCosmetics,
 	gymHires,
 	gymNpcDailyState,
 	gymNpcs,
@@ -43,6 +46,7 @@ import type {
 	SprintTask,
 } from "../services/ai/index.js"
 import { generateChallengeForMonth } from "../services/challenges/index.js"
+import { grantCosmetic } from "../services/gym/cosmetics.js"
 import {
 	deriveRelationshipFromDays,
 	generateDialogBatch,
@@ -1260,13 +1264,68 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 						),
 					)
 			)[0].affectedRows
-		else {
-			res
-				.status(400)
-				.json({ error: "what must be staff, hires, walls or hustle" })
+		else if (what === "burger")
+			removed = (
+				await db
+					.delete(gymRewards)
+					.where(
+						and(
+							eq(gymRewards.gymId, gym.id),
+							eq(gymRewards.source, BURGER_SOURCE),
+						),
+					)
+			)[0].affectedRows
+		else if (what === "milestones")
+			removed = (
+				await db
+					.delete(gymRewards)
+					.where(
+						and(
+							eq(gymRewards.gymId, gym.id),
+							like(gymRewards.source, "challenge:%:m%"),
+						),
+					)
+			)[0].affectedRows
+		else if (what === "cosmetics") {
+			// the cosmetics themselves and the decor pieces they put on show
+			await db
+				.delete(gymPieces)
+				.where(
+					and(
+						eq(gymPieces.gymId, gym.id),
+						like(gymPieces.upgradeKey, "cosmetic:%"),
+					),
+				)
+			removed = (
+				await db.delete(gymCosmetics).where(eq(gymCosmetics.gymId, gym.id))
+			)[0].affectedRows
+		} else {
+			res.status(400).json({
+				error:
+					"what must be staff, hires, walls, hustle, burger, milestones or cosmetics",
+			})
 			return
 		}
 		res.json({ removed })
+	})
+
+	// Test tool (cosmetics): gives the user's gym a cosmetic by key. Answers
+	// { granted } with its name, or null when they already had it.
+	adminRouter.post("/admin/users/:id/gym/cosmetic", async (req, res) => {
+		const key = String((req.body as { key?: unknown })?.key ?? "")
+		if (!cosmeticOf(key)) {
+			res.status(400).json({ error: "Unknown cosmetic" })
+			return
+		}
+		const [gym] = await db
+			.select({ id: userGyms.id })
+			.from(userGyms)
+			.where(eq(userGyms.userId, String(req.params.id)))
+		if (!gym) {
+			res.status(404).json({ error: "User has no gym" })
+			return
+		}
+		res.json({ granted: await grantCosmetic(db, gym.id, key, "admin") })
 	})
 
 	// Test tool (reward track): makes this month's track stand at `step`
