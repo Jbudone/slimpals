@@ -561,7 +561,14 @@ export function storyState(
 // while after it was seen (an extra standing in the lobby or on the pavement
 // with a couple of lines of their own).
 
-export type StoryGuestKey = "victor" | "barry" | "dana" | "quill" | "tess"
+export type StoryGuestKey =
+	| "victor"
+	| "barry"
+	| "dana"
+	| "quill"
+	| "tess"
+	| "reyes"
+	| "joe"
 
 export type StoryGuest = {
 	who: StoryGuestKey
@@ -580,6 +587,42 @@ export type StoryGuest = {
 }
 
 export const STORY_GUESTS: Readonly<Record<StoryGuestKey, StoryGuest>> = {
+	reyes: {
+		who: "reyes",
+		name: "Capt. Reyes",
+		where: "lobby",
+		look: {
+			skin: "#c98f6a",
+			hair: "#2a2a30",
+			top: "#2f5f8f",
+			bottom: "#1d3550",
+			shoes: "#f0f0f0",
+		},
+		lines: [
+			"Mind the ropes. Everyone minds the ropes.",
+			"Forty years of IronWave. Thirty-nine, I am told.",
+			"A friendly race. I am always friendly.",
+			"Your rowers are acceptable.",
+		],
+	},
+	joe: {
+		who: "joe",
+		name: "Old Joe",
+		where: "pavement",
+		look: {
+			skin: "#d9a98a",
+			hair: "#c8c8c0",
+			top: "#8f7a3a",
+			bottom: "#3a3a2a",
+			shoes: "#5a4a2a",
+		},
+		lines: [
+			"Fresh catch. Ask the gulls.",
+			"Chips on the house. Once.",
+			"My cousins row like they argue.",
+			"The ledger does not lie. Much.",
+		],
+	},
 	quill: {
 		who: "quill",
 		name: "Prof. Quill",
@@ -688,6 +731,11 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"c2-discount": "tess",
 	"c2-hours": "quill",
 	"c2-graduation": "tess",
+	"c3-captain": "reyes",
+	"c3-joe": "joe",
+	"c3-ledger": "joe",
+	"c3-race": "reyes",
+	"c3-harbour-lights": "joe",
 }
 export const GUEST_MINUTES = 12
 

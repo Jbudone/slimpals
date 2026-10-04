@@ -501,7 +501,7 @@ export class Gym3DApp {
 	})()
 
 	/** The story guest now: from the chapters seen lately, or forced for tests
-	 * and demos with `?storyguest=victor|barry|dana|none`. */
+	 * and demos with `?storyguest=victor|barry|dana|quill|tess|reyes|joe|none`. */
 	private forcedGuest = (() => {
 		const q = new URLSearchParams(globalThis.location?.search ?? "")
 		return q.get("storyguest")
