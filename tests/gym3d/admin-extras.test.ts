@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import {
+	gymCosmetics,
 	gymHires,
 	gymOpenWalls,
 	gymRewards,
@@ -214,5 +215,53 @@ describe("admin reward track", () => {
 		await post(member.cookie, member.userId, "track-step", { step: 1 }).expect(
 			403,
 		)
+	})
+})
+
+describe("admin burger, milestones and cosmetics", () => {
+	it("un-buys the Burger Baron and clears challenge milestone payouts", async () => {
+		const { admin, member, gymId } = await adminAndMember()
+		const db = await getTestDb()
+		await db.insert(gymRewards).values([
+			{ gymId, source: "burger:bought" },
+			{ gymId, source: "challenge:3:m25" },
+			{ gymId, source: "challenge:3:m50" },
+			{ gymId, source: "hustle:2000-01-01:1" },
+		])
+		const reset = (what: string) =>
+			post(admin.cookie, member.userId, "reset-extras", { what })
+		expect((await reset("burger").expect(200)).body.removed).toBe(1)
+		expect((await reset("milestones").expect(200)).body.removed).toBe(2)
+		const left = await db
+			.select()
+			.from(gymRewards)
+			.where(eq(gymRewards.gymId, gymId))
+		const sources = left.map((r) => r.source)
+		expect(sources).toContain("hustle:2000-01-01:1")
+		expect(sources).not.toContain("burger:bought")
+		expect(sources.some((x) => x.startsWith("challenge:"))).toBe(false)
+	})
+
+	it("grants a cosmetic once, refuses unknown keys, and removes them all", async () => {
+		const { admin, member, gymId } = await adminAndMember()
+		const db = await getTestDb()
+		const grant = (key: string) =>
+			post(admin.cookie, member.userId, "cosmetic", { key })
+		const first = await grant("halloween_hat").expect(200)
+		expect(first.body.granted).toBe("Witch hat for the coach")
+		expect((await grant("halloween_hat").expect(200)).body.granted).toBeNull()
+		await grant("not_a_thing").expect(400)
+		await post(member.cookie, member.userId, "cosmetic", {
+			key: "halloween_hat",
+		}).expect(403)
+		expect(await db.select().from(gymCosmetics)).toHaveLength(1)
+
+		const cleared = await post(admin.cookie, member.userId, "reset-extras", {
+			what: "cosmetics",
+		}).expect(200)
+		expect(cleared.body.removed).toBe(1)
+		expect(
+			await db.select().from(gymCosmetics).where(eq(gymCosmetics.gymId, gymId)),
+		).toHaveLength(0)
 	})
 })
