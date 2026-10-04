@@ -8,10 +8,12 @@
 // each other (or chatting in the sim) exchange a line.
 import * as T from "three"
 import {
+	type Banter,
 	type BanterContext,
 	gearLine,
 	pickBanter,
 } from "../../../../shared/gym3d/banter"
+import { banterFromAi } from "../../../../shared/gym3d/banterAi"
 import {
 	GHOST_LOCKERS,
 	ghostLine,
@@ -266,6 +268,8 @@ export class Life {
 	paused = false
 	/** What the gym holds now, for banter that fits it (none: no banter). */
 	banterContext: (() => BanterContext) | null = null
+	/** The AI's nightly exchanges, mixed in with the scripted ones. */
+	extraBanter: Banter[] = []
 	private banterTimer = 20
 	private banterSeen: string[] = []
 
@@ -441,6 +445,15 @@ export class Life {
 
 	/** Two people close together swap a scripted exchange that fits the gym
 	 * (rarely: one every minute or so). */
+	setExtraBanter(
+		rows: readonly { id: number; situation: string; lines: string[] }[],
+	): void {
+		this.extraBanter = rows.flatMap((r) => {
+			const b = banterFromAi(r)
+			return b ? [b] : []
+		})
+	}
+
 	private banter(ps: readonly Person[], now: number): boolean {
 		const ctx = this.banterContext?.()
 		if (!ctx) return false
@@ -456,7 +469,7 @@ export class Life {
 					pairs.push([near[i], near[j]])
 			}
 		if (!pairs.length) return false
-		const b = pickBanter(ctx, this.banterSeen, this.rng)
+		const b = pickBanter(ctx, this.banterSeen, this.rng, this.extraBanter)
 		if (!b) return false
 		const [x, y] = pairs[Math.floor(this.rng() * pairs.length) % pairs.length]
 		this.banterSeen.push(b.id)

@@ -224,7 +224,10 @@ export const BANTER: readonly Banter[] = [
 
 /** Exchanges that fit `ctx` (specific ones first in the pool; the plain
  * ones are only a fallback so the gym's real gaps get talked about). */
-export function banterFor(ctx: BanterContext): Banter[] {
+export function banterFor(
+	ctx: BanterContext,
+	extra: readonly Banter[] = [],
+): Banter[] {
 	const fits = (b: Banter): boolean => {
 		if (b.missingRoom && ctx.rooms.includes(b.missingRoom)) return false
 		if (b.missingGear && ctx.gear.includes(b.missingGear)) return false
@@ -232,7 +235,7 @@ export function banterFor(ctx: BanterContext): Banter[] {
 		if (b.when && !ctx[b.when]) return false
 		return true
 	}
-	const all = BANTER.filter(fits)
+	const all = [...BANTER, ...extra].filter(fits)
 	const specific = all.filter(
 		(b) => b.missingRoom || b.missingGear || b.crowded || b.when,
 	)
@@ -245,8 +248,9 @@ export function pickBanter(
 	ctx: BanterContext,
 	recent: readonly string[],
 	rng: Rng,
+	extra: readonly Banter[] = [],
 ): Banter | null {
-	const pool = banterFor(ctx)
+	const pool = banterFor(ctx, extra)
 	if (!pool.length) return null
 	const fresh = pool.filter((b) => !recent.includes(b.id))
 	const from = fresh.length ? fresh : pool
