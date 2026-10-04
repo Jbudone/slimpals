@@ -15,7 +15,11 @@ import {
 	levelProgress,
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
-import { ROOM_PLAY_MIN, roomPlayLabel } from "../../../shared/gym3d/hires"
+import {
+	PLAY_PACE,
+	ROOM_PLAY_MIN,
+	roomPlayLabel,
+} from "../../../shared/gym3d/hires"
 import { hustleLine } from "../../../shared/gym3d/hustleLines"
 import { neighbourhoodCols, SHAPE_INFO } from "../../../shared/gym3d/lots"
 import { maxoutFromQuery, maxoutPromo } from "../../../shared/gym3d/maxout"
@@ -50,6 +54,7 @@ import {
 	type StoryGuestKey,
 	storyGuestNow,
 } from "../../../shared/gym3d/story"
+import { vibePace } from "../../../shared/gym3d/vibes"
 import {
 	pickPrank,
 	roundReply,
@@ -587,6 +592,17 @@ export class Gym3DApp {
 			const text = roomPlayLabel(r.type)
 			if (text && (at.get(r.id) ?? 0) >= ROOM_PLAY_MIN)
 				plays.push({ roomId: r.id, text, x: r.cx, z: r.cz })
+		}
+		// the game makes the members in it livelier (their pose speeds up)
+		const gameRooms = new Set(plays.map((pl) => pl.roomId))
+		for (const p of this.people.people) {
+			if (p.kind !== "member" || p.state !== "use") continue
+			const id = this.world.roomIdAt(
+				p.rig.root.position.x,
+				p.rig.root.position.z,
+			)
+			const base = vibePace(this.world.rooms.find((q) => q.id === id)?.vibe)
+			p.pace = base * (id != null && gameRooms.has(id) ? PLAY_PACE : 1)
 		}
 		this.playing = plays.flatMap((pl) => {
 			const t = this.world.rooms.find((r) => r.id === pl.roomId)?.type
