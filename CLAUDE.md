@@ -182,7 +182,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   a bigger gold screen, speakers and an overhead light arch. Generic for all gear (sized from the piece footprint); the
   new parts stay hidden until the ribbon is cut, then pop in with a confetti burst (`celebrate` -> `Build.reveal`). Members
   prefer upgraded gear (`chooseNext` weights a free station 1 + 0.6 per tier above 1) and now and then say so on starting a
-  set (`People.onUpgradedUse` -> `Life.gearReaction`, lines in `shared/gym3d/banter.ts` `GEAR_LINES`). A hand-built model per
+  set (`People.onUpgradedUse` -> `Life.gearReaction`, lines in `shared/gym3d/banter.ts` `GEAR_LINES`). Upgraded cardio gear also gets a small fan on a post and weights gear a plate tree (more discs and a gilded one at tier 3; `addUpgradeParts` by `Piece.roomType`); the other room types still get only the generic parts, a hand-built model per
   machine tier is still to do.
 - October ghost (#141, first slice): `shared/gym3d/ghost.ts` (`ghostSeason`: October only, `GHOST_LINES`: dry and supportive,
   no exclamation marks). `Happenings.syncGhost` (called from the sim poll via `Gym3DApp.ghostOn`) floats a white "Ghost" extra

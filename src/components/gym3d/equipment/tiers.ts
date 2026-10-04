@@ -112,7 +112,13 @@ function tierFlagTex(t: number): T.Texture {
 /** Parts a better machine really has, not a new colour: tier 2 gets a
  * floor mat and a console (screen on a stand) by the front corner; tier 3
  * adds an overhead light arch and side speakers, and a bigger screen. */
-function addUpgradeParts(d: T.Group, tier: number, s: number, h: number): void {
+function addUpgradeParts(
+	d: T.Group,
+	tier: number,
+	s: number,
+	h: number,
+	roomType: string | null,
+): void {
 	const add = (
 		geo: T.BufferGeometry,
 		mat: T.Material,
@@ -144,6 +150,32 @@ function addUpgradeParts(d: T.Group, tier: number, s: number, h: number): void {
 		1.12,
 		h - 0.095,
 	)
+	// what this kind of machine would really get: a fan to cool a cardio
+	// session, a plate tree beside the weights (bigger and gilded at tier 3)
+	const cx = h - 0.14
+	const cz = h - 0.14
+	if (roomType === "cardio") {
+		add(cylGeo(0.025, 0.85, 6), M(C.steel), cx, 0.42, cz)
+		add(boxGeo(0.26, 0.26, 0.06), M(C.rubber), cx, 0.95, cz)
+		add(
+			cylGeo(0.09, 0.02, 12),
+			glowM(tier === 3 ? "#ffd35a" : "#7fe0d0"),
+			cx,
+			0.95,
+			cz - 0.04,
+		).rotation.x = Math.PI / 2
+	} else if (roomType === "weights") {
+		add(cylGeo(0.03, 0.95, 6), M(C.steelD), cx, 0.47, cz)
+		const discs = tier === 3 ? 4 : 3
+		for (let i = 0; i < discs; i++)
+			add(
+				cylGeo(0.16 - i * 0.015, 0.045, 14),
+				i === discs - 1 && tier === 3 ? glowM("#ffd35a") : M(C.steelD),
+				cx,
+				0.2 + i * 0.16,
+				cz,
+			)
+	}
 	if (tier < 3) return
 	for (const x of [-h + 0.06, h - 0.06]) {
 		add(cylGeo(0.04, 2.1, 8), M(C.steelD), x, 1.05, -h + 0.06)
@@ -207,7 +239,7 @@ export function applyTier(p: Piece): void {
 	fl.position.set(h - 0.08 + 0.25, 1.32, -h + 0.08)
 	d.add(fl)
 	d.userData.flag = fl
-	addUpgradeParts(d, p.tier, s, h)
+	addUpgradeParts(d, p.tier, s, h, p.roomType)
 	if (p.tier === 3) {
 		const gl = new T.Mesh(
 			a.geo(`tierglow${s}`, () => new T.PlaneGeometry(s + 0.5, s + 0.5)),
