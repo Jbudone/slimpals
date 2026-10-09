@@ -98,8 +98,6 @@ onMount(() => {
 <div class="dashboard">
 	<h1>Today</h1>
 
-	<CompeteCard />
-
 	{#if rewardTrack.data}
 		{@const t = rewardTrack.data}
 		<button
@@ -118,6 +116,8 @@ onMount(() => {
 	{/if}
 
 	<div class="tasks"><TodayList editable /></div>
+
+	<CompeteCard />
 
 	{#if inspiration}
 		<section class="card inspiration-card">
