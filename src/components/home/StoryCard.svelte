@@ -1,22 +1,28 @@
 <script lang="ts">
-// A short cutscene card for the waiting story chapter (#188): one line at a
-// time, tap to go on, Skip to dismiss. Seeing it (or skipping) records it.
+// A short cutscene card for the waiting story chapter (#188): a title card
+// first (act, chapter n of N, what happened before), then one line at a time,
+// tap to go on, Skip to dismiss. Seeing it (or skipping) records it.
 import { SPEAKERS } from "../../../shared/gym3d/story"
 import { markStorySeen, story } from "../../lib/story.svelte.js"
 
 const beat = $derived(story.data?.pending ?? null)
-let at = $state(0)
+/** -1 is the title card, then the lines. */
+let at = $state(-1)
 let shownId = $state<string | null>(null)
 
 $effect(() => {
 	// a new chapter starts from its first line
 	if (beat && beat.id !== shownId) {
 		shownId = beat.id
-		at = 0
+		at = -1
 	}
 })
 
-const line = $derived(beat ? (beat.lines[at] ?? null) : null)
+const intro = $derived(!!beat && at < 0)
+const chapter = $derived(story.data?.chapter ?? null)
+const previously = $derived(story.data?.previously ?? null)
+const after = $derived(story.data?.after ?? null)
+const line = $derived(beat && at >= 0 ? (beat.lines[at] ?? null) : null)
 const who = $derived(line ? SPEAKERS[line.who] : null)
 const last = $derived(!!beat && at >= beat.lines.length - 1)
 
@@ -31,7 +37,26 @@ function skip() {
 }
 </script>
 
-{#if beat && line && who}
+{#if beat && intro}
+	<div class="backdrop" role="presentation" data-testid="story-card">
+		<div class="card title" role="dialog" aria-label="Chapter: {beat.title}">
+			<p class="kicker">
+				Act {beat.act}{#if chapter} · Chapter {chapter.n} of {chapter.of}{/if}
+			</p>
+			<h2 data-testid="story-title">{beat.title}</h2>
+			{#if previously}
+				<p class="prev" data-testid="story-previously"><b>Previously</b> {previously}</p>
+			{/if}
+			{#if after != null}
+				<p class="after">The next chapter opens at level {after}.</p>
+			{/if}
+			<div class="foot">
+				<button type="button" class="skip" onclick={skip} data-testid="story-skip">Skip</button>
+				<button type="button" class="go" onclick={next} data-testid="story-begin">Begin</button>
+			</div>
+		</div>
+	</div>
+{:else if beat && line && who}
 	<div class="backdrop" role="presentation" data-testid="story-card">
 		<div class="card" role="dialog" aria-label="Story: {beat.title}">
 			<p class="kicker">Act {beat.act} · {beat.title}</p>
@@ -89,6 +114,30 @@ function skip() {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: #c4521f;
+}
+
+.title h2 {
+	margin: 0 0 8px;
+	font: 800 22px/1.2 var(--font-display, system-ui, sans-serif);
+}
+
+.prev,
+.after {
+	margin: 0 0 6px;
+	font: 500 14px/1.4 system-ui, sans-serif;
+}
+
+.prev b {
+	color: #c4521f;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	font-size: 11px;
+	margin-right: 4px;
+}
+
+.after {
+	color: #8a7a68;
+	font-size: 12px;
 }
 
 .line {

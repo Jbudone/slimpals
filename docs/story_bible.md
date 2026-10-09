@@ -40,9 +40,9 @@ exclamation marks). The rivalry stays affectionate: nobody is truly evil.
    smaller and with a salad; Victor takes the salad.
 
 ## Pacing
-One beat at a time, in order. A beat opens when the gym reaches its level and at
-least `MIN_BEAT_GAP_HOURS` have passed since the previous one, so a binge cannot
-burn the story. Seeing a beat is recorded once (`gym_rewards` `story:<id>`); the
+One beat at a time, in order. A beat opens when the gym reaches its level (there
+is no time gap any more: levels are earned by habit, and see `story_series_plan.md`
+for the reveal at the level-up). Seeing a beat is recorded once (`gym_rewards` `story:<id>`); the
 "Story so far" list in the goals card lets anyone catch up.
 
 ## Not yet
