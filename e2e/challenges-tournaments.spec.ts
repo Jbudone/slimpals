@@ -118,6 +118,16 @@ test("completing a monthly challenge shows the celebration, awards the badge, an
 	).toBeVisible()
 	await page.getByRole("button", { name: "Join Challenge" }).click()
 
+	// the joined challenge's daily checks sit in the Today list, framed apart
+	// from the tasks
+	await page.goto("/today")
+	const checks = page.getByTestId("challenge-checks")
+	await expect(checks).toBeVisible()
+	await expect(checks.getByText("Did you do this today?")).toBeVisible()
+	for (const goal of goals)
+		await expect(checks.getByTestId(`challenge-check-${goal.id}`)).toBeVisible()
+	await page.goto("/challenges")
+
 	for (const goal of goals) {
 		const card = page.locator(".ui-card", { hasText: goal.title })
 		await card.getByRole("button", { name: goal.dailyPrompt }).click()
