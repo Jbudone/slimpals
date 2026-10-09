@@ -48,6 +48,20 @@ describe("the story's beats", () => {
 	})
 })
 
+describe("campaign one's threads", () => {
+	it("every chapter belongs to a thread and each thread comes back", () => {
+		const count = new Map<string, number>()
+		for (const b of STORY) {
+			expect(b.thread, b.id).toBeTruthy()
+			count.set(b.thread ?? "", (count.get(b.thread ?? "") ?? 0) + 1)
+		}
+		for (const [thread, n] of count) expect(n, thread).toBeGreaterThanOrEqual(2)
+		// one chapter per level up to the Open
+		const levels = STORY.filter((b) => b.level < 17).map((b) => b.level)
+		expect(levels).toEqual(Array.from({ length: 16 }, (_, i) => i + 1))
+	})
+})
+
 describe("campaign stories", () => {
 	it("each campaign has its own, the finale is its last chapter, later ones have none yet", () => {
 		expect(storyFor(1)).toBe(STORY)

@@ -21,25 +21,38 @@ evidence, Barry's pickle, Derek warming up, the large plant, the Hall of fame.
 Three acts, **one chapter per level-up**, five threads woven through them (each
 chapter carries a `thread` tag and ends on a hook that the next one picks up):
 
-| Thread | Question | Pays off |
+| Thread (`thread` tag) | Question | Pays off |
 |---|---|---|
-| A, the rival | What does MaxOut want from the street? | Victor's bid, the Open |
-| B, Marcus's notebook | Who wrote MaxOut's first programme? | He takes it to the wall (L12) and gives it to the street (L16) |
-| C, Lisa's drawer | What is she keeping evidence of? | The proof that Dana printed the notebook under Victor's name (L11) |
-| D, the food thread (Barry, Dr. Kim) | Can the Baron survive a gym street? | The Baron stays, smaller, with a salad (finale) |
-| E, Rivera and Dana | Why do they not speak? | A handshake at the Open |
+| `rival` (A, MaxOut) | What does MaxOut want from the street? | The lease buyer is Victor (L13), the public bid (L14), the Open |
+| `notebook` (B, Marcus) | Who wrote MaxOut's first programme? | The sign's slogan (L4), the confession (L7), the flyer (L10), the wall (L15), the street board (finale) |
+| the drawer (C, Lisa) | What is she keeping evidence of? | The 2009 clipping (L11), "it is all in the drawer" (L15), closed (finale) |
+| `food` (D, Barry and Dr. Kim) | Can the Baron survive a gym street? | The free samples (L3), the imaginary friend (L6), the sale (L9), the fries (L12), the salad (finale) |
+| `coaches` (E, Rivera and Dana) | Why do they not speak? | The reveal (L11), "same rules as 2011" (L16), the handshake (finale) |
 
-| Levels | Act | Shape |
-|---|---|---|
-| 1-4 | 1, the street changes | Open the gym; the MaxOut sign goes up (set piece at L4); meet the cast; plant B, C and D |
-| 5-8 | 1, the offer | Victor's coat and his offer; Marcus's history surfaces; ends on the lease hook (L8) |
-| 9-12 | 2, the bidding | The Baron goes on sale; Dana is Rivera's old rival; the school photo reversal (midpoint, L12) |
-| 13-16 | 2, the turn | Victor bids in public; Marcus takes the notebook to the wall; the Open is announced (L16) |
-| 17+ | 3, the Open | The seven day contest, then win or lose chapter, then the finale |
+| Level | Chapter | Thread | Beat |
+|---|---|---|---|
+| 1 | Opening day | street | The gym opens; Lisa's drawer; someone peels paper off the shop across the road |
+| 2 | A very good coat | rival | Victor announces MaxOut: "everyone has a number"; Marcus has heard the line before |
+| 3 | Free samples | food | Barry's free burgers; someone measured his shop |
+| 4 | The new sign (set piece) | notebook | MaxOut's sign carries Marcus's line: "Show up. Start small." |
+| 5 | The offer | rival | Victor offers to buy the gym and asks to keep Marcus, who knows "the programme" |
+| 6 | A friend of a friend | food | Barry's imaginary friend and his lease |
+| 7 | The notebook | notebook | Marcus's confession; Lisa: "I have a date for that" |
+| 8 | Fine print (act break) | rival | Barry's lease is sold to a company starting with V |
+| 9 | Downsizing | food | Barry puts the Baron up for sale; an offer from a very good coat |
+| 10 | Half price | notebook | The flyer says "Programme by D. Voss" |
+| 11 | Old rivals | coaches | Dana and Rivera; Lisa's 2009 clipping |
+| 12 | Research | food | Dr. Kim's fries; Barry made them for a debating team in '99 |
+| 13 | Class of 99 (midpoint) | rival | The school photo: Victor and Barry were best friends, Victor bought the lease |
+| 14 | The deal | rival | Victor bids in public; Barry says not yet; Dana watches from the window |
+| 15 | The wall | notebook | Marcus takes the notebook in; Victor never saw the wall; Dana hung it |
+| 16 | The poster | coaches | The Pavement Street Open is announced |
+| 17+ | The Open | rival | Seven days, a win or a lose chapter, then the finale (the salad, the handshake, the street board, the drawer closed) |
 
-Rule: **every level 1-16 has exactly one chapter**; the set pieces (L4, L8, L12,
-L16, the Open) also bring a guest into the gym and a change in the street
-(a sign, a banner, a crowd), so a reveal is something you can see, not only read.
+Rule: **every level 1-16 has exactly one chapter**; the set pieces (L4 the sign,
+L8 the lease, L13 the photo, L16 the poster, then the Open) also bring a guest into
+the gym and a change in the street (a sign, a banner, a crowd), so a reveal is
+something you can see, not only read.
 
 ## Campaigns 2-10: seasons of the series
 Each keeps its own place, rival and nine chapters (levels 1-9, one per level-up),
