@@ -2,6 +2,7 @@
 // The daily check-in, daily missions and weekly missions (Layout Lab task
 // list), shared by the Home drawer and the Today tab. With `editable`, the
 // player adds, edits and archives missions (the old MissionsCard form).
+
 import { onMount } from "svelte"
 import { guessMissionKind } from "../../../shared/gym3d/economy.js"
 import type {
@@ -22,6 +23,7 @@ import {
 	today,
 	toggleMission,
 } from "../../lib/today.svelte.js"
+import ChallengeChecks from "./ChallengeChecks.svelte"
 import { FLAME_SVG, GREENS_SVG, SWEAT_SVG, TICK_SVG } from "./icons"
 
 let { editable = false }: { editable?: boolean } = $props()
@@ -206,6 +208,8 @@ onMount(() => {
 	{:else}
 		<p class="muted">No daily missions yet. Add one below: every tick builds your gym.</p>
 	{/if}
+
+	<ChallengeChecks />
 
 	{#if today.weekly.length}
 		<div class="tsec">

@@ -1,46 +1,21 @@
 <script lang="ts">
-// Today's contests, right on the Today tab: this month's challenge with the
-// goals still to log today (one tap each) and the tournaments you are in,
-// each a tap away from its page. Challenges and tournaments are the heart
-// of the app, so they get a card of their own, not a line in a list.
+// Below Today's tasks: the tournaments you are in, each a tap away from its
+// page, and a nudge to join this month's challenge when you have not. The
+// challenge's daily checks themselves live inside the task list
+// (home/ChallengeChecks.svelte), clearly apart from the tasks.
 
 import { Trophy } from "@lucide/svelte"
 import { onMount } from "svelte"
-import { AUTO_GOAL_NOTE } from "../../shared/challenges/auto.js"
 import { api } from "../lib/api.js"
 import { authState } from "../lib/auth.svelte.js"
-import { showBadgeToast } from "../lib/toast.svelte.js"
+import {
+	challengeToday,
+	loadChallengeToday,
+} from "../lib/challengeToday.svelte.js"
 import { TOURNAMENT_TYPE_UNITS } from "../lib/tournamentLabels.js"
-import { loadWallet } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
-import ChallengeBanner from "./ChallengeBanner.svelte"
 import Avatar from "./ui/Avatar.svelte"
-import Button from "./ui/Button.svelte"
 import Card from "./ui/Card.svelte"
-import ProgressBar from "./ui/ProgressBar.svelte"
-
-type Goal = {
-	id: string
-	title: string
-	target: number
-	unit: string
-	dailyAmount: number
-	dailyPrompt: string
-	auto?: string
-}
-
-type Challenge = {
-	id: number
-	title: string
-	theme?: string | null
-	goals: Goal[]
-	joined: boolean
-	progress: Record<string, number>
-	dailyLog: Record<string, string[]>
-	completedAt: string | null
-	goalsCompleted: number
-	totalGoals: number
-} | null
 
 type Standing = {
 	id: number
@@ -67,35 +42,14 @@ type Board = {
 const MAX_CHECK = 5
 const MAX_SHOWN = 2
 
-let challenge = $state<Challenge>(null)
 let standings = $state<Standing[]>([])
 let loaded = $state(false)
-let saving = $state<string | null>(null)
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
-
-const toLog = $derived.by(() => {
-	const c = challenge
-	if (!c?.joined || c.completedAt) return []
-	return c.goals.filter(
-		(g) =>
-			!g.auto &&
-			(c.progress[g.id] ?? 0) < g.target &&
-			!(c.dailyLog[g.id] ?? []).includes(todayIso()),
-	)
-})
+const challenge = $derived(challengeToday.data)
 
 const score = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 const ordinal = (n: number) =>
 	n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`
-
-async function loadChallenge() {
-	try {
-		challenge = await api.get<Challenge>("/challenges/current")
-	} catch {
-		// no card section
-	}
-}
 
 async function loadStandings() {
 	try {
@@ -134,81 +88,23 @@ async function loadStandings() {
 	}
 }
 
-/** One tap logs today's amount for a goal. */
-async function log(goal: Goal) {
-	const c = challenge
-	if (!c || saving) return
-	saving = goal.id
-	try {
-		const res = await api.patch<{
-			newBadges?: {
-				key: string
-				name: string
-				tier: string
-				earnedAt: string
-			}[]
-			milestonesPaid?: unknown[]
-		}>(`/challenges/${c.id}/progress`, {
-			dailyProgress: { [goal.id]: goal.dailyAmount },
-		})
-		for (const b of res.newBadges ?? []) showBadgeToast(b)
-		if (res.milestonesPaid?.length) void loadWallet()
-		await loadChallenge()
-	} finally {
-		saving = null
-	}
-}
-
 onMount(async () => {
-	await Promise.all([loadChallenge(), loadStandings()])
+	await Promise.all([
+		challengeToday.loaded ? Promise.resolve() : loadChallengeToday(),
+		loadStandings(),
+	])
 	loaded = true
 })
 </script>
 
-{#if loaded && (challenge || standings.length)}
+{#if loaded && ((challenge && !challenge.joined) || standings.length)}
 	<Card>
 		<div class="head">
-			<h2>Compete today</h2>
+			<h2>In the running</h2>
 			<button type="button" class="more" onclick={() => page("/challenges")}>All</button>
 		</div>
 
-		{#if challenge?.joined}
-			<ChallengeBanner
-				theme={challenge.theme ?? null}
-				title={challenge.title}
-				progress={challenge.totalGoals ? challenge.goalsCompleted / challenge.totalGoals : 0}
-			/>
-			<button
-				type="button"
-				class="row"
-				onclick={() => page("/challenges")}
-				data-testid="compete-challenge"
-			>
-				<Avatar tone="accent">
-					{#snippet icon()}
-						<Trophy size={18} />
-					{/snippet}
-				</Avatar>
-				<span class="copy">
-					<span class="title">{challenge.title} · {challenge.goalsCompleted}/{challenge.totalGoals}</span>
-					<ProgressBar variant="linear" value={challenge.goalsCompleted} max={challenge.totalGoals} />
-				</span>
-			</button>
-			{#each toLog as g (g.id)}
-				<div class="log" data-testid="compete-log-{g.id}">
-					<span class="copy">
-						<span class="title">{g.title}</span>
-						<span class="sub">{g.dailyPrompt}</span>
-					</span>
-					<Button variant="secondary" disabled={saving !== null} onclick={() => log(g)}>
-						+{g.dailyAmount}
-					</Button>
-				</div>
-			{/each}
-			{#if challenge.goals.some((g) => g.auto)}
-				<p class="note">{AUTO_GOAL_NOTE}</p>
-			{/if}
-		{:else if challenge}
+		{#if challenge && !challenge.joined}
 			<button
 				type="button"
 				class="row"
