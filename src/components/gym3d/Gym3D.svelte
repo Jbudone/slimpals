@@ -8,6 +8,7 @@ import {
 	DoorOpen,
 	Dumbbell,
 	Flower2,
+	Hammer,
 	LayoutGrid,
 	Move,
 	Paintbrush,
@@ -468,7 +469,9 @@ const CARD_TITLE: Record<string, string> = {
 const inWorld = $derived(
 	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
 		(sheet === "piece" && !!piece) ||
-		(sheet === "spot" && !!spotInfo && !!room),
+		(sheet === "spot" && !!spotInfo && !!room) ||
+		(sheet === "lot" && !!lot) ||
+		(sheet === "job" && !!jobView),
 )
 
 /** Who works in the room now (the Staff page), read once a second. */
@@ -1192,6 +1195,58 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
+	{#if inWorld && sheet === "lot" && lot}
+		{@const info = SHAPE_INFO[lot.shape as keyof typeof SHAPE_INFO]}
+		<!-- a plot for sale: its menu floats over the plot -->
+		<div class="iw narrow" bind:this={menuEl} role="group" aria-label="Plot for sale" data-testid="gym3d-sheet" data-sheet="lot">
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>{info?.name ?? "Plot"} for sale</b>
+					<small>{info?.sub} · builds in about {lot.hours}h</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+			<button
+				type="button"
+				class="iw-up"
+				class:short={coins < lot.price}
+				disabled={busy || coins < lot.price}
+				onclick={buyLot}
+				data-testid="gym3d-buy"
+			>
+				<span class="ico"><Hammer size={20} /></span>
+				<span class="tx">
+					<b>{coins < lot.price ? `Need ${lot.price - coins} more` : "Buy and build"}</b>
+					<small><span class="g3d-coin"></span>{lot.price.toLocaleString("en-US")}</small>
+				</span>
+			</button>
+			<p class="hint">Coins pile up by themselves: busy machines, the front desk and the Slim Kitchen fill coin bubbles. Tap them to collect.</p>
+		</div>
+	{/if}
+
+	{#if inWorld && sheet === "job" && jobView}
+		{@const jv = jobView}
+		<!-- a build site: its menu floats over the site -->
+		<div class="iw narrow" bind:this={menuEl} role="group" aria-label="Build site" data-testid="gym3d-sheet" data-sheet="job">
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>{jv.j.kind === "plot" ? "Under construction" : "Being upgraded"}</b>
+					<small>{fmtLeft(jv.left)} left</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+			<div class="iw-row">
+				<button type="button" class="g3d-btn" disabled={busy} onclick={() => sweatHour(jv.j.id)} data-testid="gym3d-sweat">
+					<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
+				</button>
+				<button type="button" class="g3d-btn" disabled={busy} onclick={() => finishJob(jv.j.id, jv.cost)} data-testid="gym3d-finish">
+					Finish <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
+				</button>
+			</div>
+			<p class="hint">You have {sweat} Sweat. Every workout task you tick in Today earns more.</p>
+		</div>
+	{/if}
+
 	{#if inWorld && sheet === "spot" && spotInfo && room}
 		{@const si = spotInfo}
 		<!-- an empty pad's menu floats over the pad -->
@@ -1673,51 +1728,7 @@ const kitchenView = $derived.by(() => {
 			<button type="button" class="g3d-x" onclick={close} aria-label="Close">×</button>
 			{#if busy}<span class="g3d-busy" role="status" aria-label="Working"></span>{/if}
 
-			{#if sheet === "lot" && lot}
-				{@const info = SHAPE_INFO[lot.shape as keyof typeof SHAPE_INFO]}
-				<h3>{info?.name ?? "Plot"} for sale</h3>
-				<p class="sub">{info?.sub} · builds in about {lot.hours}h</p>
-				<div class="row">
-					<span class="price"><span class="g3d-coin"></span>{lot.price.toLocaleString("en-US")}</span>
-					<button
-						type="button"
-						class="g3d-btn primary"
-						disabled={busy || coins < lot.price}
-						onclick={buyLot}
-						data-testid="gym3d-buy"
-					>
-						{coins < lot.price ? `Need ${lot.price - coins} more` : "Buy and build"}
-					</button>
-				</div>
-				<p class="hint">Coins pile up by themselves: busy machines, the front desk and the Slim Kitchen fill coin bubbles. Tap them to collect.</p>
-
-			{:else if sheet === "job" && jobView}
-				{@const jv = jobView}
-				<h3>{jv.j.kind === "plot" ? "Under construction" : "Being upgraded"}</h3>
-				<p class="sub">{fmtLeft(jv.left)} left</p>
-				<div class="row">
-					<button
-						type="button"
-						class="g3d-btn"
-						disabled={busy}
-						onclick={() => sweatHour(jv.j.id)}
-						data-testid="gym3d-sweat"
-					>
-						<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
-					</button>
-					<button
-						type="button"
-						class="g3d-btn primary"
-						disabled={busy}
-						onclick={() => finishJob(jv.j.id, jv.cost)}
-						data-testid="gym3d-finish"
-					>
-						Finish now <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
-					</button>
-				</div>
-				<p class="hint">You have {sweat} Sweat. Every workout task you tick in Today earns more.</p>
-
-			{:else if sheet === "kitchen" && kitchenView}
+			{#if sheet === "kitchen" && kitchenView}
 				{@const kv = kitchenView}
 				<h3>Slim Kitchen</h3>
 				<p class="sub">Your juice bar. Greens from food tasks grow the menu.</p>
