@@ -3,13 +3,14 @@
 // flies its rewards into the HUD and lets the gym react.
 import type { MissionCadence, MissionDifficulty } from "../../shared/types.js"
 import { chipHtml } from "../components/home/icons.js"
-import { api } from "./api.js"
 import {
 	checkinState,
 	loadCheckinStatus,
 	submitCheckin,
 } from "./checkin.svelte.js"
 import { burstAt, centerOf, flyChip } from "./fly.js"
+import { sendOrQueue } from "./net/queue.js"
+import { swr } from "./net/swr.js"
 import { showBadgeToast } from "./toast.svelte.js"
 import { addXp, loadWallet, patchWallet, wallet } from "./wallet.svelte.js"
 
@@ -52,18 +53,18 @@ export const today = $state<{
 export const CHECKIN_XP = 15
 
 export async function loadToday(): Promise<void> {
-	try {
-		const res = await api.get<{ daily: Mission[]; weekly: Mission[] }>(
-			"/missions",
-		)
-		today.daily = res.daily
-		today.weekly = res.weekly
-		today.error = null
-	} catch (e) {
-		today.error = e instanceof Error ? e.message : "Could not load missions"
-	} finally {
-		today.loaded = true
-	}
+	let got = false
+	const fresh = await swr<{ daily: Mission[]; weekly: Mission[] }>(
+		"/missions",
+		(res) => {
+			got = true
+			today.daily = res.daily
+			today.weekly = res.weekly
+			today.error = null
+		},
+	)
+	if (!fresh && !got) today.error = "Could not load missions"
+	today.loaded = true
 	if (!checkinState.data) void loadCheckinStatus()
 }
 
@@ -175,11 +176,38 @@ export async function toggleMission(
 	// optimistic: the tick fills in at once
 	m.completedThisPeriod = done
 	try {
-		const res = await api.post<{
+		const sent = await sendOrQueue<{
 			rewards?: Rewards
 			newPendingUpgrades?: string[]
 			gym: GymAfter
-		}>(`/missions/${m.id}/${done ? "complete" : "uncomplete"}`)
+		}>(
+			"POST",
+			`/missions/${m.id}/${done ? "complete" : "uncomplete"}`,
+			undefined,
+			{
+				// a replay of something that did get through
+				settleOn: done ? "already completed" : "not completed",
+			},
+		)
+		if (sent.queued) {
+			// no connection: the tick stands, the reward shows as earned, and the
+			// server catches up later (the HUD then settles on its numbers)
+			if (done) {
+				if (btn) {
+					const c = centerOf(btn)
+					burstAt(c.x, c.y, BURST[m.kind])
+				}
+				tell(m.kind)
+				await payOut(
+					btn?.closest<HTMLElement>("[data-task]") ?? null,
+					{ xp: m.xp, sweat: 0, greens: 0 },
+					null,
+					[],
+				)
+			}
+			return
+		}
+		const res = sent.data
 		if (done) {
 			if (btn) {
 				const c = centerOf(btn)
@@ -201,6 +229,7 @@ export async function toggleMission(
 			})
 		}
 	} catch {
+		// the server said no: the tick goes back
 		m.completedThisPeriod = !done
 	} finally {
 		today.busy = null
@@ -214,7 +243,7 @@ export async function checkIn(btn: HTMLElement | null): Promise<void> {
 		const res = (await submitCheckin()) as Awaited<
 			ReturnType<typeof submitCheckin>
 		> & { rewards?: Rewards; newPendingUpgrades?: string[] }
-		for (const b of res.newBadges ?? []) showBadgeToast(b)
+		for (const b of res?.newBadges ?? []) showBadgeToast(b)
 		if (btn) {
 			const c = centerOf(btn)
 			burstAt(c.x, c.y, BURST.checkin)
@@ -224,11 +253,12 @@ export async function checkIn(btn: HTMLElement | null): Promise<void> {
 		void flyChip("st", "+1 day", row ? centerOf(row) : { x: 60, y: 300 })
 		await payOut(
 			row,
-			res.rewards ?? { xp: CHECKIN_XP, sweat: 0, greens: 0 },
+			res?.rewards ?? { xp: CHECKIN_XP, sweat: 0, greens: 0 },
 			null,
-			res.newPendingUpgrades ?? [],
+			res?.newPendingUpgrades ?? [],
 		)
-		await loadWallet()
+		// (offline, the HUD settles when the queue is sent)
+		if (res) await loadWallet()
 	} finally {
 		today.busy = null
 	}
@@ -246,14 +276,43 @@ export async function saveMission(
 	input: MissionInput,
 	id: number | null,
 ): Promise<void> {
-	if (id != null) await api.patch(`/missions/${id}`, input)
-	else await api.post("/missions", input)
-	await loadToday()
+	const sent = await sendOrQueue(
+		id != null ? "PATCH" : "POST",
+		id != null ? `/missions/${id}` : "/missions",
+		input,
+	)
+	if (!sent.queued) {
+		await loadToday()
+		return
+	}
+	// offline: show the change now; the lists re-read once it is sent
+	if (id != null) {
+		for (const m of [...today.daily, ...today.weekly])
+			if (m.id === id) Object.assign(m, input)
+		return
+	}
+	const row: Mission = {
+		...input,
+		id: -Date.now(),
+		description: input.description ?? null,
+		xp: 0,
+		sweat: 0,
+		greens: 0,
+		createdAt: new Date().toISOString(),
+		completedThisPeriod: false,
+	}
+	if (input.cadence === "weekly") today.weekly = [...today.weekly, row]
+	else today.daily = [...today.daily, row]
 }
 
 export async function archiveMission(id: number): Promise<void> {
-	await api.post(`/missions/${id}/archive`)
-	await loadToday()
+	const sent = await sendOrQueue("POST", `/missions/${id}/archive`)
+	if (!sent.queued) {
+		await loadToday()
+		return
+	}
+	today.daily = today.daily.filter((m) => m.id !== id)
+	today.weekly = today.weekly.filter((m) => m.id !== id)
 }
 
 /** One-tap starter missions for an empty Today list. */

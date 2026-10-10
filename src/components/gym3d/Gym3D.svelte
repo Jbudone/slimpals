@@ -49,7 +49,7 @@ import type {
 	GymLayoutDto,
 	GymStaffDto,
 } from "../../../shared/types"
-import { api } from "../../lib/api"
+import { api, NetworkError } from "../../lib/api"
 import { cosmetics } from "../../lib/cosmetics.svelte"
 import { centerOf, flyChip } from "../../lib/fly"
 import { wallet } from "../../lib/wallet.svelte"
@@ -347,7 +347,14 @@ async function act(path: string, body?: unknown): Promise<GymLayoutDto | null> {
 		setLayout(next)
 		return next
 	} catch (e) {
-		say(e instanceof Error ? e.message : "Something went wrong", "error")
+		say(
+			e instanceof NetworkError
+				? "No connection. That needs the internet, try again in a moment."
+				: e instanceof Error
+					? e.message
+					: "Something went wrong",
+			"error",
+		)
 		// the gym may be out of date (another device): read it again
 		try {
 			if (app) setLayout(await app.reload())

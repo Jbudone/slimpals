@@ -19,7 +19,7 @@ export type QueuedOp = {
 	tries: number
 }
 
-export const netState = $state<{
+export type NetState = {
 	/** Inputs saved on this device and not sent yet. */
 	pending: number
 	/** Sending the queue right now. */
@@ -28,7 +28,31 @@ export const netState = $state<{
 	trouble: boolean
 	/** The queue was just sent after a bad spell (a short "all caught up"). */
 	caughtUp: boolean
-}>({ pending: 0, flushing: false, trouble: false, caughtUp: false })
+}
+
+/** Plain state; `netStatus.svelte.ts` mirrors it for the screen. */
+export const netState: NetState = new Proxy(
+	{ pending: 0, flushing: false, trouble: false, caughtUp: false } as NetState,
+	{
+		set(t, k, v) {
+			;(t as Record<string | symbol, unknown>)[k] = v
+			changed()
+			return true
+		},
+	},
+)
+
+let listener: ((s: NetState) => void) | null = null
+
+/** Called after every change of `netState`. */
+export function onNetState(fn: (s: NetState) => void): void {
+	listener = fn
+	fn(netState)
+}
+
+function changed(): void {
+	listener?.(netState)
+}
 
 /** Seconds of failure before the player is told. */
 export const TROUBLE_AFTER_MS = 6000

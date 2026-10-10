@@ -1,4 +1,5 @@
-import { api } from "./api.js"
+import { sendOrQueue } from "./net/queue.js"
+import { swr } from "./net/swr.js"
 
 export type CheckinStatus = {
 	checkedInToday: boolean
@@ -20,18 +21,32 @@ export const checkinState = $state<{ data: CheckinStatus | null }>({
 })
 
 export async function loadCheckinStatus() {
-	try {
-		checkinState.data = await api.get<CheckinStatus>("/checkins/today")
-	} catch {
-		// ignore — pill/card stay in their default hidden state
-	}
+	// the last answer shows at once (and offline), the fresh one replaces it
+	await swr<CheckinStatus>("/checkins/today", (r) => {
+		checkinState.data = r
+	})
 }
 
-export async function submitCheckin(): Promise<{ newBadges?: NewBadge[] }> {
-	const res = await api.post<CheckinStatus & { newBadges?: NewBadge[] }>(
+/** Checks in. Without a connection it is queued (the card shows as done and
+ * the streak counts up) and this resolves to null. */
+export async function submitCheckin(): Promise<
+	({ newBadges?: NewBadge[] } & Partial<CheckinStatus>) | null
+> {
+	const sent = await sendOrQueue<CheckinStatus & { newBadges?: NewBadge[] }>(
+		"POST",
 		"/checkins",
 		{},
 	)
-	checkinState.data = { checkedInToday: true, streakCount: res.streakCount }
-	return res
+	if (sent.queued) {
+		checkinState.data = {
+			checkedInToday: true,
+			streakCount: (checkinState.data?.streakCount ?? 0) + 1,
+		}
+		return null
+	}
+	checkinState.data = {
+		checkedInToday: true,
+		streakCount: sent.data.streakCount,
+	}
+	return sent.data
 }
