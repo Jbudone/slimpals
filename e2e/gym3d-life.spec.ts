@@ -1061,6 +1061,7 @@ test("3D gym customize: a style repaints the room and a vibe tints its floor", a
 	await expect.poll(wallOf).toBe("#fff1e0")
 
 	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
+	await page.getByTestId("pal-tab-vibe").click()
 	await page.getByTestId("room-vibe-hype").click()
 	// still only a preview: nothing is paid yet
 	expect((await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0).toBe(
@@ -1138,6 +1139,7 @@ test("3D gym cosmetics: an owned lantern goes on show in a room and comes down",
 
 	await openRoomMenu(page, room)
 	await page.getByTestId("room-customize").click()
+	await page.getByTestId("pal-tab-decor").click()
 	await page.getByTestId("cosmetic-place-halloween_lantern").click()
 	await expect
 		.poll(async () =>

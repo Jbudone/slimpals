@@ -245,6 +245,8 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	// ── Customize reaches paint (and Back returns to the menu) ──
 	await page.getByTestId("room-customize").click()
 	await expect(sheet).toHaveAttribute("data-sheet", "paint")
+	await expect(page.getByTestId("room-styles")).toBeVisible()
+	await page.getByTestId("pal-tab-walls").click()
 	await expect(page.locator(".g3d-sheet .sw2").first()).toBeVisible()
 	await page.waitForTimeout(300)
 	await shot(page, "03-customize")
