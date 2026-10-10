@@ -136,10 +136,15 @@ function place() {
 	width: 150px;
 	height: 150px;
 	border-radius: 50%;
-	background: radial-gradient(circle at 35% 30%, #7de8a6, #34c973 55%, #1f9a55);
+	background: radial-gradient(
+		circle at 35% 30%,
+		var(--sk-b, #7de8a6),
+		var(--sk-a, #34c973) 55%,
+		var(--sk-c, #1f9a55)
+	);
 	box-shadow:
 		0 0 0 8px rgba(255, 255, 255, 0.14),
-		0 8px 0 #177a42;
+		0 8px 0 var(--sk-c, #177a42);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
