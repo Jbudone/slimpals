@@ -94,10 +94,11 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   that the wall exists and is not open, then charges under the gym row lock. The world (`world.ts` `buildWalls`)
   leaves an open wall out entirely, so paths and sight lines join the rooms. It scores 1 star point each (cap 4)
   and pays the `wall-1` goal. UI: the room menu's "Open walls" page. e2e: `gym3d-life.spec.ts` ("walls").
+- Customize is a fitting room (`Draft` in `Gym3D.svelte`): a tap on a style, swatch or vibe only previews it on the real room (`previewDraft` applies a patched layout, nothing is saved or paid); a bar shows "Keep"/"Buy N" and "Undo", and leaving the page puts the room back (`room-draft`, `-keep`, `-undo`). Migrations are guarded by `tests/db/migrations-safe.test.ts` (a destructive statement must be listed there).
 - Room style and vibe (the room menu's Customize page, `shared/gym3d/vibes.ts`): a style (Industrial, Neon, Zen,
-  Retro) is a whole-room look made only of the existing paint palettes, applied in one tap through the paint
-  endpoint (no new server code; `styleOf` recognises a room painted exactly like one). A vibe (Chill, Hype, Focus;
-  `gym_rooms.vibe`, migration 0026) costs `VIBE.cost` coins to set or change, is free to clear
+  Retro) is a whole-room look made only of the existing paint palettes, tried on first and applied through the paint
+  endpoint on Keep (no new server code; `styleOf` recognises a room painted exactly like one). A vibe (Chill, Hype, Focus;
+  `gym_rooms.vibe`, migration 0026) costs `VIBE.cost` coins the first time only (bought once, owned for good: a `gym_rewards` claim `vibe:<key>`, `ownedVibes` on the layout; later changes and other rooms are free), is free to clear
   (`POST /api/gym/layout/rooms/:roomId/vibe {vibe|"none"}`, `vibes3d.ts`, under the gym row lock) and: tints the
   room's floor with a glow (`world.ts` `buildFloors`), sets the workout pace of members in it (`vibePace`, applied
   in `members.ts` `startUse` and `step`), adds `VIBE.bonus` (+4%) to its machines' coins in `income3d.ts`, and

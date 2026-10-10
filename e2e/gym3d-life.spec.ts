@@ -1046,19 +1046,27 @@ test("3D gym customize: a style repaints the room and a vibe tints its floor", a
 
 	await openRoomMenu(page, room)
 	await page.getByTestId("room-customize").click()
-	await page.getByTestId("room-style-zen").click()
-	await expect
-		.poll(async () =>
-			page.evaluate(
-				(id) =>
-					window.gym3d?.layout().rooms.find((r) => r.id === id)?.paint.wall,
-				room.id,
-			),
+	const wallOf = () =>
+		page.evaluate(
+			(id) => window.gym3d?.layout().rooms.find((r) => r.id === id)?.paint.wall,
+			room.id,
 		)
-		.toBe("#fff1e0")
+	const wall0 = await wallOf()
+	// a tap only tries the look on: Undo puts the room back
+	await page.getByTestId("room-style-zen").click()
+	await expect.poll(wallOf).toBe("#fff1e0")
+	await page.getByTestId("room-draft-undo").click()
+	await expect.poll(wallOf).toBe(wall0)
+	await page.getByTestId("room-style-zen").click()
+	await expect.poll(wallOf).toBe("#fff1e0")
 
 	const coins0 = (await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0
 	await page.getByTestId("room-vibe-hype").click()
+	// still only a preview: nothing is paid yet
+	expect((await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0).toBe(
+		coins0,
+	)
+	await page.getByTestId("room-draft-keep").click()
 	await expect
 		.poll(async () =>
 			page.evaluate(

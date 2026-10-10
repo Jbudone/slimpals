@@ -310,6 +310,8 @@ export type GymLayoutDto = {
 	rating: GymRatingDto
 	/** Every goal in queue order; the HUD shows the first open ones. */
 	goals: GymGoalDto[]
+	/** Vibes bought once: they can be put in any room for free after. */
+	ownedVibes: string[]
 	/** The Burger Baron across the street goes on sale at 4 stars. */
 	burger: GymBurgerDto
 	/** Rewards paid by this read for goals reached since the last one. */
