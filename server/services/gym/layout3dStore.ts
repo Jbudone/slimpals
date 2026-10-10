@@ -347,6 +347,7 @@ export async function getGymLayoutDto(
 		hires,
 		paidRows,
 		[boughtRow],
+		vibeRows,
 	] = await Promise.all([
 		db
 			.select({
@@ -411,6 +412,12 @@ export async function getGymLayoutDto(
 			.from(gymRewards)
 			.where(
 				and(eq(gymRewards.gymId, gymId), eq(gymRewards.source, BURGER_SOURCE)),
+			),
+		db
+			.select({ source: gymRewards.source })
+			.from(gymRewards)
+			.where(
+				and(eq(gymRewards.gymId, gymId), like(gymRewards.source, "vibe:%")),
 			),
 	])
 	const unplacedKeys = placeNewUnlocks(plan, unlocked, {
@@ -527,6 +534,7 @@ export async function getGymLayoutDto(
 		nextHireCost: hireCost(hires.length),
 		rating: gs.rating,
 		goals: goalsDto(gs, paid),
+		ownedVibes: vibeRows.map((r) => r.source.slice(5)),
 		burger: {
 			state: burgerState(gs.rating.stars, !!boughtRow),
 			cost: BURGER.cost,

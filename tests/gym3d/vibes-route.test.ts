@@ -160,6 +160,17 @@ describe("Room vibes", () => {
 		await setVibe(mine.cookie, cardio.id, "focus").expect(409)
 	})
 
+	it("is bought once and owned for good", async () => {
+		const { cookie, gymId, layout } = await setup(["cardio_treadmill"])
+		const cardio = roomOf(layout, "cardio")
+		await setCoins(gymId, 1000)
+		await setVibe(cookie, cardio.id, "hype").expect(200)
+		await setVibe(cookie, cardio.id, "none").expect(200)
+		const again = await setVibe(cookie, cardio.id, "hype").expect(200)
+		expect(again.body.coins).toBe(1000 - VIBE.cost) // no second charge
+		expect(again.body.ownedVibes).toEqual(["hype"])
+	})
+
 	it("raises the room's machine rates and the star score", async () => {
 		const { cookie, gymId, layout } = await setup(["weights_dumbbells"])
 		const weights = roomOf(layout, "weights")

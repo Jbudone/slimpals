@@ -671,14 +671,99 @@ async function paint(p: {
 	}
 }
 
+// Customize is a fitting room: a tap only previews the look (paint and vibe)
+// on the real room, and nothing is paid or saved until "Keep". Undo, closing
+// the page or picking another room puts the room back.
+type Draft = {
+	roomId: number
+	paint: { wall?: string; floorStyle?: string; floorColor?: string }
+	vibe?: string | null
+}
+let draft = $state<Draft | null>(null)
+const mine = $derived(draft && room && draft.roomId === room.id ? draft : null)
+const shownPaint = $derived({ ...room?.paint, ...(mine?.paint ?? {}) })
+const shownVibe = $derived(
+	mine?.vibe !== undefined ? mine.vibe : (room?.vibe ?? null),
+)
+const vibeOwned = (v: string | null) =>
+	!v || (layout?.ownedVibes ?? []).includes(v) || room?.vibe === v
+/** What keeping the draft costs: a vibe the gym does not own yet. */
+const draftCost = $derived(
+	mine && mine.vibe && mine.vibe !== room?.vibe && !vibeOwned(mine.vibe)
+		? VIBE.cost
+		: 0,
+)
+
+function previewDraft(next: Draft) {
+	const L = layout
+	if (!L || !app) return
+	draft = next
+	app.applyLayout({
+		...L,
+		rooms: L.rooms.map((q) =>
+			q.id === next.roomId
+				? {
+						...q,
+						paint: { ...q.paint, ...next.paint },
+						vibe: next.vibe !== undefined ? next.vibe : q.vibe,
+					}
+				: q,
+		),
+	})
+	app.sparkleRoom(
+		next.roomId,
+		next.paint.wall ??
+			next.paint.floorColor ??
+			(next.vibe ? VIBES[next.vibe]?.color : null) ??
+			"#ffffff",
+	)
+}
+
+function previewPaint(p: Draft["paint"]) {
+	const r = room
+	if (!r) return
+	previewDraft({
+		roomId: r.id,
+		paint: { ...(mine?.paint ?? {}), ...p },
+		vibe: mine?.vibe,
+	})
+}
+
 /** A whole-room look in one tap (the same paint call as the swatches). */
 function applyStyle(st: RoomStyle) {
-	return paint({
+	previewPaint({
 		wall: st.wall,
 		floorStyle: st.floorStyle,
 		floorColor: st.floorColor,
 	})
 }
+
+function previewVibe(v: string | null) {
+	const r = room
+	if (!r) return
+	previewDraft({ roomId: r.id, paint: mine?.paint ?? {}, vibe: v })
+}
+
+function cancelDraft() {
+	if (!draft) return
+	draft = null
+	if (layout && app) app.applyLayout(layout)
+}
+
+async function keepDraft() {
+	const d = mine
+	if (!d || busy) return
+	if (draftCost && lacks(draftCost, layout?.coins ?? 0)) return
+	draft = null
+	if (Object.keys(d.paint).length) await paint(d.paint)
+	if (d.vibe !== undefined && d.vibe !== room?.vibe)
+		await setVibe(d.vibe ?? "none")
+}
+
+$effect(() => {
+	// leaving the page (or the room) with a look still on trial puts it back
+	if (draft && (sheet !== "paint" || room?.id !== draft.roomId)) cancelDraft()
+})
 
 /** Sets or clears the room's vibe (coins to set, free to clear). */
 async function setVibe(vibe: string) {
@@ -1406,7 +1491,7 @@ const kitchenView = $derived.by(() => {
 						<button
 							type="button"
 							class="g3d-chipbtn"
-							class:on={styleOf(room.paint)?.key === st.key}
+							class:on={styleOf(shownPaint as typeof room.paint)?.key === st.key}
 							disabled={busy}
 							onclick={() => applyStyle(st)}
 							data-testid="room-style-{st.key}">{st.name}</button
@@ -1418,46 +1503,58 @@ const kitchenView = $derived.by(() => {
 					<button
 						type="button"
 						class="g3d-chipbtn"
-						class:on={!room.vibe}
-						disabled={busy || !room.vibe}
-						onclick={() => setVibe("none")}
+						class:on={!shownVibe}
+						disabled={busy || !shownVibe}
+						onclick={() => previewVibe(null)}
 						data-testid="room-vibe-none">None</button
 					>
 					{#each Object.values(VIBES) as v (v.key)}
 						<button
 							type="button"
 							class="g3d-chipbtn"
-							class:on={room.vibe === v.key}
-							class:short={room.vibe !== v.key && (layout?.coins ?? 0) < VIBE.cost}
-							disabled={busy || room.vibe === v.key}
-							onclick={() => {
-								if (!lacks(VIBE.cost, layout?.coins ?? 0)) void setVibe(v.key)
-							}}
+							class:on={shownVibe === v.key}
+							disabled={busy || shownVibe === v.key}
+							onclick={() => previewVibe(v.key)}
 							data-testid="room-vibe-{v.key}"
-							>{v.name}{#if room.vibe !== v.key}<small class="vcost"><span class="g3d-coin"></span>{VIBE.cost}</small>{/if}</button
+							>{v.name}{#if !vibeOwned(v.key)}<small class="vcost"><span class="g3d-coin"></span>{VIBE.cost}</small>{:else if v.key !== room.vibe}<small class="vcost">owned</small>{/if}</button
 						>
 					{/each}
 				</div>
-				<p class="hint" class:warn={(layout?.coins ?? 0) < VIBE.cost} data-testid="room-vibe-hint">
-					{#if (layout?.coins ?? 0) < VIBE.cost}
-						A vibe costs {VIBE.cost} coins and you have {(layout?.coins ?? 0).toLocaleString("en-US")}: {VIBE.cost - (layout?.coins ?? 0)} more to go. Your gym earns coins by itself, so check back soon.
-					{:else if room.vibe}
-						{VIBES[room.vibe]?.blurb ?? ""}
+				<p class="hint" data-testid="room-vibe-hint">
+					{#if shownVibe}
+						{VIBES[shownVibe]?.blurb ?? ""}
 					{:else}
-						A vibe costs {VIBE.cost} coins. It tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars.
+						A vibe tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars. Buy one once and every room can use it.
 					{/if}
 				</p>
+				{#if mine}
+					<div class="draftbar" data-testid="room-draft">
+						<span>
+							{#if draftCost}Trying it on. {draftCost} coins to keep{:else}Trying it on. Free to keep{/if}
+						</span>
+						<button type="button" class="g3d-btn ghost" onclick={cancelDraft} data-testid="room-draft-undo">Undo</button>
+						<button
+							type="button"
+							class="g3d-btn"
+							class:short={draftCost > (layout?.coins ?? 0)}
+							disabled={busy}
+							onclick={keepDraft}
+							data-testid="room-draft-keep"
+							>{#if draftCost}<span class="g3d-coin"></span>Buy {draftCost}{:else}Keep{/if}</button
+						>
+					</div>
+				{/if}
 				<p class="lbl">Walls</p>
 				<div class="sws">
 					{#each WALL_COLORS as c (c)}
 						<button
 							type="button"
 							class="sw2"
-							class:on={room.paint.wall === c}
+							class:on={shownPaint.wall === c}
 							style="background:{c}"
 							aria-label="Wall colour {c}"
 							disabled={busy}
-							onclick={() => paint({ wall: c })}
+							onclick={() => previewPaint({ wall: c })}
 						></button>
 					{/each}
 				</div>
@@ -1467,9 +1564,9 @@ const kitchenView = $derived.by(() => {
 						<button
 							type="button"
 							class="g3d-chipbtn"
-							class:on={room.paint.floorStyle === f}
+							class:on={shownPaint.floorStyle === f}
 							disabled={busy}
-							onclick={() => paint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
+							onclick={() => previewPaint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
 						>
 					{/each}
 				</div>
@@ -1478,11 +1575,11 @@ const kitchenView = $derived.by(() => {
 						<button
 							type="button"
 							class="sw2"
-							class:on={room.paint.floorColor === c}
+							class:on={shownPaint.floorColor === c}
 							style="background:{c}"
 							aria-label="Floor colour {c}"
 							disabled={busy}
-							onclick={() => paint({ floorColor: c })}
+							onclick={() => previewPaint({ floorColor: c })}
 						></button>
 					{/each}
 				</div>
@@ -2252,6 +2349,32 @@ const kitchenView = $derived.by(() => {
 	font-size: 14px;
 	cursor: pointer;
 	white-space: nowrap;
+}
+
+.g3d-btn.ghost {
+	background: transparent;
+	box-shadow: none;
+	border-color: transparent;
+	text-decoration: underline;
+}
+
+.g3d-sheet .draftbar {
+	position: sticky;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 10px 0 4px;
+	padding: 8px 10px;
+	border: 2px dashed var(--ink);
+	border-radius: 14px;
+	background: #fff8e1;
+	font-size: 13px;
+	font-weight: 800;
+}
+
+.g3d-sheet .draftbar span {
+	flex: 1;
 }
 
 .g3d-btn.primary {
