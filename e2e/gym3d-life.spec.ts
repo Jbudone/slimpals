@@ -1299,6 +1299,10 @@ test("3D gym story: the first chapter plays as a card and lands in the story log
 	await page.goto("/?story=1&ghost=0")
 	await waitReady(page)
 	await expect(page.getByTestId("story-card")).toBeVisible()
+	// the title card first: act, chapter n of N, then the lines
+	await expect(page.getByTestId("story-title")).toBeVisible()
+	await shot(page, "33a-story-title")
+	await page.getByTestId("story-begin").click()
 	await expect(page.getByTestId("story-line")).toContainText(
 		"Welcome to Slim Pals",
 	)
@@ -1308,6 +1312,16 @@ test("3D gym story: the first chapter plays as a card and lands in the story log
 	await expect(page.getByTestId("story-line")).toContainText("Quiet street")
 	await page.getByTestId("story-next").click()
 	await page.getByTestId("story-next").click()
+	// no time gap: the gym is past level 2, so the second chapter opens at once,
+	// with its place in the story and what happened before
+	await expect(page.getByTestId("story-title")).toBeVisible()
+	await expect(page.getByTestId("story-card")).toContainText("Chapter 2 of")
+	await expect(page.getByTestId("story-previously")).toBeVisible()
+	// skip the chapters the level has opened, one pending at a time
+	for (let i = 0; i < 8; i++) {
+		if ((await page.getByTestId("story-card").count()) === 0) break
+		await page.getByTestId("story-skip").click()
+	}
 	await expect(page.getByTestId("story-card")).toHaveCount(0)
 	// it is in the story so far, and the next chapter is not shown early
 	await page.getByTestId("gym-stars").click()

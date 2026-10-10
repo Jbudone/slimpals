@@ -16,6 +16,7 @@ import {
 	type StoryBeat,
 	type StoryDto,
 	type StorySeen,
+	storyContext,
 	storyFor,
 	storyState,
 } from "../../../shared/gym3d/story.js"
@@ -76,6 +77,9 @@ export async function getStoryDto(
 			nextLevel: null,
 			waitingForOpen: false,
 			open: null,
+			chapter: null,
+			previously: null,
+			after: null,
 		}
 	let cs = await claims(db, gymId)
 	const start = startOf(cs)
@@ -111,6 +115,7 @@ export async function getStoryDto(
 		nextLevel: state.nextLevel,
 		waitingForOpen: state.waitingForOpen,
 		open: start ? open : null,
+		...storyContext(beats, state.pending, state.log),
 	}
 }
 
