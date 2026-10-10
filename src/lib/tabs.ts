@@ -1,5 +1,6 @@
-// The five primary tabs in the order a swipe walks them: Gym, Today, Compete
-// (challenges and tournaments), Progress, Social (the feed and badges).
+// The primary tabs in the order a swipe walks them: Gym (Today lives in its
+// drawer), Compete (challenges and tournaments), Progress, Social (the feed
+// and badges).
 import type { RoutePath } from "../router.svelte.js"
 
 export type Tab = {
@@ -17,13 +18,6 @@ export const TABS: readonly Tab[] = [
 		icon: '<path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M8.5 15h7M8.5 13.5v3M15.5 13.5v3"/>',
 		targetPath: "/",
 		matchPaths: ["/"],
-	},
-	{
-		id: "today",
-		label: "Today",
-		icon: '<rect x="4" y="4" width="16" height="17" rx="3"/><path d="M8 3v3M16 3v3M8.5 13l2.5 2.5 4.5-5"/>',
-		targetPath: "/today",
-		matchPaths: ["/today", "/rewards"],
 	},
 	{
 		id: "compete",

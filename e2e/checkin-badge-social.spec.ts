@@ -57,7 +57,7 @@ test("checkin crossing a badge threshold shows the badge and posts to the feed",
 	const page = await context.newPage()
 
 	await page.goto("/today")
-	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
+	await expect(page.getByTestId("today-drawer")).toBeVisible()
 
 	await page.getByTestId("checkin-btn").click()
 	await expect(page.getByTestId("checkin-card")).toHaveClass(/done/)

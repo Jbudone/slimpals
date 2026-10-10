@@ -1,9 +1,8 @@
 import page from "page"
+import { openDrawer } from "./lib/drawer.svelte.js"
 
 export type RoutePath =
 	| "/"
-	| "/today"
-	| "/rewards"
 	| "/upgrades"
 	| "/login"
 	| "/register"
@@ -36,8 +35,15 @@ export function initRouter() {
 	page("/food", go("/food"))
 	page("/challenges", go("/challenges"))
 	page("/social", go("/social"))
-	page("/today", go("/today"))
-	page("/rewards", go("/rewards"))
+	// Today and Rewards live in the gym's drawer now (old links and bookmarks)
+	page("/today", () => {
+		openDrawer("tasks")
+		page.redirect("/")
+	})
+	page("/rewards", () => {
+		openDrawer("rewards")
+		page.redirect("/")
+	})
 	page("/upgrades", go("/upgrades"))
 	// the gym is home now (old links and bookmarks)
 	page.redirect("/gym", "/")

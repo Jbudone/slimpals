@@ -57,26 +57,19 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	const errors: string[] = []
 	page.on("pageerror", (e) => errors.push(e.message))
 
+	// Today is the gym's drawer now: the old link opens it
 	await page.goto("/today")
-	await expect(
-		page.getByRole("heading", { name: "Today", exact: true }),
-	).toBeVisible()
-	// five tabs, Compete among them
-	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(5)
+	await expect(page).toHaveURL(/\/$/)
+	await expect(page.getByTestId("today-drawer")).toHaveAttribute(
+		"data-open",
+		"true",
+	)
+	// four tabs: Today is no longer one of them
+	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(4)
+	await expect(page.getByTestId("tab-today")).toHaveCount(0)
 
-	// the road ahead shows on Today without looking for it: a few cards, no more
-	await expect(page.getByTestId("today-upnext")).toBeVisible()
-	await expect(page.getByTestId("today-upnext").locator("li")).toHaveCount(4)
-
-	// and as a bubble on the gym home, under the account avatar
-	await page.getByTestId("tab-gym").click()
-	await expect(page.getByTestId("upnext")).toBeVisible()
-	await page.getByTestId("tab-today").click()
-
-	// ── Rewards: from Today, the month's track and what unlocks next ──
-	await page.getByTestId("today-rewards").click()
-	await expect(page).toHaveURL(/\/rewards$/)
-	await expect(page.getByRole("heading", { name: "Rewards" })).toBeVisible()
+	// the road ahead and the month's track sit in the drawer's Rewards tab
+	await page.getByTestId("drawer-tab-rewards").click()
 	await expect(page.getByTestId("reward-track")).toBeVisible()
 	await expect(page.getByTestId("track-node-1")).toBeVisible()
 	await expect(page.getByTestId("unlock-track")).toBeVisible()
@@ -85,9 +78,19 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	await expect(cards).toHaveCount(4)
 	await expect(page.getByTestId("unlock-hint")).toHaveCount(1)
 	await expect(page.getByTestId("unlock-hint")).toContainText("Level")
-	// it stays under the Today tab
-	await expect(page.getByTestId("tab-today")).toHaveClass(/active/)
-	await page.getByTestId("tab-today").click()
+	// the coach has a tab too
+	await page.getByTestId("drawer-tab-coach").click()
+	await expect(page.getByTestId("drawer-coach")).toBeVisible()
+	// and the next unlock is a bubble on the gym, which opens that tab
+	await expect(page.getByTestId("upnext")).toBeVisible()
+	await page.getByTestId("drawer-tab-tasks").click()
+	await page.getByTestId("drawer-head").click()
+	await page.getByTestId("upnext").click()
+	await expect(page.getByTestId("today-drawer")).toHaveAttribute(
+		"data-open",
+		"true",
+	)
+	await expect(page.getByTestId("reward-track")).toBeVisible()
 
 	// ── Compete: one tap to the challenge, one more to tournaments ──
 	await page.getByTestId("tab-compete").click()
@@ -104,12 +107,8 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	await expect(page.getByRole("tab", { name: "Badges" })).toBeVisible()
 	await expect(page.getByRole("tab", { name: "Challenge" })).toHaveCount(0)
 
-	// ── swipes: Today -> Compete (challenges -> tournaments) -> Progress ──
-	await page.getByTestId("tab-today").click()
-	await expect(
-		page.getByRole("heading", { name: "Today", exact: true }),
-	).toBeVisible()
-	await swipe(page, ".dashboard h1", 320, 110)
+	// ── swipes: Compete (challenges -> tournaments) -> Progress and back ──
+	await page.getByTestId("tab-compete").click()
 	await expect(page).toHaveURL(/\/challenges$/)
 	await swipe(page, ".hub-page h1", 320, 110)
 	await expect(page).toHaveURL(/\/tournaments$/)
@@ -119,8 +118,6 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	await swipe(page, "main h1", 100, 330)
 	await expect(page).toHaveURL(/\/challenges$/)
 	await swipe(page, ".hub-page h1", 100, 330)
-	await expect(page).toHaveURL(/\/today$/)
-	await swipe(page, ".dashboard h1", 100, 330)
 	await expect(page).toHaveURL(/\/$/)
 	expect(errors).toEqual([])
 })
@@ -156,7 +153,7 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 		page.evaluate(() => document.documentElement.dataset.event ?? "")
 
 	// forced with ?event=: the backdrop is there, the root carries the look
-	await page.goto("/today?event=arcade")
+	await page.goto("/challenges?event=arcade")
 	await expect(page.getByTestId("theme-layer")).toHaveAttribute(
 		"data-event",
 		"arcade",
@@ -177,12 +174,9 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 			timeout: 20_000,
 		})
 		.toBeGreaterThan(0)
-	await expect(
-		page.getByRole("heading", { name: "Today", exact: true }),
-	).toBeVisible()
 
 	// "none" turns it off
-	await page.goto("/today?event=none")
+	await page.goto("/challenges?event=none")
 	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
 	expect(await look()).toBe("")
 

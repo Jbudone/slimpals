@@ -1,13 +1,14 @@
 <script lang="ts">
 // The gym home's "next unlock" bubble under the account avatar: the next
 // piece of gear, a ring for how close it is and the XP to go. One tap opens the
-// rewards page with the whole road ahead. Only the next one shows here; the
+// rewards tab of the drawer with the whole road ahead. Only the next one shows here; the
 // rest of the road is on that page (three in full, one hinted).
+
+import { openDrawer } from "../../lib/drawer.svelte.js"
 import { gymGoals } from "../../lib/goals.svelte.js"
 import { roomIcon } from "../../lib/roomIcons.js"
 import { upcomingUnlocks } from "../../lib/unlocks.js"
 import { wallet } from "../../lib/wallet.svelte.js"
-import { page } from "../../router.svelte.js"
 
 let { top }: { top: number } = $props()
 
@@ -22,7 +23,7 @@ const RING = 113.1
 		type="button"
 		class="upnext"
 		style="top:{top}px"
-		onclick={() => page("/rewards")}
+		onclick={() => openDrawer("rewards")}
 		aria-label="Next unlock: {next.name}, {next.toGo} XP to go"
 		data-testid="upnext"
 	>

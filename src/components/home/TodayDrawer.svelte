@@ -2,7 +2,12 @@
 // The Today drawer on the Home gym: peeks above the tab bar with "3 of 6
 // done" and the next task; tap or drag the handle to open the full list.
 import { checkinState } from "../../lib/checkin.svelte.js"
+import { type DrawerTab, drawerUi } from "../../lib/drawer.svelte.js"
+import { rewardTrack } from "../../lib/rewardTrack.svelte.js"
 import { nextTask, today, todayCounts } from "../../lib/today.svelte.js"
+import CompeteCard from "../CompeteCard.svelte"
+import DrawerCoach from "./DrawerCoach.svelte"
+import DrawerRewards from "./DrawerRewards.svelte"
 import { GREENS_SVG, SWEAT_SVG } from "./icons"
 import TodayList from "./TodayList.svelte"
 
@@ -10,6 +15,13 @@ let {
 	open = $bindable(false),
 	hidden = false,
 }: { open?: boolean; hidden?: boolean } = $props()
+
+const SEGS: { id: DrawerTab; label: string }[] = [
+	{ id: "tasks", label: "Tasks" },
+	{ id: "rewards", label: "Rewards" },
+	{ id: "coach", label: "Coach" },
+]
+const stepReady = $derived(!!rewardTrack.data?.canClaim)
 
 const counts = $derived.by(() => {
 	void checkinState.data
@@ -120,8 +132,29 @@ const offset = $derived.by(() => {
 			>
 		</div>
 	</div>
+	<div class="segbar" role="tablist" aria-label="Drawer sections" inert={!open}>
+		{#each SEGS as sg (sg.id)}
+			<button
+				type="button"
+				role="tab"
+				aria-selected={drawerUi.tab === sg.id}
+				class:on={drawerUi.tab === sg.id}
+				onclick={() => (drawerUi.tab = sg.id)}
+				data-testid="drawer-tab-{sg.id}"
+			>
+				{sg.label}{#if sg.id === "rewards" && stepReady}<i class="dot" data-testid="drawer-rewards-dot"></i>{/if}
+			</button>
+		{/each}
+	</div>
 	<div class="dbody" id="dbody" inert={!open}>
-		<TodayList />
+		{#if drawerUi.tab === "tasks"}
+			<TodayList editable />
+			<CompeteCard />
+		{:else if drawerUi.tab === "rewards"}
+			<DrawerRewards />
+		{:else}
+			<DrawerCoach />
+		{/if}
 	</div>
 </section>
 
@@ -261,6 +294,40 @@ const offset = $derived.by(() => {
 
 .drawer.open .chev {
 	transform: rotate(180deg);
+}
+
+.segbar {
+	flex: none;
+	display: flex;
+	gap: 6px;
+	padding: 0 12px 8px;
+}
+
+.segbar button {
+	flex: 1;
+	min-height: 36px;
+	border: 2px solid #eaddc4;
+	border-radius: 12px;
+	background: #fff;
+	color: #8d7c66;
+	font: 800 13px ui-rounded, system-ui, sans-serif;
+	cursor: pointer;
+}
+
+.segbar button.on {
+	background: #241d15;
+	border-color: #241d15;
+	color: #fff;
+}
+
+.dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	margin-left: 5px;
+	border-radius: 50%;
+	background: #34c973;
+	vertical-align: middle;
 }
 
 .dbody {
