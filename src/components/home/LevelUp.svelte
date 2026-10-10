@@ -2,9 +2,11 @@
 // Level-up celebration (Layout Lab): a big level ball, confetti and what
 // the level unlocked. "Place it" plays the claim build on the Home gym.
 import { confetti } from "../../lib/fly.js"
+import { gymGoals } from "../../lib/goals.svelte.js"
 import { story } from "../../lib/story.svelte.js"
-import { claimAsk, levelUp } from "../../lib/wallet.svelte.js"
+import { claimAsk, levelUp, wallet } from "../../lib/wallet.svelte.js"
 import { nav, page } from "../../router.svelte.js"
+import UnlockRail from "./UnlockRail.svelte"
 
 const lv = $derived(levelUp.level)
 
@@ -60,6 +62,12 @@ function place() {
 			<button type="button" class="primary story" onclick={startStory} data-testid="level-story">
 				📖 Chapter{story.data.chapter ? ` ${story.data.chapter.n}` : ""} is ready · Continue the story
 			</button>
+		{/if}
+		{#if gymGoals.locked.length}
+			<div class="next" data-testid="level-next">
+				<small>UP NEXT</small>
+				<UnlockRail gear={gymGoals.locked} xp={wallet.data?.xp ?? 0} compact />
+			</div>
 		{/if}
 		{#if levelUp.unlocked.length}
 			<div class="unl">
@@ -210,5 +218,18 @@ button {
 .ghost {
 	background: rgba(255, 255, 255, 0.14);
 	color: #fff;
+}
+.next {
+	width: min(100%, 380px);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	text-align: left;
+}
+
+.next small {
+	font: 800 11px/1 system-ui, sans-serif;
+	letter-spacing: 0.14em;
+	color: #ffe28a;
 }
 </style>

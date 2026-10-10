@@ -64,6 +64,15 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	// five tabs, Compete among them
 	await expect(page.locator("nav[aria-label=Primary] .tab")).toHaveCount(5)
 
+	// the road ahead shows on Today without looking for it: a few cards, no more
+	await expect(page.getByTestId("today-upnext")).toBeVisible()
+	await expect(page.getByTestId("today-upnext").locator("li")).toHaveCount(4)
+
+	// and as a bubble on the gym home, under the account avatar
+	await page.getByTestId("tab-gym").click()
+	await expect(page.getByTestId("upnext")).toBeVisible()
+	await page.getByTestId("tab-today").click()
+
 	// ── Rewards: from Today, the month's track and what unlocks next ──
 	await page.getByTestId("today-rewards").click()
 	await expect(page).toHaveURL(/\/rewards$/)
@@ -71,6 +80,11 @@ test("navigation: Compete holds challenges and tournaments, and swipes walk the 
 	await expect(page.getByTestId("reward-track")).toBeVisible()
 	await expect(page.getByTestId("track-node-1")).toBeVisible()
 	await expect(page.getByTestId("unlock-track")).toBeVisible()
+	// reveal three, hint one, hide the rest
+	const cards = page.getByTestId("unlock-rail").locator("li")
+	await expect(cards).toHaveCount(4)
+	await expect(page.getByTestId("unlock-hint")).toHaveCount(1)
+	await expect(page.getByTestId("unlock-hint")).toContainText("Level")
 	// it stays under the Today tab
 	await expect(page.getByTestId("tab-today")).toHaveClass(/active/)
 	await page.getByTestId("tab-today").click()

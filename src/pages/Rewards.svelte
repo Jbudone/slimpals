@@ -10,10 +10,7 @@ import {
 	loadRewardTrack,
 	rewardTrack,
 } from "../lib/rewardTrack.svelte.js"
-import { upcomingUnlocks } from "../lib/unlocks.js"
 import { loadWallet, wallet } from "../lib/wallet.svelte.js"
-
-const steps = $derived(upcomingUnlocks(gymGoals.locked, wallet.data?.xp ?? 0))
 
 onMount(() => {
 	void loadRewardTrack()
@@ -30,7 +27,7 @@ onMount(() => {
 			onclaim={(el) => void claimRewardStep(el)}
 		/>
 	{/if}
-	<UnlockTrack {steps} xp={wallet.data?.xp ?? 0} />
+	<UnlockTrack gear={gymGoals.locked} xp={wallet.data?.xp ?? 0} />
 </div>
 
 <style>

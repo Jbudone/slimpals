@@ -9,6 +9,7 @@ import type { CoachPersonality } from "../../shared/types.js"
 import CompeteCard from "../components/CompeteCard.svelte"
 import GymActivityCard from "../components/GymActivityCard.svelte"
 import TodayList from "../components/home/TodayList.svelte"
+import UnlockRail from "../components/home/UnlockRail.svelte"
 import Avatar from "../components/ui/Avatar.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
@@ -16,9 +17,10 @@ import Pill from "../components/ui/Pill.svelte"
 import ProgressBar from "../components/ui/ProgressBar.svelte"
 import { api } from "../lib/api.js"
 import { checkinState, loadCheckinStatus } from "../lib/checkin.svelte.js"
+import { gymGoals } from "../lib/goals.svelte.js"
 import { loadRewardTrack, rewardTrack } from "../lib/rewardTrack.svelte.js"
 import { loadToday } from "../lib/today.svelte.js"
-import { claimAsk } from "../lib/wallet.svelte.js"
+import { claimAsk, wallet } from "../lib/wallet.svelte.js"
 import { page } from "../router.svelte.js"
 
 type GymDailySummary = {
@@ -113,6 +115,13 @@ onMount(() => {
 			</span>
 			<span class="rw-go" aria-hidden="true">›</span>
 		</button>
+	{/if}
+
+	{#if gymGoals.locked.length}
+		<section class="upnext" data-testid="today-upnext" aria-label="Up next in your gym">
+			<h3>Up next in your gym</h3>
+			<UnlockRail gear={gymGoals.locked} xp={wallet.data?.xp ?? 0} compact />
+		</section>
 	{/if}
 
 	<div class="tasks"><TodayList editable /></div>
@@ -402,5 +411,20 @@ h1 {
 	line-height: 1.5;
 	margin: 0;
 	font-style: italic;
+}
+.upnext {
+	margin: 0.75rem 0;
+	padding: 12px;
+	border-radius: 16px;
+	background: #fff7ea;
+	color: #241d15;
+}
+
+.upnext h3 {
+	margin: 0 0 8px;
+	font: 800 12px/1.2 system-ui, sans-serif;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #1f9a55;
 }
 </style>

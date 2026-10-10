@@ -19,6 +19,7 @@ import GoalsCard from "../components/home/GoalsCard.svelte"
 import { coachSvg } from "../components/home/icons"
 import StoryCard from "../components/home/StoryCard.svelte"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
+import UpNext from "../components/home/UpNext.svelte"
 import { api } from "../lib/api.js"
 import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
@@ -318,6 +319,7 @@ onMount(() => {
 	</button>
 	{#if !failed}
 		<GoalsCard top={hudBottom + 62} onBought={() => mountKey++} />
+		<UpNext top={hudBottom + 50} />
 	{/if}
 	{#if active && !failed && !claiming && !sheetUp && story.data?.pending}
 		<StoryCard />
@@ -416,7 +418,7 @@ onMount(() => {
 .say {
 	position: absolute;
 	left: 70px;
-	right: 60px;
+	right: 72px;
 	max-width: 300px;
 	z-index: 9;
 	padding: 8px 12px 9px;
