@@ -460,7 +460,8 @@ const roomInfo = $derived.by(() => {
 /** The room's menu and Customize palette float over the room itself. */
 const inWorld = $derived(
 	((sheet === "room" || sheet === "paint") && !!room && !!roomInfo) ||
-		(sheet === "piece" && !!piece),
+		(sheet === "piece" && !!piece) ||
+		(sheet === "spot" && !!spotInfo && !!room),
 )
 
 /** Who works in the room now (the Staff page), read once a second. */
@@ -1184,6 +1185,74 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
+	{#if inWorld && sheet === "spot" && spotInfo && room}
+		{@const si = spotInfo}
+		<!-- an empty pad's menu floats over the pad -->
+		<div
+			class="iw spot"
+			bind:this={menuEl}
+			role="group"
+			aria-label="Spot menu"
+			data-testid="gym3d-sheet"
+			data-sheet="spot"
+		>
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>{si.s.open ? "Empty spot" : `Opens at room Lv ${si.s.unlock}`}</b>
+					<small>{roomLabel(room.type, room.shape)} · {si.s.size} × {si.s.size}</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+				{#if !si.s.open}
+					{@const need = LV_TH[si.s.unlock] ?? 0}
+					<p class="hint" data-testid="gym3d-spot-progress">
+						This room has <b>{room.points}</b> of <b>{need}</b> points for Lv {si.s.unlock}. Every
+						machine scores its tier, so upgrading one, or filling another spot, gets you there.
+					</p>
+					<div class="g3d-meter" aria-hidden="true">
+						<i style="width:{Math.min(100, (room.points / Math.max(1, need)) * 100)}%"></i>
+					</div>
+				{:else if si.stored.length || si.locked.length}
+					<ul class="gear">
+						{#each si.stored as p (p.id)}
+							{@const pic = gearPic(p.itemKey)}
+							<li>
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{p.name}</b> <span class="stars">{stars(p.tier)}</span>
+										<small class="earn">+{machineRate(p.tier)} coins/h</small>
+									</span>
+								</span>
+								<button
+									type="button"
+									class="g3d-btn primary"
+									disabled={busy}
+									onclick={() => placeStored(p.id)}
+									data-testid="gym3d-place">Place</button
+								>
+							</li>
+						{/each}
+						{#each si.locked as g (g.key)}
+							{@const pic = gearPic(g.key)}
+							{@const togo = Math.max(0, g.requiredXp - (wallet.data?.xp ?? 0))}
+							<li class="locked">
+								<span class="gearrow">
+									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
+									<span>
+										<b>{g.name}</b>
+										<small class="earn">Unlocks at {g.requiredXp.toLocaleString("en-US")} XP{togo ? ` · ${togo.toLocaleString("en-US")} to go` : ""}</small>
+									</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="hint">Every machine that fits here is already in your gym.</p>
+				{/if}
+		</div>
+	{/if}
+
 	{#if inWorld && sheet === "piece" && piece}
 		{@const u = upgradeInfo(piece.itemKey, piece.tier)}
 		<!-- a machine's menu floats over the machine -->
@@ -1248,7 +1317,7 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
-	{#if inWorld && sheet !== "piece" && room && roomInfo}
+	{#if inWorld && (sheet === "room" || sheet === "paint") && room && roomInfo}
 		{@const lp = levelProgress(room.level, room.points)}
 		{@const ri = roomInfo}
 		<!-- the room's menu floats over the room itself (a managed label, see
@@ -1737,60 +1806,6 @@ const kitchenView = $derived.by(() => {
 				</ul>
 				{#if !roomStaff.length && !ri.staffGear.length && !hireRole}
 					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
-				{/if}
-
-			{:else if sheet === "spot" && spotInfo && room}
-				{@const si = spotInfo}
-				<h3>{si.s.open ? "Empty spot" : `Opens at room Lv ${si.s.unlock}`}</h3>
-				<p class="sub">
-					{roomLabel(room.type, room.shape)} · {si.s.size} × {si.s.size}
-				</p>
-				{#if !si.s.open}
-					{@const need = LV_TH[si.s.unlock] ?? 0}
-					<p class="hint" data-testid="gym3d-spot-progress">
-						This room has <b>{room.points}</b> of <b>{need}</b> points for Lv {si.s.unlock}. Every
-						machine scores its tier, so upgrading one, or filling another spot, gets you there.
-					</p>
-					<div class="g3d-meter" aria-hidden="true">
-						<i style="width:{Math.min(100, (room.points / Math.max(1, need)) * 100)}%"></i>
-					</div>
-				{:else if si.stored.length || si.locked.length}
-					<ul class="gear">
-						{#each si.stored as p (p.id)}
-							{@const pic = gearPic(p.itemKey)}
-							<li>
-								<span class="gearrow">
-									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
-									<span>
-										<b>{p.name}</b> <span class="stars">{stars(p.tier)}</span>
-										<small class="earn">+{machineRate(p.tier)} coins/h</small>
-									</span>
-								</span>
-								<button
-									type="button"
-									class="g3d-btn primary"
-									disabled={busy}
-									onclick={() => placeStored(p.id)}
-									data-testid="gym3d-place">Place</button
-								>
-							</li>
-						{/each}
-						{#each si.locked as g (g.key)}
-							{@const pic = gearPic(g.key)}
-							{@const togo = Math.max(0, g.requiredXp - (wallet.data?.xp ?? 0))}
-							<li class="locked">
-								<span class="gearrow">
-									{#if pic}<img class="gearpic" src={pic} alt="" data-testid="gym3d-gearpic" />{/if}
-									<span>
-										<b>{g.name}</b>
-										<small class="earn">Unlocks at {g.requiredXp.toLocaleString("en-US")} XP{togo ? ` · ${togo.toLocaleString("en-US")} to go` : ""}</small>
-									</span>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="hint">Every machine that fits here is already in your gym.</p>
 				{/if}
 
 			{/if}
@@ -2451,6 +2466,52 @@ const kitchenView = $derived.by(() => {
 	animation: iw-in 0.22s cubic-bezier(0.2, 1.3, 0.4, 1);
 	transform-origin: 50% 100%;
 	--iw-accent: var(--sk-b, #3aa89a);
+}
+
+.iw.spot {
+	width: 270px;
+}
+
+.iw .gearrow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.iw .gearpic {
+	flex: none;
+	width: 40px;
+	height: 40px;
+	object-fit: contain;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.iw .earn {
+	display: block;
+	opacity: 0.7;
+	font-weight: 600;
+	font-size: 11px;
+}
+
+.iw li.locked .gearpic {
+	opacity: 0.55;
+	filter: grayscale(0.6);
+}
+
+.iw .g3d-meter {
+	height: 6px;
+	margin: 6px 0 2px;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.14);
+	overflow: hidden;
+}
+
+.iw .g3d-meter i {
+	display: block;
+	height: 100%;
+	background: linear-gradient(90deg, var(--iw-accent), #ffd35a);
 }
 
 .iw.narrow {

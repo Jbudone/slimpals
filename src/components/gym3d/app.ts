@@ -1597,7 +1597,9 @@ export class Gym3DApp {
 			el,
 			() => {
 				const a =
-					this.sel?.kind === "room" || this.sel?.kind === "piece"
+					this.sel?.kind === "room" ||
+					this.sel?.kind === "piece" ||
+					this.sel?.kind === "spot"
 						? this.anchorOf(this.sel)
 						: null
 				return a ? v.copy(a) : null
@@ -1624,6 +1626,12 @@ export class Gym3DApp {
 			return p
 				? _a.copy(p.rig.root.position).setY(p.rig.root.position.y + 1.8)
 				: null
+		}
+		if (s.kind === "spot") {
+			const pad = this.build.pads.find(
+				(q) => q.roomId === s.roomId && q.spot === s.spot,
+			)
+			return pad ? _a.set(pad.x, 1.6, pad.z) : null
 		}
 		if (s.kind !== "piece") return null
 		const pc = this.world.pieces.find((q) => q.id === s.id)
