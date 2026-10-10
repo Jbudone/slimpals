@@ -104,6 +104,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   in `members.ts` `startUse` and `step`), adds `VIBE.bonus` (+4%) to its machines' coins in `income3d.ts`, and
   scores `VIBE.scorePoints` per room with a vibe (up to 3 rooms) in the star rating. e2e: `gym3d-life.spec.ts`
   ("customize").
+- Vibe vfx (#265): a room with a vibe also lifts motes from its floor (`VIBE_FX`, `spawnMote`/`stepMote`/`moteScale` in `shared/gym3d/vibes.ts`; drawn by `world/vibeFx.ts`, one instanced mesh capped at 120, none with reduced motion; `world.vibeSpots` has one entry per plot; `stats().motes`): Chill soft slow bits, Hype quick pink sparks, Focus still cool dust.
 - Sports court (gh-130): the seventh room type, `court` (`RT.court`, grid layout; gear `court_hoop` and `court_pickle`,
   catalog category `court`, 9000/10000 XP). It is a content addition: seeded upgrades, `KEY_ROOM` in `layout3d.ts`, builders in
   `equipment/builders.ts`, `ROOM_ORDER`, `PICKABLE_TYPES`, hires (Court coach) and the room picker. Staffed bonuses are the

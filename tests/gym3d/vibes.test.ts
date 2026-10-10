@@ -4,9 +4,13 @@ import { ratingOf } from "../../shared/gym3d/rating.js"
 import { FLOOR_STYLES } from "../../shared/gym3d/rooms.js"
 import {
 	isVibe,
+	moteScale,
 	STYLES,
+	spawnMote,
+	stepMote,
 	styleOf,
 	VIBE,
+	VIBE_FX,
 	VIBES,
 	vibePace,
 } from "../../shared/gym3d/vibes.js"
@@ -56,5 +60,40 @@ describe("room vibes", () => {
 		expect(parts(0)).toBe(0)
 		expect(parts(2)).toBe(2 * VIBE.scorePoints)
 		expect(parts(9)).toBe(VIBE.scoreCap * VIBE.scorePoints)
+	})
+})
+
+describe("vibe motes", () => {
+	const rect = { x: 10, z: 10, w: 8, d: 6 }
+
+	it("every vibe has fx, and a mote starts on the floor of its plot", () => {
+		for (const k of Object.keys(VIBES)) {
+			expect(VIBE_FX[k]).toBeTruthy()
+			const m = spawnMote(k, rect, () => 0.5)
+			expect(m).not.toBeNull()
+			expect(m?.y).toBeLessThan(0.1)
+			expect(Math.abs((m?.x ?? 0) - rect.x)).toBeLessThanOrEqual(rect.w / 2)
+		}
+		expect(spawnMote("karaoke", rect, () => 0.5)).toBeNull()
+	})
+
+	it("rises, sways inside its reach and is spent at the end of its life", () => {
+		const m = spawnMote("hype", rect, () => 0.5)
+		if (!m) throw new Error("no mote")
+		const y0 = m.y
+		expect(stepMote(m, 0.5)).toBe(true)
+		expect(m.y).toBeGreaterThan(y0)
+		expect(Math.abs(m.x - m.x0)).toBeLessThanOrEqual(VIBE_FX.hype.sway)
+		expect(stepMote(m, m.life)).toBe(false)
+	})
+
+	it("hype rises faster than chill and focus, and a mote fades in and out", () => {
+		expect(VIBE_FX.hype.rise).toBeGreaterThan(VIBE_FX.chill.rise)
+		expect(VIBE_FX.chill.rise).toBeGreaterThan(VIBE_FX.focus.rise)
+		const m = spawnMote("focus", rect, () => 0.5)
+		if (!m) throw new Error("no mote")
+		expect(moteScale(m)).toBe(0)
+		m.age = m.life / 2
+		expect(moteScale(m)).toBeCloseTo(m.size, 5)
 	})
 })

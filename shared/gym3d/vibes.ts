@@ -116,3 +116,107 @@ export function isVibe(v: unknown): v is string {
 export function vibePace(vibe: string | null | undefined): number {
 	return (vibe && VIBES[vibe]?.pace) || 1
 }
+
+// ── vibe vfx: what floats up out of a room's floor ──────────────────────────
+// Motes (tiny glowing bits) rise from the floor of a room with a vibe: soft
+// and slow for Chill, quick sparks for Hype, still cool dust for Focus. Pure
+// (position, spawn and step), the world only draws them.
+
+export type VibeFx = {
+	/** Seconds between spawns per plot of the room. */
+	every: number
+	/** Upward speed (units per second). */
+	rise: number
+	/** Sideways sway (units). */
+	sway: number
+	/** Mote size (units). */
+	size: number
+	/** Seconds a mote lives. */
+	life: number
+	color: string
+	/** How much a mote pulses in size (0 = steady). */
+	pulse: number
+}
+
+export const VIBE_FX: Readonly<Record<string, VibeFx>> = {
+	chill: {
+		every: 0.7,
+		rise: 0.35,
+		sway: 0.5,
+		size: 0.22,
+		life: 5,
+		color: "#c9fff3",
+		pulse: 0.2,
+	},
+	hype: {
+		every: 0.22,
+		rise: 1.5,
+		sway: 0.15,
+		size: 0.17,
+		life: 1.7,
+		color: "#ffc2e6",
+		pulse: 0.6,
+	},
+	focus: {
+		every: 0.9,
+		rise: 0.12,
+		sway: 0.9,
+		size: 0.14,
+		life: 6,
+		color: "#d6e4ff",
+		pulse: 0,
+	},
+}
+
+export type Mote = {
+	x: number
+	y: number
+	z: number
+	x0: number
+	age: number
+	life: number
+	size: number
+	/** Sway phase. */
+	ph: number
+	vibe: string
+}
+
+/** A new mote on the floor of a plot (`rect`: centre and size). */
+export function spawnMote(
+	vibe: string,
+	rect: { x: number; z: number; w: number; d: number },
+	rng: () => number,
+): Mote | null {
+	const fx = VIBE_FX[vibe]
+	if (!fx) return null
+	const x = rect.x + (rng() - 0.5) * rect.w * 0.9
+	return {
+		x,
+		y: 0.05,
+		z: rect.z + (rng() - 0.5) * rect.d * 0.9,
+		x0: x,
+		age: 0,
+		life: fx.life * (0.75 + rng() * 0.5),
+		size: fx.size * (0.7 + rng() * 0.6),
+		ph: rng() * Math.PI * 2,
+		vibe,
+	}
+}
+
+/** Moves a mote on; false once it is spent. */
+export function stepMote(m: Mote, dt: number): boolean {
+	const fx = VIBE_FX[m.vibe]
+	if (!fx) return false
+	m.age += dt
+	if (m.age >= m.life) return false
+	m.y += fx.rise * dt
+	m.x = m.x0 + Math.sin(m.age * 1.3 + m.ph) * fx.sway * 0.5
+	return true
+}
+
+/** Size now: grows in, fades out, and pulses for the lively vibes. */
+export function moteScale(m: Mote): number {
+	const fx = VIBE_FX[m.vibe]
+	const k = Math.sin(Math.PI * Math.min(1, m.age / m.life))
+	return m.size * k * (1 + (fx?.pulse ?? 0) * Math.sin(m.age * 9 + m.ph))
+}
