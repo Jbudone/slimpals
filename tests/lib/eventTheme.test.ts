@@ -15,14 +15,23 @@ describe("event themes", () => {
 		expect(seasonTheme(10)).toBe("halloween")
 		expect(seasonTheme(11)).toBe("harvest")
 		expect(seasonTheme(12)).toBe("winter")
-		for (const m of [1, 2, 3, 5, 6, 9]) expect(seasonTheme(m)).toBeNull()
+		// every month has a look now
+		expect(seasonTheme(1)).toBe("newyear")
+		expect(seasonTheme(2)).toBe("valentine")
+		expect(seasonTheme(3)).toBe("clover")
+		expect(seasonTheme(5)).toBe("spring")
+		expect(seasonTheme(6)).toBe("summer")
+		expect(seasonTheme(9)).toBe("harvest")
+		for (let m = 1; m <= 12; m++) expect(seasonTheme(m)).not.toBeNull()
+		expect(seasonTheme(0)).toBeNull()
+		expect(seasonTheme(13)).toBeNull()
 	})
 
 	it("a joined challenge's look beats the season, an unjoined one does not", () => {
 		expect(pickEventTheme("arcade", true, 10)).toBe("arcade")
 		expect(pickEventTheme("arcade", false, 10)).toBe("halloween")
 		expect(pickEventTheme("mystery", true, 10)).toBe("halloween")
-		expect(pickEventTheme(null, true, 2)).toBeNull()
+		expect(pickEventTheme(null, true, 2)).toBe("valentine")
 	})
 
 	it("every look has an accent and a few small events with a sensible rhythm", () => {

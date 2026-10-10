@@ -215,8 +215,7 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
   `coach_intro`, `reward_cosmetic` on `challenges` (migration 0031). `generateChallengeForMonth` falls back to `catalogForMonth` when the AI fails;
   `POST /admin/challenges/catalog {key, month?, year?}` seeds one (Admin's challenge section). `GET /challenges/current` carries `tagline`, `coachIntro`,
   `reward`; finishing the challenge grants the reward (`rewardAwarded` in the progress response). Tests: `tests/challenges/catalog.test.ts`.
-- Event looks (#124, #141): the whole app can wear a look: a joined challenge's theme (arcade, sunrise, greens) first, else the season (spring April, summer July-Aug,
-  Halloween, harvest, winter; `src/lib/eventTheme.ts` pure: `pickEventTheme`, `THEME_EVENTS`, `THEME_ACCENT`; state in `eventTheme.svelte.ts`, read from `/challenges/current`
+- Event looks (#124, #141): the whole app can wear a look: a joined challenge's theme (arcade, sunrise, greens) first, else the month's look (every month has one: new year January, Valentine's February, clover March, spring April-May, summer June-August, harvest September, Halloween October, harvest November, winter December; `src/lib/eventTheme.ts` pure: `pickEventTheme`, `THEME_EVENTS`, `THEME_ACCENT`; state in `eventTheme.svelte.ts`, read from `/challenges/current`
   after login and a join). `ThemeLayer.svelte` (mounted in `app.svelte`, behind the page content, off on the gym) draws a slow animated backdrop (arcade: stars, a moving neon
   grid, scanlines; winter: snow; Halloween: moon and fog; summer: a sun with turning rays; sunrise follows the challenge's progress...) and, every 10-40 s per kind, a tiny
   event drifting past (an invader, a coin, a bat, a ghost, a butterfly, a falling leaf, a shooting star: `.ev`, removed on `animationend`; none with reduced motion).

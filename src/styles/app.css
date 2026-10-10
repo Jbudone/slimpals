@@ -302,6 +302,24 @@ body {
 	--color-on-accent: #03182b;
 	--event-accent: #6fc3ff;
 }
+[data-event="newyear"] {
+	--color-accent: #ffd23a;
+	--color-accent-hover: #f0be1a;
+	--color-on-accent: #2b2003;
+	--event-accent: #ffd23a;
+}
+[data-event="valentine"] {
+	--color-accent: #ff5c8a;
+	--color-accent-hover: #f0436f;
+	--color-on-accent: #2b0a14;
+	--event-accent: #ff5c8a;
+}
+[data-event="clover"] {
+	--color-accent: #3ec46d;
+	--color-accent-hover: #2eae5c;
+	--color-on-accent: #06210f;
+	--event-accent: #3ec46d;
+}
 
 /* ── Skins: each look's palette for the HUD ring, the level-up ball and the
    confetti (--sk-a main, --sk-b light, --sk-c dark, --sk-conf the confetti
@@ -369,6 +387,27 @@ body {
 	--sk-conf: "#6fc3ff,#bfe6ff,#fff,#ff6b6b,#5bd16a";
 	--sk-glyph: "❄️";
 }
+[data-event="newyear"] {
+	--sk-a: #ffd23a;
+	--sk-b: #fff0a6;
+	--sk-c: #b88900;
+	--sk-conf: "#ffd23a,#fff0a6,#c0c0c0,#fff,#6fc3ff";
+	--sk-glyph: "🎆";
+}
+[data-event="valentine"] {
+	--sk-a: #ff5c8a;
+	--sk-b: #ffb3c9;
+	--sk-c: #c2255a;
+	--sk-conf: "#ff5c8a,#ffb3c9,#fff,#d6406f,#ffe08a";
+	--sk-glyph: "💗";
+}
+[data-event="clover"] {
+	--sk-a: #3ec46d;
+	--sk-b: #a6efae;
+	--sk-c: #1f8a46;
+	--sk-conf: "#3ec46d,#a6efae,#ffd23a,#fff,#2f8ad1";
+	--sk-glyph: "🍀";
+}
 
 /* the HUD's level ring and XP bar wear the skin */
 [data-event] .lvring .fg {
@@ -409,6 +448,27 @@ body {
 	--color-surface-2: #153049;
 	--color-border: #234a6b;
 	--color-text-muted: #86b7de;
+}
+[data-event="newyear"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #0d1020;
+	--color-surface: #151a33;
+	--color-surface-2: #1d2447;
+	--color-border: #343d73;
+	--color-text-muted: #9aa4d6;
+}
+[data-event="valentine"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #1c0d14;
+	--color-surface: #2b1220;
+	--color-surface-2: #3a182b;
+	--color-border: #5c2a45;
+	--color-text-muted: #d49ab5;
+}
+[data-event="clover"]:not([data-theme="light"]):not([data-theme="cream"]) {
+	--color-bg: #08170d;
+	--color-surface: #0f2616;
+	--color-surface-2: #15351f;
+	--color-border: #25583a;
+	--color-text-muted: #86c9a0;
 }
 
 /* the retro look: headings in a chunky monospace, uppercase, a pixel edge */
@@ -462,5 +522,26 @@ body {
 		180deg,
 		rgba(24, 50, 78, 0.96),
 		rgba(16, 34, 56, 0.96)
+	);
+}
+[data-event="newyear"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(30, 36, 72, 0.96),
+		rgba(18, 22, 46, 0.96)
+	);
+}
+[data-event="valentine"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(70, 24, 46, 0.96),
+		rgba(42, 14, 28, 0.96)
+	);
+}
+[data-event="clover"] .hud.hud {
+	background: linear-gradient(
+		180deg,
+		rgba(18, 62, 36, 0.96),
+		rgba(10, 40, 22, 0.96)
 	);
 }
