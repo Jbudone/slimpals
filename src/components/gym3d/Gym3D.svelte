@@ -458,18 +458,6 @@ const roomInfo = $derived.by(() => {
 })
 
 /** The room's menu and Customize palette float over the room itself. */
-const ROOM_CARD = ["room", "paint", "room-gear", "room-staff", "room-walls"]
-const CARD_TITLE: Record<string, string> = {
-	paint: "Customize",
-	"room-gear": "Upgrade gear",
-	"room-staff": "Staff",
-	"room-walls": "Open walls",
-}
-const inWorld = $derived(
-	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
-		(sheet === "piece" && !!piece) ||
-		(sheet === "spot" && !!spotInfo && !!room),
-)
 
 /** Who works in the room now (the Staff page), read once a second. */
 const roomStaff = $derived.by(() => {
@@ -904,6 +892,19 @@ const spotInfo = $derived.by(() => {
 	)
 	return { s, stored, locked }
 })
+
+const ROOM_CARD = ["room", "paint", "room-gear", "room-staff", "room-walls"]
+const CARD_TITLE: Record<string, string> = {
+	paint: "Customize",
+	"room-gear": "Upgrade gear",
+	"room-staff": "Staff",
+	"room-walls": "Open walls",
+}
+const inWorld = $derived(
+	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
+		(sheet === "piece" && !!piece) ||
+		(sheet === "spot" && !!spotInfo && !!room),
+)
 
 onMount(() => {
 	Gym3DApp.create(host, {
