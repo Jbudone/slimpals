@@ -148,8 +148,8 @@ test("3D gym boots, names a held person, and does not leak on remount", async ({
 	await expect(page.locator(".g3d-chip-name")).not.toHaveText("")
 
 	// the gym stays mounted on other tabs, hidden, and stops rendering
-	await page.getByTestId("tab-today").click()
-	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
+	await page.getByTestId("tab-compete").click()
+	await expect(page.getByRole("heading", { name: "Compete" })).toBeVisible()
 	await expect
 		.poll(() => page.evaluate(() => window.gym3d?.stats().running))
 		.toBe(false)

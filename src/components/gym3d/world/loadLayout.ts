@@ -2,7 +2,9 @@
 // (names, roles, relationship), the live sim state (who is in, on what, in
 // what mood; today's event and classes) and speech-bubble lines.
 import type { GymLayoutDto } from "../../../../shared/types"
-import { api } from "../../../lib/api"
+import { api, NetworkError } from "../../../lib/api"
+import { authState } from "../../../lib/auth.svelte"
+import { kvGet, kvSet } from "../../../lib/net/kv"
 import type { NpcIn } from "./assignTargets"
 
 export type NpcRosterEntry = {
@@ -52,12 +54,39 @@ export type NpcLines = {
 
 /** The gym's layout; `open` marks a fresh open of the gym (the answer may
  * carry a "welcome back" summary after a long absence). */
-export function loadLayout(open = false): Promise<GymLayoutDto> {
-	return api.get<GymLayoutDto>(open ? "/gym/layout?open=1" : "/gym/layout")
+const LAYOUT_KEY = () => `gym:layout:${authState.user?.id ?? ""}`
+const ROSTER_KEY = () => `gym:roster:${authState.user?.id ?? ""}`
+
+export async function loadLayout(open = false): Promise<GymLayoutDto> {
+	// the last layout is kept on the device, so the gym still opens (read-only
+	// in effect: builds need the connection) when there is none
+	try {
+		const L = await api.get<GymLayoutDto>(
+			open ? "/gym/layout?open=1" : "/gym/layout",
+		)
+		void kvSet(LAYOUT_KEY(), L)
+		return L
+	} catch (e) {
+		if (e instanceof NetworkError) {
+			const old = await kvGet<GymLayoutDto>(LAYOUT_KEY())
+			if (old) return old
+		}
+		throw e
+	}
 }
 
-export function loadRoster(): Promise<NpcRosterEntry[]> {
-	return api.get<NpcRosterEntry[]>("/gym/npcs")
+export async function loadRoster(): Promise<NpcRosterEntry[]> {
+	try {
+		const r = await api.get<NpcRosterEntry[]>("/gym/npcs")
+		void kvSet(ROSTER_KEY(), r)
+		return r
+	} catch (e) {
+		if (e instanceof NetworkError) {
+			const old = await kvGet<NpcRosterEntry[]>(ROSTER_KEY())
+			if (old) return old
+		}
+		throw e
+	}
 }
 
 export async function loadLines(): Promise<NpcLines[]> {

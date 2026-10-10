@@ -1,7 +1,7 @@
 // The HUD's numbers (level, XP, coins, Sweat, Greens) shared by every tab.
 // The 3D gym pushes its layout's balances here; ticking a task pushes the
 // server's answer after the reward chips land.
-import { api } from "./api.js"
+import { cached, refresh } from "./net/swr.js"
 
 export type Wallet = {
 	level: number
@@ -30,8 +30,14 @@ export const claimAsk = $state<{ n: number; key: string | null }>({
 })
 
 export async function loadWallet(): Promise<void> {
+	// a cold start paints the last known numbers at once; a read right after
+	// earning something only ever shows the fresh answer (no step back)
+	if (!wallet.data)
+		void cached<Wallet>("/gym/wallet").then((c) => {
+			if (c && !wallet.data) wallet.data = c
+		})
 	try {
-		wallet.data = await api.get<Wallet>("/gym/wallet")
+		wallet.data = await refresh<Wallet>("/gym/wallet")
 	} catch {
 		// the HUD keeps what it has
 	}

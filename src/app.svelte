@@ -5,13 +5,19 @@ import AvatarMenu from "./components/AvatarMenu.svelte"
 import BottomTabBar from "./components/BottomTabBar.svelte"
 import Hud from "./components/home/Hud.svelte"
 import LevelUp from "./components/home/LevelUp.svelte"
+import NetBanner from "./components/NetBanner.svelte"
 import ThemeLayer from "./components/ThemeLayer.svelte"
 import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
+import { loadChallengeToday } from "./lib/challengeToday.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
 import { loadEventTheme } from "./lib/eventTheme.svelte.js"
+import { onOpDropped, onQueueSent, startQueue } from "./lib/net/queue.js"
+import { setCacheOwner } from "./lib/net/swr.js"
 import { swipe } from "./lib/swipe.js"
 import { neighbourPath, tabIndexOf } from "./lib/tabs.js"
+import { addToast } from "./lib/toast.svelte.js"
+import { loadToday } from "./lib/today.svelte.js"
 import {
 	fetchUserProfile,
 	stopImpersonating,
@@ -35,6 +41,21 @@ let isLoading = $derived(authState.loading)
 let impersonatedBy = $derived(userProfile.data?.impersonatedBy ?? null)
 
 onMount(async () => {
+	// when the queue of offline taps has been sent, every store re-reads (the
+	// HUD, the lists and the check-in settle on the server's numbers)
+	onQueueSent(() => {
+		void loadWallet()
+		void loadToday()
+		void loadCheckinStatus()
+		void loadChallengeToday()
+	})
+	onOpDropped((op, why) =>
+		addToast({
+			type: "error",
+			message: "A change made offline could not be saved",
+			detail: why,
+		}),
+	)
 	await fetchSession()
 	initRouter()
 
@@ -50,6 +71,8 @@ $effect(() => {
 	const id = authState.user?.id ?? null
 	if (id && id !== walletFor) {
 		walletFor = id
+		setCacheOwner(id)
+		void startQueue(id)
 		void loadWallet()
 		void loadEventTheme()
 		loadCheckinStatus()
@@ -123,6 +146,7 @@ async function handleStopImpersonating() {
 	{/if}
 	<div class="app-shell" class:home={currentPath === "/"}>
 		<Hud />
+		<NetBanner />
 		<div class="acct"><AvatarMenu /></div>
 		<Home active={currentPath === "/"} />
 		<ThemeLayer show={currentPath !== "/"} />

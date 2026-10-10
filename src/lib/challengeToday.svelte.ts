@@ -1,8 +1,9 @@
 // This month's challenge as the Today list needs it: the goals to log today
 // (one tap each) and what was already logged. Shared by the Today page, the
 // gym's Today drawer and the Compete card, so a tap in one shows in all.
-import { api } from "./api.js"
 import { loadEventTheme } from "./eventTheme.svelte.js"
+import { sendOrQueue } from "./net/queue.js"
+import { swr } from "./net/swr.js"
 import { showBadgeToast } from "./toast.svelte.js"
 import { loadWallet } from "./wallet.svelte.js"
 
@@ -49,22 +50,20 @@ export function goalState(c: NonNullable<TodayChallenge>, g: ChallengeGoal) {
 }
 
 export async function loadChallengeToday(): Promise<void> {
-	try {
-		challengeToday.data = await api.get<TodayChallenge>("/challenges/current")
-	} catch {
-		// no challenge section
-	} finally {
-		challengeToday.loaded = true
-	}
+	await swr<TodayChallenge>("/challenges/current", (r) => {
+		challengeToday.data = r
+	})
+	challengeToday.loaded = true
 }
 
-/** One tap logs today's amount for a goal. */
+/** One tap logs today's amount for a goal (queued when there is no
+ * connection: the stamp shows at once and the server catches up later). */
 export async function logChallengeGoal(goal: ChallengeGoal): Promise<void> {
 	const c = challengeToday.data
 	if (!c || challengeToday.saving) return
 	challengeToday.saving = goal.id
 	try {
-		const res = await api.patch<{
+		const sent = await sendOrQueue<{
 			newBadges?: {
 				key: string
 				name: string
@@ -72,9 +71,15 @@ export async function logChallengeGoal(goal: ChallengeGoal): Promise<void> {
 				earnedAt: string
 			}[]
 			milestonesPaid?: unknown[]
-		}>(`/challenges/${c.id}/progress`, {
+		}>("PATCH", `/challenges/${c.id}/progress`, {
 			dailyProgress: { [goal.id]: goal.dailyAmount },
 		})
+		if (sent.queued) {
+			c.dailyLog[goal.id] = [...(c.dailyLog[goal.id] ?? []), todayIso()]
+			c.progress[goal.id] = (c.progress[goal.id] ?? 0) + goal.dailyAmount
+			return
+		}
+		const res = sent.data
 		for (const b of res.newBadges ?? []) showBadgeToast(b)
 		if (res.milestonesPaid?.length) void loadWallet()
 		await loadChallengeToday()
