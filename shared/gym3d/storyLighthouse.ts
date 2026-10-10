@@ -97,6 +97,10 @@ export const STORY_LIGHTHOUSE: readonly StoryBeat[] = [
 				text: "On three. One, two, three. Everyone lift with the legs.",
 			},
 			{ who: "kim", text: "That is the right way to lift, in any building." },
+			{
+				who: "joe",
+				text: "The regatta lantern already hangs in the tower window. It was waiting for this.",
+			},
 		],
 	},
 	{

@@ -7,6 +7,7 @@ import {
 	GUEST_BEATS,
 	GUEST_MINUTES,
 	MIN_BEAT_GAP_HOURS,
+	priorFinaleRecap,
 	SPEAKERS,
 	STORIES,
 	STORY,
@@ -128,6 +129,17 @@ describe("which chapter waits", () => {
 		const c1 = storyContext(STORY, second.pending, second.log)
 		expect(c1.chapter?.n).toBe(2)
 		expect(c1.previously).toBe(STORY[0].recap)
+		// the first chapter of a later street starts "Previously" from the last street's finale
+		const first2 = storyState(20, [], t0, null, storyFor(2))
+		const c2 = storyContext(
+			storyFor(2),
+			first2.pending,
+			first2.log,
+			priorFinaleRecap(2),
+		)
+		expect(c2.previously).toBe(STORY[STORY.length - 1].recap)
+		expect(priorFinaleRecap(1)).toBeNull()
+		expect(priorFinaleRecap(3)).toBe(storyFor(2)[storyFor(2).length - 1].recap)
 		// nothing waiting: nothing to show
 		expect(storyContext(STORY, null, [])).toEqual({
 			chapter: null,

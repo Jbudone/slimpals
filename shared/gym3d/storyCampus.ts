@@ -86,6 +86,10 @@ export const STORY_CAMPUS: readonly StoryBeat[] = [
 				who: "quill",
 				text: "It is a footnote. Footnotes are where the truth lives.",
 			},
+			{
+				who: "marcus",
+				text: "Page one of my notebook hangs on a street board back home. Footnotes welcome.",
+			},
 		],
 	},
 	{

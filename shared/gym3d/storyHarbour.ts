@@ -87,6 +87,10 @@ export const STORY_HARBOUR: readonly StoryBeat[] = [
 				who: "reyes",
 				text: "IronWave is open to all for the day. Bring a towel.",
 			},
+			{
+				who: "lisa",
+				text: "Every harbour keeps a ledger. Mine was a drawer on Pavement Street. It is closed now.",
+			},
 		],
 	},
 	{

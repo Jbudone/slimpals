@@ -55,9 +55,15 @@ the gym and a change in the street (a sign, a banner, a crowd), so a reveal is
 something you can see, not only read.
 
 ## Campaigns 2-10: seasons of the series
-Each keeps its own place, rival and nine chapters (levels 1-9, one per level-up),
-and gets a **callback chapter** at level 5 to an earlier campaign's Hall of fame
-entry, and a **closing line** that names the entry it adds. Rewrite after campaign 1.
+Each keeps its own place, rival and nine chapters (levels 1-9, one per level-up). They
+read as one series through two things, both in place:
+- **A callback chapter at level 5**: one line in that chapter points back at an earlier
+  street's Hall of fame entry (Marcus's notebook on the board, Lisa's closed drawer, the
+  mural pigeon, the exam cup, the shared harbour trophy, the regatta lantern, the fun run
+  cake, the copied page one).
+- **"Previously" from the last street**: the first chapter of a later campaign starts its
+  title card from the finale's recap of the campaign before (`priorFinaleRecap`), and each
+  finale's narrator line closes its own entry ("That is the Nth story...").
 
 ## How a reveal is presented
 - **At the level-up**: the level-up overlay ends with "Chapter N is ready" and

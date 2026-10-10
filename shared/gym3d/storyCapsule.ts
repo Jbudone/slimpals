@@ -104,6 +104,10 @@ export const STORY_CAPSULE: readonly StoryBeat[] = [
 				who: "lisa",
 				text: "Derek has been here for ten years and has said that sentence before.",
 			},
+			{
+				who: "marcus",
+				text: "The notebook board is across the road. Page one has been copied nine hundred times.",
+			},
 		],
 	},
 	{

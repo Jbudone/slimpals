@@ -102,6 +102,10 @@ export const STORY_ALUMNI: readonly StoryBeat[] = [
 				text: "Lean into it. People like a landmark they can complain about.",
 			},
 			{ who: "quill", text: "I shall count the complaints. For the study." },
+			{
+				who: "tess",
+				text: "The exam cup is still on the library desk. The librarian dusts it every day.",
+			},
 		],
 	},
 	{
