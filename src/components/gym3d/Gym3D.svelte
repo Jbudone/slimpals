@@ -679,6 +679,15 @@ type Draft = {
 	paint: { wall?: string; floorStyle?: string; floorColor?: string }
 	vibe?: string | null
 }
+type PalTab = "style" | "walls" | "floor" | "vibe" | "decor"
+const PAL_TABS: { id: PalTab; label: string }[] = [
+	{ id: "style", label: "Style" },
+	{ id: "walls", label: "Walls" },
+	{ id: "floor", label: "Floor" },
+	{ id: "vibe", label: "Vibe" },
+	{ id: "decor", label: "Decor" },
+]
+let palTab = $state<PalTab>("style")
 let draft = $state<Draft | null>(null)
 const mine = $derived(draft && room && draft.roomId === room.id ? draft : null)
 const shownPaint = $derived({ ...room?.paint, ...(mine?.paint ?? {}) })
@@ -1149,6 +1158,7 @@ const kitchenView = $derived.by(() => {
 	{#if sheet}
 		<div
 			class="g3d-sheet"
+			class:palette={sheet === "paint"}
 			style="bottom:{hidden}px;max-height:calc(72% - {hidden}px)"
 			bind:clientHeight={sheetH}
 			data-testid="gym3d-sheet"
@@ -1484,9 +1494,21 @@ const kitchenView = $derived.by(() => {
 				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
 					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
 				>
-				<h3>Customize</h3>
-				<p class="lbl">Style <small class="free">free</small></p>
-				<div class="chips" data-testid="room-styles">
+				<div class="paltabs" role="tablist" aria-label="Customize">
+					{#each PAL_TABS as t (t.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={palTab === t.id}
+							class:on={palTab === t.id}
+							onclick={() => (palTab = t.id)}
+							data-testid="pal-tab-{t.id}">{t.label}</button
+						>
+					{/each}
+				</div>
+				{#if palTab === "style"}
+					<p class="palnote">Whole-room looks. Free.</p>
+					<div class="chips" data-testid="room-styles">
 					{#each STYLES as st (st.key)}
 						<button
 							type="button"
@@ -1498,8 +1520,47 @@ const kitchenView = $derived.by(() => {
 						>
 					{/each}
 				</div>
-				<p class="lbl">Vibe <small class="free">{VIBE.cost} coins</small></p>
-				<div class="chips" data-testid="room-vibes">
+				{:else if palTab === "walls"}
+					<div class="sws">
+					{#each WALL_COLORS as c (c)}
+						<button
+							type="button"
+							class="sw2"
+							class:on={shownPaint.wall === c}
+							style="background:{c}"
+							aria-label="Wall colour {c}"
+							disabled={busy}
+							onclick={() => previewPaint({ wall: c })}
+						></button>
+					{/each}
+				</div>
+				{:else if palTab === "floor"}
+					<div class="chips">
+					{#each FLOOR_STYLES as f (f)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={shownPaint.floorStyle === f}
+							disabled={busy}
+							onclick={() => previewPaint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
+						>
+					{/each}
+				</div>
+				<div class="sws">
+					{#each FLOOR_TINTS as c (c)}
+						<button
+							type="button"
+							class="sw2"
+							class:on={shownPaint.floorColor === c}
+							style="background:{c}"
+							aria-label="Floor colour {c}"
+							disabled={busy}
+							onclick={() => previewPaint({ floorColor: c })}
+						></button>
+					{/each}
+				</div>
+				{:else if palTab === "vibe"}
+					<div class="chips" data-testid="room-vibes">
 					<button
 						type="button"
 						class="g3d-chipbtn"
@@ -1527,66 +1588,9 @@ const kitchenView = $derived.by(() => {
 						A vibe tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars. Buy one once and every room can use it.
 					{/if}
 				</p>
-				{#if mine}
-					<div class="draftbar" data-testid="room-draft">
-						<span>
-							{#if draftCost}Trying it on. {draftCost} coins to keep{:else}Trying it on. Free to keep{/if}
-						</span>
-						<button type="button" class="g3d-btn ghost" onclick={cancelDraft} data-testid="room-draft-undo">Undo</button>
-						<button
-							type="button"
-							class="g3d-btn"
-							class:short={draftCost > (layout?.coins ?? 0)}
-							disabled={busy}
-							onclick={keepDraft}
-							data-testid="room-draft-keep"
-							>{#if draftCost}<span class="g3d-coin"></span>Buy {draftCost}{:else}Keep{/if}</button
-						>
-					</div>
-				{/if}
-				<p class="lbl">Walls</p>
-				<div class="sws">
-					{#each WALL_COLORS as c (c)}
-						<button
-							type="button"
-							class="sw2"
-							class:on={shownPaint.wall === c}
-							style="background:{c}"
-							aria-label="Wall colour {c}"
-							disabled={busy}
-							onclick={() => previewPaint({ wall: c })}
-						></button>
-					{/each}
-				</div>
-				<p class="lbl">Floor</p>
-				<div class="chips">
-					{#each FLOOR_STYLES as f (f)}
-						<button
-							type="button"
-							class="g3d-chipbtn"
-							class:on={shownPaint.floorStyle === f}
-							disabled={busy}
-							onclick={() => previewPaint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
-						>
-					{/each}
-				</div>
-				<div class="sws">
-					{#each FLOOR_TINTS as c (c)}
-						<button
-							type="button"
-							class="sw2"
-							class:on={shownPaint.floorColor === c}
-							style="background:{c}"
-							aria-label="Floor colour {c}"
-							disabled={busy}
-							onclick={() => previewPaint({ floorColor: c })}
-						></button>
-					{/each}
-				</div>
-
-				{#if ownedDecor.length}
-					<p class="lbl">Your decor</p>
-					<ul class="gear" data-testid="room-cosmetics">
+				{:else}
+					{#if ownedDecor.length}
+										<ul class="gear" data-testid="room-cosmetics">
 						{#each ownedDecor as c (c.key)}
 							{@const shown = layout?.pieces.find((p) => p.upgradeKey === cosmeticPieceKey(c.key))}
 							<li>
@@ -1616,8 +1620,7 @@ const kitchenView = $derived.by(() => {
 						{/each}
 					</ul>
 				{/if}
-
-				<p class="lbl">Decor</p>
+					<p class="lbl">Decor</p>
 				{#if roomInfo?.decor.length}
 					<ul class="gear">
 						{#each roomInfo.decor as p (p.id)}
@@ -1626,6 +1629,24 @@ const kitchenView = $derived.by(() => {
 					</ul>
 				{:else}
 					<p class="hint" data-testid="room-decor-none">Decor you unlock with gym XP goes up in the lobby for now. Room decor is coming.</p>
+				{/if}
+				{/if}
+				{#if mine}
+					<div class="draftbar" data-testid="room-draft">
+						<span>
+							{#if draftCost}Trying it on. {draftCost} coins to keep{:else}Trying it on. Free to keep{/if}
+						</span>
+						<button type="button" class="g3d-btn ghost" onclick={cancelDraft} data-testid="room-draft-undo">Undo</button>
+						<button
+							type="button"
+							class="g3d-btn"
+							class:short={draftCost > (layout?.coins ?? 0)}
+							disabled={busy}
+							onclick={keepDraft}
+							data-testid="room-draft-keep"
+							>{#if draftCost}<span class="g3d-coin"></span>Buy {draftCost}{:else}Keep{/if}</button
+						>
+					</div>
 				{/if}
 
 			{:else if sheet === "spot" && spotInfo && room}
@@ -2367,6 +2388,65 @@ const kitchenView = $derived.by(() => {
 	:global(.g3d-flicker canvas) {
 		animation: none;
 	}
+}
+
+/* Customize: a small palette docked at the bottom, the room stays in view */
+.g3d-sheet.palette {
+	max-height: none !important;
+	overflow: visible;
+	padding-top: 6px;
+	background: rgba(255, 247, 234, 0.96);
+}
+
+.g3d-sheet.palette .g3d-back {
+	margin-bottom: 4px;
+}
+
+.paltabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+.paltabs button {
+	flex: 1;
+	min-height: 36px;
+	border: 2px solid var(--ink);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--ink);
+	font: 800 13px system-ui, sans-serif;
+	cursor: pointer;
+}
+
+.paltabs button.on {
+	background: var(--ink);
+	color: #fff7ea;
+}
+
+.palnote {
+	margin: 0 0 6px;
+	font-size: 12px;
+	font-weight: 700;
+	opacity: 0.7;
+}
+
+.g3d-sheet.palette .chips,
+.g3d-sheet.palette .sws {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	padding: 4px 4px 8px;
+	scrollbar-width: none;
+}
+
+.g3d-sheet.palette .sw2,
+.g3d-sheet.palette .g3d-chipbtn {
+	flex: none;
+}
+
+.g3d-sheet.palette .gear {
+	max-height: 120px;
+	overflow-y: auto;
 }
 
 .g3d-btn {
