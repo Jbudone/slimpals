@@ -10,6 +10,7 @@ import Toast from "./components/Toast.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
 import { loadEventTheme } from "./lib/eventTheme.svelte.js"
+import { setCacheOwner } from "./lib/net/swr.js"
 import { swipe } from "./lib/swipe.js"
 import { neighbourPath, tabIndexOf } from "./lib/tabs.js"
 import {
@@ -50,6 +51,7 @@ $effect(() => {
 	const id = authState.user?.id ?? null
 	if (id && id !== walletFor) {
 		walletFor = id
+		setCacheOwner(id)
 		void loadWallet()
 		void loadEventTheme()
 		loadCheckinStatus()

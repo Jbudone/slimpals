@@ -282,6 +282,9 @@ friendly card. Dev only: `window.spRemountGym()` remounts it (e2e leak check).
 - Every GPU resource goes through the asset cache and `Gym3DApp.dispose()`; `e2e/gym3d-smoke.spec.ts`
   remounts three times and checks WebGL2 contexts and geometry/texture counts do not grow.
 
+## Network layer (#274)
+`src/lib/api.ts` is the one place requests go through: identical GETs in flight at once are one request (each caller gets its own copy), and `prefetch(path)` starts a GET before the app is up (`main.ts` prefetches `/gym/layout?open=1` and `/gym/npcs` and imports the gym chunk for a browser that was signed in, `wasSignedIn()`; the first `api.get` of that path takes the answer). `src/lib/net/kv.ts` is a tiny IndexedDB key-value store (memory when IndexedDB is blocked); `src/lib/net/swr.ts` is stale-while-revalidate over it (`swr(path, apply)`: the last answer at once, then the fresh one; per user, `setCacheOwner`); the drawer's Coach tab uses it and keeps its state at module level, so switching tabs never refetches into an empty screen. `fetchSession` keeps the last signed-in user in localStorage (`sp:user`) and falls back to it on a network failure, so an offline start does not land on the login page (a 401 is still final). Tests: `tests/lib/swr.test.ts`.
+
 ## Working autonomously
 The owner's standing instruction: do not ask what to work on next. After a PR merges, pick the next task yourself with
 a best guess and carry on, per PR: new branch from `master`, lean tests, `npm run check` + `typecheck` + tests, open the
