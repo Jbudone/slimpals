@@ -2,6 +2,7 @@
 // Gym · Today · Compete · Progress · Social. The gym is home; Today carries
 // a badge with the tasks left today.
 import { checkinState } from "../lib/checkin.svelte.js"
+import { story } from "../lib/story.svelte.js"
 import { TABS, type Tab } from "../lib/tabs.js"
 import { today, todayCounts } from "../lib/today.svelte.js"
 import { nav, page } from "../router.svelte.js"
@@ -41,6 +42,9 @@ function isActive(tab: Tab): boolean {
 				aria-hidden="true">{@html tab.icon}</svg
 			>
 			<span class="tab-label">{tab.label}</span>
+			{#if tab.id === "gym" && story.data?.pending}
+				<span class="nb story-dot" aria-label="A story chapter is waiting" data-testid="story-dot"></span>
+			{/if}
 			{#if tab.id === "today" && left > 0}
 				<span class="nb" aria-label="{left} left">{left}</span>
 			{/if}
@@ -123,5 +127,26 @@ function isActive(tab: Tab): boolean {
 
 .tab-label {
 	line-height: 1;
+}
+.story-dot {
+	min-width: 0;
+	width: 10px;
+	height: 10px;
+	padding: 0;
+	background: #f2b21a;
+	animation: sdot 1.6s ease-in-out infinite;
+}
+
+@keyframes sdot {
+	50% {
+		transform: scale(1.35);
+		opacity: 0.7;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.story-dot {
+		animation: none;
+	}
 }
 </style>

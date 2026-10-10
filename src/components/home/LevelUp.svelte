@@ -3,6 +3,7 @@
 // the level unlocked. "Place it" plays the claim build on the Home gym.
 import { confetti } from "../../lib/fly.js"
 import { gymGoals } from "../../lib/goals.svelte.js"
+import { story } from "../../lib/story.svelte.js"
 import { claimAsk, levelUp, wallet } from "../../lib/wallet.svelte.js"
 import { nav, page } from "../../router.svelte.js"
 import UnlockRail from "./UnlockRail.svelte"
@@ -23,6 +24,12 @@ $effect(() => {
 function close() {
 	levelUp.level = null
 	levelUp.unlocked = []
+}
+
+/** The chapter this level opened plays next, on the gym. */
+function startStory() {
+	close()
+	if (nav.path !== "/") page("/")
 }
 
 function place() {
@@ -51,6 +58,11 @@ function place() {
 		<div class="ball"><small>LEVEL</small><b>{lv}</b></div>
 		<h2>Level {lv}!</h2>
 		<p>Your gym levels up with you. Word is out: more members are on their way.</p>
+		{#if story.data?.pending}
+			<button type="button" class="primary story" onclick={startStory} data-testid="level-story">
+				📖 Chapter{story.data.chapter ? ` ${story.data.chapter.n}` : ""} is ready · Continue the story
+			</button>
+		{/if}
 		{#if gymGoals.locked.length}
 			<div class="next" data-testid="level-next">
 				<small>UP NEXT</small>

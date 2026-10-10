@@ -11,6 +11,7 @@ import {
 	STORIES,
 	STORY,
 	STORY_GUESTS,
+	storyContext,
 	storyFinaleOf,
 	storyFor,
 	storyGuestNow,
@@ -86,19 +87,39 @@ describe("which chapter waits", () => {
 		expect(storyState(0, [], t0).nextLevel).toBe(STORY[0].level)
 	})
 
-	it("goes one at a time, in order, with a gap between chapters", () => {
+	it("goes one at a time, in order, with no time gap: the level is the pacing", () => {
+		expect(MIN_BEAT_GAP_HOURS).toBe(0)
 		const seen = [{ id: STORY[0].id, at: t0 }]
-		const soon = new Date(t0.getTime() + (MIN_BEAT_GAP_HOURS - 1) * HOUR)
-		// level is high enough but it is too soon
-		const early = storyState(20, seen, soon)
-		expect(early.pending).toBeNull()
-		expect(early.log.map((b) => b.id)).toEqual([STORY[0].id])
-		expect(early.nextLevel).toBe(STORY[1].level)
-		// later: the next one, not one further on
-		const later = new Date(t0.getTime() + MIN_BEAT_GAP_HOURS * HOUR)
-		expect(storyState(20, seen, later).pending?.id).toBe(STORY[1].id)
+		// right after the first, with the level high enough: the next one, not one further on
+		const now = storyState(20, seen, t0)
+		expect(now.pending?.id).toBe(STORY[1].id)
+		expect(now.log.map((b) => b.id)).toEqual([STORY[0].id])
 		// the level still gates it
-		expect(storyState(STORY[1].level - 1, seen, later).pending).toBeNull()
+		const low = storyState(STORY[1].level - 1, seen, t0)
+		expect(low.pending).toBeNull()
+		expect(low.nextLevel).toBe(STORY[1].level)
+		// a big jump plays the chapters in turn, one pending at a time
+		const two = [...seen, { id: STORY[1].id, at: t0 }]
+		expect(storyState(20, two, t0).pending?.id).toBe(STORY[2].id)
+	})
+
+	it("gives a title card its place in the story, what happened before and when the next one opens", () => {
+		const first = storyState(20, [], t0)
+		const c0 = storyContext(STORY, first.pending, first.log)
+		expect(c0.chapter).toEqual({ n: 1, of: STORY.length })
+		expect(c0.previously).toBeNull()
+		expect(c0.after).toBe(STORY[1].level)
+		const seen = [{ id: STORY[0].id, at: t0 }]
+		const second = storyState(20, seen, t0)
+		const c1 = storyContext(STORY, second.pending, second.log)
+		expect(c1.chapter?.n).toBe(2)
+		expect(c1.previously).toBe(STORY[0].recap)
+		// nothing waiting: nothing to show
+		expect(storyContext(STORY, null, [])).toEqual({
+			chapter: null,
+			previously: null,
+			after: null,
+		})
 	})
 
 	it("ends cleanly when everything has been seen", () => {
@@ -235,13 +256,15 @@ describe("the story route", () => {
 		await request(app).get("/api/gym/story").expect(401)
 	})
 
-	it("opens the next chapter after the gap and the level, through the service", async () => {
+	it("opens the next chapter at once when the level is there, with its place in the story, through the service", async () => {
 		const { gymId, db } = await setup()
 		await db.update(userGyms).set({ level: 10 }).where(eq(userGyms.id, gymId))
 		const now = new Date()
 		await markBeatSeen(db, gymId, STORY[0].id, now)
-		expect((await getStoryDto(db, gymId, now)).pending).toBeNull()
-		const later = new Date(now.getTime() + (MIN_BEAT_GAP_HOURS + 1) * HOUR)
-		expect((await getStoryDto(db, gymId, later)).pending?.id).toBe(STORY[1].id)
+		const dto = await getStoryDto(db, gymId, now)
+		expect(dto.pending?.id).toBe(STORY[1].id)
+		expect(dto.chapter).toEqual({ n: 2, of: STORY.length })
+		expect(dto.previously).toBe(STORY[0].recap)
+		expect(dto.after).toBe(STORY[2].level)
 	})
 })
