@@ -1599,7 +1599,9 @@ export class Gym3DApp {
 				const a =
 					this.sel?.kind === "room" ||
 					this.sel?.kind === "piece" ||
-					this.sel?.kind === "spot"
+					this.sel?.kind === "spot" ||
+					this.sel?.kind === "lot" ||
+					this.sel?.kind === "job"
 						? this.anchorOf(this.sel)
 						: null
 				return a ? v.copy(a) : null
@@ -1626,6 +1628,21 @@ export class Gym3DApp {
 			return p
 				? _a.copy(p.rig.root.position).setY(p.rig.root.position.y + 1.8)
 				: null
+		}
+		if (s.kind === "lot") {
+			const L = this.world.layout.lots.find((q) => q.id === s.lotId)
+			if (!L?.cells.length) return null
+			let x = 0
+			let z = 0
+			for (const c of L.cells) {
+				x += c.px * PW + PW / 2
+				z += c.pz * PD + PD / 2
+			}
+			return _a.set(x / L.cells.length, 1.8, z / L.cells.length)
+		}
+		if (s.kind === "job") {
+			const site = this.build.siteOf(s.jobId)
+			return site ? _a.set(site.x, 2.4, site.z) : null
 		}
 		if (s.kind === "spot") {
 			const pad = this.build.pads.find(
