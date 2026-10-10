@@ -1,5 +1,5 @@
 <script lang="ts">
-// Gym · Today · Compete · Progress · Social. The gym is home; Today carries
+// Gym · Compete · Progress · Social. The gym is home (Today is its drawer) and carries
 // a badge with the tasks left today.
 import { checkinState } from "../lib/checkin.svelte.js"
 import { story } from "../lib/story.svelte.js"
@@ -45,7 +45,7 @@ function isActive(tab: Tab): boolean {
 			{#if tab.id === "gym" && story.data?.pending}
 				<span class="nb story-dot" aria-label="A story chapter is waiting" data-testid="story-dot"></span>
 			{/if}
-			{#if tab.id === "today" && left > 0}
+			{#if tab.id === "gym" && left > 0 && !story.data?.pending}
 				<span class="nb" aria-label="{left} left">{left}</span>
 			{/if}
 		</button>
