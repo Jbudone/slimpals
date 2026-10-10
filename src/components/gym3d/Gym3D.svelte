@@ -2558,6 +2558,13 @@ const kitchenView = $derived.by(() => {
 	font-size: 11px;
 }
 
+.iw-stats .cur {
+	display: inline-flex;
+	background: none;
+	padding: 0;
+	margin: 0;
+}
+
 .iw-stats .cur :global(svg) {
 	width: 13px;
 	height: 13px;

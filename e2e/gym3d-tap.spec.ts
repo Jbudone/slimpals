@@ -247,28 +247,29 @@ test("3D gym: tap feedback, the room menu, Customize, and drags never select", a
 	await expect(sheet).toHaveAttribute("data-sheet", "paint")
 	await expect(page.getByTestId("room-styles")).toBeVisible()
 	await page.getByTestId("pal-tab-walls").click()
-	await expect(page.locator(".g3d-sheet .sw2").first()).toBeVisible()
+	const card = page.getByTestId("gym3d-sheet")
+	await expect(card.locator(".sw2").first()).toBeVisible()
 	await page.waitForTimeout(300)
 	await shot(page, "03-customize")
-	// a long page scrolls, and the close button stays in view (it used to
-	// scroll away with the content, leaving no way out)
-	await page.evaluate(() => {
-		const el = document.querySelector(".g3d-sheet")
-		if (el) el.scrollTop = el.scrollHeight
+	// the room's menu floats over the room (not a bottom sheet), and its close
+	// button stays inside it
+	const cardBox = await page.evaluate(() => {
+		const el = document.querySelector("[data-testid=gym3d-sheet]")
+		const r = el?.getBoundingClientRect()
+		const x = document
+			.querySelector("[data-testid=gym3d-sheet] .iw-x")
+			?.getBoundingClientRect()
+		return r && x
+			? {
+					inside: x.top >= r.top && x.bottom <= r.bottom,
+					floating: r.bottom < innerHeight - 90,
+				}
+			: null
 	})
-	await page.waitForTimeout(200)
-	const closeBox = await page.evaluate(() => {
-		const sh = document.querySelector(".g3d-sheet")?.getBoundingClientRect()
-		const x = document.querySelector(".g3d-x")?.getBoundingClientRect()
-		return sh && x ? { inside: x.top >= sh.top && x.bottom <= sh.bottom } : null
-	})
-	expect(closeBox?.inside).toBe(true)
-	await page.evaluate(() => {
-		const el = document.querySelector(".g3d-sheet")
-		if (el) el.scrollTop = 0
-	})
+	expect(cardBox?.inside).toBe(true)
+	expect(cardBox?.floating).toBe(true)
 	const wall0 = room.paint.wall
-	const swatch = page.locator(".g3d-sheet .sw2:not(.on)").first()
+	const swatch = card.locator(".sw2:not(.on)").first()
 	await swatch.click()
 	await expect
 		.poll(async () => {
