@@ -16,6 +16,11 @@ import {
 	upgradeInfo,
 } from "../../../shared/gym3d/economy"
 import {
+	LIGHTS_OUT_EVERY,
+	LIGHTS_OUT_GHOST,
+	lightsOutReply,
+} from "../../../shared/gym3d/ghost"
+import {
 	PLAY_PACE,
 	ROOM_PLAY_MIN,
 	roomPlayLabel,
@@ -56,6 +61,7 @@ import {
 } from "../../../shared/gym3d/story"
 import { vibePace } from "../../../shared/gym3d/vibes"
 import {
+	delayIn,
 	pickPrank,
 	roundReply,
 	roundRoleOf,
@@ -318,6 +324,15 @@ export class Gym3DApp {
 	private roster: NpcRosterEntry[] = []
 	private pollTimer: ReturnType<typeof setInterval> | null = null
 	private frameN = 0
+	private hostEl: HTMLElement
+	/** Seconds to the next "lights out" (October's ghost). */
+	private lightsIn = 0
+	/** `?lights=1` makes the lights go out every few seconds (tests, demos). */
+	private fastLights =
+		new URLSearchParams(globalThis.location?.search ?? "").get("lights") === "1"
+	private lightsEvery(): number {
+		return this.fastLights ? 4 : delayIn(LIGHTS_OUT_EVERY, Math.random)
+	}
 	private disposed = false
 	private sel: Selection | null = null
 	/** The tap chip (a Svelte node), placed with the other bubbles. */
@@ -440,6 +455,7 @@ export class Gym3DApp {
 		private opts: AppOpts,
 	) {
 		this.roster = roster
+		this.hostEl = host
 		this.r = new GymRenderer(host)
 		try {
 			this.world = new GymWorld(layout, this.assets)
@@ -811,6 +827,7 @@ export class Gym3DApp {
 		if (this.claiming) this.claimTick(dt)
 		this.hap.frame(dt)
 		this.syncPlay(dt)
+		this.lightsOutTick(dt)
 		this.life.tick(dt, this.clock)
 		this.says.frame(this.clock)
 		// the tap chip closes by itself after a while
@@ -1932,6 +1949,37 @@ export class Gym3DApp {
 		}
 		this.life.say(p, prank.ghost, this.clock)
 		this.life.reply(target, prank.victim, this.clock, 1.5)
+	}
+
+	/** While the ghost is about, the lights flicker every couple of minutes:
+	 * the canvas dips for a moment, everyone working out hops and one of them
+	 * says what they think of it (a flash on the host, nothing in the scene). */
+	private lightsOutTick(dt: number): void {
+		if (!this.ghostOn() || this.claiming) {
+			this.lightsIn = 0
+			return
+		}
+		if (this.lightsIn <= 0) {
+			this.lightsIn = this.lightsEvery()
+			return
+		}
+		this.lightsIn -= dt
+		if (this.lightsIn > 0) return
+		const ghost = this.people.find("ghost")
+		const crowd = this.people.people.filter(
+			(p) => !p.leaving && p.key !== "ghost" && p.station,
+		)
+		if (!ghost || !crowd.length) {
+			this.lightsIn = 20
+			return
+		}
+		this.hostEl.classList.add("g3d-flicker")
+		setTimeout(() => this.hostEl.classList.remove("g3d-flicker"), 1700)
+		for (const p of crowd) this.people.react(p, "hop")
+		this.life.say(ghost, LIGHTS_OUT_GHOST, this.clock)
+		const one = crowd[Math.floor(Math.random() * crowd.length)]
+		this.life.reply(one, lightsOutReply(Math.random), this.clock, 1.5)
+		this.lightsIn = this.lightsEvery()
 	}
 
 	/** Said once, ever: how to get at a person's card. */

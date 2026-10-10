@@ -2337,6 +2337,38 @@ const kitchenView = $derived.by(() => {
 	opacity: 0.6;
 }
 
+/* October: the ghost flips the lights, the scene dips and flickers back */
+:global(.g3d-flicker canvas) {
+	animation: g3d-flicker 1.6s steps(1, end);
+}
+
+@keyframes g3d-flicker {
+	0% {
+		filter: brightness(0.35);
+	}
+	18% {
+		filter: brightness(1);
+	}
+	30% {
+		filter: brightness(0.45);
+	}
+	48% {
+		filter: brightness(0.9);
+	}
+	60% {
+		filter: brightness(0.5);
+	}
+	100% {
+		filter: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:global(.g3d-flicker canvas) {
+		animation: none;
+	}
+}
+
 .g3d-btn {
 	min-height: 44px;
 	padding: 0 14px;

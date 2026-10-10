@@ -52,3 +52,22 @@ export function ghostLine(rng: Rng, atLockers = false): string {
 	const pool = atLockers ? GHOST_LOCKER_LINES : GHOST_LINES
 	return pool[Math.floor(rng() * pool.length) % pool.length]
 }
+
+/** Seconds between "lights out" moments while the ghost is about. */
+export const LIGHTS_OUT_EVERY: readonly [number, number] = [110, 190]
+/** The ghost's line when it flips the lights. */
+export const LIGHTS_OUT_GHOST = "Lights out. Carry on."
+/** What the members say when the lights flicker. */
+export const LIGHTS_OUT_REPLIES: readonly string[] = [
+	"Who touched the switch.",
+	"That was not the breaker.",
+	"Okay. Nobody panic. Keep lifting.",
+	"I am choosing to stay on this treadmill.",
+	"The lights do that now. It is fine.",
+]
+
+export function lightsOutReply(rng: Rng): string {
+	return LIGHTS_OUT_REPLIES[
+		Math.floor(rng() * LIGHTS_OUT_REPLIES.length) % LIGHTS_OUT_REPLIES.length
+	]
+}
