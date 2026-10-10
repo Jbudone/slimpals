@@ -1793,6 +1793,7 @@ const kitchenView = $derived.by(() => {
 					<p class="hint">Every machine that fits here is already in your gym.</p>
 				{/if}
 
+			{/if}
 		</div>
 	{/if}
 </div>
