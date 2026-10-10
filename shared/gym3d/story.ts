@@ -51,10 +51,14 @@ export type StoryBeat = {
 	needs?: "open-win" | "open-lose" | "open-ended"
 	/** Paid once when the chapter is seen. */
 	reward?: { coins: number }
+	/** The sub-story this chapter belongs to (see docs/story_series_plan.md). */
+	thread?: string
 }
 
-/** Hours that must pass after one beat before the next can open. */
-export const MIN_BEAT_GAP_HOURS = 16
+/** Hours that must pass after one beat before the next can open. None any
+ * more: the level is the pacing (levels are earned by habit) and only one
+ * chapter is ever pending, so a jump of several levels plays them in turn. */
+export const MIN_BEAT_GAP_HOURS = 0
 
 export const STORY: readonly StoryBeat[] = [
 	{
@@ -518,6 +522,27 @@ export type StoryDto = {
 	waitingForOpen: boolean
 	/** The Pavement Street Open, once it has started. */
 	open: OpenState | null
+	/** Where the waiting chapter sits in the story (for its title card). */
+	chapter: { n: number; of: number } | null
+	/** "Previously": the recap of the chapter seen before the waiting one. */
+	previously: string | null
+	/** The gym level that opens the chapter after the waiting one. */
+	after: number | null
+}
+
+/** What a chapter's title card needs besides the chapter itself. */
+export function storyContext(
+	beats: readonly StoryBeat[],
+	pending: StoryBeat | null,
+	log: readonly { recap: string }[],
+): Pick<StoryDto, "chapter" | "previously" | "after"> {
+	if (!pending) return { chapter: null, previously: null, after: null }
+	const i = beats.findIndex((b) => b.id === pending.id)
+	return {
+		chapter: { n: i + 1, of: beats.length },
+		previously: log.length ? log[log.length - 1].recap : null,
+		after: beats[i + 1]?.level ?? null,
+	}
 }
 
 export type StorySeen = { id: string; at: Date }
