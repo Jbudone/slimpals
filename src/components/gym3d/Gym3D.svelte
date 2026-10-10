@@ -458,8 +458,15 @@ const roomInfo = $derived.by(() => {
 })
 
 /** The room's menu and Customize palette float over the room itself. */
+const ROOM_CARD = ["room", "paint", "room-gear", "room-staff", "room-walls"]
+const CARD_TITLE: Record<string, string> = {
+	paint: "Customize",
+	"room-gear": "Upgrade gear",
+	"room-staff": "Staff",
+	"room-walls": "Open walls",
+}
 const inWorld = $derived(
-	((sheet === "room" || sheet === "paint") && !!room && !!roomInfo) ||
+	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
 		(sheet === "piece" && !!piece) ||
 		(sheet === "spot" && !!spotInfo && !!room),
 )
@@ -1317,14 +1324,14 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
-	{#if inWorld && (sheet === "room" || sheet === "paint") && room && roomInfo}
+	{#if inWorld && ROOM_CARD.includes(sheet ?? "") && room && roomInfo}
 		{@const lp = levelProgress(room.level, room.points)}
 		{@const ri = roomInfo}
 		<!-- the room's menu floats over the room itself (a managed label, see
 		     world/labels.ts), so what you change stays in view -->
 		<div
 			class="iw"
-			class:wide={sheet === "paint"}
+			class:wide={sheet !== "room"}
 			bind:this={menuEl}
 			role="group"
 			aria-label="{roomLabel(room.type, room.shape)} menu"
@@ -1332,15 +1339,15 @@ const kitchenView = $derived.by(() => {
 			data-sheet={sheet}
 		>
 			<header class="iw-h">
-				{#if sheet === "paint"}
+				{#if sheet !== "room"}
 					<button type="button" class="iw-back" onclick={() => roomPage()} data-testid="room-back" aria-label="Back to the room menu"
 						><ChevronLeft size={18} /></button
 					>
 				{/if}
 				<span class="iw-t">
-					<b>{sheet === "paint" ? "Customize" : roomLabel(room.type, room.shape)}</b>
+					<b>{CARD_TITLE[sheet ?? ""] ?? roomLabel(room.type, room.shape)}</b>
 					<small>
-						{#if sheet === "paint"}{roomLabel(room.type, room.shape)}{:else}<span class="stars">{stars(room.level)}</span> Lv {room.level}{/if}
+						{#if sheet !== "room"}{roomLabel(room.type, room.shape)}{:else}<span class="stars">{stars(room.level)}</span> Lv {room.level}{/if}
 					</small>
 				</span>
 				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
@@ -1368,6 +1375,123 @@ const kitchenView = $derived.by(() => {
 						</button>
 					{/if}
 				</div>
+			{:else if sheet === "room-gear" && room && roomInfo}
+				{@const ri = roomInfo}
+				<p class="hint">Every piece scores its tier. Upgrade gear to level the room up and open bonus spots.</p>
+				<ul class="gear" data-testid="room-gear-list">
+					{#each ri.gear as p (p.id)}
+						{@const u = upgradeInfo(p.itemKey, p.tier)}
+						<li>
+							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+							{#if p.status === "upgrading"}
+								<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Upgrading</button>
+							{:else if u}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									onclick={() => openPiece(p)}
+									data-testid="room-gear-piece"
+								>
+									Tier {u.toTier} <span class="g3d-coin"></span>{u.cost}
+								</button>
+							{:else}
+								<span class="max">Top tier</span>
+							{/if}
+						</li>
+					{/each}
+					{#each ri.open as q (q.index)}
+						<li>
+							<span><b>Empty spot</b> <small>{q.size} × {q.size}</small></span>
+							<button
+								type="button"
+								class="g3d-btn"
+								onclick={() =>
+									app?.select({
+										kind: "spot",
+										roomId: room.id,
+										spot: q.index,
+										size: q.size,
+										unlock: q.unlock,
+										open: true,
+									})}>Fill</button
+							>
+						</li>
+					{/each}
+					{#each ri.locked as q (q.index)}
+						<li class="locked">
+							<span><b>Bonus spot</b> <small>{q.size} × {q.size}</small></span>
+							<small>Opens at Lv {q.unlock}</small>
+						</li>
+					{/each}
+				</ul>
+
+			{:else if sheet === "room-walls" && room}
+				<p class="hint">Knock out a wall to join two rooms into one space. It counts towards your stars.</p>
+				<ul class="gear" data-testid="room-walls-list">
+					{#each roomWalls as w (wallKey(w.ref))}
+						<li>
+							<span><b>{w.label}</b></span>
+							{#if w.open}
+								<small>Open</small>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									class:short={(layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(layout?.nextWallCost ?? 0, layout?.coins ?? 0)) void openWallTo(w.ref)
+									}}
+									data-testid="gym3d-open-wall"
+								>
+									Open <span class="cur">{@html COIN_SVG}</span>{(layout?.nextWallCost ?? 0).toLocaleString("en-US")}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+
+			{:else if sheet === "room-staff" && room && roomInfo}
+				{@const ri = roomInfo}
+				<ul class="gear" data-testid="room-staff-list">
+					{#each roomStaff as w (w.key)}
+						<li>
+							<span><b>{w.name}</b> <small>{w.title}</small></span>
+							<button type="button" class="g3d-btn" onclick={() => app?.selectPerson(w.key)}>Say hi</button>
+						</li>
+					{/each}
+					{#each ri.staffGear as p (p.id)}
+						<li>
+							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
+							<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Open</button>
+						</li>
+					{/each}
+					{#if hireRole}
+						<li>
+							<span><b>Hire a {hireRole.role.toLowerCase()}</b><small class="earn">Makes this room's machines earn more{room && STAFFED_PERK[room.type] ? `. ${STAFFED_PERK[room.type]}` : ""}</small></span>
+							{#if roomHires.length >= HIRE.perRoom}
+								<small>Full</small>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									class:short={(layout?.coins ?? 0) < (layout?.nextHireCost ?? 0)}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(layout?.nextHireCost ?? 0, layout?.coins ?? 0)) void hireHere()
+									}}
+									data-testid="gym3d-hire"
+								>
+									Hire <span class="cur">{@html COIN_SVG}</span>{(layout?.nextHireCost ?? 0).toLocaleString("en-US")}
+								</button>
+							{/if}
+						</li>
+					{/if}
+				</ul>
+				{#if !roomStaff.length && !ri.staffGear.length && !hireRole}
+					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
+				{/if}
+
 			{:else}
 				<div class="paltabs" role="tablist" aria-label="Customize">
 					{#each PAL_TABS as t (t.id)}
@@ -1678,135 +1802,6 @@ const kitchenView = $derived.by(() => {
 				>
 					{pickType ? `Open the ${roomLabel(pickType, room.shape)}` : "Choose a type"}
 				</button>
-
-			{:else if sheet === "room-gear" && room && roomInfo}
-				{@const ri = roomInfo}
-				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
-					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
-				>
-				<h3>Upgrade gear</h3>
-				<p class="sub">Every piece scores its tier. Upgrade gear to level the room up and open bonus spots.</p>
-				<ul class="gear" data-testid="room-gear-list">
-					{#each ri.gear as p (p.id)}
-						{@const u = upgradeInfo(p.itemKey, p.tier)}
-						<li>
-							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
-							{#if p.status === "upgrading"}
-								<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Upgrading</button>
-							{:else if u}
-								<button
-									type="button"
-									class="g3d-btn primary"
-									onclick={() => openPiece(p)}
-									data-testid="room-gear-piece"
-								>
-									Tier {u.toTier} <span class="g3d-coin"></span>{u.cost}
-								</button>
-							{:else}
-								<span class="max">Top tier</span>
-							{/if}
-						</li>
-					{/each}
-					{#each ri.open as q (q.index)}
-						<li>
-							<span><b>Empty spot</b> <small>{q.size} × {q.size}</small></span>
-							<button
-								type="button"
-								class="g3d-btn"
-								onclick={() =>
-									app?.select({
-										kind: "spot",
-										roomId: room.id,
-										spot: q.index,
-										size: q.size,
-										unlock: q.unlock,
-										open: true,
-									})}>Fill</button
-							>
-						</li>
-					{/each}
-					{#each ri.locked as q (q.index)}
-						<li class="locked">
-							<span><b>Bonus spot</b> <small>{q.size} × {q.size}</small></span>
-							<small>Opens at Lv {q.unlock}</small>
-						</li>
-					{/each}
-				</ul>
-
-			{:else if sheet === "room-walls" && room}
-				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
-					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
-				>
-				<h3>Open walls</h3>
-				<p class="sub">Knock out a wall to join two rooms into one space. It counts towards your stars.</p>
-				<ul class="gear" data-testid="room-walls-list">
-					{#each roomWalls as w (wallKey(w.ref))}
-						<li>
-							<span><b>{w.label}</b></span>
-							{#if w.open}
-								<small>Open</small>
-							{:else}
-								<button
-									type="button"
-									class="g3d-btn primary"
-									class:short={(layout?.coins ?? 0) < (layout?.nextWallCost ?? 0)}
-									disabled={busy}
-									onclick={() => {
-										if (!lacks(layout?.nextWallCost ?? 0, layout?.coins ?? 0)) void openWallTo(w.ref)
-									}}
-									data-testid="gym3d-open-wall"
-								>
-									Open <span class="cur">{@html COIN_SVG}</span>{(layout?.nextWallCost ?? 0).toLocaleString("en-US")}
-								</button>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-
-			{:else if sheet === "room-staff" && room && roomInfo}
-				{@const ri = roomInfo}
-				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
-					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
-				>
-				<h3>Staff</h3>
-				<ul class="gear" data-testid="room-staff-list">
-					{#each roomStaff as w (w.key)}
-						<li>
-							<span><b>{w.name}</b> <small>{w.title}</small></span>
-							<button type="button" class="g3d-btn" onclick={() => app?.selectPerson(w.key)}>Say hi</button>
-						</li>
-					{/each}
-					{#each ri.staffGear as p (p.id)}
-						<li>
-							<span><b>{p.name}</b> <span class="stars">{stars(p.tier)}</span></span>
-							<button type="button" class="g3d-btn" onclick={() => openPiece(p)}>Open</button>
-						</li>
-					{/each}
-					{#if hireRole}
-						<li>
-							<span><b>Hire a {hireRole.role.toLowerCase()}</b><small class="earn">Makes this room's machines earn more{room && STAFFED_PERK[room.type] ? `. ${STAFFED_PERK[room.type]}` : ""}</small></span>
-							{#if roomHires.length >= HIRE.perRoom}
-								<small>Full</small>
-							{:else}
-								<button
-									type="button"
-									class="g3d-btn primary"
-									class:short={(layout?.coins ?? 0) < (layout?.nextHireCost ?? 0)}
-									disabled={busy}
-									onclick={() => {
-										if (!lacks(layout?.nextHireCost ?? 0, layout?.coins ?? 0)) void hireHere()
-									}}
-									data-testid="gym3d-hire"
-								>
-									Hire <span class="cur">{@html COIN_SVG}</span>{(layout?.nextHireCost ?? 0).toLocaleString("en-US")}
-								</button>
-							{/if}
-						</li>
-					{/if}
-				</ul>
-				{#if !roomStaff.length && !ri.staffGear.length && !hireRole}
-					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
-				{/if}
 
 			{/if}
 		</div>
@@ -2576,6 +2571,11 @@ const kitchenView = $derived.by(() => {
 
 .iw.wide {
 	width: 308px;
+}
+
+.iw .gear:global(.tall),
+.iw ul.gear {
+	max-height: 200px;
 }
 
 /* a pointer down into the room (hidden when the card cannot sit over it) */
