@@ -1304,13 +1304,13 @@ test("3D gym story: the first chapter plays as a card and lands in the story log
 	await shot(page, "33a-story-title")
 	await page.getByTestId("story-begin").click()
 	await expect(page.getByTestId("story-line")).toContainText(
-		"Welcome to Slim Pals",
+		"Slim Pals opens on Pavement Street",
 	)
 	await shot(page, "33-story-card")
-	// three lines: Next, Next, Done
+	// five lines: Next to the second, then on to Done
 	await page.getByTestId("story-next").click()
-	await expect(page.getByTestId("story-line")).toContainText("Quiet street")
-	await page.getByTestId("story-next").click()
+	await expect(page.getByTestId("story-line")).toContainText("First day")
+	for (let i = 0; i < 3; i++) await page.getByTestId("story-next").click()
 	await page.getByTestId("story-next").click()
 	// no time gap: the gym is past level 2, so the second chapter opens at once,
 	// with its place in the story and what happened before
