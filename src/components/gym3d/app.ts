@@ -340,6 +340,8 @@ export class Gym3DApp {
 	private sel: Selection | null = null
 	/** The tap chip (a Svelte node), placed with the other bubbles. */
 	private chipL: Label | null = null
+	/** The in-world menu of a selected room (a Svelte node, like the chip). */
+	private menuL: Label | null = null
 	/** When (performance.now ms; wall time, not the frame clock) the tap
 	 * chip closes by itself. */
 	private chipUntil = 0
@@ -1583,7 +1585,36 @@ export class Gym3DApp {
 		)
 	}
 
+	/** The room's in-world menu: floats over the middle of the room, above
+	 * its walls, with a tail pointing down into it. */
+	setMenuElement(el: HTMLElement | null): void {
+		if (this.menuL?.el === el) return
+		this.labels.remove(this.menuL)
+		this.menuL = null
+		if (!el || this.disposed) return
+		const v = new T.Vector3()
+		this.menuL = this.labels.add(
+			el,
+			() => {
+				const a = this.sel?.kind === "room" ? this.anchorOf(this.sel) : null
+				return a ? v.copy(a) : null
+			},
+			{ bubble: "info", edge: true, tail: 10, adopt: false },
+		)
+	}
+
 	private anchorOf(s: Selection): T.Vector3 | null {
+		if (s.kind === "room") {
+			const r = this.world.layout.rooms.find((q) => q.id === s.roomId)
+			if (!r?.cells.length) return null
+			let x = 0
+			let z = 0
+			for (const c of r.cells) {
+				x += c.px * PW + PW / 2
+				z += c.pz * PD + PD / 2
+			}
+			return _a.set(x / r.cells.length, 2.9, z / r.cells.length)
+		}
 		if (s.kind === "person") {
 			const p = this.people.find(s.key)
 			// just over the head: the card must not hide who it is about
