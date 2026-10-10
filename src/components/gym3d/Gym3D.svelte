@@ -1,13 +1,17 @@
 <script lang="ts">
 import {
+	Archive,
 	BrickWall,
 	ChevronLeft,
 	ChevronRight,
+	CircleArrowUp,
 	DoorOpen,
 	Dumbbell,
 	Flower2,
 	LayoutGrid,
+	Move,
 	Paintbrush,
+	RotateCw,
 	Sparkles,
 	Users,
 	X,
@@ -455,7 +459,8 @@ const roomInfo = $derived.by(() => {
 
 /** The room's menu and Customize palette float over the room itself. */
 const inWorld = $derived(
-	(sheet === "room" || sheet === "paint") && !!room && !!roomInfo,
+	((sheet === "room" || sheet === "paint") && !!room && !!roomInfo) ||
+		(sheet === "piece" && !!piece),
 )
 
 /** Who works in the room now (the Staff page), read once a second. */
@@ -1179,7 +1184,71 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
-	{#if inWorld && room && roomInfo}
+	{#if inWorld && sheet === "piece" && piece}
+		{@const u = upgradeInfo(piece.itemKey, piece.tier)}
+		<!-- a machine's menu floats over the machine -->
+		<div
+			class="iw narrow"
+			bind:this={menuEl}
+			role="group"
+			aria-label="{piece.name} menu"
+			data-testid="gym3d-sheet"
+			data-sheet="piece"
+		>
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>{piece.name}</b>
+					<small>
+						<span class="stars">{stars(piece.tier)}</span> Tier {piece.tier}{room ? ` · ${roomLabel(room.type, room.shape)}` : ""}
+					</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+			{#if piece.status === "upgrading" && jobView}
+				{@const jv = jobView}
+				<p class="hint">Being upgraded to tier {jv.j.targetTier}: {fmtLeft(jv.left)} left.</p>
+				<div class="iw-row">
+					<button type="button" class="g3d-btn" disabled={busy} onclick={() => sweatHour(jv.j.id)} data-testid="gym3d-sweat">
+						<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
+					</button>
+					<button type="button" class="g3d-btn" disabled={busy} onclick={() => finishJob(jv.j.id, jv.cost)} data-testid="gym3d-finish">
+						Finish <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
+					</button>
+				</div>
+			{:else}
+				{#if u}
+					<button
+						type="button"
+						class="iw-up"
+						class:short={coins < u.cost}
+						disabled={busy}
+						onclick={() => {
+							if (!lacks(u.cost, coins)) void upgrade()
+						}}
+						data-testid="gym3d-upgrade"
+					>
+						<span class="ico"><CircleArrowUp size={20} /></span>
+						<span class="tx"><b>Upgrade to tier {u.toTier}</b><small><span class="g3d-coin"></span>{u.cost} · {u.hours}h</small></span>
+					</button>
+				{:else}
+					<p class="hint">Top tier reached.</p>
+				{/if}
+				<div class="iw-acts">
+					<button type="button" class="iw-act" disabled={busy} onclick={startMove} data-testid="gym3d-move">
+						<span class="ico"><Move size={20} /></span><span>Move</span>
+					</button>
+					<button type="button" class="iw-act" disabled={busy} onclick={rotate} data-testid="gym3d-rotate">
+						<span class="ico"><RotateCw size={20} /></span><span>Rotate</span>
+					</button>
+					<button type="button" class="iw-act" disabled={busy} onclick={store} data-testid="gym3d-store">
+						<span class="ico"><Archive size={20} /></span><span>Store</span>
+					</button>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	{#if inWorld && sheet !== "piece" && room && roomInfo}
 		{@const lp = levelProgress(room.level, room.points)}
 		{@const ri = roomInfo}
 		<!-- the room's menu floats over the room itself (a managed label, see
@@ -1724,60 +1793,6 @@ const kitchenView = $derived.by(() => {
 					<p class="hint">Every machine that fits here is already in your gym.</p>
 				{/if}
 
-			{:else if sheet === "piece" && piece}
-				{@const u = upgradeInfo(piece.itemKey, piece.tier)}
-				<h3>{piece.name}</h3>
-				<p class="sub">
-					<span class="stars">{stars(piece.tier)}</span> Tier {piece.tier}{room ? ` · ${roomLabel(room.type, room.shape)}` : ""}
-				</p>
-				{#if piece.status === "upgrading" && jobView}
-					{@const jv = jobView}
-					<p class="hint">Being upgraded to tier {jv.j.targetTier}: {fmtLeft(jv.left)} left.</p>
-					<div class="row">
-						<button
-							type="button"
-							class="g3d-btn"
-							disabled={busy}
-							onclick={() => sweatHour(jv.j.id)}
-							data-testid="gym3d-sweat"
-						>
-							<span class="cur">{@html SWEAT_SVG}</span>1 · −1h
-						</button>
-						<button
-							type="button"
-							class="g3d-btn primary"
-							disabled={busy}
-							onclick={() => finishJob(jv.j.id, jv.cost)}
-							data-testid="gym3d-finish"
-						>
-							Finish now <span class="cur">{@html SWEAT_SVG}</span>{jv.cost}
-						</button>
-					</div>
-				{:else}
-					<div class="acts">
-						{#if u}
-							<button
-								type="button"
-								class="g3d-btn primary"
-								class:short={coins < u.cost}
-								disabled={busy}
-								onclick={() => {
-									if (!lacks(u.cost, coins)) void upgrade()
-								}}
-								data-testid="gym3d-upgrade"
-							>
-								Tier {u.toTier} <span class="g3d-coin"></span>{u.cost} · {u.hours}h
-							</button>
-						{:else}
-							<span class="max">Top tier</span>
-						{/if}
-						<button type="button" class="g3d-btn" disabled={busy} onclick={startMove} data-testid="gym3d-move">Move</button>
-						<button type="button" class="g3d-btn" disabled={busy} onclick={rotate}>Rotate</button>
-						<button type="button" class="g3d-btn" disabled={busy} onclick={store}>Store</button>
-					</div>
-					<p class="hint">Tip: drag a selected piece onto a glowing spot.</p>
-				{/if}
-			{/if}
 		</div>
 	{/if}
 </div>
@@ -2435,6 +2450,66 @@ const kitchenView = $derived.by(() => {
 	animation: iw-in 0.22s cubic-bezier(0.2, 1.3, 0.4, 1);
 	transform-origin: 50% 100%;
 	--iw-accent: var(--sk-b, #3aa89a);
+}
+
+.iw.narrow {
+	width: 224px;
+}
+
+.iw-up {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	margin-bottom: 8px;
+	padding: 8px 10px;
+	border: none;
+	border-radius: 14px;
+	background: linear-gradient(135deg, var(--iw-accent), color-mix(in srgb, var(--iw-accent) 55%, #ffd35a));
+	color: #fff;
+	text-align: left;
+	cursor: pointer;
+	animation: iw-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+.iw-up.short {
+	opacity: 0.55;
+}
+
+.iw-up .ico {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.iw-up .tx {
+	display: flex;
+	flex-direction: column;
+}
+
+.iw-up b {
+	font: 800 14px/1.2 system-ui, sans-serif;
+}
+
+.iw-up small {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-weight: 700;
+	font-size: 11px;
+	opacity: 0.92;
+}
+
+.iw-row {
+	display: flex;
+	gap: 6px;
+}
+
+.iw-row .g3d-btn {
+	flex: 1;
 }
 
 .iw.wide {

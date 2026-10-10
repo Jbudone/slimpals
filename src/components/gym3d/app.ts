@@ -1596,7 +1596,10 @@ export class Gym3DApp {
 		this.menuL = this.labels.add(
 			el,
 			() => {
-				const a = this.sel?.kind === "room" ? this.anchorOf(this.sel) : null
+				const a =
+					this.sel?.kind === "room" || this.sel?.kind === "piece"
+						? this.anchorOf(this.sel)
+						: null
 				return a ? v.copy(a) : null
 			},
 			{ bubble: "info", edge: true, tail: 10, adopt: false },
