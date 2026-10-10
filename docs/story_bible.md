@@ -24,20 +24,22 @@ exclamation marks). The rivalry stays affectionate: nobody is truly evil.
 - **Dana Voss** (MaxOut head coach): precise, dry; Rivera's old rival (Rivera's first name is Marian).
 
 ## Acts (campaign 1)
-1. **Welcome to the street** (gym levels 1-8, eight beats): the street changes,
-   Victor makes an offer, Marcus's history comes up. Ends on a hook: Barry's
-   lease is being sold, to a buyer whose name starts with V.
-2. **The bidding** (gym levels 9-16, eight beats, written): the Baron goes on
-   sale; MaxOut runs a half price weekend; Dana Voss, MaxOut's head coach, turns
-   out to be Coach Rivera's old rival; Dr. Kim's fries; a school photo shows
-   Victor and Barry were debate-club teammates; Victor bids for the Baron's
-   building in public; Marcus takes the notebook to the wall (Victor never saw
-   it, Dana printed it); the Pavement Street Open is announced.
-3. **The Open** (gym level 17+, four chapters, written): the Pavement Street Open
-   starts and runs for seven days (the gym's score is the XP it earns, MaxOut's a
-   target by level, see `shared/gym3d/open.ts`). A winning or a losing chapter
-   follows (one coin reward each), then the finale: Barry keeps the Baron going,
-   smaller and with a salad; Victor takes the salad.
+Rewritten to the series plan (`story_series_plan.md`): one chapter per level, five
+threads (the rival, Marcus's notebook, Lisa's drawer, the food thread, the two coaches)
+that each pay off, and every chapter ends on a hook the next one picks up.
+1. **Welcome to the street** (levels 1-8): the gym opens, Victor's very good coat and
+   MaxOut's sign (it carries Marcus's line), his offer, Barry's free samples and his
+   imaginary friend, Marcus's confession about the notebook. Ends on the lease hook:
+   Barry's lease is sold to a company starting with V.
+2. **The bidding** (levels 9-16): the Baron goes on sale; the MaxOut flyer credits "D. Voss"
+   and Lisa's 2009 clipping gives the proof; Dana turns out to be Rivera's old rival; Dr. Kim's
+   fries; the school photo (midpoint: Victor and Barry were best friends and Victor bought
+   the lease); Victor's public bid; Marcus takes the notebook to the wall (Dana hung it,
+   Victor never saw it); the Pavement Street Open is announced.
+3. **The Open** (level 17+, four chapters): seven days, the gym's score is the XP it earns
+   (`shared/gym3d/open.ts`); a winning or a losing chapter follows (one coin reward each);
+   the finale: Barry keeps the Baron, smaller and with a salad, Rivera and Dana shake hands,
+   the notebook goes on the street board and Lisa closes the drawer.
 
 ## Pacing
 One beat at a time, in order. A beat opens when the gym reaches its level (there
