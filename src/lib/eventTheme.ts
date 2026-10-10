@@ -1,6 +1,6 @@
 // The app's event looks (#124, #141): a joined challenge's theme (retro
-// arcade, sunrise, greens) or the season (spring, summer, Halloween, harvest,
-// winter) dresses the pages behind the cards with a slow animated backdrop,
+// arcade, sunrise, greens) or the month's look (new year, Valentine's, clover,
+// spring, summer, Halloween, harvest, winter) dresses the pages behind the cards with a slow animated backdrop,
 // a tinted accent and now and then a tiny event drifting past. Pure rules
 // here; ThemeLayer.svelte draws them.
 
@@ -13,17 +13,39 @@ export type EventTheme =
 	| "halloween"
 	| "harvest"
 	| "winter"
+	| "newyear"
+	| "valentine"
+	| "clover"
 
 const CHALLENGE_THEMES: readonly string[] = ["arcade", "sunrise", "greens"]
 
-/** The season's look by UTC month (1-12), or null the rest of the year. */
+/** The month's look by UTC month (1-12): every month has one, so the app
+ * always wears something (a joined challenge's look still wins). */
 export function seasonTheme(month: number): EventTheme | null {
-	if (month === 4) return "spring"
-	if (month === 7 || month === 8) return "summer"
-	if (month === 10) return "halloween"
-	if (month === 11) return "harvest"
-	if (month === 12) return "winter"
-	return null
+	switch (month) {
+		case 1:
+			return "newyear"
+		case 2:
+			return "valentine"
+		case 3:
+			return "clover"
+		case 4:
+		case 5:
+			return "spring"
+		case 6:
+		case 7:
+		case 8:
+			return "summer"
+		case 9:
+		case 11:
+			return "harvest"
+		case 10:
+			return "halloween"
+		case 12:
+			return "winter"
+		default:
+			return null
+	}
 }
 
 /** What dresses the app now: a joined challenge's theme first, else the
@@ -89,6 +111,18 @@ export const THEME_EVENTS: Readonly<Record<EventTheme, readonly ThemeEvent[]>> =
 			{ id: "flake", cls: "fall", glyph: "❄️", every: [5, 10] },
 			{ id: "star", cls: "streak", glyph: "⭐", every: [20, 38] },
 		],
+		newyear: [
+			{ id: "firework", cls: "rise", glyph: "🎆", every: [10, 20] },
+			{ id: "sparkle", cls: "streak", glyph: "✨", every: [14, 26] },
+		],
+		valentine: [
+			{ id: "heart", cls: "rise", glyph: "💗", every: [8, 16] },
+			{ id: "letter", cls: "cross", glyph: "💌", every: [20, 36] },
+		],
+		clover: [
+			{ id: "clover", cls: "fall", glyph: "🍀", every: [8, 16] },
+			{ id: "rainbow", cls: "cross slow", glyph: "🌈", every: [24, 40] },
+		],
 	}
 
 /** A random wait inside `range` seconds. */
@@ -109,4 +143,7 @@ export const THEME_ACCENT: Readonly<Record<EventTheme, string>> = {
 	halloween: "#ff8a1f",
 	harvest: "#d98a2b",
 	winter: "#6fc3ff",
+	newyear: "#ffd23a",
+	valentine: "#ff5c8a",
+	clover: "#3ec46d",
 }

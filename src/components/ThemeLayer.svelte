@@ -223,6 +223,36 @@ $effect(() => {
 	}
 }
 
+/* ── new year: gold sparkle drifting up over a deep navy glow ── */
+.newyear .back {
+	background:
+		radial-gradient(circle at 50% 0%, rgba(255, 210, 58, 0.2), transparent 45%),
+		radial-gradient(#ffd23a 1.2px, transparent 1.8px) 0 0 / 70px 70px,
+		radial-gradient(#fff 1px, transparent 1.6px) 35px 35px / 110px 110px;
+	opacity: 0.4;
+	animation: sparkle-up 60s linear infinite;
+}
+
+@keyframes sparkle-up {
+	to {
+		background-position: 0 0, 20px -420px, 60px -660px;
+	}
+}
+
+/* ── Valentine's: soft rose glows ── */
+.valentine .back {
+	background:
+		radial-gradient(circle at 15% 12%, rgba(255, 92, 138, 0.26), transparent 34%),
+		radial-gradient(circle at 85% 78%, rgba(255, 179, 201, 0.18), transparent 38%);
+}
+
+/* ── clover: green light and a faint shamrock pattern ── */
+.clover .back {
+	background:
+		radial-gradient(circle at 10% 88%, rgba(62, 196, 109, 0.24), transparent 38%),
+		radial-gradient(circle at 90% 10%, rgba(255, 210, 58, 0.12), transparent 34%);
+}
+
 /* ── sunrise: a sky strip that runs dawn to dusk with the challenge ── */
 .sunrise .back {
 	height: 38%;
