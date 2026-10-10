@@ -102,6 +102,9 @@ export const THEME_EVENTS: Readonly<Record<EventTheme, readonly ThemeEvent[]>> =
 		halloween: [
 			{ id: "bat", cls: "cross", glyph: "🦇", every: [12, 24] },
 			{ id: "ghost", cls: "rise", glyph: "👻", every: [18, 34] },
+			{ id: "spider", cls: "drop", glyph: "🕷️", every: [24, 44] },
+			{ id: "candy", cls: "fall", glyph: "🍬", every: [14, 26] },
+			{ id: "pumpkin", cls: "rise", glyph: "🎃", every: [22, 40] },
 		],
 		harvest: [
 			{ id: "leaf", cls: "fall", glyph: "🍂", every: [6, 12] },

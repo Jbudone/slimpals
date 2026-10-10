@@ -81,13 +81,13 @@ onMount(() => {
 .note {
 	padding: 12px 14px;
 	border-radius: 16px;
-	background: #fff;
-	border: 2px solid #eaddc4;
+	background: var(--dr-surface, #fff);
+	border: 2px solid var(--dr-border, #eaddc4);
 }
 
 .note b {
 	font: 800 13px ui-rounded, system-ui, sans-serif;
-	color: #1f9a55;
+	color: var(--dr-accent, #1f9a55);
 }
 
 .note p {
@@ -116,6 +116,6 @@ onMount(() => {
 
 .sc small {
 	font: 600 12px/1.3 system-ui, sans-serif;
-	color: #8d7c66;
+	color: var(--dr-muted, #8d7c66);
 }
 </style>

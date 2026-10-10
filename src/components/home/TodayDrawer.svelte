@@ -160,13 +160,23 @@ const offset = $derived.by(() => {
 
 <style>
 .drawer {
-	/* the paper palette of the Layout Lab, whatever the app theme */
-	--color-surface: #fff;
-	--color-surface-2: #fdf8f0;
-	--color-border: #eaddc4;
-	--color-text: #241d15;
-	--color-text-muted: #8d7c66;
-	--color-accent: #1f9a55;
+	/* the paper palette of the Layout Lab; an event look re-skins it through
+	   the --dr-* variables (styles/app.css) */
+	--dr-bg: #fdf8f0;
+	--dr-surface: #fff;
+	--dr-border: #eaddc4;
+	--dr-text: #241d15;
+	--dr-muted: #8d7c66;
+	--dr-accent: #1f9a55;
+	--dr-fill: #34c973;
+	--dr-grab: #dccbb3;
+	--dr-seg: #eadfcd;
+	--color-surface: var(--dr-surface);
+	--color-surface-2: var(--dr-bg);
+	--color-border: var(--dr-border);
+	--color-text: var(--dr-text);
+	--color-text-muted: var(--dr-muted);
+	--color-accent: var(--dr-accent);
 	position: fixed;
 	left: 0;
 	right: 0;
@@ -176,8 +186,8 @@ const offset = $derived.by(() => {
 	max-width: 560px;
 	margin: 0 auto;
 	transform: translateY(calc(100% - 78px));
-	background: #fdf8f0;
-	color: #241d15;
+	background: var(--dr-bg);
+	color: var(--dr-text);
 	border-radius: 24px 24px 0 0;
 	box-shadow: 0 -6px 24px rgba(58, 38, 34, 0.22);
 	display: flex;
@@ -212,7 +222,7 @@ const offset = $derived.by(() => {
 	width: 40px;
 	height: 5px;
 	border-radius: 9px;
-	background: #dccbb3;
+	background: var(--dr-grab);
 	margin: 0 auto 8px;
 }
 
@@ -224,17 +234,17 @@ const offset = $derived.by(() => {
 
 .drow h2 {
 	margin: 0;
-	font: 700 21px/1 var(--font-display, Georgia, serif);
+	font: 700 21px/1 var(--dr-font, var(--font-display, Georgia, serif));
 }
 
 .dcount {
 	font: 700 13px/1 system-ui, sans-serif;
-	color: #8d7c66;
+	color: var(--dr-muted);
 	white-space: nowrap;
 }
 
 .dcount b {
-	color: #1f9a55;
+	color: var(--dr-accent);
 	font: 800 15px ui-rounded, system-ui, sans-serif;
 }
 
@@ -248,12 +258,12 @@ const offset = $derived.by(() => {
 	width: 15px;
 	height: 8px;
 	border-radius: 4px;
-	background: #eadfcd;
+	background: var(--dr-seg);
 	transition: background 0.3s;
 }
 
 .segs i.on {
-	background: #34c973;
+	background: var(--dr-fill);
 }
 
 .dnext {
@@ -262,13 +272,13 @@ const offset = $derived.by(() => {
 	align-items: center;
 	gap: 6px;
 	font: 600 13px/1.2 system-ui, sans-serif;
-	color: #8d7c66;
+	color: var(--dr-muted);
 	white-space: nowrap;
 	overflow: hidden;
 }
 
 .dnext b {
-	color: #241d15;
+	color: var(--dr-text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
@@ -306,17 +316,17 @@ const offset = $derived.by(() => {
 .segbar button {
 	flex: 1;
 	min-height: 36px;
-	border: 2px solid #eaddc4;
+	border: 2px solid var(--dr-border);
 	border-radius: 12px;
-	background: #fff;
-	color: #8d7c66;
+	background: var(--dr-surface);
+	color: var(--dr-muted);
 	font: 800 13px ui-rounded, system-ui, sans-serif;
 	cursor: pointer;
 }
 
 .segbar button.on {
 	background: #241d15;
-	border-color: #241d15;
+	border-color: var(--dr-text);
 	color: #fff;
 }
 
@@ -326,7 +336,7 @@ const offset = $derived.by(() => {
 	height: 8px;
 	margin-left: 5px;
 	border-radius: 50%;
-	background: #34c973;
+	background: var(--dr-fill);
 	vertical-align: middle;
 }
 

@@ -300,7 +300,7 @@ onMount(() => {
 	--tl-line: var(--color-border);
 	--tl-text: var(--color-text);
 	--tl-muted: var(--color-text-muted);
-	--tl-done: color-mix(in srgb, #34c973 10%, var(--color-surface));
+	--tl-done: color-mix(in srgb, var(--dr-fill, #34c973) 10%, var(--color-surface));
 	color: var(--tl-text);
 }
 
@@ -321,9 +321,9 @@ button:active {
 }
 
 button.primary {
-	background: #34c973;
+	background: var(--dr-fill, #34c973);
 	color: #fff;
-	box-shadow: 0 3px 0 #1f9a55;
+	box-shadow: 0 3px 0 var(--dr-accent, #1f9a55);
 }
 
 button:disabled {
@@ -337,13 +337,13 @@ button:disabled {
 	gap: 12px;
 	padding: 12px;
 	border-radius: 18px;
-	background: linear-gradient(135deg, #17331f, #1e3f27);
+	background: linear-gradient(135deg, var(--dr-hero-a, #17331f), var(--dr-hero-b, #1e3f27));
 	color: #f2f7f0;
 	box-shadow: 0 4px 0 #0f2016;
 }
 
 .checkin.done {
-	background: linear-gradient(135deg, #1e5a37, #23703f);
+	background: linear-gradient(135deg, var(--dr-hero2-a, #1e5a37), var(--dr-hero2-b, #23703f));
 }
 
 .flame {
@@ -409,7 +409,7 @@ button:disabled {
 	width: 34px;
 	height: 34px;
 	border-radius: 50%;
-	background: #34c973;
+	background: var(--dr-fill, #34c973);
 	display: grid;
 	place-items: center;
 	flex: none;
@@ -495,8 +495,8 @@ button:disabled {
 }
 
 .task.done .tick {
-	background: #34c973;
-	box-shadow: 0 2px 0 #1f9a55;
+	background: var(--dr-fill, #34c973);
+	box-shadow: 0 2px 0 var(--dr-accent, #1f9a55);
 	animation: tickpop 0.5s cubic-bezier(0.2, 1.8, 0.4, 1);
 }
 

@@ -20,6 +20,7 @@ import { coachSvg } from "../components/home/icons"
 import StoryCard from "../components/home/StoryCard.svelte"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import UpNext from "../components/home/UpNext.svelte"
+import ThemeLayer from "../components/ThemeLayer.svelte"
 import { api } from "../lib/api.js"
 import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
@@ -265,6 +266,7 @@ onMount(() => {
 </script>
 
 <div class="home" class:off={!active} data-testid="home">
+	{#if active}<ThemeLayer over />{/if}
 	{#if failed}
 		<div class="fallback" data-testid="gym-fallback">
 			<div class="card">
