@@ -1,11 +1,16 @@
 <script lang="ts">
 import {
+	BrickWall,
 	ChevronLeft,
 	ChevronRight,
 	DoorOpen,
 	Dumbbell,
+	Flower2,
+	LayoutGrid,
 	Paintbrush,
+	Sparkles,
 	Users,
+	X,
 } from "@lucide/svelte"
 import { onDestroy, onMount } from "svelte"
 import { cosmeticPieceKey } from "../../../shared/gym3d/cosmetics"
@@ -122,6 +127,7 @@ const FLOOR_NAMES: Record<string, string> = {
 
 let host: HTMLDivElement
 let chipEl = $state<HTMLDivElement | null>(null)
+let menuEl = $state<HTMLDivElement | null>(null)
 let sheetH = $state(0)
 /** Pixels of the gym hidden under the tab bar and the drawer's peek:
  * sheets and banners sit above them. */
@@ -223,11 +229,16 @@ $effect(() => {
 })
 
 $effect(() => {
+	const el = menuEl
+	app?.setMenuElement(el)
+})
+
+$effect(() => {
 	onSheet?.(!!sheet || !!moving)
 })
 
 $effect(() => {
-	const bottom = (sheet ? sheetH : 0) + hidden
+	const bottom = (sheet && !inWorld ? sheetH : 0) + hidden
 	const top = insetTop
 	if (ready) app?.setInsets(top + 8, bottom)
 })
@@ -434,6 +445,11 @@ const roomInfo = $derived.by(() => {
 		: null
 	return { gear, decor, staffGear, spots, open, locked, rate, nextUnlock }
 })
+
+/** The room's menu and Customize palette float over the room itself. */
+const inWorld = $derived(
+	(sheet === "room" || sheet === "paint") && !!room && !!roomInfo,
+)
 
 /** Who works in the room now (the Staff page), read once a second. */
 const roomStaff = $derived.by(() => {
@@ -910,6 +926,7 @@ onMount(() => {
 			}
 			app = a
 			app.setChipElement(chipEl)
+			app.setMenuElement(menuEl)
 			setLayout(a.layout)
 			welcome = a.layout.welcomeBack ?? null
 			loading = false
@@ -1155,7 +1172,225 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
-	{#if sheet}
+	{#if inWorld && room && roomInfo}
+		{@const lp = levelProgress(room.level, room.points)}
+		{@const ri = roomInfo}
+		<!-- the room's menu floats over the room itself (a managed label, see
+		     world/labels.ts), so what you change stays in view -->
+		<div
+			class="iw"
+			class:wide={sheet === "paint"}
+			bind:this={menuEl}
+			role="group"
+			aria-label="{roomLabel(room.type, room.shape)} menu"
+			data-testid="gym3d-sheet"
+			data-sheet={sheet}
+		>
+			<header class="iw-h">
+				{#if sheet === "paint"}
+					<button type="button" class="iw-back" onclick={() => roomPage()} data-testid="room-back" aria-label="Back to the room menu"
+						><ChevronLeft size={18} /></button
+					>
+				{/if}
+				<span class="iw-t">
+					<b>{sheet === "paint" ? "Customize" : roomLabel(room.type, room.shape)}</b>
+					<small>
+						{#if sheet === "paint"}{roomLabel(room.type, room.shape)}{:else}<span class="stars">{stars(room.level)}</span> Lv {room.level}{/if}
+					</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+			{#if sheet === "room"}
+				<div class="iw-bar" title="{room.points} points{lp.next != null ? `, ${lp.next} for Lv ${room.level + 1}` : ''}"><i style="width:{Math.round(lp.k * 100)}%"></i></div>
+				<div class="iw-stats" data-testid="room-info">
+					<span><small>Gear</small><b>{ri.gear.length}/{ri.spots.length}</b></span>
+					<span><small>Coins/h</small><b><span class="cur">{@html COIN_SVG}</span>{ri.rate}</b></span>
+					<span><small>Next</small><b class="sm">{ri.nextUnlock != null ? `Spot Lv ${ri.nextUnlock}` : "All open"}</b></span>
+				</div>
+				<div class="iw-acts" data-testid="room-menu">
+					<button type="button" class="iw-act" onclick={() => roomPage("gear")} data-testid="room-gear">
+						<span class="ico"><Dumbbell size={22} /></span><span>Gear</span>
+					</button>
+					<button type="button" class="iw-act" onclick={() => roomPage("staff")} data-testid="room-staff">
+						<span class="ico"><Users size={22} /></span><span>Staff</span>
+					</button>
+					<button type="button" class="iw-act" onclick={() => roomPage("customize")} data-testid="room-customize">
+						<span class="ico"><Paintbrush size={22} /></span><span>Customize</span>
+					</button>
+					{#if roomWalls.length}
+						<button type="button" class="iw-act" onclick={() => roomPage("walls")} data-testid="room-walls">
+							<span class="ico"><DoorOpen size={22} /></span><span>Walls</span>
+						</button>
+					{/if}
+				</div>
+			{:else}
+				<div class="paltabs" role="tablist" aria-label="Customize">
+					{#each PAL_TABS as t (t.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={palTab === t.id}
+							class:on={palTab === t.id}
+							onclick={() => (palTab = t.id)}
+							data-testid="pal-tab-{t.id}"
+						>
+							<span class="ico">
+								{#if t.id === "style"}<Paintbrush size={18} />{:else if t.id === "walls"}<BrickWall size={18} />{:else if t.id === "floor"}<LayoutGrid size={18} />{:else if t.id === "vibe"}<Sparkles size={18} />{:else}<Flower2 size={18} />{/if}
+							</span>
+							<span>{t.label}</span>
+						</button>
+					{/each}
+				</div>
+				<div class="iw-body">
+				{#if palTab === "style"}
+					<p class="palnote">Whole-room looks. Free.</p>
+					<div class="chips" data-testid="room-styles">
+					{#each STYLES as st (st.key)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={styleOf(shownPaint as typeof room.paint)?.key === st.key}
+							disabled={busy}
+							onclick={() => applyStyle(st)}
+							data-testid="room-style-{st.key}">{st.name}</button
+						>
+					{/each}
+				</div>
+				{:else if palTab === "walls"}
+					<div class="sws">
+					{#each WALL_COLORS as c (c)}
+						<button
+							type="button"
+							class="sw2"
+							class:on={shownPaint.wall === c}
+							style="background:{c}"
+							aria-label="Wall colour {c}"
+							disabled={busy}
+							onclick={() => previewPaint({ wall: c })}
+						></button>
+					{/each}
+				</div>
+				{:else if palTab === "floor"}
+					<div class="chips">
+					{#each FLOOR_STYLES as f (f)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={shownPaint.floorStyle === f}
+							disabled={busy}
+							onclick={() => previewPaint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
+						>
+					{/each}
+				</div>
+				<div class="sws">
+					{#each FLOOR_TINTS as c (c)}
+						<button
+							type="button"
+							class="sw2"
+							class:on={shownPaint.floorColor === c}
+							style="background:{c}"
+							aria-label="Floor colour {c}"
+							disabled={busy}
+							onclick={() => previewPaint({ floorColor: c })}
+						></button>
+					{/each}
+				</div>
+				{:else if palTab === "vibe"}
+					<div class="chips" data-testid="room-vibes">
+					<button
+						type="button"
+						class="g3d-chipbtn"
+						class:on={!shownVibe}
+						disabled={busy || !shownVibe}
+						onclick={() => previewVibe(null)}
+						data-testid="room-vibe-none">None</button
+					>
+					{#each Object.values(VIBES) as v (v.key)}
+						<button
+							type="button"
+							class="g3d-chipbtn"
+							class:on={shownVibe === v.key}
+							disabled={busy || shownVibe === v.key}
+							onclick={() => previewVibe(v.key)}
+							data-testid="room-vibe-{v.key}"
+							>{v.name}{#if !vibeOwned(v.key)}<small class="vcost"><span class="g3d-coin"></span>{VIBE.cost}</small>{:else if v.key !== room.vibe}<small class="vcost">owned</small>{/if}</button
+						>
+					{/each}
+				</div>
+				<p class="hint" data-testid="room-vibe-hint">
+					{#if shownVibe}
+						{VIBES[shownVibe]?.blurb ?? ""}
+					{:else}
+						A vibe tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars. Buy one once and every room can use it.
+					{/if}
+				</p>
+				{:else}
+					{#if ownedDecor.length}
+										<ul class="gear" data-testid="room-cosmetics">
+						{#each ownedDecor as c (c.key)}
+							{@const shown = layout?.pieces.find((p) => p.upgradeKey === cosmeticPieceKey(c.key))}
+							<li>
+								<span><b>{c.name}</b><small style="display:block">{shown ? "On show" : c.from}</small></span>
+								{#if shown}
+									<button
+										type="button"
+										class="g3d-btn"
+										disabled={busy}
+										onclick={() => takeDownDecor(c.key)}
+										data-testid="cosmetic-remove-{c.key}"
+									>
+										Take down
+									</button>
+								{:else}
+									<button
+										type="button"
+										class="g3d-btn primary"
+										disabled={busy}
+										onclick={() => placeDecor(c.key)}
+										data-testid="cosmetic-place-{c.key}"
+									>
+										Put here
+									</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+					<p class="lbl">Decor</p>
+				{#if roomInfo?.decor.length}
+					<ul class="gear">
+						{#each roomInfo.decor as p (p.id)}
+							<li><span><b>{p.name}</b></span></li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="hint" data-testid="room-decor-none">Decor you unlock with gym XP goes up in the lobby for now. Room decor is coming.</p>
+				{/if}
+				{/if}
+				</div>
+				{#if mine}
+					<div class="draftbar" data-testid="room-draft">
+						<span>
+							{#if draftCost}Trying it on. {draftCost} coins to keep{:else}Trying it on. Free to keep{/if}
+						</span>
+						<button type="button" class="g3d-btn ghost" onclick={cancelDraft} data-testid="room-draft-undo">Undo</button>
+						<button
+							type="button"
+							class="g3d-btn"
+							class:short={draftCost > (layout?.coins ?? 0)}
+							disabled={busy}
+							onclick={keepDraft}
+							data-testid="room-draft-keep"
+							>{#if draftCost}<span class="g3d-coin"></span>Buy {draftCost}{:else}Keep{/if}</button
+						>
+					</div>
+				{/if}
+
+			{/if}
+		</div>
+	{/if}
+
+	{#if sheet && !inWorld}
 		<div
 			class="g3d-sheet"
 			class:palette={sheet === "paint"}
@@ -1299,68 +1534,6 @@ const kitchenView = $derived.by(() => {
 					{pickType ? `Open the ${roomLabel(pickType, room.shape)}` : "Choose a type"}
 				</button>
 
-			{:else if sheet === "room" && room && roomInfo}
-				{@const lp = levelProgress(room.level, room.points)}
-				{@const ri = roomInfo}
-				<h3>{roomLabel(room.type, room.shape)}</h3>
-				<p class="sub">
-					<span class="stars">{stars(room.level)}</span> Lv {room.level} · {room.points} points{#if lp.next != null}, {lp.next} for Lv {room.level + 1}{/if}
-				</p>
-				<div class="bar"><i style="width:{Math.round(lp.k * 100)}%"></i></div>
-				<div class="kstats" data-testid="room-info">
-					<div><small>Gear</small><b>{ri.gear.length}/{ri.spots.length}</b></div>
-					<div><small>Coins/h</small><b><span class="cur">{@html COIN_SVG}</span>{ri.rate}</b></div>
-					<div>
-						<small>Bonus</small>
-						<b class="sm">{ri.nextUnlock != null ? `Spot at Lv ${ri.nextUnlock}` : "All open"}</b>
-					</div>
-				</div>
-				<ul class="rmenu" data-testid="room-menu">
-					<li>
-						<button type="button" class="rrow" onclick={() => roomPage("gear")} data-testid="room-gear">
-							<span class="ric"><Dumbbell size={20} /></span>
-							<span class="rtx"
-								><b>Upgrade gear</b><small
-									>{ri.gear.length} piece{ri.gear.length === 1 ? "" : "s"} · {ri.open.length} free spot{ri.open.length === 1 ? "" : "s"}</small
-								></span
-							>
-							<ChevronRight size={18} />
-						</button>
-					</li>
-					<li>
-						<button type="button" class="rrow" onclick={() => roomPage("staff")} data-testid="room-staff">
-							<span class="ric"><Users size={20} /></span>
-							<span class="rtx"><b>Staff</b><small>Who works here today</small></span>
-							<ChevronRight size={18} />
-						</button>
-					</li>
-					<li>
-						<button
-							type="button"
-							class="rrow"
-							onclick={() => roomPage("customize")}
-							data-testid="room-customize"
-						>
-							<span class="ric"><Paintbrush size={20} /></span>
-							<span class="rtx"><b>Customize</b><small>Paint and decor</small></span>
-							<ChevronRight size={18} />
-						</button>
-					</li>
-					{#if roomWalls.length}
-						<li>
-							<button type="button" class="rrow" onclick={() => roomPage("walls")} data-testid="room-walls">
-								<span class="ric"><DoorOpen size={20} /></span>
-								<span class="rtx"
-									><b>Open walls</b><small
-										>{roomWalls.filter((w) => w.open).length} of {roomWalls.length} open</small
-									></span
-								>
-								<ChevronRight size={18} />
-							</button>
-						</li>
-					{/if}
-				</ul>
-
 			{:else if sheet === "room-gear" && room && roomInfo}
 				{@const ri = roomInfo}
 				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
@@ -1488,165 +1661,6 @@ const kitchenView = $derived.by(() => {
 				</ul>
 				{#if !roomStaff.length && !ri.staffGear.length && !hireRole}
 					<p class="hint">Nobody works here right now. Trainers and instructors drop by for classes.</p>
-				{/if}
-
-			{:else if sheet === "paint" && room}
-				<button type="button" class="g3d-back" onclick={() => roomPage()} data-testid="room-back"
-					><ChevronLeft size={18} />{roomLabel(room.type, room.shape)}</button
-				>
-				<div class="paltabs" role="tablist" aria-label="Customize">
-					{#each PAL_TABS as t (t.id)}
-						<button
-							type="button"
-							role="tab"
-							aria-selected={palTab === t.id}
-							class:on={palTab === t.id}
-							onclick={() => (palTab = t.id)}
-							data-testid="pal-tab-{t.id}">{t.label}</button
-						>
-					{/each}
-				</div>
-				{#if palTab === "style"}
-					<p class="palnote">Whole-room looks. Free.</p>
-					<div class="chips" data-testid="room-styles">
-					{#each STYLES as st (st.key)}
-						<button
-							type="button"
-							class="g3d-chipbtn"
-							class:on={styleOf(shownPaint as typeof room.paint)?.key === st.key}
-							disabled={busy}
-							onclick={() => applyStyle(st)}
-							data-testid="room-style-{st.key}">{st.name}</button
-						>
-					{/each}
-				</div>
-				{:else if palTab === "walls"}
-					<div class="sws">
-					{#each WALL_COLORS as c (c)}
-						<button
-							type="button"
-							class="sw2"
-							class:on={shownPaint.wall === c}
-							style="background:{c}"
-							aria-label="Wall colour {c}"
-							disabled={busy}
-							onclick={() => previewPaint({ wall: c })}
-						></button>
-					{/each}
-				</div>
-				{:else if palTab === "floor"}
-					<div class="chips">
-					{#each FLOOR_STYLES as f (f)}
-						<button
-							type="button"
-							class="g3d-chipbtn"
-							class:on={shownPaint.floorStyle === f}
-							disabled={busy}
-							onclick={() => previewPaint({ floorStyle: f })}>{FLOOR_NAMES[f]}</button
-						>
-					{/each}
-				</div>
-				<div class="sws">
-					{#each FLOOR_TINTS as c (c)}
-						<button
-							type="button"
-							class="sw2"
-							class:on={shownPaint.floorColor === c}
-							style="background:{c}"
-							aria-label="Floor colour {c}"
-							disabled={busy}
-							onclick={() => previewPaint({ floorColor: c })}
-						></button>
-					{/each}
-				</div>
-				{:else if palTab === "vibe"}
-					<div class="chips" data-testid="room-vibes">
-					<button
-						type="button"
-						class="g3d-chipbtn"
-						class:on={!shownVibe}
-						disabled={busy || !shownVibe}
-						onclick={() => previewVibe(null)}
-						data-testid="room-vibe-none">None</button
-					>
-					{#each Object.values(VIBES) as v (v.key)}
-						<button
-							type="button"
-							class="g3d-chipbtn"
-							class:on={shownVibe === v.key}
-							disabled={busy || shownVibe === v.key}
-							onclick={() => previewVibe(v.key)}
-							data-testid="room-vibe-{v.key}"
-							>{v.name}{#if !vibeOwned(v.key)}<small class="vcost"><span class="g3d-coin"></span>{VIBE.cost}</small>{:else if v.key !== room.vibe}<small class="vcost">owned</small>{/if}</button
-						>
-					{/each}
-				</div>
-				<p class="hint" data-testid="room-vibe-hint">
-					{#if shownVibe}
-						{VIBES[shownVibe]?.blurb ?? ""}
-					{:else}
-						A vibe tints the floor, sets the pace of workouts, helps the room earn and counts towards your stars. Buy one once and every room can use it.
-					{/if}
-				</p>
-				{:else}
-					{#if ownedDecor.length}
-										<ul class="gear" data-testid="room-cosmetics">
-						{#each ownedDecor as c (c.key)}
-							{@const shown = layout?.pieces.find((p) => p.upgradeKey === cosmeticPieceKey(c.key))}
-							<li>
-								<span><b>{c.name}</b><small style="display:block">{shown ? "On show" : c.from}</small></span>
-								{#if shown}
-									<button
-										type="button"
-										class="g3d-btn"
-										disabled={busy}
-										onclick={() => takeDownDecor(c.key)}
-										data-testid="cosmetic-remove-{c.key}"
-									>
-										Take down
-									</button>
-								{:else}
-									<button
-										type="button"
-										class="g3d-btn primary"
-										disabled={busy}
-										onclick={() => placeDecor(c.key)}
-										data-testid="cosmetic-place-{c.key}"
-									>
-										Put here
-									</button>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				{/if}
-					<p class="lbl">Decor</p>
-				{#if roomInfo?.decor.length}
-					<ul class="gear">
-						{#each roomInfo.decor as p (p.id)}
-							<li><span><b>{p.name}</b></span></li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="hint" data-testid="room-decor-none">Decor you unlock with gym XP goes up in the lobby for now. Room decor is coming.</p>
-				{/if}
-				{/if}
-				{#if mine}
-					<div class="draftbar" data-testid="room-draft">
-						<span>
-							{#if draftCost}Trying it on. {draftCost} coins to keep{:else}Trying it on. Free to keep{/if}
-						</span>
-						<button type="button" class="g3d-btn ghost" onclick={cancelDraft} data-testid="room-draft-undo">Undo</button>
-						<button
-							type="button"
-							class="g3d-btn"
-							class:short={draftCost > (layout?.coins ?? 0)}
-							disabled={busy}
-							onclick={keepDraft}
-							data-testid="room-draft-keep"
-							>{#if draftCost}<span class="g3d-coin"></span>Buy {draftCost}{:else}Keep{/if}</button
-						>
-					</div>
 				{/if}
 
 			{:else if sheet === "spot" && spotInfo && room}
@@ -2390,63 +2404,365 @@ const kitchenView = $derived.by(() => {
 	}
 }
 
-/* Customize: a small palette docked at the bottom, the room stays in view */
-.g3d-sheet.palette {
-	max-height: none !important;
-	overflow: visible;
-	padding-top: 6px;
-	background: rgba(255, 247, 234, 0.96);
+/* ── the in-world room menu: a glass card over the room ── */
+.iw {
+	position: absolute;
+	left: 0;
+	top: 0;
+	z-index: 5;
+	width: 244px;
+	max-width: calc(100vw - 24px);
+	box-sizing: border-box;
+	padding: 10px 10px 11px;
+	border-radius: 20px;
+	background: rgba(26, 30, 40, 0.86);
+	-webkit-backdrop-filter: blur(14px) saturate(1.3);
+	backdrop-filter: blur(14px) saturate(1.3);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	box-shadow:
+		0 10px 30px rgba(0, 0, 0, 0.35),
+		inset 0 1px 0 rgba(255, 255, 255, 0.12);
+	color: #f4f6fb;
+	font: 600 13px/1.3 system-ui, sans-serif;
+	will-change: transform;
+	animation: iw-in 0.22s cubic-bezier(0.2, 1.3, 0.4, 1);
+	transform-origin: 50% 100%;
+	--iw-accent: var(--sk-b, #3aa89a);
 }
 
-.g3d-sheet.palette .g3d-back {
-	margin-bottom: 4px;
+.iw.wide {
+	width: 308px;
+}
+
+/* a pointer down into the room (hidden when the card cannot sit over it) */
+.iw::after {
+	content: "";
+	position: absolute;
+	left: calc(var(--tx, 50%) - 7px);
+	bottom: -7px;
+	width: 14px;
+	height: 14px;
+	background: rgba(26, 30, 40, 0.86);
+	border-right: 1px solid rgba(255, 255, 255, 0.16);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+	transform: rotate(45deg);
+	border-bottom-right-radius: 4px;
+}
+
+.iw:global(.pin)::after {
+	display: none;
+}
+
+@keyframes iw-in {
+	from {
+		opacity: 0;
+		scale: 0.82;
+	}
+}
+
+.iw-h {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.iw-t {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.iw-t b {
+	font: 800 15px/1.15 var(--font-display, system-ui), system-ui, sans-serif;
+	letter-spacing: 0.01em;
+}
+
+.iw-t small {
+	opacity: 0.7;
+	font-weight: 700;
+	font-size: 11px;
+}
+
+.iw-t .stars {
+	color: #ffd35a;
+	letter-spacing: 1px;
+}
+
+.iw-x,
+.iw-back {
+	flex: none;
+	width: 32px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	color: inherit;
+	cursor: pointer;
+}
+
+.iw-x:active,
+.iw-back:active {
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.iw-bar {
+	height: 5px;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.14);
+	overflow: hidden;
+	margin-bottom: 9px;
+}
+
+.iw-bar i {
+	display: block;
+	height: 100%;
+	border-radius: 9px;
+	background: linear-gradient(90deg, var(--iw-accent), #ffd35a);
+}
+
+.iw-stats {
+	display: flex;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.iw-stats span {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	padding: 5px 7px;
+	border-radius: 11px;
+	background: rgba(255, 255, 255, 0.07);
+}
+
+.iw-stats small {
+	font-size: 10px;
+	font-weight: 700;
+	opacity: 0.65;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.iw-stats b {
+	font: 800 13px/1.2 system-ui, sans-serif;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.iw-stats b.sm {
+	font-size: 11px;
+}
+
+.iw-stats .cur :global(svg) {
+	width: 13px;
+	height: 13px;
+}
+
+.iw-acts {
+	display: flex;
+	gap: 6px;
+}
+
+.iw-act,
+.paltabs button {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	min-height: 58px;
+	padding: 7px 2px 6px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.07);
+	color: inherit;
+	font: 700 11px/1.1 system-ui, sans-serif;
+	cursor: pointer;
+	transition:
+		background 0.15s,
+		transform 0.12s;
+	animation: iw-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+
+.iw-act:nth-child(2),
+.paltabs button:nth-child(2) {
+	animation-delay: 0.03s;
+}
+.iw-act:nth-child(3),
+.paltabs button:nth-child(3) {
+	animation-delay: 0.06s;
+}
+.iw-act:nth-child(4),
+.paltabs button:nth-child(4) {
+	animation-delay: 0.09s;
+}
+.paltabs button:nth-child(5) {
+	animation-delay: 0.12s;
+}
+
+@keyframes iw-pop {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.85);
+	}
+}
+
+.iw-act .ico,
+.paltabs .ico {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--iw-accent) 55%, transparent);
+}
+
+.iw-act:active,
+.paltabs button:active {
+	transform: scale(0.94);
 }
 
 .paltabs {
 	display: flex;
-	gap: 4px;
-	margin-bottom: 8px;
+	gap: 5px;
+	margin-bottom: 9px;
 }
 
 .paltabs button {
-	flex: 1;
-	min-height: 36px;
-	border: 2px solid var(--ink);
-	border-radius: 10px;
-	background: #fff;
-	color: var(--ink);
-	font: 800 13px system-ui, sans-serif;
-	cursor: pointer;
+	min-height: 54px;
+	padding: 5px 0;
+}
+
+.paltabs button .ico {
+	width: 28px;
+	height: 28px;
 }
 
 .paltabs button.on {
-	background: var(--ink);
-	color: #fff7ea;
+	background: rgba(255, 255, 255, 0.2);
+	border-color: rgba(255, 255, 255, 0.5);
 }
 
-.palnote {
+.paltabs button.on .ico {
+	background: var(--iw-accent);
+}
+
+/* the palette's groups on glass */
+.iw-body {
+	min-height: 64px;
+}
+
+.iw .palnote,
+.iw .hint {
 	margin: 0 0 6px;
-	font-size: 12px;
-	font-weight: 700;
-	opacity: 0.7;
+	font-size: 11px;
+	font-weight: 600;
+	opacity: 0.75;
 }
 
-.g3d-sheet.palette .chips,
-.g3d-sheet.palette .sws {
+.iw .chips,
+.iw .sws {
+	display: flex;
 	flex-wrap: nowrap;
+	gap: 6px;
 	overflow-x: auto;
-	padding: 4px 4px 8px;
+	padding: 3px 3px 8px;
 	scrollbar-width: none;
 }
 
-.g3d-sheet.palette .sw2,
-.g3d-sheet.palette .g3d-chipbtn {
+.iw .g3d-chipbtn {
 	flex: none;
+	min-height: 36px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	border-radius: 99px;
+	background: rgba(255, 255, 255, 0.08);
+	color: inherit;
+	font: 700 12px system-ui, sans-serif;
+	box-shadow: none;
 }
 
-.g3d-sheet.palette .gear {
-	max-height: 120px;
+.iw .g3d-chipbtn.on {
+	background: var(--iw-accent);
+	border-color: transparent;
+}
+
+.iw .sw2 {
+	flex: none;
+	width: 34px;
+	height: 34px;
+	border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.iw .sw2.on {
+	box-shadow: 0 0 0 3px rgba(26, 30, 40, 0.9), 0 0 0 5px #fff;
+}
+
+.iw .gear {
+	max-height: 110px;
 	overflow-y: auto;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.iw .gear li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.iw .draftbar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+	padding: 7px 8px;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.12);
+	border: 1px dashed rgba(255, 255, 255, 0.4);
+	font: 700 12px system-ui, sans-serif;
+	animation: iw-pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.iw .draftbar span {
+	flex: 1;
+}
+
+.iw .g3d-btn {
+	min-height: 34px;
+	padding: 0 12px;
+	border: none;
+	border-radius: 99px;
+	background: var(--iw-accent);
+	color: #fff;
+	box-shadow: none;
+	font-size: 13px;
+}
+
+.iw .g3d-btn.ghost {
+	background: transparent;
+	text-decoration: underline;
+}
+
+.iw .g3d-btn.short {
+	opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.iw,
+	.iw-act,
+	.paltabs button,
+	.iw .draftbar {
+		animation: none;
+	}
 }
 
 .g3d-btn {
