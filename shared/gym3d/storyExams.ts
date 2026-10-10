@@ -107,6 +107,10 @@ export const STORY_EXAMS: readonly StoryBeat[] = [
 				who: "kim",
 				text: "Good. I will take credit on behalf of the breathing.",
 			},
+			{
+				who: "tess",
+				text: "There is a slice of the fun run cake in the freezer. It is for moments like this.",
+			},
 		],
 	},
 	{

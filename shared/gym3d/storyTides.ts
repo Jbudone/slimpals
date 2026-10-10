@@ -104,6 +104,10 @@ export const STORY_TIDES: readonly StoryBeat[] = [
 				who: "narrator",
 				text: "The lanterns drift out and the street goes quiet for a minute.",
 			},
+			{
+				who: "joe",
+				text: "The harbour trophy sits by my fryer. It collects steam. It has never looked better.",
+			},
 		],
 	},
 	{

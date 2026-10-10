@@ -641,14 +641,24 @@ export function storyContext(
 	beats: readonly StoryBeat[],
 	pending: StoryBeat | null,
 	log: readonly { recap: string }[],
+	/** The finale's recap of the campaign before this one: the first chapter of
+	 * a new street starts "Previously" from there, so the series reads as one. */
+	priorFinale: string | null = null,
 ): Pick<StoryDto, "chapter" | "previously" | "after"> {
 	if (!pending) return { chapter: null, previously: null, after: null }
 	const i = beats.findIndex((b) => b.id === pending.id)
 	return {
 		chapter: { n: i + 1, of: beats.length },
-		previously: log.length ? log[log.length - 1].recap : null,
+		previously: log.length ? log[log.length - 1].recap : priorFinale,
 		after: beats[i + 1]?.level ?? null,
 	}
+}
+
+/** The recap of the last chapter of the campaign before `campaign` (null for
+ * the first campaign, or when the one before has no story). */
+export function priorFinaleRecap(campaign: number): string | null {
+	const before = storyFor(campaign - 1)
+	return campaign > 1 && before.length ? before[before.length - 1].recap : null
 }
 
 export type StorySeen = { id: string; at: Date }

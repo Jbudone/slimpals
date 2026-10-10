@@ -91,6 +91,10 @@ export const STORY_REUNION: readonly StoryBeat[] = [
 				who: "marcus",
 				text: "A pigeon. They are the only ones who live here.",
 			},
+			{
+				who: "lisa",
+				text: "The notebook is still on the street board. Somebody has added a page two.",
+			},
 		],
 	},
 	{

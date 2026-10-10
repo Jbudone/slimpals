@@ -107,6 +107,10 @@ export const STORY_NIGHT: readonly StoryBeat[] = [
 				who: "rivera",
 				text: "Sharing an awning with MaxOut. I did not see that coming.",
 			},
+			{
+				who: "marcus",
+				text: "The mural pigeon is watching from the wall. His view of the market beats ours.",
+			},
 		],
 	},
 	{

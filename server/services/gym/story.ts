@@ -13,6 +13,7 @@ import {
 	openState,
 } from "../../../shared/gym3d/open.js"
 import {
+	priorFinaleRecap,
 	type StoryBeat,
 	type StoryDto,
 	type StorySeen,
@@ -115,7 +116,12 @@ export async function getStoryDto(
 		nextLevel: state.nextLevel,
 		waitingForOpen: state.waitingForOpen,
 		open: start ? open : null,
-		...storyContext(beats, state.pending, state.log),
+		...storyContext(
+			beats,
+			state.pending,
+			state.log,
+			priorFinaleRecap(gym?.campaign ?? 1),
+		),
 	}
 }
 
