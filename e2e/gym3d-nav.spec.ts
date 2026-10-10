@@ -180,9 +180,14 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
 	expect(await look()).toBe("")
 
-	// the gym itself has no backdrop, but the accent follows
+	// the gym gets weather over the scene (not a page backdrop), and the accent follows
 	await page.goto("/?event=winter")
-	await expect(page.getByTestId("theme-layer")).toHaveCount(0)
+	await expect(
+		page.locator("[data-testid=theme-layer][data-over=true]"),
+	).toHaveCount(1)
+	await expect(
+		page.locator("[data-testid=theme-layer][data-over=false]"),
+	).toHaveCount(0)
 	expect(await look()).toBe("winter")
 	// the HUD wears it: the accent glow is part of its shadow
 	const hudShadow = await page
