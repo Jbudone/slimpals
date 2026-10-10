@@ -2,6 +2,8 @@
 // flyChip / burstAt). Pure DOM + Web Animations, one element per chip,
 // removed when it lands. Honours prefers-reduced-motion.
 
+import { currentSkin } from "./skin.js"
+
 export type ChipKind = "xp" | "sw" | "gr" | "co" | "st"
 
 const TARGET: Record<ChipKind, string> = {
@@ -144,13 +146,22 @@ export function burstAt(x: number, y: number, colors: string[]): void {
 export function confetti(n = 60): void {
 	if (calm()) return
 	const root = layer()
-	const cols = ["#34c973", "#f2c14a", "#ff8a3d", "#3d9df0", "#62b83f", "#fff"]
+	const { colors: cols, glyph } = currentSkin()
 	const H = window.innerHeight
 	for (let i = 0; i < n; i++) {
 		const c = document.createElement("i")
 		c.className = "conf"
 		c.style.left = `${Math.random() * 100}%`
 		c.style.background = cols[i % cols.length]
+		// the look's own glyph (a pumpkin, a snowflake) in every fourth piece
+		if (glyph && i % 4 === 0) {
+			c.textContent = glyph
+			c.style.background = "transparent"
+			c.style.width = "auto"
+			c.style.height = "auto"
+			c.style.fontSize = "18px"
+			c.style.lineHeight = "1"
+		}
 		root.appendChild(c)
 		const dx = (Math.random() - 0.5) * 120
 		const rot = (Math.random() - 0.5) * 1440

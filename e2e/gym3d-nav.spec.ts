@@ -196,6 +196,12 @@ test("event looks: a themed backdrop with an accent, off in the gym and when swi
 		.first()
 		.evaluate((el) => getComputedStyle(el).boxShadow)
 	expect(hudShadow).toContain("0px 0px 16px -4px")
+	// and its level ring wears the look's skin (winter blue, not the default green)
+	const ring = await page
+		.locator(".lvring .fg")
+		.first()
+		.evaluate((el) => getComputedStyle(el).stroke)
+	expect(ring).toBe("rgb(111, 195, 255)")
 
 	// Settings has a switch for the season's and challenge's look
 	await page.goto("/settings")

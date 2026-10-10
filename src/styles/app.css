@@ -303,6 +303,85 @@ body {
 	--event-accent: #6fc3ff;
 }
 
+/* ── Skins: each look's palette for the HUD ring, the level-up ball and the
+   confetti (--sk-a main, --sk-b light, --sk-c dark, --sk-conf the confetti
+   colours, --sk-glyph one piece in four; src/lib/skin.ts reads the last two) ── */
+:root {
+	--sk-a: #34c973;
+	--sk-b: #7de8a6;
+	--sk-c: #1f9a55;
+	--sk-conf: "#34c973,#f2c14a,#ff8a3d,#3d9df0,#62b83f,#fff";
+	--sk-glyph: "";
+}
+[data-event="arcade"] {
+	--sk-a: #ff4fd8;
+	--sk-b: #ff9be8;
+	--sk-c: #a21caf;
+	--sk-conf: "#ff4fd8,#39e6ff,#ffd23a,#7cff6b,#fff";
+	--sk-glyph: "👾";
+}
+[data-event="sunrise"] {
+	--sk-a: #ff9f43;
+	--sk-b: #ffc78a;
+	--sk-c: #c76a14;
+	--sk-conf: "#ff9f43,#ffd166,#ff6b6b,#fff1c2";
+	--sk-glyph: "🌅";
+}
+[data-event="greens"] {
+	--sk-a: #5bd16a;
+	--sk-b: #a6efae;
+	--sk-c: #2f9d3f;
+	--sk-conf: "#5bd16a,#a6efae,#f2c14a,#fff,#3d9df0";
+	--sk-glyph: "🌱";
+}
+[data-event="spring"] {
+	--sk-a: #ff8fb1;
+	--sk-b: #ffc2d6;
+	--sk-c: #d6406f;
+	--sk-conf: "#ff8fb1,#ffc2d6,#a6efae,#fff,#ffe08a";
+	--sk-glyph: "🌸";
+}
+[data-event="summer"] {
+	--sk-a: #ffc533;
+	--sk-b: #ffe08a;
+	--sk-c: #c98f00;
+	--sk-conf: "#ffc533,#ffe08a,#3d9df0,#ff8a3d,#fff";
+	--sk-glyph: "☀️";
+}
+[data-event="halloween"] {
+	--sk-a: #ff8a1f;
+	--sk-b: #ffc27d;
+	--sk-c: #b84f00;
+	--sk-conf: "#ff8a1f,#8a4fff,#1c1c1c,#f5f0e6,#a6e22e";
+	--sk-glyph: "🎃";
+}
+[data-event="harvest"] {
+	--sk-a: #d98a2b;
+	--sk-b: #f0c27b;
+	--sk-c: #94590c;
+	--sk-conf: "#d98a2b,#b5532a,#f0c27b,#7a8f2b,#fff";
+	--sk-glyph: "🍂";
+}
+[data-event="winter"] {
+	--sk-a: #6fc3ff;
+	--sk-b: #bfe6ff;
+	--sk-c: #2f8ad1;
+	--sk-conf: "#6fc3ff,#bfe6ff,#fff,#ff6b6b,#5bd16a";
+	--sk-glyph: "❄️";
+}
+
+/* the HUD's level ring and XP bar wear the skin */
+[data-event] .lvring .fg {
+	stroke: var(--sk-a);
+}
+[data-event] .lvring small {
+	background: var(--sk-a);
+	color: var(--color-on-accent, #063218);
+}
+[data-event] .xpbar i {
+	background: linear-gradient(90deg, var(--sk-a), var(--sk-b));
+}
+
 [data-event="arcade"]:not([data-theme="light"]):not([data-theme="cream"]) {
 	--color-bg: #120a24;
 	--color-surface: #1f1440;
