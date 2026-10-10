@@ -788,8 +788,12 @@ export class GymWorld implements NavSource {
 		return g
 	}
 
+	/** One entry per plot of a room with a vibe: where its motes rise. */
+	vibeSpots: { x: number; z: number; w: number; d: number; vibe: string }[] = []
+
 	private buildFloors(): void {
 		const a = this.ctx.assets
+		this.vibeSpots = []
 		for (const r of this.rooms) {
 			const style = r.building ? "concrete" : r.paint.floorStyle
 			const col = r.building ? "#cfc6bd" : r.paint.floorColor
@@ -834,6 +838,13 @@ export class GymWorld implements NavSource {
 				// a vibe tints the floor with a soft glow (not tappable)
 				const vibe = !r.building && r.vibe ? VIBES[r.vibe] : null
 				if (vibe) {
+					this.vibeSpots.push({
+						x: x0 + PW / 2,
+						z: z0 + PD / 2,
+						w: PW - 0.6,
+						d: PD - 0.6,
+						vibe: vibe.key,
+					})
 					const glow = new T.Mesh(
 						a.geo(`vibeGlow${c.px}_${c.pz}`, () =>
 							new T.PlaneGeometry(PW - 0.3, PD - 0.3).rotateX(-Math.PI / 2),

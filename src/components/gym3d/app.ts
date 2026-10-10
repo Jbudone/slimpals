@@ -114,6 +114,7 @@ import { bindWorld, isBound, unbindWorld } from "./world/state"
 import { buzz, TapFx } from "./world/tapFx"
 import { Traffic } from "./world/traffic"
 import type { Person, Piece } from "./world/types"
+import { VibeFx } from "./world/vibeFx"
 import { GymWorld, type PickInfo } from "./world/world"
 
 export /** A seasonal hat (witch, santa) among the accessories. */
@@ -199,6 +200,8 @@ export type Gym3DStats = {
 	contest: string
 	plays: number
 	cars: number
+	/** Vibe motes floating up out of rooms right now. */
+	motes: number
 	dogs: number
 	costumes: number
 	season: string
@@ -411,6 +414,7 @@ export class Gym3DApp {
 	private lastClaimAt = -1e9
 	private kitchen: Kitchen
 	private traffic: Traffic
+	private vibeFx: VibeFx
 	private coinBubs = new Map<string, CoinBubble>()
 	/** Tap feedback: selection marker, squash, ripple (world/tapFx.ts). */
 	private fx: TapFx
@@ -481,6 +485,7 @@ export class Gym3DApp {
 				!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 			this.fx = new TapFx(this.world.scene, this.assets, this.calm)
 			this.traffic = new Traffic(this.world, this.calm)
+			this.vibeFx = new VibeFx(this.world, this.calm)
 			if (!this.calm) this.people.busAtStop = () => this.traffic.busAtStop
 		} catch (e) {
 			this.r.dispose()
@@ -822,6 +827,7 @@ export class Gym3DApp {
 		}
 		this.kitchen.frame(dt)
 		this.traffic.frame(dt)
+		this.vibeFx.frame(dt)
 		this.fx.frame(dt)
 		this.clock += dt
 		if (this.claiming) this.claimTick(dt)
@@ -2621,6 +2627,7 @@ export class Gym3DApp {
 			visits: this.people.visits,
 			...this.hap.stats(),
 			cars: this.traffic.count,
+			motes: this.vibeFx.count,
 			dogs: this.people.people.filter((q) => q.dog).length,
 			season: this.season() ?? "none",
 			maxout: this.maxoutOn() ? 1 : 0,
@@ -2654,6 +2661,7 @@ export class Gym3DApp {
 		this.coinBubs.clear()
 		this.kitchen.dispose()
 		this.traffic.dispose()
+		this.vibeFx.dispose()
 		this.fx.dispose()
 		this.says.dispose()
 		this.labels.dispose()

@@ -1078,6 +1078,12 @@ test("3D gym customize: a style repaints the room and a vibe tints its floor", a
 	expect(
 		(await page.evaluate(() => window.gym3d?.layout().coins)) ?? 0,
 	).toBeLessThan(coins0)
+	// the vibe lifts motes out of the room's floor
+	await expect
+		.poll(() => page.evaluate(() => window.gym3d?.stats().motes ?? 0), {
+			timeout: 15_000,
+		})
+		.toBeGreaterThan(0)
 	await page.waitForTimeout(800)
 	await shot(page, "16-style-vibe")
 	// with the sheet closed, the room shows its new look and glow
