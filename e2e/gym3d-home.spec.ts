@@ -222,10 +222,14 @@ test("gym home: tick a task, collect coins, run the kitchen, come back", async (
 	await page.getByRole("button", { name: "Close" }).click()
 
 	// ── the tabs ──
-	await page.getByTestId("tab-today").click()
-	await expect(page.getByRole("heading", { name: "Today" })).toBeVisible()
-	await expect(page.getByTestId("checkin-card")).toBeVisible()
-	await shot(page, "09-tab-today")
+	// Today is the drawer: its Coach tab holds the streak
+	const drawer = page.getByTestId("today-drawer")
+	if ((await drawer.getAttribute("data-open")) !== "true")
+		await page.getByTestId("drawer-head").click()
+	await page.getByTestId("drawer-tab-coach").click()
+	await expect(page.getByTestId("drawer-streak")).toBeVisible()
+	await shot(page, "09-drawer-coach")
+	await page.getByTestId("drawer-head").click()
 	await page.getByTestId("tab-progress").click()
 	await expect(page.getByRole("heading", { name: "Progress" })).toBeVisible()
 	await page.getByRole("tab", { name: "Gym levels" }).click()

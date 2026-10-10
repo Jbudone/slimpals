@@ -1,5 +1,18 @@
 const BASE = "/api"
 
+/** The server answered, with an error (`status` tells which). */
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message)
+	}
+}
+
+/** No answer at all: offline, a dropped connection, a timeout. */
+export class NetworkError extends Error {}
+
 type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
 
 // Reads started before the app is up (main.ts) wait here for their first
@@ -37,17 +50,25 @@ async function request<T>(
 		const pre = takePrefetch(path)
 		if (pre) res = await pre.catch(() => null)
 	}
-	if (!res || !res.ok)
-		res = await fetch(`${BASE}${path}`, {
-			method,
-			headers: body ? { "Content-Type": "application/json" } : undefined,
-			body: body ? JSON.stringify(body) : undefined,
-			credentials: "include",
-		})
+	if (!res || !res.ok) {
+		try {
+			res = await fetch(`${BASE}${path}`, {
+				method,
+				headers: body ? { "Content-Type": "application/json" } : undefined,
+				body: body ? JSON.stringify(body) : undefined,
+				credentials: "include",
+			})
+		} catch {
+			throw new NetworkError("No connection")
+		}
+	}
 
 	if (!res.ok) {
 		const error = await res.json().catch(() => ({ message: res.statusText }))
-		throw new Error(error.message ?? error.error ?? `HTTP ${res.status}`)
+		throw new ApiError(
+			error.message ?? error.error ?? `HTTP ${res.status}`,
+			res.status,
+		)
 	}
 
 	return res.json() as Promise<T>
