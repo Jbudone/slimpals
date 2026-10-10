@@ -21,6 +21,9 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run typecheck
+      # a Svelte template that does not compile (an unclosed tag) passes tsc;
+      # building the client catches it
+      - run: npx vite build
 
   test:
     runs-on: ubuntu-latest
