@@ -458,22 +458,6 @@ const roomInfo = $derived.by(() => {
 	return { gear, decor, staffGear, spots, open, locked, rate, nextUnlock }
 })
 
-/** The room's menu and Customize palette float over the room itself. */
-const ROOM_CARD = ["room", "paint", "room-gear", "room-staff", "room-walls"]
-const CARD_TITLE: Record<string, string> = {
-	paint: "Customize",
-	"room-gear": "Upgrade gear",
-	"room-staff": "Staff",
-	"room-walls": "Open walls",
-}
-const inWorld = $derived(
-	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
-		(sheet === "piece" && !!piece) ||
-		(sheet === "spot" && !!spotInfo && !!room) ||
-		(sheet === "lot" && !!lot) ||
-		(sheet === "job" && !!jobView),
-)
-
 /** Who works in the room now (the Staff page), read once a second. */
 const roomStaff = $derived.by(() => {
 	void clock
@@ -1041,6 +1025,22 @@ const jobView = $derived.by(() => {
 	const left = jobLeft(j, app.now())
 	return { j, left, cost: finishCost(left) }
 })
+
+/** The room, machine, spot, plot and build-site menus float over what they are about. */
+const ROOM_CARD = ["room", "paint", "room-gear", "room-staff", "room-walls"]
+const CARD_TITLE: Record<string, string> = {
+	paint: "Customize",
+	"room-gear": "Upgrade gear",
+	"room-staff": "Staff",
+	"room-walls": "Open walls",
+}
+const inWorld = $derived(
+	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
+		(sheet === "piece" && !!piece) ||
+		(sheet === "spot" && !!spotInfo && !!room) ||
+		(sheet === "lot" && !!lot) ||
+		(sheet === "job" && !!jobView),
+)
 
 const kitchenView = $derived.by(() => {
 	const k = layout?.kitchen
