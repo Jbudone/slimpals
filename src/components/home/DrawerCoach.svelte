@@ -1,11 +1,5 @@
-<script lang="ts">
-// The drawer's Coach segment: the coach's weekly note, the streak and the
-// gym's day (today's event, the streak bonus).
-import { onMount } from "svelte"
+<script module lang="ts">
 import type { CoachPersonality } from "../../../shared/types.js"
-import { api } from "../../lib/api.js"
-import { checkinState, loadCheckinStatus } from "../../lib/checkin.svelte.js"
-import GymActivityCard from "../GymActivityCard.svelte"
 
 type GymDailySummary = {
 	todayEvent: { title: string; description: string } | null
@@ -16,6 +10,25 @@ type Inspiration = {
 	coachPersonality: CoachPersonality
 } | null
 
+// kept outside the component, so reopening the tab shows them at once; swr
+// also remembers them on disk for the next visit
+const mem = $state<{
+	inspiration: Inspiration
+	summary: GymDailySummary | null
+}>({
+	inspiration: null,
+	summary: null,
+})
+</script>
+
+<script lang="ts">
+// The drawer's Coach segment: the coach's weekly note, the streak and the
+// gym's day (today's event, the streak bonus).
+import { onMount } from "svelte"
+import { checkinState, loadCheckinStatus } from "../../lib/checkin.svelte.js"
+import { swr } from "../../lib/net/swr.js"
+import GymActivityCard from "../GymActivityCard.svelte"
+
 const COACH_NAMES: Record<CoachPersonality, string> = {
 	friendly: "Coach Sam",
 	drill_sergeant: "Sarge",
@@ -25,30 +38,22 @@ const COACH_NAMES: Record<CoachPersonality, string> = {
 }
 const MILESTONES = [7, 30, 100]
 
-let inspiration = $state<Inspiration>(null)
-let summary = $state<GymDailySummary | null>(null)
 
 const streak = $derived(checkinState.data?.streakCount ?? 0)
 const nextMilestone = $derived(MILESTONES.find((m) => m > streak) ?? null)
 
 onMount(() => {
 	void loadCheckinStatus()
-	api
-		.get<Inspiration>("/inspiration/weekly")
-		.then((r) => (inspiration = r))
-		.catch(() => {})
-	api
-		.get<GymDailySummary>("/gym/daily-summary")
-		.then((r) => (summary = r))
-		.catch(() => {})
+	void swr<Inspiration>("/inspiration/weekly", (r) => (mem.inspiration = r))
+	void swr<GymDailySummary>("/gym/daily-summary", (r) => (mem.summary = r))
 })
 </script>
 
 <div class="co" data-testid="drawer-coach">
-	{#if inspiration}
+	{#if mem.inspiration}
 		<section class="note">
-			<b>{COACH_NAMES[inspiration.coachPersonality]}</b>
-			<p>{inspiration.message}</p>
+			<b>{COACH_NAMES[mem.inspiration.coachPersonality]}</b>
+			<p>{mem.inspiration.message}</p>
 		</section>
 	{/if}
 	{#if checkinState.data}
@@ -65,8 +70,8 @@ onMount(() => {
 			</span>
 		</section>
 	{/if}
-	{#if summary}
-		<GymActivityCard todayEvent={summary.todayEvent} streakBonus={summary.streakBonus} />
+	{#if mem.summary}
+		<GymActivityCard todayEvent={mem.summary.todayEvent} streakBonus={mem.summary.streakBonus} />
 	{/if}
 </div>
 
