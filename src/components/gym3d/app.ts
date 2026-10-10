@@ -328,7 +328,8 @@ export class Gym3DApp {
 	/** Seconds to the next "lights out" (October's ghost). */
 	private lightsIn = 0
 	/** `?lights=1` makes the lights go out every few seconds (tests, demos). */
-	private fastLights = new URLSearchParams(globalThis.location?.search ?? "").get("lights") === "1"
+	private fastLights =
+		new URLSearchParams(globalThis.location?.search ?? "").get("lights") === "1"
 	private lightsEvery(): number {
 		return this.fastLights ? 4 : delayIn(LIGHTS_OUT_EVERY, Math.random)
 	}
