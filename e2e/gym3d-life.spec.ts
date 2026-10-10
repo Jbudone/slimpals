@@ -1247,6 +1247,16 @@ test("3D gym ghost: the October ghost floats in the lobby (forced on with ?ghost
 			width: 220,
 			height: 260,
 		})
+	// the ghost flips the lights now and then (every few seconds with ?lights=1)
+	await page.goto("/?ghost=1&lights=1")
+	await waitReady(page)
+	await expect
+		.poll(
+			async () =>
+				page.evaluate(() => (document.querySelector(".g3d-flicker") ? 1 : 0)),
+			{ timeout: 60_000, intervals: [100] },
+		)
+		.toBe(1)
 	// and off again with ?ghost=0
 	await page.goto("/?ghost=0")
 	await waitReady(page)

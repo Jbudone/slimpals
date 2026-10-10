@@ -5,6 +5,10 @@ import {
 	GHOST_STAY_CHANCE,
 	ghostLine,
 	ghostSeason,
+	LIGHTS_OUT_EVERY,
+	LIGHTS_OUT_GHOST,
+	LIGHTS_OUT_REPLIES,
+	lightsOutReply,
 	STAY_LINES,
 	stayLine,
 } from "../../shared/gym3d/ghost.js"
@@ -33,5 +37,17 @@ describe("the October ghost", () => {
 		}
 		expect(stayLine(() => 0)).toBe(STAY_LINES[0])
 		expect(stayLine(() => 0.999)).toBe(STAY_LINES[STAY_LINES.length - 1])
+	})
+
+	it("flips the lights now and then, with dry lines and no exclamation marks", () => {
+		expect(LIGHTS_OUT_EVERY[0]).toBeLessThan(LIGHTS_OUT_EVERY[1])
+		for (const l of [LIGHTS_OUT_GHOST, ...LIGHTS_OUT_REPLIES]) {
+			expect(l.length).toBeLessThanOrEqual(60)
+			expect(l).not.toContain("!")
+		}
+		expect(lightsOutReply(() => 0)).toBe(LIGHTS_OUT_REPLIES[0])
+		expect(lightsOutReply(() => 0.999)).toBe(
+			LIGHTS_OUT_REPLIES[LIGHTS_OUT_REPLIES.length - 1],
+		)
 	})
 })

@@ -50,6 +50,24 @@ export const PRANKS: readonly Prank[] = [
 		effect: "hop",
 	},
 	{
+		id: "candy",
+		ghost: "Trick or treat. Treat.",
+		victim: "A protein bar. From a ghost. Fine.",
+		effect: "hop",
+	},
+	{
+		id: "mirror",
+		ghost: "Your reflection waved first.",
+		victim: "Did the mirror just wave at me.",
+		effect: "hop",
+	},
+	{
+		id: "dance",
+		ghost: "Spooky dance. Join in.",
+		victim: "My legs are doing a thing. Not mine.",
+		effect: "spin",
+	},
+	{
 		id: "belt",
 		ghost: "Mind the belt.",
 		victim: "The belt sped up by itself. I swear.",
