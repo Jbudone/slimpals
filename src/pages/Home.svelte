@@ -24,6 +24,7 @@ import { api } from "../lib/api.js"
 import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
 import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
+import { drawerUi } from "../lib/drawer.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
 import { loadStory, story } from "../lib/story.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
@@ -41,7 +42,6 @@ type Gym3DComponent = typeof import("../components/gym3d/Gym3D.svelte").default
 let Gym3D = $state<Gym3DComponent | null>(null)
 let failed = $state<string | null>(null)
 let mountKey = $state(0)
-let drawerOpen = $state(false)
 let dialogNpcKey = $state<string | null>(null)
 let dialogPortrait = $state<string | null>(null)
 let claim3d = $state<{ key: string; n: number } | null>(null)
@@ -174,7 +174,7 @@ async function claimNow(key: string | null) {
 	const k = key ?? pending[0]?.key
 	if (!k || claiming || failed) return
 	claiming = true
-	drawerOpen = false
+	drawerUi.open = false
 	dialogNpcKey = null
 	try {
 		await api.post("/gym/claim-upgrade", { key: k })
@@ -299,7 +299,7 @@ onMount(() => {
 				onWaiting={(n) => (coinsWaiting = Math.floor(n / 50) * 50)}
 				onSheet={(o) => {
 					sheetUp = o
-					if (o) drawerOpen = false
+					if (o) drawerUi.open = false
 				}}
 			/>
 		{/key}
@@ -360,7 +360,7 @@ onMount(() => {
 	{/if}
 
 	{#if active}
-		<TodayDrawer bind:open={drawerOpen} hidden={sheetUp} />
+		<TodayDrawer bind:open={drawerUi.open} hidden={sheetUp} />
 	{/if}
 
 	{#if dialogNpcKey}

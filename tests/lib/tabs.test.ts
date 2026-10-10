@@ -12,10 +12,15 @@ describe("tabs and swipes", () => {
 	})
 
 	it("a swipe walks the tabs in order and stops at the ends", () => {
-		expect(neighbourPath("/today", 1)).toBe("/challenges")
+		expect(neighbourPath("/", 1)).toBe("/challenges")
 		expect(neighbourPath("/tournaments", 1)).toBe("/weight")
-		expect(neighbourPath("/tournaments", -1)).toBe("/today")
-		expect(neighbourPath("/today", -1)).toBe("/")
+		expect(neighbourPath("/tournaments", -1)).toBe("/")
+		expect(TABS.map((t) => t.id)).toEqual([
+			"gym",
+			"compete",
+			"progress",
+			"social",
+		])
 		expect(neighbourPath("/social", 1)).toBeNull()
 		expect(neighbourPath("/", -1)).toBeNull()
 		expect(neighbourPath("/settings", 1)).toBeNull()

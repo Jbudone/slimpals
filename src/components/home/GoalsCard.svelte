@@ -12,6 +12,7 @@ import {
 } from "../../lib/campaign.svelte.js"
 import { playClaimChime, setSound, soundOn } from "../../lib/chime.js"
 import { cosmetics, wearOutfit } from "../../lib/cosmetics.svelte.js"
+import { openDrawer } from "../../lib/drawer.svelte.js"
 import { gymGoals, openGoals, rewardText } from "../../lib/goals.svelte.js"
 import {
 	claimRewardStep,
@@ -173,10 +174,10 @@ async function buyBurger() {
 					data-testid="rewards-open"
 					onclick={() => {
 						open = false
-						page("/rewards")
+						openDrawer("rewards")
 					}}
 				>
-					See the whole track and what unlocks next
+					Open the track and what unlocks next
 				</button>
 			{/if}
 			<h3>Sound</h3>
