@@ -21,7 +21,9 @@ describe("migrations", () => {
 		for (const f of readdirSync(DIR).filter((n) => n.endsWith(".sql"))) {
 			const hits = readFileSync(join(DIR, f), "utf8").match(DESTRUCTIVE)
 			if (!hits) continue
-			found[f] = [...new Set(hits.map((h) => h.toUpperCase().replace(/\s+/g, " ")))]
+			found[f] = [
+				...new Set(hits.map((h) => h.toUpperCase().replace(/\s+/g, " "))),
+			]
 		}
 		expect(found).toEqual(REVIEWED)
 	})
