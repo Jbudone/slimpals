@@ -247,7 +247,7 @@ export type AppOpts = {
 	onHint?: (text: string) => void
 	/** Coin bubbles tapped (income source keys); `from` is where the coins
 	 * fly from. The UI posts the collect and applies the answer. */
-	onCollect?: (keys: string[], from: HTMLElement | null) => void
+	onCollect?: (keys: string[], from: HTMLElement | null, total: number) => void
 	/** Outfit cosmetics the gym wears (the group coach gets the hat). */
 	outfits?: readonly string[]
 }
@@ -1177,9 +1177,11 @@ export class Gym3DApp {
 		let from: HTMLElement | null = null
 		const got: string[] = []
 		const hit: CoinBubble[] = []
+		let total = 0
 		for (const k of pick) {
 			const b = this.coinBubs.get(k)
 			if (!b || this.coinSum(b, now).bank < 1) continue
+			total += Math.floor(this.coinSum(b, now).bank)
 			hit.push(b)
 			for (const s of b.srcs) got.push(s.key)
 			from ??= b.L.el
@@ -1187,7 +1189,7 @@ export class Gym3DApp {
 			if (b.kind === "kitchen") this.kitchen.bounce()
 		}
 		if (!got.length) return
-		this.opts.onCollect?.(got, from)
+		this.opts.onCollect?.(got, from, total)
 		for (const b of hit) {
 			b.srcs = b.srcs.map((s) => ({ ...s, bank: 0 }))
 			b.at = now

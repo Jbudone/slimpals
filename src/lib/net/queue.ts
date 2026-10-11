@@ -66,7 +66,7 @@ let ops: QueuedOp[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
 let failingSince = 0
 let started = false
-let afterFlush: (() => void) | null = null
+const afterFlush: (() => void)[] = []
 let onDropped: ((op: QueuedOp, why: string) => void) | null = null
 
 const keyOf = () => `net:queue:${owner}`
@@ -74,8 +74,12 @@ const id = () =>
 	`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
 /** What to refresh once the queue has been sent (the stores re-read). */
-export function onQueueSent(fn: () => void): void {
-	afterFlush = fn
+export function onQueueSent(fn: () => void): () => void {
+	afterFlush.push(fn)
+	return () => {
+		const at = afterFlush.indexOf(fn)
+		if (at >= 0) afterFlush.splice(at, 1)
+	}
 }
 
 /** Called with an op the server refused for good (a 4xx), and why. */
@@ -197,7 +201,7 @@ export async function flush(): Promise<void> {
 		netState.flushing = false
 		netState.pending = ops.length
 	}
-	if (sent) afterFlush?.()
+	if (sent) for (const fn of [...afterFlush]) fn()
 }
 
 export type Sent<T> = { queued: false; data: T } | { queued: true }
