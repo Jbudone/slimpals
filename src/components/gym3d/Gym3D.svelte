@@ -1039,6 +1039,7 @@ const inWorld = $derived(
 		(sheet === "piece" && !!piece) ||
 		(sheet === "spot" && !!spotInfo && !!room) ||
 		(sheet === "lot" && !!lot) ||
+		(sheet === "type" && !!room) ||
 		(sheet === "job" && !!jobView),
 )
 
@@ -1192,6 +1193,48 @@ const kitchenView = $derived.by(() => {
 					Collect <span class="cur">{@html COIN_SVG}</span>{welcome.coins.toLocaleString("en-US")}
 				</button>
 			</div>
+		</div>
+	{/if}
+
+	{#if inWorld && sheet === "type" && room}
+		<!-- a finished plot asks what it should be: the choice floats over it -->
+		<div class="iw wide" bind:this={menuEl} role="group" aria-label="Choose the room type" data-testid="gym3d-sheet" data-sheet="type">
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>What should this room be?</b>
+					<small>You choose once.</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+			<div class="types" role="radiogroup" aria-label="Room type">
+				{#each TYPES as t (t)}
+					<button
+						type="button"
+						class="type"
+						class:on={pickType === t}
+						role="radio"
+						aria-checked={pickType === t}
+						style="--wall:{PAINT[t].wall};--floor:{PAINT[t].floorColor}"
+						onclick={() => (pickType = t)}
+						data-testid="gym3d-type-{t}"
+					>
+						<span class="sw" aria-hidden="true"></span>
+						<b>{roomLabel(t, room.shape)}</b>
+					</button>
+				{/each}
+			</div>
+			<p class="hint">{pickType ? RT[pickType].desc : "Pick a card to see what it does."}</p>
+			<button
+				type="button"
+				class="iw-up"
+				class:short={!pickType}
+				disabled={!pickType || busy}
+				onclick={chooseType}
+				data-testid="gym3d-type-ok"
+			>
+				<span class="ico"><Hammer size={20} /></span>
+				<span class="tx"><b>{pickType ? `Open the ${roomLabel(pickType, room.shape)}` : "Choose a type"}</b></span>
+			</button>
 		</div>
 	{/if}
 
@@ -1782,37 +1825,6 @@ const kitchenView = $derived.by(() => {
 					</button>
 				</div>
 				<p class="hint">You have {greens} Greens. Tick a food task in Today to earn more.</p>
-
-			{:else if sheet === "type" && room}
-				<h3>What should this room be?</h3>
-				<p class="sub">You choose once. Pick a card, then open the room.</p>
-				<div class="types" role="radiogroup" aria-label="Room type">
-					{#each TYPES as t (t)}
-						<button
-							type="button"
-							class="type"
-							class:on={pickType === t}
-							role="radio"
-							aria-checked={pickType === t}
-							style="--wall:{PAINT[t].wall};--floor:{PAINT[t].floorColor}"
-							onclick={() => (pickType = t)}
-							data-testid="gym3d-type-{t}"
-						>
-							<span class="sw" aria-hidden="true"></span>
-							<b>{roomLabel(t, room.shape)}</b>
-							<small>{RT[t].desc}</small>
-						</button>
-					{/each}
-				</div>
-				<button
-					type="button"
-					class="g3d-btn primary wide"
-					disabled={!pickType || busy}
-					onclick={chooseType}
-					data-testid="gym3d-type-ok"
-				>
-					{pickType ? `Open the ${roomLabel(pickType, room.shape)}` : "Choose a type"}
-				</button>
 
 			{/if}
 		</div>
@@ -2518,6 +2530,34 @@ const kitchenView = $derived.by(() => {
 	display: block;
 	height: 100%;
 	background: linear-gradient(90deg, var(--iw-accent), #ffd35a);
+}
+
+.iw .types {
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.iw .type {
+	min-height: 0;
+	padding: 5px;
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.07);
+	color: inherit;
+}
+
+.iw .type b {
+	font: 700 12px/1.2 system-ui, sans-serif;
+}
+
+.iw .type.on {
+	background: color-mix(in srgb, var(--iw-accent) 45%, transparent);
+	box-shadow: 0 0 0 2px var(--iw-accent);
+}
+
+.iw .type .sw {
+	height: 22px;
+	border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .iw.narrow {
