@@ -23,6 +23,14 @@ export const CHANGELOG: readonly ChangeEntry[] = [
 		],
 	},
 	{
+		id: "2026-10-11-kitchen-card",
+		date: "2026-10-11",
+		title: "The Slim Kitchen floats too",
+		items: [
+			"Tap the kitchen kiosk and its menu opens right over it: stats, menu items, Rush hour and Collect.",
+		],
+	},
+	{
 		id: "2026-10-11-more-seasons",
 		date: "2026-10-11",
 		title: "The gym dresses for every month",
