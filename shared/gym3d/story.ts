@@ -6,6 +6,7 @@
 
 import type { OpenResult, OpenState } from "./open.js"
 import { STORY_ALUMNI } from "./storyAlumni.js"
+import { STORY_BELL } from "./storyBell.js"
 import { STORY_CAMPUS } from "./storyCampus.js"
 import { STORY_CAPSULE } from "./storyCapsule.js"
 import { STORY_EXAMS } from "./storyExams.js"
@@ -598,6 +599,7 @@ export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
 	8: STORY_EXAMS,
 	9: STORY_LIGHTHOUSE,
 	10: STORY_CAPSULE,
+	11: STORY_BELL,
 }
 
 export function storyFor(campaign: number): readonly StoryBeat[] {
@@ -891,6 +893,10 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"c3-ledger": "joe",
 	"c3-race": "reyes",
 	"c3-harbour-lights": "joe",
+	"c11-silence": "quill",
+	"c11-clockmaker": "tess",
+	"c11-rehearsal": "quill",
+	"c11-chime": "tess",
 }
 export const GUEST_MINUTES = 12
 

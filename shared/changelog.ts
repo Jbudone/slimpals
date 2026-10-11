@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-story-bell",
+		date: "2026-10-11",
+		title: "A new story: the bell tower",
+		items: [
+			"Campaign eleven (Campus Row, again) has its own story: nine chapters about getting the silent campus bell ringing before freshers' week.",
+		],
+	},
+	{
 		id: "2026-10-11-pickle-pairs",
 		date: "2026-10-11",
 		title: "Pickleball is a two-player game now",
