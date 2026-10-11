@@ -96,6 +96,60 @@ export const BANTER: readonly Banter[] = [
 		],
 	},
 	{
+		id: "newyear-balloons",
+		season: "newyear",
+		lines: [
+			"Someone tied balloons to the door.",
+			"It's January. They'll be saggy by February.",
+			"So will the resolutions. Keep lifting.",
+		],
+	},
+	{
+		id: "newyear-crowd",
+		season: "newyear",
+		lines: [
+			"It's busy in here for a Tuesday.",
+			"New year. Give it three weeks.",
+			"Be nice. We all started somewhere.",
+		],
+	},
+	{
+		id: "valentine-hearts",
+		season: "valentine",
+		lines: [
+			"Hearts on the door again.",
+			"I counted six. One is a barbell.",
+			"That one is the real romance.",
+		],
+	},
+	{
+		id: "valentine-gift",
+		season: "valentine",
+		lines: [
+			"Did you get anything for Valentine's.",
+			"A rest day. From me, to me.",
+			"Romantic. Do one more set.",
+		],
+	},
+	{
+		id: "clover-pots",
+		season: "clover",
+		lines: [
+			"There are clovers by the door.",
+			"Four leaves, supposedly.",
+			"Three. I counted. Still lucky.",
+		],
+	},
+	{
+		id: "clover-luck",
+		season: "clover",
+		lines: [
+			"I'm feeling lucky today.",
+			"That's the pre-workout talking.",
+			"Lucky enough for one more set.",
+		],
+	},
+	{
 		id: "spring-pots",
 		season: "spring",
 		lines: [

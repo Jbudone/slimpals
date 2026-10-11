@@ -77,6 +77,18 @@ type Situation =
 /** Seasonal remarks, a couple per voice and season (no placeholders). */
 const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 	friendly: {
+		newyear: [
+			["New year, new streak.", "One small set today is a fine first step."],
+			["Balloons by the door.", "Pick one habit and stick with it."],
+		],
+		valentine: [
+			["Hearts by the door.", "Be kind to yourself and show up anyway."],
+			["Valentine's month.", "A workout is a nice way to say you care."],
+		],
+		clover: [
+			["Clovers at the door.", "Luck helps, but showing up helps more."],
+			["March already.", "Good time to check in on your goals."],
+		],
 		spring: [
 			["Flowers by the door.", "A good month to start something small."],
 			["April showers.", "Indoor sets are still sets."],
@@ -99,6 +111,18 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	drill_sergeant: {
+		newyear: [
+			["New year.", "Resolutions are cheap. Reps are not. Move."],
+			["Balloons are not a rest day.", "Get on the floor."],
+		],
+		valentine: [
+			["Hearts at the door.", "Love is a full set. Finish it."],
+			["Valentine's is not a rest day.", "Report to the rack."],
+		],
+		clover: [
+			["Luck is not a plan.", "Reps are. Start."],
+			["Clovers at the door.", "You make your own luck. Move."],
+		],
 		spring: [
 			["Spring is not a reason to loosen up.", "Tighten up."],
 			["Flowers at the door.", "Do not stop to smell them. Move."],
@@ -121,6 +145,21 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	roaster: {
+		newyear: [
+			["Resolutions in January.", "Cute. Let's see February you."],
+			["Balloons and gym bags.", "Only one of those has to be inflated. Lift."],
+		],
+		valentine: [
+			[
+				"Hearts by the door.",
+				"The only love triangle I care about is the one in your squat.",
+			],
+			["Valentine's month.", "Your barbell has been loyal. Return the favour."],
+		],
+		clover: [
+			["Lucky clovers.", "You still have to lift the bar yourself."],
+			["March.", "The streak is the only green I want to see."],
+		],
 		spring: [
 			["Flowers by the door.", "Prettier than your plank. Fix that."],
 			["Spring cleaning.", "Start with the excuses."],
@@ -146,6 +185,21 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	anime_sensei: {
+		newyear: [
+			["A new year opens.", "Begin with one breath and one set."],
+			["The first sunrise of the year.", "Train before it is high."],
+		],
+		valentine: [
+			[
+				"The petals fall softly.",
+				"Treat the body with the care you give a friend.",
+			],
+			["Hearts on the door.", "Practice is a form of kindness."],
+		],
+		clover: [
+			["A clover has three leaves.", "Effort, rest, patience. Keep all three."],
+			["Fortune visits the prepared.", "Prepare, then continue."],
+		],
 		spring: [
 			["The first blossoms open.", "Small starts bloom into habits."],
 			["Rain on the roof.", "A calm mind finishes the set."],
@@ -168,6 +222,18 @@ const SEASON_LINES: Record<CoachVoice, Record<Season, readonly Variant[]>> = {
 		],
 	},
 	bro: {
+		newyear: [
+			["New year, bro.", "Same you, bigger sets. Let's go."],
+			["Balloons at the door.", "Party after the pump, dude."],
+		],
+		valentine: [
+			["Hearts at the door, bro.", "Date night is leg day. Kidding. Mostly."],
+			["Valentine's szn.", "Treat yourself after your sets."],
+		],
+		clover: [
+			["Lucky month, bro.", "Make your own luck, it's called reps."],
+			["Clovers at the door.", "Green shake after your sets."],
+		],
 		spring: [
 			["Flowers at the door, bro.", "Fresh start, fresh sets."],
 			["Spring vibes.", "Lighter layers, same effort. Let's go."],
