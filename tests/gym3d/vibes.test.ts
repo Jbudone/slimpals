@@ -3,8 +3,10 @@ import { FLOOR_TINTS, WALL_COLORS } from "../../shared/gym3d/economy.js"
 import { ratingOf } from "../../shared/gym3d/rating.js"
 import { FLOOR_STYLES } from "../../shared/gym3d/rooms.js"
 import {
+	fxOf,
 	isVibe,
 	moteScale,
+	STYLE_FX,
 	STYLES,
 	spawnMote,
 	stepMote,
@@ -95,5 +97,33 @@ describe("vibe motes", () => {
 		expect(moteScale(m)).toBe(0)
 		m.age = m.life / 2
 		expect(moteScale(m)).toBeCloseTo(m.size, 5)
+	})
+})
+
+describe("style motes", () => {
+	const rect = { x: 10, z: 10, w: 8, d: 6 }
+
+	it("Neon, Zen and Industrial have an effect, keyed by style, Retro none", () => {
+		for (const k of ["neon", "zen", "industrial"]) {
+			expect(STYLES.some((s) => s.key === k)).toBe(true)
+			expect(STYLE_FX[`style-${k}`]).toBeTruthy()
+			expect(fxOf(`style-${k}`)).toBe(STYLE_FX[`style-${k}`])
+		}
+		expect(fxOf("style-retro")).toBeUndefined()
+		expect(fxOf("hype")).toBe(VIBE_FX.hype)
+	})
+
+	it("Zen petals start high and fall; Neon sparks rise", () => {
+		const petal = spawnMote("style-zen", rect, () => 0.5)
+		if (!petal) throw new Error("no petal")
+		expect(petal.y).toBeGreaterThan(2)
+		const y0 = petal.y
+		stepMote(petal, 1)
+		expect(petal.y).toBeLessThan(y0)
+		const spark = spawnMote("style-neon", rect, () => 0.5)
+		if (!spark) throw new Error("no spark")
+		const s0 = spark.y
+		stepMote(spark, 0.5)
+		expect(spark.y).toBeGreaterThan(s0)
 	})
 })
