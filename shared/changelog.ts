@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-more-bonds",
+		date: "2026-10-11",
+		title: "More from the regulars",
+		items: [
+			"Rex and Maya, Coach and Priya, Jordan and Tom, Dr. Kim and Derek, Alex and Elena now have things to say to each other when they stand close.",
+		],
+	},
+	{
 		id: "2026-10-11-offline-coins",
 		date: "2026-10-11",
 		title: "Collect coins without a connection",

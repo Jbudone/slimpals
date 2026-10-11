@@ -65,6 +65,52 @@ export const BONDS: readonly Bond[] = [
 			"Of course you did.",
 		],
 	},
+	{
+		id: "bond-rex-maya",
+		a: "hero_bodybuilder_rex",
+		b: "hero_influencer_maya",
+		lines: [
+			"Are you filming me again?",
+			"I'm filming the rack. You happen to be in front of it.",
+			"Convenient.",
+		],
+	},
+	{
+		id: "bond-coach-priya",
+		a: "specialist_coach",
+		b: "regular_priya",
+		lines: [
+			"Class at six tomorrow. Bring a mat.",
+			"I always bring a mat.",
+			"Bring it into the room this time.",
+		],
+	},
+	{
+		id: "bond-jordan-tom",
+		a: "trainer_jordan",
+		b: "regular_tom",
+		lines: [
+			"Tom, that's the third set of curls.",
+			"It's a long arm day.",
+			"Your arms look fine. Try legs.",
+		],
+	},
+	{
+		id: "bond-kim-derek",
+		a: "specialist_nutritionist",
+		b: "regular_derek",
+		lines: ["Derek. The shake. What's in it.", "Protein.", "And?"],
+	},
+	{
+		id: "bond-alex-elena",
+		a: "manager_alex",
+		b: "regular_elena",
+		lines: [
+			"Any feedback on the new schedule?",
+			"The six o'clock class is too early.",
+			"Noted. It stays at six.",
+		],
+	},
 ]
 
 /** The bond between two cast members, in either order; null when there is none. */
