@@ -33,6 +33,8 @@ export default defineConfig({
 			// Story cutscene cards would sit over the gym in every spec: off
 			// here, and the story spec turns it on with ?story=1.
 			VITE_STORY: "off",
+			// the "What's new" card likewise (?news=1 turns it on)
+			VITE_WHATSNEW: "off",
 		},
 	},
 	projects: [
