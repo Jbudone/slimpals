@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-kitchen-card",
+		date: "2026-10-11",
+		title: "The Slim Kitchen floats too",
+		items: [
+			"Tap the kitchen kiosk and its menu opens right over it: stats, menu items, Rush hour and Collect.",
+		],
+	},
+	{
 		id: "2026-10-11-type-card",
 		date: "2026-10-11",
 		title: "Choosing a room type floats too",
