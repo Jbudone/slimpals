@@ -175,6 +175,41 @@ function addUpgradeParts(
 				0.2 + i * 0.16,
 				cz,
 			)
+	} else if (roomType === "boxing") {
+		// a pair of gloves hung on a peg post (gilded cuffs at tier 3)
+		add(cylGeo(0.025, 0.9, 6), M(C.steelD), cx, 0.45, cz)
+		for (const dx of [-0.07, 0.07])
+			add(boxGeo(0.1, 0.16, 0.1), M(C.pad), cx + dx, 0.82, cz)
+		if (tier === 3)
+			add(boxGeo(0.26, 0.03, 0.12), glowM("#ffd35a"), cx, 0.72, cz)
+	} else if (roomType === "recovery") {
+		// a stack of rolled towels on a stool, a lit candle at tier 3
+		add(cylGeo(0.14, 0.3, 10), M(C.wood), cx, 0.15, cz)
+		const towels = tier === 3 ? 3 : 2
+		for (let i = 0; i < towels; i++)
+			add(boxGeo(0.26, 0.07, 0.2), M(C.cream), cx, 0.34 + i * 0.08, cz)
+		if (tier === 3) add(cylGeo(0.025, 0.08, 8), glowM("#ffd35a"), cx, 0.62, cz)
+	} else if (roomType === "juice") {
+		// a tall glass of juice on a small stand
+		add(cylGeo(0.12, 0.05, 12), M(C.steel), cx, 0.025, cz)
+		add(
+			cylGeo(0.06, 0.28, 10),
+			glowM(tier === 3 ? "#ffd35a" : "#ff9a3c"),
+			cx,
+			0.19,
+			cz,
+		)
+	} else if (roomType === "court") {
+		// a ball waiting on a short post (the tier 3 one is gold)
+		add(cylGeo(0.025, 0.6, 6), M(C.steelD), cx, 0.3, cz)
+		const ball = add(
+			new T.SphereGeometry(0.13, 12, 10),
+			tier === 3 ? glowM("#ffd35a") : M(C.pad),
+			cx,
+			0.72,
+			cz,
+		)
+		ball.castShadow = false
 	}
 	if (tier < 3) return
 	for (const x of [-h + 0.06, h - 0.06]) {
