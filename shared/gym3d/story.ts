@@ -10,6 +10,7 @@ import { STORY_BELL } from "./storyBell.js"
 import { STORY_CAMPUS } from "./storyCampus.js"
 import { STORY_CAPSULE } from "./storyCapsule.js"
 import { STORY_EXAMS } from "./storyExams.js"
+import { STORY_FERRY } from "./storyFerry.js"
 import { STORY_HARBOUR } from "./storyHarbour.js"
 import { STORY_LIGHTHOUSE } from "./storyLighthouse.js"
 import { STORY_NIGHT } from "./storyNight.js"
@@ -600,6 +601,7 @@ export const STORIES: Readonly<Record<number, readonly StoryBeat[]>> = {
 	9: STORY_LIGHTHOUSE,
 	10: STORY_CAPSULE,
 	11: STORY_BELL,
+	12: STORY_FERRY,
 }
 
 export function storyFor(campaign: number): readonly StoryBeat[] {
@@ -897,6 +899,10 @@ export const GUEST_BEATS: Readonly<Record<string, StoryGuestKey>> = {
 	"c11-clockmaker": "tess",
 	"c11-rehearsal": "quill",
 	"c11-chime": "tess",
+	"c12-laid-up": "reyes",
+	"c12-register": "joe",
+	"c12-sea-trial": "reyes",
+	"c12-first-run": "joe",
 }
 export const GUEST_MINUTES = 12
 

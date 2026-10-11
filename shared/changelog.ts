@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-story-ferry",
+		date: "2026-10-11",
+		title: "A new story: the ferry",
+		items: [
+			"Campaign twelve (Harbour Road, again) has its own story: nine chapters about getting the laid-up harbour ferry back on the water.",
+		],
+	},
+	{
 		id: "2026-10-11-story-bell",
 		date: "2026-10-11",
 		title: "A new story: the bell tower",
