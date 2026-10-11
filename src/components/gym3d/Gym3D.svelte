@@ -1034,15 +1034,6 @@ const CARD_TITLE: Record<string, string> = {
 	"room-staff": "Staff",
 	"room-walls": "Open walls",
 }
-const inWorld = $derived(
-	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
-		(sheet === "piece" && !!piece) ||
-		(sheet === "spot" && !!spotInfo && !!room) ||
-		(sheet === "lot" && !!lot) ||
-		(sheet === "type" && !!room) ||
-		(sheet === "job" && !!jobView),
-)
-
 const kitchenView = $derived.by(() => {
 	const k = layout?.kitchen
 	if (!k || !app) return null
@@ -1061,6 +1052,16 @@ const kitchenView = $derived.by(() => {
 			: 0,
 	}
 })
+
+const inWorld = $derived(
+	(ROOM_CARD.includes(sheet ?? "") && !!room && !!roomInfo) ||
+		(sheet === "piece" && !!piece) ||
+		(sheet === "spot" && !!spotInfo && !!room) ||
+		(sheet === "lot" && !!lot) ||
+		(sheet === "type" && !!room) ||
+		(sheet === "kitchen" && !!kitchenView) ||
+		(sheet === "job" && !!jobView),
+)
 </script>
 
 <div class="g3d" bind:this={host} data-testid="gym3d">
@@ -1193,6 +1194,70 @@ const kitchenView = $derived.by(() => {
 					Collect <span class="cur">{@html COIN_SVG}</span>{welcome.coins.toLocaleString("en-US")}
 				</button>
 			</div>
+		</div>
+	{/if}
+
+	{#if inWorld && sheet === "kitchen" && kitchenView}
+		{@const kv = kitchenView}
+		<!-- the Slim Kitchen's menu floats over the kiosk -->
+		<div class="iw wide kitchen" bind:this={menuEl} role="group" aria-label="Slim Kitchen" data-testid="gym3d-sheet" data-sheet="kitchen">
+			<header class="iw-h">
+				<span class="iw-t">
+					<b>Slim Kitchen</b>
+					<small>Your juice bar. Greens from food tasks grow the menu.</small>
+				</span>
+				<button type="button" class="iw-x" onclick={close} aria-label="Close"><X size={16} /></button>
+			</header>
+				<div class="kstats">
+					<div><small>Sales/h</small><b data-testid="kitchen-rate"><span class="cur">{@html COIN_SVG}</span>{kv.rate}</b></div>
+					<div><small>Waiting</small><b>{kv.bank}/{kv.k.cap}</b></div>
+					<div><small>Rush hour</small><b>{kv.rush ? fmtLeft(kv.rushLeft) : "Off"}</b></div>
+				</div>
+				<ul class="menu">
+					{#each KITCHEN_MENU.filter((q) => kv.k.menu.includes(q.key) || menuInSeason(q, new Date().getUTCMonth() + 1)) as m (m.key)}
+						{@const on = kv.k.menu.includes(m.key)}
+						<li class:on>
+							<span><b>{m.name}</b><small>+{m.rate} coins/h</small></span>
+							{#if on}
+								<span class="onl">On the menu</span>
+							{:else}
+								<button
+									type="button"
+									class="g3d-btn primary"
+									class:short={greens < m.cost}
+									disabled={busy}
+									onclick={() => {
+										if (!lacks(m.cost, greens, "Greens")) void unlockItem(m.key)
+									}}
+									data-testid="kitchen-add-{m.key}"
+								>
+									Add <span class="cur">{@html GREENS_SVG}</span>{m.cost}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<div class="row">
+					<button
+						type="button"
+						class="g3d-btn"
+						disabled={busy || kv.rush}
+						onclick={rushHour}
+						data-testid="kitchen-rush"
+					>
+						{#if kv.rush}Rush hour on{:else}Rush hour <span class="cur">{@html GREENS_SVG}</span>{ECONOMY.income.kitchen.rush.greens} · x{ECONOMY.income.kitchen.rush.mult} for {ECONOMY.income.kitchen.rush.hours}h{/if}
+					</button>
+					<button
+						type="button"
+						class="g3d-btn primary"
+						disabled={kv.bank < 1}
+						onclick={() => app?.collect(["kitchen"])}
+						data-testid="kitchen-collect"
+					>
+						Collect <span class="cur">{@html COIN_SVG}</span>{kv.bank}
+					</button>
+				</div>
+				<p class="hint">You have {greens} Greens. Tick a food task in Today to earn more.</p>
 		</div>
 	{/if}
 
@@ -1757,78 +1822,6 @@ const kitchenView = $derived.by(() => {
 		</div>
 	{/if}
 
-	{#if sheet && !inWorld}
-		<div
-			class="g3d-sheet"
-			class:palette={sheet === "paint"}
-			style="bottom:{hidden}px;max-height:calc(72% - {hidden}px)"
-			bind:clientHeight={sheetH}
-			data-testid="gym3d-sheet"
-			data-sheet={sheet}
-			role="group"
-			aria-label="Gym builder"
-		>
-			<button type="button" class="g3d-x" onclick={close} aria-label="Close">×</button>
-			{#if busy}<span class="g3d-busy" role="status" aria-label="Working"></span>{/if}
-
-			{#if sheet === "kitchen" && kitchenView}
-				{@const kv = kitchenView}
-				<h3>Slim Kitchen</h3>
-				<p class="sub">Your juice bar. Greens from food tasks grow the menu.</p>
-				<div class="kstats">
-					<div><small>Sales/h</small><b data-testid="kitchen-rate"><span class="cur">{@html COIN_SVG}</span>{kv.rate}</b></div>
-					<div><small>Waiting</small><b>{kv.bank}/{kv.k.cap}</b></div>
-					<div><small>Rush hour</small><b>{kv.rush ? fmtLeft(kv.rushLeft) : "Off"}</b></div>
-				</div>
-				<ul class="menu">
-					{#each KITCHEN_MENU.filter((q) => kv.k.menu.includes(q.key) || menuInSeason(q, new Date().getUTCMonth() + 1)) as m (m.key)}
-						{@const on = kv.k.menu.includes(m.key)}
-						<li class:on>
-							<span><b>{m.name}</b><small>+{m.rate} coins/h</small></span>
-							{#if on}
-								<span class="onl">On the menu</span>
-							{:else}
-								<button
-									type="button"
-									class="g3d-btn primary"
-									class:short={greens < m.cost}
-									disabled={busy}
-									onclick={() => {
-										if (!lacks(m.cost, greens, "Greens")) void unlockItem(m.key)
-									}}
-									data-testid="kitchen-add-{m.key}"
-								>
-									Add <span class="cur">{@html GREENS_SVG}</span>{m.cost}
-								</button>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-				<div class="row">
-					<button
-						type="button"
-						class="g3d-btn"
-						disabled={busy || kv.rush}
-						onclick={rushHour}
-						data-testid="kitchen-rush"
-					>
-						{#if kv.rush}Rush hour on{:else}Rush hour <span class="cur">{@html GREENS_SVG}</span>{ECONOMY.income.kitchen.rush.greens} · x{ECONOMY.income.kitchen.rush.mult} for {ECONOMY.income.kitchen.rush.hours}h{/if}
-					</button>
-					<button
-						type="button"
-						class="g3d-btn primary"
-						disabled={kv.bank < 1}
-						onclick={() => app?.collect(["kitchen"])}
-						data-testid="kitchen-collect"
-					>
-						Collect <span class="cur">{@html COIN_SVG}</span>{kv.bank}
-					</button>
-				</div>
-				<p class="hint">You have {greens} Greens. Tick a food task in Today to earn more.</p>
-
-			{/if}
-		</div>
-	{/if}
 </div>
 
 <style>

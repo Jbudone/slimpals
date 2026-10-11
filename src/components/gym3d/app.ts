@@ -1601,7 +1601,8 @@ export class Gym3DApp {
 					this.sel?.kind === "piece" ||
 					this.sel?.kind === "spot" ||
 					this.sel?.kind === "lot" ||
-					this.sel?.kind === "job"
+					this.sel?.kind === "job" ||
+					this.sel?.kind === "kitchen"
 						? this.anchorOf(this.sel)
 						: null
 				return a ? v.copy(a) : null
@@ -1629,6 +1630,7 @@ export class Gym3DApp {
 				? _a.copy(p.rig.root.position).setY(p.rig.root.position.y + 1.8)
 				: null
 		}
+		if (s.kind === "kitchen") return _a.set(this.kitchen.x, 2.4, this.kitchen.z)
 		if (s.kind === "lot") {
 			const L = this.world.layout.lots.find((q) => q.id === s.lotId)
 			if (!L?.cells.length) return null
