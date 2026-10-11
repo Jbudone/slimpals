@@ -10,14 +10,19 @@ import {
 } from "../../shared/gym3d/season.js"
 
 describe("seasons", () => {
-	it("April, July, August and October to December each have a season, the rest of the year none", () => {
+	it("every month has a season, each month of the year dresses the gym", () => {
 		expect(seasonOf(4)).toBe("spring")
 		expect(seasonOf(7)).toBe("summer")
 		expect(seasonOf(8)).toBe("summer")
 		expect(seasonOf(10)).toBe("halloween")
 		expect(seasonOf(11)).toBe("harvest")
 		expect(seasonOf(12)).toBe("winter")
-		for (const m of [1, 2, 3, 5, 6, 9]) expect(seasonOf(m)).toBeNull()
+		expect(seasonOf(1)).toBe("newyear")
+		expect(seasonOf(2)).toBe("valentine")
+		expect(seasonOf(3)).toBe("clover")
+		for (const m of [5, 6]) expect(seasonOf(m)).not.toBeNull()
+		expect(seasonOf(9)).toBe("harvest")
+		for (let m = 1; m <= 12; m++) expect(seasonOf(m)).not.toBeNull()
 	})
 
 	it("a query can force a season, or none; ?ghost keeps its old meaning", () => {
@@ -31,9 +36,12 @@ describe("seasons", () => {
 		expect(seasonFromQuery("harvest", "1")).toBe("harvest")
 	})
 
-	it("halloween and winter put a hat on people, spring, summer and harvest none", () => {
-		expect(SEASONS).toHaveLength(5)
+	it("halloween and winter put a hat on people, the other seasons none", () => {
+		expect(SEASONS).toHaveLength(8)
 		expect(SEASON_HAT).toEqual({
+			newyear: null,
+			valentine: null,
+			clover: null,
 			spring: null,
 			summer: null,
 			halloween: "witch",

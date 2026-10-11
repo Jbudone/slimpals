@@ -15,6 +15,15 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-more-seasons",
+		date: "2026-10-11",
+		title: "The gym dresses for every month",
+		items: [
+			"January gets balloons and presents, February hearts, March clovers and a pot of gold; May, June and September join their neighbours' looks.",
+			"The coach and the members have new things to say about each of them.",
+		],
+	},
+	{
 		id: "2026-10-11-type-card",
 		date: "2026-10-11",
 		title: "Choosing a room type floats too",
