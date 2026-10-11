@@ -62,7 +62,8 @@ import type {
 import { api, NetworkError } from "../../lib/api"
 import { cosmetics } from "../../lib/cosmetics.svelte"
 import { centerOf, flyChip } from "../../lib/fly"
-import { wallet } from "../../lib/wallet.svelte"
+import { onQueueSent, sendOrQueue } from "../../lib/net/queue"
+import { patchWallet, wallet } from "../../lib/wallet.svelte"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
 import {
 	bankAt,
@@ -133,6 +134,7 @@ const FLOOR_NAMES: Record<string, string> = {
 let host: HTMLDivElement
 let chipEl = $state<HTMLDivElement | null>(null)
 let menuEl = $state<HTMLDivElement | null>(null)
+let stopQueueWatch: (() => void) | null = null
 let sheetH = $state(0)
 /** Pixels of the gym hidden under the tab bar and the drawer's peek:
  * sheets and banners sit above them. */
@@ -566,29 +568,43 @@ function onJobAction(jobId: number, action: JobAction, cost: number) {
 
 /** Coin bubbles tapped: the coins fly to the HUD. The bubbles are already
  * empty on screen; the server's answer is the truth. */
-async function collect(keys: string[], from: HTMLElement | null) {
+async function collect(keys: string[], from: HTMLElement | null, total = 0) {
 	const pt = from ? centerOf(from) : { x: innerWidth / 2, y: innerHeight / 2 }
+	const fly = async (got: number) => {
+		if (got <= 0) return
+		const n = Math.min(4, Math.max(1, Math.round(got / 25)))
+		const each = Math.round(got / n)
+		const fl: Promise<void>[] = []
+		for (let i = 0; i < n; i++)
+			fl.push(
+				flyChip(
+					"co",
+					chipHtml("co", i === 0 ? got - each * (n - 1) : each),
+					pt,
+					i * 90,
+				),
+			)
+		await Promise.all(fl)
+	}
 	try {
-		const next = await api.post<GymLayoutDto>("/gym/layout/income/collect", {
-			keys,
-		})
-		if (destroyed || !app) return
-		const got = next.collected ?? 0
-		if (got > 0) {
-			const n = Math.min(4, Math.max(1, Math.round(got / 25)))
-			const each = Math.round(got / n)
-			const fl: Promise<void>[] = []
-			for (let i = 0; i < n; i++)
-				fl.push(
-					flyChip(
-						"co",
-						chipHtml("co", i === 0 ? got - each * (n - 1) : each),
-						pt,
-						i * 90,
-					),
-				)
-			await Promise.all(fl)
+		// no connection: the coins are collected on screen now and the server
+		// hears about it when it can (the gym re-reads after the queue is sent)
+		const sent = await sendOrQueue<GymLayoutDto>(
+			"POST",
+			"/gym/layout/income/collect",
+			{ keys },
+		)
+		if (sent.queued) {
+			await fly(total)
+			if (total > 0) {
+				patchWallet({ coins: (wallet.data?.coins ?? 0) + total })
+				if (layout) setLayout({ ...layout, coins: layout.coins + total })
+			}
+			return
 		}
+		const next = sent.data
+		if (destroyed || !app) return
+		await fly(next.collected ?? 0)
 		if (destroyed || !app) return
 		app.applyLayout(next)
 		setLayout(next)
@@ -924,7 +940,7 @@ onMount(() => {
 				.catch(() => {})
 		},
 		onHint: (t) => say(t),
-		onCollect: (keys, from) => void collect(keys, from),
+		onCollect: (keys, from, total) => void collect(keys, from, total),
 	})
 		.then((a) => {
 			if (destroyed) {
@@ -934,6 +950,16 @@ onMount(() => {
 			app = a
 			app.setChipElement(chipEl)
 			app.setMenuElement(menuEl)
+			// inputs saved while offline have been sent: read the gym again
+			stopQueueWatch = onQueueSent(() => {
+				if (!app || destroyed) return
+				void app
+					.reload()
+					.then((l) => {
+						if (!destroyed) setLayout(l)
+					})
+					.catch(() => {})
+			})
 			setLayout(a.layout)
 			welcome = a.layout.welcomeBack ?? null
 			loading = false
@@ -983,6 +1009,7 @@ onMount(() => {
 
 onDestroy(() => {
 	destroyed = true
+	stopQueueWatch?.()
 	// a claim ceremony cut short still ends (the claim itself is saved)
 	if (app?.claimActive) onClaimDone?.()
 	app?.dispose()
