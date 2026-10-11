@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-offline-coins",
+		date: "2026-10-11",
+		title: "Collect coins without a connection",
+		items: [
+			"Tapping coin bubbles works offline: the coins show at once and are added for real when you are back online.",
+		],
+	},
+	{
 		id: "2026-10-11-type-card",
 		date: "2026-10-11",
 		title: "Choosing a room type floats too",
