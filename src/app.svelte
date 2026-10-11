@@ -8,6 +8,7 @@ import LevelUp from "./components/home/LevelUp.svelte"
 import NetBanner from "./components/NetBanner.svelte"
 import ThemeLayer from "./components/ThemeLayer.svelte"
 import Toast from "./components/Toast.svelte"
+import WhatsNew from "./components/WhatsNew.svelte"
 import { authState, fetchSession } from "./lib/auth.svelte.js"
 import { loadChallengeToday } from "./lib/challengeToday.svelte.js"
 import { loadCheckinStatus } from "./lib/checkin.svelte.js"
@@ -182,6 +183,7 @@ async function handleStopImpersonating() {
 			<Toast />
 		</main>
 		<LevelUp />
+		<WhatsNew />
 		<BottomTabBar />
 	</div>
 {/if}
