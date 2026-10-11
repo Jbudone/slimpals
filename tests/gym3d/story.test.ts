@@ -65,7 +65,7 @@ describe("campaign one's threads", () => {
 })
 
 describe("campaign stories", () => {
-	it("each campaign has its own, the finale is its last chapter, later ones have none yet", () => {
+	it("each campaign has its own, the finale is its last chapter, the next one has none yet", () => {
 		expect(storyFor(1)).toBe(STORY)
 		expect(storyFor(2)[0].id).toBe("c2-arrival")
 		expect(storyFinaleOf(1)).toBe("a3-finale")
@@ -86,8 +86,10 @@ describe("campaign stories", () => {
 		expect(storyFinaleOf(9)).toBe("c9-light")
 		expect(storyFor(10)[0].id).toBe("c10-spade")
 		expect(storyFinaleOf(10)).toBe("c10-buried")
-		expect(storyFor(11)).toEqual([])
-		expect(storyFinaleOf(11)).toBeNull()
+		expect(storyFor(11)[0].id).toBe("c11-silence")
+		expect(storyFinaleOf(11)).toBe("c11-chime")
+		expect(storyFor(12)).toEqual([])
+		expect(storyFinaleOf(12)).toBeNull()
 		// campaign two plays from gym level 1 through the same state rules
 		const c2 = storyFor(2)
 		expect(storyState(1, [], t0, null, c2).pending?.id).toBe("c2-arrival")
