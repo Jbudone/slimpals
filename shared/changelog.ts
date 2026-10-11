@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-pickle-pairs",
+		date: "2026-10-11",
+		title: "Pickleball is a two-player game now",
+		items: [
+			"The pickleball net has a player on each side, facing each other, so a staffed court shows a real rally.",
+		],
+	},
+	{
 		id: "2026-10-11-tier-props",
 		date: "2026-10-11",
 		title: "Upgraded gear gets room-specific extras",

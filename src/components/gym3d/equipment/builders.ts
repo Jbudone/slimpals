@@ -1315,6 +1315,13 @@ export const EQUIP: Readonly<Record<string, Builder>> = {
 		cyl(0.05, 0.02, "#f2c14a", 0.4, 0.03, 0.3, g, 8)
 		wst(g, 0, 0.02, 0.5, Math.PI, {
 			pose: "lunge",
+			sync: 0,
+			label: "playing pickleball",
+		})
+		// the other side of the net: a partner facing them, a beat behind
+		wst(g, 0, 0.02, -0.5, 0, {
+			pose: "lunge",
+			sync: 0.5,
 			label: "playing pickleball",
 		})
 		return g
