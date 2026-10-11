@@ -31,7 +31,9 @@ function write(userId: string, id: string): void {
  * so the card does not sit over every spec. */
 function newsOn(): boolean {
 	if (import.meta.env.VITE_WHATSNEW !== "off") return true
-	return new URLSearchParams(globalThis.location?.search ?? "").get("news") === "1"
+	return (
+		new URLSearchParams(globalThis.location?.search ?? "").get("news") === "1"
+	)
 }
 
 /** Called once the player is known: queues what they have not seen. */
