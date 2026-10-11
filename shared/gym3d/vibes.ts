@@ -136,6 +136,9 @@ export type VibeFx = {
 	color: string
 	/** How much a mote pulses in size (0 = steady). */
 	pulse: number
+	/** Height a mote starts at (default: the floor). Falling motes (rise < 0)
+	 * start high. */
+	y0?: number
 }
 
 export const VIBE_FX: Readonly<Record<string, VibeFx>> = {
@@ -168,6 +171,44 @@ export const VIBE_FX: Readonly<Record<string, VibeFx>> = {
 	},
 }
 
+/** What a room's style (not its vibe) lets float about, keyed `style-<key>`:
+ * Neon throws quick sparks, Zen lets petals fall, Industrial lifts dust. */
+export const STYLE_FX: Readonly<Record<string, VibeFx>> = {
+	"style-neon": {
+		every: 0.5,
+		rise: 0.7,
+		sway: 0.2,
+		size: 0.12,
+		life: 1.2,
+		color: "#7ff6ff",
+		pulse: 1,
+	},
+	"style-zen": {
+		every: 0.9,
+		rise: -0.45,
+		sway: 1.1,
+		size: 0.17,
+		life: 5,
+		color: "#ffc4d6",
+		pulse: 0.1,
+		y0: 3.2,
+	},
+	"style-industrial": {
+		every: 1.2,
+		rise: 0.2,
+		sway: 0.3,
+		size: 0.14,
+		life: 4,
+		color: "#d5d9de",
+		pulse: 0,
+	},
+}
+
+/** The fx of a vibe or a style key (`style-neon`...), or undefined. */
+export function fxOf(key: string): VibeFx | undefined {
+	return VIBE_FX[key] ?? STYLE_FX[key]
+}
+
 export type Mote = {
 	x: number
 	y: number
@@ -187,12 +228,12 @@ export function spawnMote(
 	rect: { x: number; z: number; w: number; d: number },
 	rng: () => number,
 ): Mote | null {
-	const fx = VIBE_FX[vibe]
+	const fx = fxOf(vibe)
 	if (!fx) return null
 	const x = rect.x + (rng() - 0.5) * rect.w * 0.9
 	return {
 		x,
-		y: 0.05,
+		y: fx.y0 ?? 0.05,
 		z: rect.z + (rng() - 0.5) * rect.d * 0.9,
 		x0: x,
 		age: 0,
@@ -205,7 +246,7 @@ export function spawnMote(
 
 /** Moves a mote on; false once it is spent. */
 export function stepMote(m: Mote, dt: number): boolean {
-	const fx = VIBE_FX[m.vibe]
+	const fx = fxOf(m.vibe)
 	if (!fx) return false
 	m.age += dt
 	if (m.age >= m.life) return false
@@ -216,7 +257,7 @@ export function stepMote(m: Mote, dt: number): boolean {
 
 /** Size now: grows in, fades out, and pulses for the lively vibes. */
 export function moteScale(m: Mote): number {
-	const fx = VIBE_FX[m.vibe]
+	const fx = fxOf(m.vibe)
 	const k = Math.sin(Math.PI * Math.min(1, m.age / m.life))
 	return m.size * k * (1 + (fx?.pulse ?? 0) * Math.sin(m.age * 9 + m.ph))
 }

@@ -4,11 +4,11 @@
 // a mote are pure (shared/gym3d/vibes.ts); this only draws them.
 import * as T from "three"
 import {
+	fxOf,
 	type Mote,
 	moteScale,
 	spawnMote,
 	stepMote,
-	VIBE_FX,
 } from "../../../../shared/gym3d/vibes"
 import { eqGeo } from "../engine/helpers"
 import { ctx } from "./state"
@@ -64,7 +64,7 @@ export class VibeFx {
 		const spots = this.world.vibeSpots
 		const keys = new Set<string>()
 		for (const sp of spots) {
-			const fx = VIBE_FX[sp.vibe]
+			const fx = fxOf(sp.vibe)
 			if (!fx) continue
 			const key = `${sp.x}_${sp.z}`
 			keys.add(key)
@@ -87,7 +87,7 @@ export class VibeFx {
 			this.s.set(sc, sc, sc)
 			this.m.compose(this.p, this.q, this.s)
 			mesh.setMatrixAt(n, this.m)
-			mesh.setColorAt(n, this.col.set(VIBE_FX[m.vibe]?.color ?? "#ffffff"))
+			mesh.setColorAt(n, this.col.set(fxOf(m.vibe)?.color ?? "#ffffff"))
 			n++
 		}
 		mesh.count = n

@@ -18,7 +18,7 @@ import {
 	roomName,
 	WORLD_ROWS,
 } from "../../../../shared/gym3d/rooms"
-import { VIBES } from "../../../../shared/gym3d/vibes"
+import { STYLE_FX, styleOf, VIBES } from "../../../../shared/gym3d/vibes"
 import { wallKey } from "../../../../shared/gym3d/walls"
 import type { GymLayoutDto } from "../../../../shared/types"
 import type { AssetCache } from "../engine/assets"
@@ -837,6 +837,16 @@ export class GymWorld implements NavSource {
 				this.floorG.add(f)
 				// a vibe tints the floor with a soft glow (not tappable)
 				const vibe = !r.building && r.vibe ? VIBES[r.vibe] : null
+				// a style (Neon, Zen, Industrial) has its own small effect too
+				const st = r.building ? null : styleOf(r.paint)
+				if (st && STYLE_FX[`style-${st.key}`])
+					this.vibeSpots.push({
+						x: x0 + PW / 2,
+						z: z0 + PD / 2,
+						w: PW - 0.6,
+						d: PD - 0.6,
+						vibe: `style-${st.key}`,
+					})
 				if (vibe) {
 					this.vibeSpots.push({
 						x: x0 + PW / 2,
