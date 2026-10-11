@@ -447,7 +447,92 @@ export class Happenings {
 			pBox(parts, 0.32, 0.05, 0.06, "#f6f1e6", x, 0.25, z)
 			pBox(parts, 0.06, 0.05, 0.32, "#f6f1e6", x, 0.25, z)
 		}
-		if (season === "halloween") {
+		// a bunch of balloons on strings
+		const balloons = (dx: number, dz: number, cols: string[]) => {
+			const [x, z] = at(dx, dz)
+			cols.forEach((c, i) => {
+				const ox = (i - (cols.length - 1) / 2) * 0.22
+				pBox(parts, 0.02, 1.0 + i * 0.1, 0.02, "#e8e4da", x + ox * 0.4, 0.5, z)
+				pGeo(
+					parts,
+					sphGeo(0.17, 8, 6),
+					c,
+					x + ox,
+					1.15 + i * 0.12,
+					z,
+					0,
+					0,
+					0,
+					1,
+					1.2,
+					1,
+				)
+			})
+			pBox(parts, 0.16, 0.12, 0.16, "#8a6a3a", x, 0.06, z)
+		}
+		// a heart from two blocks and a rotated one, on a post
+		const heart = (dx: number, dz: number, c: string, s2: number) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.04, 0.9 * s2, 0.04, "#cfcfcf", x, 0.45 * s2, z)
+			const y = 1.0 * s2
+			pBox(parts, 0.22 * s2, 0.22 * s2, 0.06, c, x - 0.1 * s2, y + 0.1 * s2, z)
+			pBox(parts, 0.22 * s2, 0.22 * s2, 0.06, c, x + 0.1 * s2, y + 0.1 * s2, z)
+			pBox(parts, 0.3 * s2, 0.3 * s2, 0.06, c, x, y - 0.04 * s2, z)
+			pBox(parts, 0.16 * s2, 0.16 * s2, 0.06, c, x, y - 0.18 * s2, z)
+		}
+		// a green pot of clovers (three leaves each), and a pot of gold
+		const clovers = (dx: number, dz: number) => {
+			const [x, z] = at(dx, dz)
+			pBox(parts, 0.3, 0.24, 0.3, "#2f7a3e", x, 0.12, z)
+			for (const [ox, oz] of [
+				[-0.07, 0],
+				[0.07, 0.04],
+				[0, -0.07],
+			] as const) {
+				pBox(parts, 0.03, 0.2, 0.03, "#3ec46d", x + ox, 0.34, z + oz)
+				for (const [lx, lz] of [
+					[-0.05, 0],
+					[0.05, 0],
+					[0, 0.05],
+				] as const)
+					pBox(
+						parts,
+						0.07,
+						0.03,
+						0.07,
+						"#3ec46d",
+						x + ox + lx,
+						0.46,
+						z + oz + lz,
+					)
+			}
+		}
+		const goldPot = (dx: number, dz: number) => {
+			const [x, z] = at(dx, dz)
+			pGeo(parts, sphGeo(0.22, 8, 6), "#2c2f36", x, 0.2, z, 0, 0, 0, 1, 0.8, 1)
+			for (const [ox, oz] of [
+				[-0.08, 0],
+				[0.08, 0.02],
+				[0, -0.07],
+			] as const)
+				pGeo(parts, sphGeo(0.07, 6, 5), "#f2c14a", x + ox, 0.36, z + oz)
+		}
+		if (season === "newyear") {
+			balloons(-1.9, 1.0, ["#ffd23a", "#c0c6d0", "#4a78c8"])
+			balloons(1.9, 1.0, ["#c0c6d0", "#ffd23a", "#d4463a"])
+			present(-1.35, 0.78, "#ffd23a")
+			present(1.4, 0.78, "#c0c6d0")
+		} else if (season === "valentine") {
+			heart(-1.9, 1.0, "#e0345e", 1)
+			present(-1.4, 0.8, "#ff8fb1")
+			heart(1.9, 1.0, "#ff5c8a", 1.15)
+			present(1.4, 0.8, "#e0345e")
+		} else if (season === "clover") {
+			clovers(-1.9, 1.0)
+			clovers(-1.4, 0.75)
+			goldPot(1.9, 1.0)
+			clovers(1.4, 0.75)
+		} else if (season === "halloween") {
 			pumpkin(-1.9, 1.0, 1, true)
 			pumpkin(-1.45, 0.75, 0.7, true)
 			pumpkin(1.9, 1.0, 1.15, true)
