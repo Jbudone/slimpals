@@ -199,6 +199,17 @@ function addUpgradeParts(
 			0.19,
 			cz,
 		)
+	} else if (roomType === "pool") {
+		// a lifebuoy on a post (gilded at tier 3)
+		add(cylGeo(0.025, 0.9, 6), M(C.steelD), cx, 0.45, cz)
+		const ring = add(
+			new T.TorusGeometry(0.14, 0.04, 6, 14),
+			tier === 3 ? glowM("#ffd35a") : M(C.pad),
+			cx,
+			0.85,
+			cz,
+		)
+		ring.castShadow = false
 	} else if (roomType === "court") {
 		// a ball waiting on a short post (the tier 3 one is gold)
 		add(cylGeo(0.025, 0.6, 6), M(C.steelD), cx, 0.3, cz)

@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-pool-prop",
+		date: "2026-10-11",
+		title: "Pool gear gets a lifebuoy",
+		items: [
+			"Upgraded pool gear now has a lifebuoy on a post, gold at the top tier.",
+		],
+	},
+	{
 		id: "2026-10-11-story-ferry",
 		date: "2026-10-11",
 		title: "A new story: the ferry",
