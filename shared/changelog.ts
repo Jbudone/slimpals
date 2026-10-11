@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-type-card",
+		date: "2026-10-11",
+		title: "Choosing a room type floats too",
+		items: [
+			"When a new plot is ready, what it should become is picked on a card floating over it: tap a type, read what it does, then open the room.",
+		],
+	},
+	{
 		id: "2026-10-11-style-fx",
 		date: "2026-10-11",
 		title: "Room styles come alive",
