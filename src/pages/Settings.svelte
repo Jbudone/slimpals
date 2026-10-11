@@ -12,6 +12,7 @@ import {
 	updateCoachPersonality,
 	userProfile,
 } from "../lib/user.svelte.js"
+import { openWhatsNewHistory } from "../lib/whatsNew.svelte.js"
 import { page } from "../router.svelte.js"
 
 async function handleLogout() {
@@ -254,6 +255,14 @@ onMount(() => {
 				<small>A themed backdrop with tiny things drifting past, for the season or your challenge.</small>
 			</span>
 		</label>
+		<button
+			type="button"
+			class="whatsnew-open"
+			onclick={openWhatsNewHistory}
+			data-testid="whats-new-open"
+		>
+			What's new: everything added so far
+		</button>
 	</section>
 
 	{#if userProfile.data}
@@ -543,6 +552,18 @@ onMount(() => {
 </div>
 
 <style>
+.whatsnew-open {
+	margin-top: 10px;
+	padding: 9px 14px;
+	border-radius: 12px;
+	border: 1px solid var(--color-border, rgba(128, 128, 128, 0.35));
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
 .event-toggle {
 	display: flex;
 	align-items: flex-start;

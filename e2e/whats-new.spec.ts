@@ -27,10 +27,21 @@ test("the What's new card shows once and stays away after Got it", async ({
 	const card = page.getByTestId("whats-new")
 	await expect(card).toBeVisible({ timeout: 15_000 })
 	await expect(card).toContainText("What's new")
+	// a device that never saw the card is caught up on a good stretch of
+	// updates, the older ones folded away to a title
+	expect(await card.locator("section").count()).toBeGreaterThanOrEqual(3)
+	expect(await card.getByTestId("whats-new-old").count()).toBeGreaterThan(0)
 	await page.getByTestId("whats-new-ok").click()
 	await expect(card).toHaveCount(0)
 	await page.reload()
 	await page.waitForTimeout(4500)
 	await expect(page.getByTestId("whats-new")).toHaveCount(0)
+	// Settings keeps the whole history one tap away
+	await page.goto("/settings")
+	await page.getByTestId("whats-new-open").click()
+	await expect(page.getByTestId("whats-new")).toBeVisible()
+	expect(
+		await page.getByTestId("whats-new").getByTestId("whats-new-old").count(),
+	).toBeGreaterThan(5)
 	await context.close()
 })

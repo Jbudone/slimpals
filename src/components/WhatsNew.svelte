@@ -7,6 +7,9 @@ import {
 	whatsNew,
 } from "../lib/whatsNew.svelte.js"
 
+/** Entries shown open; older ones collapse to a title you can tap. */
+const OPEN_COUNT = 3
+
 let checkedFor = ""
 // a short pause after sign-in, so it lands after the gym has loaded
 $effect(() => {
@@ -27,14 +30,29 @@ function close() {
 	<div class="wn-back" role="presentation" data-testid="whats-new">
 		<div class="wn" role="dialog" aria-modal="true" aria-label="What's new">
 			<h2>What's new</h2>
+			{#if whatsNew.entries.length > OPEN_COUNT}
+				<p class="wn-sub">
+					{whatsNew.history ? "Everything added so far" : "Here is what has been added since you were last here"}:
+					{whatsNew.entries.length} updates. Tap an older one to read it.
+				</p>
+			{/if}
 			<div class="wn-list">
-				{#each whatsNew.entries as e (e.id)}
-					<section>
-						<h3>{e.title}<small>{e.date}</small></h3>
-						<ul>
-							{#each e.items as item (item)}<li>{item}</li>{/each}
-						</ul>
-					</section>
+				{#each whatsNew.entries as e, i (e.id)}
+					{#if i < OPEN_COUNT}
+						<section>
+							<h3>{e.title}<small>{e.date}</small></h3>
+							<ul>
+								{#each e.items as item (item)}<li>{item}</li>{/each}
+							</ul>
+						</section>
+					{:else}
+						<details class="wn-old" data-testid="whats-new-old">
+							<summary>{e.title}<small>{e.date}</small></summary>
+							<ul>
+								{#each e.items as item (item)}<li>{item}</li>{/each}
+							</ul>
+						</details>
+					{/if}
 				{/each}
 			</div>
 			<button type="button" class="wn-ok" onclick={close} data-testid="whats-new-ok">Got it</button>
@@ -43,6 +61,39 @@ function close() {
 {/if}
 
 <style>
+.wn-sub {
+	margin: 0 0 8px;
+	font-size: 0.8rem;
+	color: #6b5d4f;
+}
+
+.wn-old {
+	margin: 0 0 6px;
+	padding: 7px 10px;
+	border-radius: 10px;
+	background: rgba(36, 29, 21, 0.06);
+}
+
+.wn-old summary {
+	cursor: pointer;
+	font-weight: 700;
+	font-size: 0.88rem;
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.wn-old summary small {
+	font-weight: 500;
+	color: #8a7a68;
+}
+
+.wn-old ul {
+	margin: 6px 0 0;
+	padding-left: 18px;
+	font-size: 0.85rem;
+}
+
 .wn-back {
 	position: fixed;
 	inset: 0;
