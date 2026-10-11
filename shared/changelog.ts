@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-11-style-fx",
+		date: "2026-10-11",
+		title: "Room styles come alive",
+		items: [
+			"Neon rooms throw cyan sparks, Zen rooms drop soft petals, Industrial rooms lift grey dust. Vibes still add their own glow and motes.",
+		],
+	},
+	{
 		id: "2026-10-11-in-world",
 		date: "2026-10-11",
 		title: "Menus float over the gym",
