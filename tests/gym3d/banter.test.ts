@@ -112,3 +112,27 @@ describe("ambient banter", () => {
 			expect(l).not.toContain("!")
 	})
 })
+
+describe("staff room banter", () => {
+	it("is about the story playing this week and only then", () => {
+		const ids = (roomArc: string | null) =>
+			banterFor({ ...full, roomArc }).map((b) => b.id)
+		expect(ids("fad").some((i) => i.startsWith("room-fad"))).toBe(true)
+		expect(ids("fad").some((i) => i.startsWith("room-dnd"))).toBe(false)
+		expect(ids(null).some((i) => i.startsWith("room-"))).toBe(false)
+		expect(ids("dnd").some((i) => i.startsWith("room-dnd"))).toBe(true)
+	})
+
+	it("counts as plain chatter: the gym's real gaps still get talked about first", () => {
+		const bare = { ...full, rooms: ["cardio"], gear: [], roomArc: "fad" }
+		const ids = banterFor(bare).map((b) => b.id)
+		expect(ids).toContain("no-pool")
+		expect(ids.some((i) => i.startsWith("room-"))).toBe(false)
+	})
+
+	it("has banter for every staff room story", async () => {
+		const { ROOM_ARCS } = await import("../../shared/gym3d/staffRoom.js")
+		for (const arc of ROOM_ARCS)
+			expect(BANTER.some((b) => b.arc === arc.id)).toBe(true)
+	})
+})
