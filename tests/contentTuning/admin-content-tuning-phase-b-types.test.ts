@@ -228,3 +228,24 @@ describe("POST /api/admin/content-tuning/story_chapters/default/generate", () =>
 		expect(none.body.sample).toContain("No chapter")
 	})
 })
+
+describe("POST /api/admin/content-tuning/staff_room/default/generate", () => {
+	it("shows a staff room episode with its speakers and the style rules", async () => {
+		const { cookie, userId } = await registerAndLogin(
+			"admin-room-gen@slimpals.test",
+			"Admin",
+		)
+		await makeAdmin(userId)
+		const post = (contextParams: Record<string, string>) =>
+			request(app)
+				.post("/api/admin/content-tuning/staff_room/default/generate")
+				.set("Cookie", cookie)
+				.send({ contextParams })
+		const dnd = await post({ episode: "dnd.2" })
+		expect(dnd.status).toBe(200)
+		expect(dnd.body.sample).toContain("episode 2 of 3")
+		expect(dnd.body.sample).toContain("Style: Each staff room episode")
+		const none = await post({ episode: "nope.1" })
+		expect(none.body.sample).toContain("No episode")
+	})
+})
