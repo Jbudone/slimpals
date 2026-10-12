@@ -8,6 +8,7 @@ import { npcBanterType } from "./npcBanter.js"
 import { npcDialogType } from "./npcDialog.js"
 import { npcPortraitsType } from "./npcPortraits.js"
 import { sprintsType } from "./sprints.js"
+import { staffRoomType } from "./staffRoom.js"
 import { storyChaptersType } from "./storyChapters.js"
 import { victoryMessageType } from "./victoryMessage.js"
 import { weeklyInspirationType } from "./weeklyInspiration.js"
@@ -55,6 +56,7 @@ export const CONTENT_TUNING_TYPES: ContentTuningType[] = [
 	npcDialogType,
 	npcBanterType,
 	storyChaptersType,
+	staffRoomType,
 	gymEventsType,
 	npcPortraitsType,
 	gymLayoutType,
