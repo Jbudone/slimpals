@@ -22,6 +22,7 @@ export const CHANGELOG: readonly ChangeEntry[] = [
 			"Three more staff room stories: Staff Karaoke Night (two coaches), The Last Smoothie (three) and The Meeting That Would Not End (five).",
 			"While a story is on, members and passers-by in the gym mention it: the bucket, the die, the smudged smoothie label.",
 			"A small prop by the door shows which story is on: a card table, a box of odd socks, a mic, a blender, a flipchart.",
+			"The staff room scenes now show each coach's face instead of an initial.",
 		],
 	},
 	{

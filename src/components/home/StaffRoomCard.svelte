@@ -8,6 +8,7 @@ import {
 	markEpisodeSeen,
 	staffRoom,
 } from "../../lib/staffRoom.svelte.js"
+import { faceSvg } from "./portraits.js"
 
 const rerun = $derived(!!staffRoom.replay)
 const ep = $derived(staffRoom.replay ?? staffRoom.data?.pending ?? null)
@@ -26,6 +27,7 @@ $effect(() => {
 const intro = $derived(!!ep && at < 0)
 const line = $derived(ep && at >= 0 ? (ep.lines[at] ?? null) : null)
 const who = $derived(line ? SPEAKERS[line.who] : null)
+const face = $derived(line && who ? faceSvg(line.who, who.color) : "")
 const last = $derived(!!ep && at >= ep.lines.length - 1)
 
 /** A rerun records nothing: it just ends. */
@@ -65,7 +67,7 @@ function skip() {
 			{#key at}
 				<button type="button" class="scene" onclick={next} data-testid="room-line">
 					{#if who.name}
-						<span class="portrait" style="--c:{who.color}" aria-hidden="true">{who.name[0]}</span>
+						<span class="portrait" class:face={!!face} style="--c:{who.color}" aria-hidden="true">{#if face}{@html face}{:else}{who.name[0]}{/if}</span>
 						<span class="plate" style="background:{who.color}">{who.name}</span>
 					{/if}
 					<span class="said" class:narrator={!who.name}>{line.text}</span>
@@ -150,6 +152,16 @@ function skip() {
 	box-shadow: 0 4px 12px rgba(30, 20, 10, 0.3);
 	color: #fff;
 	font: 800 38px system-ui, sans-serif;
+}
+
+.portrait.face {
+	overflow: hidden;
+	background: color-mix(in srgb, var(--c) 35%, #fff7ea);
+}
+
+.portrait :global(svg) {
+	width: 100%;
+	height: 100%;
 }
 
 .plate {
