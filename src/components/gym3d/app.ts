@@ -206,6 +206,8 @@ export type Gym3DStats = {
 	costumes: number
 	season: string
 	pumpkins: number
+	/** 1 while this week's staff room story has a prop by the door. */
+	roomProp: number
 	maxout: number
 	location: string
 	waiting: number
@@ -781,6 +783,7 @@ export class Gym3DApp {
 		this.people.costumes = season ? SEASON_HAT[season] : null
 		this.people.ghostStays = season === "halloween"
 		this.hap.syncSeason(season)
+		this.hap.syncRoomProp(this.opts.roomArc?.() ?? null)
 		this.world.setMaxoutPromo(this.maxoutOn(), story.data?.open?.result ?? null)
 		this.hap.syncStoryGuest(this.storyGuest())
 		this.hap.syncContest(this.contestWinner())
@@ -2699,6 +2702,7 @@ export class Gym3DApp {
 			maxout: this.maxoutOn() ? 1 : 0,
 			location: this.world.location.name,
 			pumpkins: this.hap.seasonCount,
+			roomProp: this.hap.roomPropCount,
 			costumes: this.people.people.filter((q) => isCostume(q.out.acc)).length,
 			waiting: this.people.people.filter((q) => q.after === "wait").length,
 		}
