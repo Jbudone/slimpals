@@ -1,4 +1,4 @@
-// Small flat faces for the staff room cutscenes, one per member of the staff.
+// Small flat faces for the cutscene cards (staff room and story), one per named speaker.
 // Skin and hair match the 3D cast (`people/cast.ts`); the rest is a few shapes.
 // Speakers without a face here keep their initial.
 
@@ -21,6 +21,13 @@ const FACES: Readonly<Record<string, Face>> = {
 	kim: { skin: "#f6d2b4", hair: "#1f2a44", style: "slick", glasses: true },
 	jordan: { skin: "#c98a5e", hair: "#2c1f1b", style: "cap" },
 	derek: { skin: "#e8b48e", hair: "#5a3a26", style: "short" },
+	victor: { skin: "#e8b48e", hair: "#2b3440", style: "slick" },
+	dana: { skin: "#c98a5e", hair: "#2a2a30", style: "slick" },
+	barry: { skin: "#f6d2b4", hair: "#b5532f", style: "short", beard: true },
+	quill: { skin: "#f6d2b4", hair: "#9a9aa4", style: "slick", glasses: true },
+	tess: { skin: "#e8b48e", hair: "#8a4a2a", style: "long", freckles: true },
+	reyes: { skin: "#9a633f", hair: "#f2f2f2", style: "cap" },
+	joe: { skin: "#e8b48e", hair: "#d8d8d8", style: "none", beard: true },
 	rivera: { skin: "#6e4428", hair: "#2c1f1b", style: "none" },
 }
 
@@ -52,7 +59,7 @@ export function faceSvg(who: string, color: string): string {
 	// head
 	parts.push(`<ellipse cx="50" cy="44" rx="23" ry="26" fill="${f.skin}"/>`)
 	// hair over
-	if (f.style === "short" || f.style === "buns")
+	if (f.style === "short" || f.style === "buns" || f.style === "long")
 		parts.push(
 			`<path d="M27 40 Q28 14 50 14 Q72 14 73 40 Q62 28 50 28 Q38 28 27 40Z" fill="${f.hair}"/>`,
 		)

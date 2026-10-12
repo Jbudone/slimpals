@@ -4,6 +4,7 @@
 // tap to go on, Skip to dismiss. Seeing it (or skipping) records it.
 import { SPEAKERS } from "../../../shared/gym3d/story"
 import { markStorySeen, story } from "../../lib/story.svelte.js"
+import { faceSvg } from "./portraits.js"
 
 const beat = $derived(story.data?.pending ?? null)
 /** -1 is the title card, then the lines. */
@@ -24,6 +25,7 @@ const previously = $derived(story.data?.previously ?? null)
 const after = $derived(story.data?.after ?? null)
 const line = $derived(beat && at >= 0 ? (beat.lines[at] ?? null) : null)
 const who = $derived(line ? SPEAKERS[line.who] : null)
+const face = $derived(line && who ? faceSvg(line.who, who.color) : "")
 const last = $derived(!!beat && at >= beat.lines.length - 1)
 
 function next() {
@@ -62,7 +64,7 @@ function skip() {
 			<p class="kicker">Act {beat.act} · {beat.title}</p>
 			<button type="button" class="line" onclick={next} data-testid="story-line">
 				{#if who.name}
-					<span class="face" style="background:{who.color}" aria-hidden="true">{who.name[0]}</span>
+					<span class="face" class:art={!!face} style="background:{who.color}" aria-hidden="true">{#if face}{@html face}{:else}{who.name[0]}{/if}</span>
 					<span class="said">
 						<b>{who.name}</b>
 						<span>{line.text}</span>
@@ -164,6 +166,16 @@ function skip() {
 	border-radius: 50%;
 	color: #fff;
 	font: 800 18px system-ui, sans-serif;
+}
+
+.face.art {
+	overflow: hidden;
+	background: #fff7ea !important;
+}
+
+.face :global(svg) {
+	width: 100%;
+	height: 100%;
 }
 
 .said {

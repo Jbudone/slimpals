@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { ROOM_ARCS } from "../../shared/gym3d/staffRoom"
+import { SPEAKERS } from "../../shared/gym3d/story"
 import { faceSvg, hasFace } from "../../src/components/home/portraits"
 
 describe("staff room portraits", () => {
@@ -17,6 +18,13 @@ describe("staff room portraits", () => {
 			expect(faceSvg(k, "#123456")).toContain("<svg")
 		}
 		expect(faceSvg("narrator", "#000")).toBe("")
+	})
+
+	it("covers every named speaker of the story", () => {
+		const bare = Object.keys(SPEAKERS).filter(
+			(k) => k !== "narrator" && !hasFace(k),
+		)
+		expect(bare).toEqual([])
 	})
 
 	it("covers everyone who speaks in a staff room episode (the six staff and Derek)", () => {
