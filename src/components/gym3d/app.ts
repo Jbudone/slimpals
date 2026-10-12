@@ -250,6 +250,8 @@ export type AppOpts = {
 	onCollect?: (keys: string[], from: HTMLElement | null, total: number) => void
 	/** Outfit cosmetics the gym wears (the group coach gets the hat). */
 	outfits?: readonly string[]
+	/** The staff room story playing this week (read live, for banter). */
+	roomArc?: () => string | null
 }
 
 function newRoomBadge(): HTMLButtonElement {
@@ -672,6 +674,7 @@ export class Gym3DApp {
 			maxout: this.maxoutOn() && (this.world.layout.campaign ?? 1) === 1,
 			campaign: this.world.layout.campaign ?? 1,
 			season: this.season(),
+			roomArc: this.opts.roomArc?.() ?? null,
 			crowded:
 				this.people.people.filter((p) => p.kind === "member").length >= 8,
 		}

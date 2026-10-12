@@ -63,6 +63,7 @@ import { api, NetworkError } from "../../lib/api"
 import { cosmetics } from "../../lib/cosmetics.svelte"
 import { centerOf, flyChip } from "../../lib/fly"
 import { onQueueSent, sendOrQueue } from "../../lib/net/queue"
+import { staffRoom } from "../../lib/staffRoom.svelte"
 import { patchWallet, wallet } from "../../lib/wallet.svelte"
 import { COIN_SVG, chipHtml, GREENS_SVG, SWEAT_SVG } from "../home/icons"
 import {
@@ -911,6 +912,7 @@ const spotInfo = $derived.by(() => {
 onMount(() => {
 	Gym3DApp.create(host, {
 		outfits: [...cosmetics.keys],
+		roomArc: () => staffRoom.data?.arcId ?? null,
 		onSelect: (s) => {
 			selection = s
 			pickType = null

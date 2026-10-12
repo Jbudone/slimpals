@@ -27,6 +27,8 @@ export type BanterContext = {
 	season?: Season | null
 	/** The campaign in play: the exchanges about MaxOut belong to the first. */
 	campaign?: number
+	/** The staff room story playing this week (`ROOM_ARCS` id), if any. */
+	roomArc?: string | null
 }
 
 export type BanterWhen = "event" | "classes" | "upgraded" | "maxout"
@@ -43,6 +45,8 @@ export type Banter = {
 	playIn?: string
 	/** Only in this season; counts as plain chatter, so gaps still win. */
 	season?: Season
+	/** Only while this staff room story is playing; plain chatter too. */
+	arc?: string
 	/** Only while this is going on (an event, a class, a fresh upgrade). */
 	when?: BanterWhen
 	/** Lines in turn: the first person speaks first. */
@@ -215,6 +219,119 @@ export const BANTER: readonly Banter[] = [
 			"Everyone's already planning January.",
 			"January is a long way off.",
 			"That's the plan, yes.",
+		],
+	},
+	{
+		id: "room-dnd-die",
+		arc: "dnd",
+		lines: [
+			"Why is Marcus carrying a twenty-sided die?",
+			"He says it's for scheduling.",
+			"Nobody has scheduled anything in a week.",
+		],
+	},
+	{
+		id: "room-dnd-whistle",
+		arc: "dnd",
+		lines: [
+			"Rivera blew the whistle and said 'cleric moves first'.",
+			"Moves first where?",
+			"Nobody knows. We all moved.",
+		],
+	},
+	{
+		id: "room-dnd-closet",
+		arc: "dnd",
+		lines: [
+			"Is there a mimic in the supply closet?",
+			"Dr. Kim says only on Tuesdays.",
+		],
+	},
+	{
+		id: "room-lost-gloves",
+		arc: "lost",
+		lines: [
+			"The lost-and-found box has three gloves now.",
+			"That's not how gloves work.",
+		],
+	},
+	{
+		id: "room-lost-cooler",
+		arc: "lost",
+		lines: [
+			"Jordan is interviewing the water cooler.",
+			"Did it talk?",
+			"It gurgled. He's treating that as a yes.",
+		],
+	},
+	{
+		id: "room-fad-bucket",
+		arc: "fad",
+		lines: [
+			"Why is there a bucket in the staff room?",
+			"Premium recovery. Jordan put a sticker on it.",
+		],
+	},
+	{
+		id: "room-fad-breath",
+		arc: "fad",
+		lines: [
+			"Rivera is breathing very deliberately.",
+			"Is that the fad?",
+			"That's the fad. Don't speak. Exhale.",
+		],
+	},
+	{
+		id: "room-karaoke-rests",
+		arc: "karaoke",
+		lines: [
+			"Someone's singing in the staff room.",
+			"That's Marcus. He's practising the rests.",
+			"I can hear the rests from here.",
+		],
+	},
+	{
+		id: "room-karaoke-derek",
+		arc: "karaoke",
+		lines: [
+			"Derek signed up for karaoke.",
+			"What's he singing?",
+			"One word. We're all nervous.",
+		],
+	},
+	{
+		id: "room-smoothie-fridge",
+		arc: "smoothie",
+		lines: [
+			"Don't touch the staff fridge.",
+			"Is there a body in it?",
+			"Worse. A smoothie with a smudged label.",
+		],
+	},
+	{
+		id: "room-smoothie-case",
+		arc: "smoothie",
+		lines: [
+			"Dr. Kim is running an investigation.",
+			"Into what?",
+			"A smoothie. It's very serious.",
+		],
+	},
+	{
+		id: "room-meeting-days",
+		arc: "meeting",
+		lines: [
+			"The staff meeting started on Monday.",
+			"It's Wednesday.",
+			"They're on item twenty-two. The thermostat.",
+		],
+	},
+	{
+		id: "room-meeting-minutes",
+		arc: "meeting",
+		lines: [
+			"Is Alex still in that meeting?",
+			"He's taking the minutes of the minutes.",
 		],
 	},
 	{
@@ -414,6 +531,7 @@ export function banterFor(
 		if (b.when && !ctx[b.when]) return false
 		if (b.playIn && !ctx.playing?.includes(b.playIn)) return false
 		if (b.season && b.season !== ctx.season) return false
+		if (b.arc && b.arc !== ctx.roomArc) return false
 		return true
 	}
 	const all = [...BANTER, ...extra].filter(fits)

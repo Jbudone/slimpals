@@ -20,6 +20,7 @@ export const CHANGELOG: readonly ChangeEntry[] = [
 		title: "More from the staff room",
 		items: [
 			"Three more staff room stories: Staff Karaoke Night (two coaches), The Last Smoothie (three) and The Meeting That Would Not End (five).",
+			"While a story is on, members and passers-by in the gym mention it: the bucket, the die, the smudged smoothie label.",
 		],
 	},
 	{

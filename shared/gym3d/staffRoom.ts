@@ -520,6 +520,8 @@ export type RoomLogEntry = {
 
 export type RoomDto = {
 	pending: RoomPending | null
+	/** The arc playing this slot for this gym (even once seen), or null. */
+	arcId: string | null
 	/** Episodes seen, newest first (at most `LOG_MAX`). */
 	log: RoomLogEntry[]
 	/** When the next episode slot opens (ISO). */
@@ -576,10 +578,17 @@ export function roomState(
 	const log = roomLog(seen)
 	const arc = arcForSlot(index, hires)
 	if (!arc)
-		return { pending: null, log, nextAt, needHires: ROOM_MIN_HIRES - hires }
+		return {
+			pending: null,
+			arcId: null,
+			log,
+			nextAt,
+			needHires: ROOM_MIN_HIRES - hires,
+		}
 	const n = ((index % EPISODES_PER_ARC) + EPISODES_PER_ARC) % EPISODES_PER_ARC
 	const id = `${arc.id}.${slotDate(index)}.${n}`
-	if (seen.includes(id)) return { pending: null, log, nextAt, needHires: 0 }
+	if (seen.includes(id))
+		return { pending: null, arcId: arc.id, log, nextAt, needHires: 0 }
 	const ep = arc.episodes[n]
 	return {
 		pending: {
@@ -591,6 +600,7 @@ export function roomState(
 			of: EPISODES_PER_ARC,
 			lines: ep.lines,
 		},
+		arcId: arc.id,
 		log,
 		nextAt,
 		needHires: 0,
