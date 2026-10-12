@@ -241,6 +241,212 @@ export const ROOM_ARCS: readonly RoomArc[] = [
 			},
 		],
 	},
+	{
+		id: "karaoke",
+		title: "Staff Karaoke Night",
+		minHires: 2,
+		episodes: [
+			{
+				title: "Sign-up sheet",
+				lines: [
+					{
+						who: "lisa",
+						text: "I found a karaoke machine in the lost-and-found. Sign-up sheet is on the desk.",
+					},
+					{
+						who: "marcus",
+						text: "I'll do a ballad. A slow one. With counting.",
+					},
+					{ who: "derek", text: "One word." },
+					{
+						who: "lisa",
+						text: "Derek signed up. He has written the word 'encore'.",
+					},
+					{
+						who: "alex",
+						text: "I've scheduled the performances. Derek is last, for reasons of suspense.",
+					},
+				],
+			},
+			{
+				title: "Rehearsal",
+				lines: [
+					{
+						who: "marcus",
+						text: "Verse one. Four bars. Rest. Verse two. Four bars. Rest.",
+					},
+					{
+						who: "kim",
+						text: "Marcus, a song is allowed to continue between the rests.",
+					},
+					{
+						who: "marcus",
+						text: "The rests are where the feeling lives. I have a spreadsheet.",
+					},
+					{
+						who: "jordan",
+						text: "I'm on backing vocals. I am saying the rep count in harmony.",
+					},
+					{
+						who: "narrator",
+						text: "Somewhere behind the door, a tambourine is used with confidence.",
+					},
+				],
+			},
+			{
+				title: "Derek's big moment",
+				lines: [
+					{
+						who: "alex",
+						text: "And now, the final act of the evening. Derek.",
+					},
+					{ who: "derek", text: "..." },
+					{ who: "lisa", text: "The whole room is holding its breath." },
+					{ who: "derek", text: "Encore." },
+					{
+						who: "narrator",
+						text: "The staff room rises. Nobody can say why. It was extremely good.",
+					},
+				],
+			},
+		],
+	},
+	{
+		id: "smoothie",
+		title: "The Last Smoothie",
+		minHires: 3,
+		episodes: [
+			{
+				title: "One left",
+				lines: [
+					{
+						who: "kim",
+						text: "There is one smoothie left in the staff fridge. It has a name on it.",
+					},
+					{ who: "jordan", text: "The name is smudged. It could be mine." },
+					{ who: "rivera", text: "It could be mine. It could be anyone's." },
+					{
+						who: "alex",
+						text: "I'm opening an investigation. Nobody touch the smoothie.",
+					},
+					{
+						who: "marcus",
+						text: "I'm not touching it. I'm looking at it closely.",
+					},
+				],
+			},
+			{
+				title: "The stakeout",
+				lines: [
+					{
+						who: "jordan",
+						text: "Night shift. I'm in the supply closet with a flask and a clipboard.",
+					},
+					{
+						who: "rivera",
+						text: "I'm in the other supply closet. We have an agreement not to talk.",
+					},
+					{
+						who: "kim",
+						text: "The fridge hums. Something rustles. It is Lisa, returning a stapler.",
+					},
+					{
+						who: "narrator",
+						text: "The smoothie sits in the dark. It has never been more admired.",
+					},
+				],
+			},
+			{
+				title: "It was Derek's",
+				lines: [
+					{ who: "derek", text: "Mine." },
+					{
+						who: "alex",
+						text: "You labelled it four days ago. It is spinach.",
+					},
+					{ who: "derek", text: "Mine." },
+					{
+						who: "kim",
+						text: "Case closed. Derek gets the smoothie and a long, steady look from everyone.",
+					},
+					{
+						who: "narrator",
+						text: "Derek drinks it. It is the best moment of his week.",
+					},
+				],
+			},
+		],
+	},
+	{
+		id: "meeting",
+		title: "The Meeting That Would Not End",
+		minHires: 5,
+		episodes: [
+			{
+				title: "Item one",
+				lines: [
+					{
+						who: "alex",
+						text: "Welcome to the staff meeting. There are forty items. Item one is the agenda.",
+					},
+					{ who: "marcus", text: "Can we skip to the snacks?" },
+					{
+						who: "alex",
+						text: "The snacks are item thirty-eight. Please hold.",
+					},
+					{
+						who: "kim",
+						text: "I'd like to add a point. It's about adding points.",
+					},
+					{
+						who: "rivera",
+						text: "Noted. We'll discuss it under any other business.",
+					},
+				],
+			},
+			{
+				title: "Item twenty-two",
+				lines: [
+					{
+						who: "narrator",
+						text: "Three hours later, the meeting is on item twenty-two. Lisa has brought a blanket.",
+					},
+					{ who: "jordan", text: "Item twenty-two is the thermostat." },
+					{
+						who: "rivera",
+						text: "It's always the thermostat. It has been the thermostat since March.",
+					},
+					{
+						who: "lisa",
+						text: "I'd like to propose we vote on the thermostat.",
+					},
+					{ who: "alex", text: "Proposal noted. It becomes item forty-one." },
+				],
+			},
+			{
+				title: "Any other business",
+				lines: [
+					{
+						who: "alex",
+						text: "We have reached the snacks. There are two crackers.",
+					},
+					{
+						who: "marcus",
+						text: "I'd like to split them evenly. With a ruler.",
+					},
+					{
+						who: "kim",
+						text: "Marcus. It is two crackers. Just hand them out.",
+					},
+					{ who: "rivera", text: "Meeting adjourned. Whistle." },
+					{
+						who: "narrator",
+						text: "The meeting ends. The next one begins. Item one is the agenda.",
+					},
+				],
+			},
+		],
+	},
 ]
 
 const DAY = 24 * 60 * 60 * 1000

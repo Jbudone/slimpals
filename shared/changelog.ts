@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-12-room-arcs",
+		date: "2026-10-12",
+		title: "More from the staff room",
+		items: [
+			"Three more staff room stories: Staff Karaoke Night (two coaches), The Last Smoothie (three) and The Meeting That Would Not End (five).",
+		],
+	},
+	{
 		id: "2026-10-12-room-diary",
 		date: "2026-10-12",
 		title: "Replay the staff room",
