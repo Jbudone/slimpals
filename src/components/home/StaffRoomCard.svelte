@@ -3,9 +3,14 @@
 // twice a week. A short intro, then a big portrait and one line at a time, tap
 // to go on, "Not now" to dismiss. Seeing it (or skipping) records it.
 import { SPEAKERS } from "../../../shared/gym3d/story"
-import { markEpisodeSeen, staffRoom } from "../../lib/staffRoom.svelte.js"
+import {
+	endReplay,
+	markEpisodeSeen,
+	staffRoom,
+} from "../../lib/staffRoom.svelte.js"
 
-const ep = $derived(staffRoom.data?.pending ?? null)
+const rerun = $derived(!!staffRoom.replay)
+const ep = $derived(staffRoom.replay ?? staffRoom.data?.pending ?? null)
 /** -1 is the intro, then the lines. */
 let at = $state(-1)
 let shownId = $state<string | null>(null)
@@ -23,26 +28,33 @@ const line = $derived(ep && at >= 0 ? (ep.lines[at] ?? null) : null)
 const who = $derived(line ? SPEAKERS[line.who] : null)
 const last = $derived(!!ep && at >= ep.lines.length - 1)
 
+/** A rerun records nothing: it just ends. */
+function finish() {
+	if (!ep) return
+	if (rerun) endReplay()
+	else void markEpisodeSeen(ep.id)
+}
+
 function next() {
 	if (!ep) return
-	if (last) void markEpisodeSeen(ep.id)
+	if (last) finish()
 	else at += 1
 }
 
 function skip() {
-	if (ep) void markEpisodeSeen(ep.id)
+	finish()
 }
 </script>
 
 {#if ep && intro}
 	<div class="backdrop" role="presentation" data-testid="room-card">
 		<div class="card title" role="dialog" aria-label="Staff room: {ep.arcTitle}">
-			<p class="kicker">The staff room · Episode {ep.n} of {ep.of}</p>
+			<p class="kicker">{rerun ? "Rerun" : "The staff room"} · Episode {ep.n} of {ep.of}</p>
 			<h2 data-testid="room-title">{ep.arcTitle}</h2>
-			<p class="sub">You hear voices behind the staff room door. <b>{ep.title}.</b></p>
+			<p class="sub">{rerun ? "Back in the staff room, from the diary." : "You hear voices behind the staff room door."} <b>{ep.title}.</b></p>
 			<div class="foot">
-				<button type="button" class="skip" onclick={skip} data-testid="room-skip">Not now</button>
-				<button type="button" class="go" onclick={next} data-testid="room-begin">Peek in</button>
+				<button type="button" class="skip" onclick={skip} data-testid="room-skip">{rerun ? "Close" : "Not now"}</button>
+				<button type="button" class="go" onclick={next} data-testid="room-begin">{rerun ? "Play" : "Peek in"}</button>
 			</div>
 		</div>
 	</div>

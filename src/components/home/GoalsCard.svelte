@@ -20,7 +20,7 @@ import {
 	rewardTrack,
 	stepText,
 } from "../../lib/rewardTrack.svelte.js"
-import { staffRoom } from "../../lib/staffRoom.svelte.js"
+import { staffRoom, startReplay } from "../../lib/staffRoom.svelte.js"
 import { story } from "../../lib/story.svelte.js"
 import { loadWallet } from "../../lib/wallet.svelte.js"
 import { page } from "../../router.svelte.js"
@@ -255,6 +255,29 @@ async function buyBurger() {
 						Quiet in the staff room for now. The coaches are up to something again on {new Date(staffRoom.data.nextAt).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.
 					{/if}
 				</p>
+				{#if staffRoom.data.log.length > 0}
+					<details class="diary" data-testid="room-diary">
+						<summary>Staff room diary ({staffRoom.data.log.length})</summary>
+						<ul class="outfits">
+							{#each staffRoom.data.log as e (e.id)}
+								<li>
+									<span><b>{e.arcTitle}</b> {e.n}/{e.of}: {e.title}</span>
+									<button
+										type="button"
+										class="link"
+										data-testid="room-replay"
+										onclick={() => {
+											open = false
+											startReplay(e.id)
+										}}
+									>
+										Replay
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</details>
+				{/if}
 			{/if}
 			{#if campaign.data && (campaign.data.canFinish || campaign.data.hall.length > 0 || campaign.data.campaign > 1)}
 				<h3>Campaign {campaign.data.campaign}</h3>

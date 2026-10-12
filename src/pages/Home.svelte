@@ -328,7 +328,7 @@ onMount(() => {
 	{/if}
 	{#if active && !failed && !claiming && !sheetUp && story.data?.pending}
 		<StoryCard />
-	{:else if active && !failed && !claiming && !sheetUp && staffRoom.data?.pending}
+	{:else if active && !failed && !claiming && !sheetUp && (staffRoom.replay || staffRoom.data?.pending)}
 		<StaffRoomCard />
 	{/if}
 	{#if tip}

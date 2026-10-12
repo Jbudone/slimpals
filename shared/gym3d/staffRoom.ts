@@ -302,12 +302,60 @@ export type RoomPending = {
 	lines: readonly RoomLine[]
 }
 
+/** A seen episode, for the diary (replayable from `episodeById`). */
+export type RoomLogEntry = {
+	id: string
+	arcId: string
+	arcTitle: string
+	title: string
+	n: number
+	of: number
+}
+
 export type RoomDto = {
 	pending: RoomPending | null
+	/** Episodes seen, newest first (at most `LOG_MAX`). */
+	log: RoomLogEntry[]
 	/** When the next episode slot opens (ISO). */
 	nextAt: string
 	/** Coaches still needed before anything plays (0 once something does). */
 	needHires: number
+}
+
+/** The most seen episodes the diary lists. */
+export const LOG_MAX = 30
+
+/** An episode from its id (`<arc>.<slot date>.<n>`): its arc, number and
+ * content; null for an id that is not one. Content can be played again. */
+export function episodeById(
+	id: string,
+): { arc: RoomArc; n: number; episode: RoomEpisode } | null {
+	const [arcId, date, nText] = id.split(".")
+	const arc = ROOM_ARCS.find((a) => a.id === arcId)
+	const n = Number(nText)
+	if (!arc || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) return null
+	if (!Number.isInteger(n) || n < 0 || n >= EPISODES_PER_ARC) return null
+	return { arc, n, episode: arc.episodes[n] }
+}
+
+/** The diary: the episodes in `seen` that still exist, newest first. */
+export function roomLog(seen: readonly string[]): RoomLogEntry[] {
+	const rows: RoomLogEntry[] = []
+	for (const id of seen) {
+		const e = episodeById(id)
+		if (!e) continue
+		rows.push({
+			id,
+			arcId: e.arc.id,
+			arcTitle: e.arc.title,
+			title: e.episode.title,
+			n: e.n + 1,
+			of: EPISODES_PER_ARC,
+		})
+	}
+	// ids carry their slot date: newest first
+	rows.sort((a, b) => b.id.split(".")[1].localeCompare(a.id.split(".")[1]))
+	return rows.slice(0, LOG_MAX)
 }
 
 /** The episode waiting for a gym with `hires` coaches at `now`, unless it was
@@ -319,11 +367,13 @@ export function roomState(
 ): RoomDto {
 	const nextAt = nextSlotAt(now).toISOString()
 	const index = slotIndexAt(now)
+	const log = roomLog(seen)
 	const arc = arcForSlot(index, hires)
-	if (!arc) return { pending: null, nextAt, needHires: ROOM_MIN_HIRES - hires }
+	if (!arc)
+		return { pending: null, log, nextAt, needHires: ROOM_MIN_HIRES - hires }
 	const n = ((index % EPISODES_PER_ARC) + EPISODES_PER_ARC) % EPISODES_PER_ARC
 	const id = `${arc.id}.${slotDate(index)}.${n}`
-	if (seen.includes(id)) return { pending: null, nextAt, needHires: 0 }
+	if (seen.includes(id)) return { pending: null, log, nextAt, needHires: 0 }
 	const ep = arc.episodes[n]
 	return {
 		pending: {
@@ -335,6 +385,7 @@ export function roomState(
 			of: EPISODES_PER_ARC,
 			lines: ep.lines,
 		},
+		log,
 		nextAt,
 		needHires: 0,
 	}

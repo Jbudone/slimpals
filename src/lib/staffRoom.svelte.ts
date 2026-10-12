@@ -1,9 +1,36 @@
 // The staff room's state on the client (the server decides which episode
 // waits and records it as seen, see shared/gym3d/staffRoom.ts).
-import type { RoomDto } from "../../shared/gym3d/staffRoom"
+import {
+	episodeById,
+	type RoomDto,
+	type RoomPending,
+} from "../../shared/gym3d/staffRoom"
 import { api } from "./api.js"
 
-export const staffRoom = $state<{ data: RoomDto | null }>({ data: null })
+export const staffRoom = $state<{
+	data: RoomDto | null
+	/** A seen episode being played again (nothing is recorded). */
+	replay: RoomPending | null
+}>({ data: null, replay: null })
+
+/** Plays a seen episode again from the diary. */
+export function startReplay(id: string): void {
+	const e = episodeById(id)
+	if (!e) return
+	staffRoom.replay = {
+		id,
+		arcId: e.arc.id,
+		arcTitle: e.arc.title,
+		title: e.episode.title,
+		n: e.n + 1,
+		of: e.arc.episodes.length,
+		lines: e.episode.lines,
+	}
+}
+
+export function endReplay(): void {
+	staffRoom.replay = null
+}
 
 /** Off in the e2e runs (VITE_STORY=off) unless the page asks with ?room=1, so
  * the card does not sit over every spec. */
