@@ -1295,6 +1295,17 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 						),
 					)
 			)[0].affectedRows
+		else if (what === "staffroom")
+			removed = (
+				await db
+					.delete(gymRewards)
+					.where(
+						and(
+							eq(gymRewards.gymId, gym.id),
+							like(gymRewards.source, "room:%"),
+						),
+					)
+			)[0].affectedRows
 		else if (what === "story")
 			removed = (
 				await db
@@ -1322,7 +1333,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 		} else {
 			res.status(400).json({
 				error:
-					"what must be staff, hires, walls, hustle, burger, milestones, story or cosmetics",
+					"what must be staff, hires, walls, hustle, burger, milestones, story, staffroom or cosmetics",
 			})
 			return
 		}

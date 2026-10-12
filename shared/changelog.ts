@@ -15,6 +15,15 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-12-staff-room",
+		date: "2026-10-12",
+		title: "The coaches have a secret staff room",
+		items: [
+			"Once you have hired two coaches, listen at the staff room door: twice a week (Wednesday and Saturday) a short scene plays over the gym, with a portrait and one line at a time.",
+			"A secret D&D campaign, a lost-and-found mystery and a fad of the fortnight take turns, three episodes each. More arcs open as you hire more coaches. A missed episode is gone.",
+		],
+	},
+	{
 		id: "2026-10-11-whats-new-history",
 		date: "2026-10-11",
 		title: "What's new keeps its history",

@@ -17,6 +17,7 @@ import type { GymLayoutDto } from "../../shared/types.js"
 import NpcDialog from "../components/gym3d/NpcDialog.svelte"
 import GoalsCard from "../components/home/GoalsCard.svelte"
 import { coachSvg } from "../components/home/icons"
+import StaffRoomCard from "../components/home/StaffRoomCard.svelte"
 import StoryCard from "../components/home/StoryCard.svelte"
 import TodayDrawer from "../components/home/TodayDrawer.svelte"
 import UpNext from "../components/home/UpNext.svelte"
@@ -27,6 +28,7 @@ import { checkinState } from "../lib/checkin.svelte.js"
 import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
 import { drawerUi } from "../lib/drawer.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
+import { loadStaffRoom, staffRoom } from "../lib/staffRoom.svelte.js"
 import { loadStory, story } from "../lib/story.svelte.js"
 import { loadToday, today, todayCounts } from "../lib/today.svelte.js"
 import { userProfile } from "../lib/user.svelte.js"
@@ -245,6 +247,7 @@ $effect(() => {
 })
 
 onMount(() => {
+	void loadStaffRoom()
 	void loadOwnedCosmetics()
 	void loadChallengeStanding()
 	if (!hasWebGL2()) failed = "webgl"
@@ -325,6 +328,8 @@ onMount(() => {
 	{/if}
 	{#if active && !failed && !claiming && !sheetUp && story.data?.pending}
 		<StoryCard />
+	{:else if active && !failed && !claiming && !sheetUp && staffRoom.data?.pending}
+		<StaffRoomCard />
 	{/if}
 	{#if tip}
 		<div
