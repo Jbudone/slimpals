@@ -25,6 +25,7 @@ export const SPEAKERS: Readonly<Record<string, Speaker>> = {
 	marcus: { name: "Marcus", color: "#9a633f" },
 	alex: { name: "Alex", color: "#5a6b8a" },
 	kim: { name: "Dr. Kim", color: "#62b83f" },
+	jordan: { name: "Jordan", color: "#3f7ab5" },
 	rivera: { name: "Coach Rivera", color: "#c85a3c" },
 	derek: { name: "Derek", color: "#8a6bb5" },
 	victor: { name: "Victor Maxwell", color: "#2b3440" },

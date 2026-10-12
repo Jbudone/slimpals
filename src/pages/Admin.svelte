@@ -1043,6 +1043,7 @@ async function resetGymExtras(
 		| "burger"
 		| "milestones"
 		| "story"
+		| "staffroom"
 		| "cosmetics",
 ) {
 	gymCoinsStatus = null
@@ -2054,6 +2055,13 @@ onMount(async () => {
 																	data-testid="admin-gym-reset-story"
 																>
 																	Reset story chapters
+																</button>
+																<button
+																	class="btn sm"
+																	onclick={() => resetGymExtras(user.id, "staffroom")}
+																	data-testid="admin-gym-reset-staffroom"
+																>
+																	Reset staff room episodes
 																</button>
 																<button
 																	class="btn sm"

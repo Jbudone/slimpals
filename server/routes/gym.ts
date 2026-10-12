@@ -84,6 +84,7 @@ import {
 	type NpcRelationship,
 } from "../services/gym/simulation.js"
 import { staffCards, trainStaff } from "../services/gym/staff.js"
+import { getStaffRoomDto, markEpisodeSeen } from "../services/gym/staffRoom.js"
 import { getStoryDto, markBeatSeen } from "../services/gym/story.js"
 import { setRoomVibe } from "../services/gym/vibes3d.js"
 import { openWall } from "../services/gym/walls3d.js"
@@ -817,6 +818,27 @@ export function createGymRouter(aiService: AIService) {
 		const userId = (req as AuthRequest).user.id
 		const gym = await getOrCreateGym(userId, db)
 		res.json(await getStoryDto(db, gym.id))
+	})
+
+	// The staff room: the coaches' episode waiting this week (if any).
+	router.get("/gym/staff-room", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		res.json(await getStaffRoomDto(db, gym.id))
+	})
+
+	router.post("/gym/staff-room/:id/seen", async (req, res) => {
+		const userId = (req as unknown as AuthRequest).user.id
+		const gym = await getOrCreateGym(userId, db)
+		try {
+			res.json(await markEpisodeSeen(db, gym.id, req.params.id))
+		} catch (err) {
+			if (err instanceof BuildError) {
+				res.status(err.status).json({ error: err.message })
+				return
+			}
+			throw err
+		}
 	})
 
 	router.post("/gym/story/:id/seen", async (req, res) => {
