@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
 	arcForSlot,
+	episodeById,
 	nextSlotAt,
 	ROOM_ARCS,
 	ROOM_MIN_HIRES,
+	roomLog,
 	roomState,
 	slotDate,
 	slotIndexAt,
@@ -102,5 +104,34 @@ describe("which episode waits", () => {
 		const arcs = new Set<string>()
 		for (let i = 0; i < 12; i++) arcs.add(arcForSlot(i, 4)?.id ?? "")
 		expect(arcs.size).toBe(ROOM_ARCS.length)
+	})
+})
+
+describe("the diary", () => {
+	it("finds an episode from its id and refuses ids that are not one", () => {
+		const e = episodeById("dnd.2026-10-14.1")
+		expect(e?.arc.id).toBe("dnd")
+		expect(e?.episode.title).toBe("The mimic in the closet")
+		for (const bad of ["", "nope.2026-10-14.0", "dnd.2026-10-14.7", "dnd.x.0"])
+			expect(episodeById(bad)).toBeNull()
+	})
+
+	it("lists what was seen, newest first, skipping ids that no longer exist", () => {
+		const log = roomLog([
+			"dnd.2026-10-14.0",
+			"gone.2026-10-15.0",
+			"lost.2026-10-21.2",
+			"dnd.2026-10-17.1",
+		])
+		expect(log.map((l) => l.id)).toEqual([
+			"lost.2026-10-21.2",
+			"dnd.2026-10-17.1",
+			"dnd.2026-10-14.0",
+		])
+		expect(log[0]).toMatchObject({ n: 3, of: 3, title: "Case closed" })
+		// the state carries it, whatever else is going on
+		expect(
+			roomState(0, ["dnd.2026-10-14.0"], d("2026-10-14")).log,
+		).toHaveLength(1)
 	})
 })

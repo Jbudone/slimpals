@@ -15,6 +15,14 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-12-room-diary",
+		date: "2026-10-12",
+		title: "Replay the staff room",
+		items: [
+			"The stars card keeps a Staff room diary of every episode you have seen. Tap Replay to watch one again.",
+		],
+	},
+	{
 		id: "2026-10-12-staff-room",
 		date: "2026-10-12",
 		title: "The coaches have a secret staff room",
