@@ -98,6 +98,8 @@ export class Happenings {
 	private ghostSlot = 0
 	private ghostT = 0
 	private seasonG: T.Mesh | null = null
+	private roomPropG: T.Mesh | null = null
+	private roomPropNow: string | null = null
 	private v = new T.Vector3()
 
 	constructor(
@@ -307,6 +309,82 @@ export class Happenings {
 			note: g.name,
 		})
 		this.storyKey = g.who
+	}
+
+	/** 1 while a staff room story's prop stands by the door (tests). */
+	get roomPropCount(): number {
+		return this.roomPropG ? 1 : 0
+	}
+
+	/** A small prop by the door for the staff room story playing this week
+	 * (a table with a die, a box, a mic...); null takes it away. */
+	syncRoomProp(arc: string | null): void {
+		if (arc === this.roomPropNow) return
+		this.roomPropNow = arc
+		if (this.roomPropG) releaseMesh(this.roomPropG)
+		this.roomPropG = null
+		if (!arc) return
+		const parts: Part[] = []
+		const x = this.w.doorX + 3.2
+		const z = this.w.frontZ + 0.7
+		switch (arc) {
+			case "dnd": {
+				// a card table with a die and a screen
+				pBox(parts, 0.8, 0.05, 0.8, "#7a5a3a", x, 0.62, z)
+				for (const [lx, lz] of [
+					[-0.34, -0.34],
+					[0.34, -0.34],
+					[-0.34, 0.34],
+					[0.34, 0.34],
+				])
+					pBox(parts, 0.05, 0.6, 0.05, "#5a4028", x + lx, 0.3, z + lz)
+				pBox(parts, 0.14, 0.14, 0.14, "#d9d4f0", x + 0.1, 0.72, z + 0.05)
+				pBox(parts, 0.4, 0.3, 0.03, "#3b2f5a", x - 0.1, 0.82, z - 0.25)
+				break
+			}
+			case "lost": {
+				// a cardboard box of odd socks
+				pBox(parts, 0.5, 0.32, 0.4, "#b98a52", x, 0.16, z)
+				pBox(parts, 0.1, 0.1, 0.1, "#e86a8a", x - 0.1, 0.36, z)
+				pBox(parts, 0.08, 0.14, 0.08, "#6ab0e8", x + 0.12, 0.38, z + 0.04)
+				break
+			}
+			case "fad": {
+				// a rolled mat, a pogo stick and a glowing orb on a stand
+				pBox(parts, 0.22, 0.22, 0.6, "#3aa88a", x - 0.4, 0.11, z)
+				pBox(parts, 0.04, 1.0, 0.04, "#cfcfcf", x, 0.5, z)
+				pBox(parts, 0.3, 0.04, 0.04, "#d9453a", x, 1.0, z)
+				pGeo(parts, sphGeo(0.16, 8, 6), "#a67af0", x + 0.45, 0.5, z)
+				pBox(parts, 0.06, 0.34, 0.06, "#8a8a8a", x + 0.45, 0.17, z)
+				break
+			}
+			case "karaoke": {
+				// a speaker and a mic stand
+				pBox(parts, 0.4, 0.7, 0.3, "#2a2a30", x, 0.35, z)
+				pBox(parts, 0.2, 0.2, 0.02, "#555", x, 0.5, z + 0.16)
+				pBox(parts, 0.03, 1.2, 0.03, "#bdbdbd", x + 0.5, 0.6, z)
+				pBox(parts, 0.07, 0.1, 0.07, "#222", x + 0.5, 1.25, z)
+				break
+			}
+			case "smoothie": {
+				// a blender on a stool and one smudged cup
+				pBox(parts, 0.4, 0.05, 0.4, "#7a5a3a", x, 0.7, z)
+				pBox(parts, 0.05, 0.7, 0.05, "#5a4028", x, 0.35, z)
+				pBox(parts, 0.2, 0.12, 0.2, "#444", x, 0.78, z)
+				pBox(parts, 0.16, 0.3, 0.16, "#f4a6c0", x, 0.99, z)
+				pBox(parts, 0.1, 0.16, 0.1, "#f4f4f4", x + 0.25, 0.8, z + 0.05)
+				break
+			}
+			default: {
+				// a flipchart with an agenda
+				pBox(parts, 0.04, 1.4, 0.04, "#8a8a8a", x - 0.3, 0.7, z)
+				pBox(parts, 0.04, 1.4, 0.04, "#8a8a8a", x + 0.3, 0.7, z)
+				pBox(parts, 0.66, 0.5, 0.03, "#f6f3ea", x, 1.15, z)
+				for (const ly of [1.28, 1.15, 1.02])
+					pBox(parts, 0.44, 0.03, 0.035, "#3a5a9a", x, ly, z)
+			}
+		}
+		this.roomPropG = batchMesh(parts, undefined, { noCast: true })
 	}
 
 	/** Props by the door now (tests). */
@@ -828,6 +906,7 @@ export class Happenings {
 	dispose(): void {
 		this.syncStoryGuest(null)
 		this.syncSeason(null)
+		this.syncRoomProp(null)
 		this.syncContest(null)
 		this.syncRoomPlay([])
 		this.clearEvent()
