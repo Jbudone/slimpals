@@ -20,6 +20,7 @@ import {
 	rewardTrack,
 	stepText,
 } from "../../lib/rewardTrack.svelte.js"
+import { staffRoom } from "../../lib/staffRoom.svelte.js"
 import { story } from "../../lib/story.svelte.js"
 import { loadWallet } from "../../lib/wallet.svelte.js"
 import { page } from "../../router.svelte.js"
@@ -242,6 +243,18 @@ async function buyBurger() {
 						The next chapter opens at gym level {story.data.nextLevel}.
 					</p>
 				{/if}
+			{/if}
+			{#if staffRoom.data}
+				<h3>Staff room</h3>
+				<p class="hint" data-testid="room-hint">
+					{#if staffRoom.data.needHires > 0}
+						Hire {staffRoom.data.needHires} more coach{staffRoom.data.needHires === 1 ? "" : "es"} to find out what goes on behind the staff room door.
+					{:else if staffRoom.data.pending}
+						Something is going on behind the staff room door. Listen in from the gym.
+					{:else}
+						Quiet in the staff room for now. The coaches are up to something again on {new Date(staffRoom.data.nextAt).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.
+					{/if}
+				</p>
 			{/if}
 			{#if campaign.data && (campaign.data.canFinish || campaign.data.hall.length > 0 || campaign.data.campaign > 1)}
 				<h3>Campaign {campaign.data.campaign}</h3>
