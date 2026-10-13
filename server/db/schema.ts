@@ -775,3 +775,34 @@ export const banterPool = mysqlTable(
 	},
 	(t) => [index("banter_pool_situation_idx").on(t.situation)],
 )
+
+// ── Content pipeline (docs/content_pipeline.md) ────────────────────────────
+
+/** Small key/value config for the pipeline (budget, report, model routes). */
+export const contentConfig = mysqlTable("content_config", {
+	key: varchar("key", { length: 64 }).primaryKey(),
+	value: json("value").notNull(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+})
+
+/** One row per model call: what it cost, for the budget and the report. */
+export const aiSpend = mysqlTable(
+	"ai_spend",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		at: timestamp("at").notNull().defaultNow(),
+		/** UTC day (YYYY-MM-DD) the call counts against. */
+		day: varchar("day", { length: 10 }).notNull(),
+		provider: varchar("provider", { length: 16 }).notNull(),
+		model: varchar("model", { length: 80 }).notNull(),
+		/** What the call was for: a content type or app feature. */
+		purpose: varchar("purpose", { length: 48 }).notNull(),
+		tokensIn: int("tokens_in").notNull().default(0),
+		tokensOut: int("tokens_out").notNull().default(0),
+		images: int("images").notNull().default(0),
+		/** Cost in millionths of a US dollar (integer so sums are exact). */
+		usdMicros: int("usd_micros").notNull().default(0),
+		ok: boolean("ok").notNull().default(true),
+	},
+	(t) => [index("ai_spend_day_idx").on(t.day)],
+)

@@ -17,6 +17,7 @@ import { appleHealthRouter } from "./routes/appleHealth.js"
 import { badgesRouter } from "./routes/badges.js"
 import { createChallengesRouter } from "./routes/challenges.js"
 import { checkinsRouter } from "./routes/checkins.js"
+import { createContentAdminRouter } from "./routes/contentAdmin.js"
 import { createContentTuningRouter } from "./routes/contentTuning.js"
 import { createFoodRouter } from "./routes/food.js"
 import { createGymRouter } from "./routes/gym.js"
@@ -146,6 +147,7 @@ export function createApp(
 	app.use("/api", appleHealthRouter)
 	app.use("/api", createImpersonationRouter())
 	app.use("/api", createAdminRouter(aiService, scheduler))
+	app.use("/api", createContentAdminRouter())
 	app.use("/api", createContentTuningRouter(aiService))
 
 	if (CLIENT_DIR) {
