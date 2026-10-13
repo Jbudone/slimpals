@@ -24,6 +24,11 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Content pipeline (docs/content_pipeline.md); all optional
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      APP_URL: ${APP_URL:-${BETTER_AUTH_URL:-}}
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
       BUNNYCDN_API_KEY: ${BUNNYCDN_API_KEY:-}
       BUNNYCDN_STORAGE_ZONE: ${BUNNYCDN_STORAGE_ZONE:-}
