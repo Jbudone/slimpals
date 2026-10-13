@@ -2,6 +2,7 @@
 import { onMount } from "svelte"
 import { CHALLENGE_CATALOG } from "../../shared/challenges/catalog.js"
 import { COSMETICS } from "../../shared/gym3d/cosmetics.js"
+import ContentPipeline from "../components/admin/ContentPipeline.svelte"
 import { api } from "../lib/api.js"
 import { fetchSession } from "../lib/auth.svelte.js"
 import { fetchUserProfile } from "../lib/user.svelte.js"
@@ -2371,6 +2372,7 @@ onMount(async () => {
 				{/if}
 			</div>
 		</section>
+		<ContentPipeline />
 		<section class="card">
 			<h2>Scheduled jobs</h2>
 			{#if schedulerError}

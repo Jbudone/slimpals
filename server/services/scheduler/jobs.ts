@@ -7,6 +7,7 @@ import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
 import { generateChallengeForMonth } from "../challenges/index.js"
+import { maybeSendReport } from "../content/report.js"
 import { generateBanterPool } from "../gym/banterPool.js"
 import { generateNightlyGymContent } from "../gym/content.js"
 import { generateInspirationForAllUsers } from "../inspiration/index.js"
@@ -83,6 +84,15 @@ export function buildScheduledJobs(
 			schedule: { kind: "daily", atMinute: 25 },
 			async run(now) {
 				return ensureRecurringTournaments(db, now, aiService)
+			},
+		},
+		{
+			key: "content-report",
+			label: "Content spend report (email)",
+			schedule: { kind: "interval", everyMs: 15 * 60 * 1000 },
+			staleAfterMs: 30 * 60 * 1000,
+			async run(now) {
+				return maybeSendReport(db, now)
 			},
 		},
 		{

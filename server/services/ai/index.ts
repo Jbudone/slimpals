@@ -1,9 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import { GoogleGenerativeAI, type ModelParams } from "@google/generative-ai"
 import { eq } from "drizzle-orm"
 import type { AutoGoalKind } from "../../../shared/challenges/auto.js"
 import type { CoachPersonality } from "../../../shared/types.js"
 import { db } from "../../db/index.js"
 import { users } from "../../db/schema.js"
+import { recordSpendSafe } from "../content/spend.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import { getPersonalityPrompt, PERSONALITY_KEYS } from "./prompts/index.js"
 
@@ -161,6 +162,30 @@ export class GeminiAIService implements AIService {
 		this.client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "")
 	}
 
+	/** A model whose calls are written to the spend ledger (never blocks or
+	 * fails the call; the budget is enforced only for the content pipeline). */
+	private tracked(purpose: string, params: ModelParams) {
+		const model = this.client.getGenerativeModel(params)
+		const generate = model.generateContent.bind(model)
+		;(model as { generateContent: unknown }).generateContent = async (
+			...args: Parameters<typeof generate>
+		) => {
+			const result = await generate(...args)
+			const u = result.response.usageMetadata
+			const parts = result.response.candidates?.[0]?.content?.parts ?? []
+			void recordSpendSafe(db, {
+				provider: "gemini",
+				model: params.model,
+				purpose,
+				tokensIn: u?.promptTokenCount ?? 0,
+				tokensOut: u?.candidatesTokenCount ?? 0,
+				images: parts.filter((p) => "inlineData" in p).length,
+			})
+			return result
+		}
+		return model
+	}
+
 	async analyzeFood(
 		imageBuffer: Buffer,
 		mimeType: string,
@@ -170,7 +195,7 @@ export class GeminiAIService implements AIService {
 		const personality = user?.coachPersonality ?? "friendly"
 		const systemInstruction = getPersonalityPrompt(personality)
 
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("analyzeFood", {
 			model: "gemini-2.5-flash",
 			systemInstruction,
 		})
@@ -211,7 +236,7 @@ export class GeminiAIService implements AIService {
 		) as CoachPersonality
 		const systemInstruction = getPersonalityPrompt(coachKey)
 
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateVictoryMessage", {
 			model: "gemini-2.5-flash",
 			systemInstruction,
 		})
@@ -244,7 +269,7 @@ export class GeminiAIService implements AIService {
 		) as CoachPersonality
 		const systemInstruction = getPersonalityPrompt(coachKey)
 
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateWeeklyInspiration", {
 			model: "gemini-2.5-flash",
 			systemInstruction,
 		})
@@ -289,7 +314,7 @@ ${userName}'s week in review:
 		]
 		const monthName = monthNames[month - 1] ?? "January"
 
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateMonthlyChallenge", {
 			model: "gemini-2.5-flash",
 		})
 
@@ -310,7 +335,7 @@ ${userName}'s week in review:
 		userName: string,
 		ctx: SprintContext,
 	): Promise<SprintResult> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateWeeklySprint", {
 			model: "gemini-2.5-flash",
 		})
 
@@ -341,7 +366,7 @@ ${activityLines.join("\n")}`
 	}
 
 	async generateNpcDialogs(prompt: string): Promise<NpcDialogEntry[]> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateNpcDialogs", {
 			model: "gemini-2.5-flash",
 		})
 
@@ -354,7 +379,7 @@ ${activityLines.join("\n")}`
 	}
 
 	async generateGymEvent(prompt: string): Promise<GymEventData> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateGymEvent", {
 			model: "gemini-2.5-flash",
 		})
 
@@ -369,7 +394,7 @@ ${activityLines.join("\n")}`
 	async generateGymLayout(
 		prompt: string,
 	): Promise<Record<string, GridPosition>> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateGymLayout", {
 			model: "gemini-2.5-flash",
 		})
 
@@ -386,7 +411,7 @@ ${activityLines.join("\n")}`
 		outputPath: string,
 	): Promise<string | null> {
 		try {
-			const model = this.client.getGenerativeModel({
+			const model = this.tracked("generateNpcPortrait", {
 				model: "gemini-2.5-flash-image",
 			})
 
@@ -422,7 +447,7 @@ ${activityLines.join("\n")}`
 		kind: "weekly" | "monthly",
 		periodLabel: string,
 	): Promise<{ name: string; reward: string }> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateTournamentFlavor", {
 			model: "gemini-2.5-flash",
 		})
 		const labels: Record<string, string> = {
@@ -450,7 +475,7 @@ ${activityLines.join("\n")}`
 				? personality
 				: "friendly"
 		) as CoachPersonality
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateChallengeCoachLines", {
 			model: "gemini-2.5-flash",
 			systemInstruction: getPersonalityPrompt(coachKey),
 		})
@@ -469,7 +494,7 @@ Write exactly ${days} coach lines for the monthly challenge "${challengeTitle}",
 	}
 
 	async generateBanter(scenarioText: string): Promise<string> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateBanter", {
 			model: "gemini-2.5-flash",
 			systemInstruction: readTuningDoc(
 				"server/services/contentTuning/docs/npc_banter.md",
@@ -485,7 +510,7 @@ Write exactly ${days} coach lines for the monthly challenge "${challengeTitle}",
 		systemInstruction: string,
 		scenarioText: string,
 	): Promise<string> {
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("generateCoachSample", {
 			model: "gemini-2.5-flash",
 			systemInstruction,
 		})
@@ -509,7 +534,7 @@ Write exactly ${days} coach lines for the monthly challenge "${challengeTitle}",
 			noteScope,
 		} = params
 
-		const model = this.client.getGenerativeModel({
+		const model = this.tracked("refineTuningDoc", {
 			model: "gemini-2.5-flash",
 		})
 

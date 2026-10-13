@@ -317,6 +317,14 @@ failures retry after 1h, max 3 tries. Admin → "Scheduled jobs" shows last run/
 skip session auth but require `X-Cron-Secret` = `CRON_SECRET` (`server/middleware/requireCronSecret.ts`;
 unset = always 401). The scheduler calls the services directly and does not need `CRON_SECRET`.
 
+## Content pipeline (docs/content_pipeline.md, #309; phase 0 built)
+Design and phases are in `docs/content_pipeline.md`. Built so far: the money and plumbing, no change to what players see.
+- Budget: `shared/content/budget.ts` (pure: `BudgetConfig` = start date + steps of daily USD caps + a reserve %, default $5/day for 7 days then $1/day; `dailyCapUsd`, `pipelineCapUsd`, `canSpend`) and prices in `shared/content/pricing.ts` (editable defaults, an unknown model is never free; OpenRouter reports the real cost and that wins). Config rows live in `content_config` (migration 0037; `services/content/config.ts`: `getBudget` stores the default on first read so the start date holds, `getReportConfig`, `getRoutes`).
+- Ledger: every Gemini call of `GeminiAIService` goes through `tracked()` and writes an `ai_spend` row (`services/content/spend.ts`, integer micro-dollars, never blocks or fails the feature). The budget is **enforced only for pipeline calls**: `createModelClient(db).generateText({task, prompt, ...})` (`services/content/modelClient.ts`; routes per task from config, Gemini and OpenRouter adapters, `BudgetError` when the day's cap less the reserve is used, `reserve: true` for an owner request) so live features (food photos) are never refused.
+- Report: `services/content/report.ts` (`buildReport` pure, `reportDue`, `maybeSendReport`), sent by the `content-report` scheduled job (checks every 15 min; daily or Mondays at a configurable UTC hour, default 14, once per UTC day) through Resend (`services/email/resend.ts`, env `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`); with no addresses set it goes to the admin accounts' emails. Env: `OPENROUTER_API_KEY` too. All keys are optional and the card says when one is missing.
+- Admin: the "Content pipeline" card (`components/admin/ContentPipeline.svelte`, phone first: today's spend against the cap, key status, test calls for Gemini and an OpenRouter model, spend by day/purpose/model, budget editor, report settings, "Send it now"); API `GET /api/admin/content/overview`, `PUT /admin/content/budget|report`, `POST /admin/content/report/send|test-call` (`routes/contentAdmin.ts`). Tests: `tests/content/`.
+- Not yet: the item record and exposure telemetry, gates and judges, the phone review queue, art, councils (see the phases in the design doc).
+
 ## Admin panel
 `src/pages/Admin.svelte` — manages users and badges. Any new entity, badge, user state, or content type introduced by a feature should be considered for admin panel support. Always check during issue scoping.
 
