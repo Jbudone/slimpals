@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { banterPool, invites, users } from "../../server/db/schema.js"
+import { contentItems, invites, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	generateBanterPool,
@@ -99,21 +100,31 @@ describe("the nightly banter pool", () => {
 
 	it("keeps only the newest few of a situation", async () => {
 		const db = await getTestDb()
-		for (let i = 0; i < 6; i++) await generateBanterPool(db, goodAI)
-		const rows = await db.select().from(banterPool)
-		const quiet = rows.filter((x) => x.situation === "quiet")
+		for (let i = 0; i < 6; i++) {
+			await generateBanterPool(db, goodAI)
+			// players saw them, so the next night tops the pool up again
+			await db.update(contentItems).set({ shownCount: 1 })
+		}
+		const rows = await db.select().from(contentItems)
+		const quiet = rows.filter(
+			(x) => x.situation === "quiet" && x.status === "published",
+		)
 		expect(quiet).toHaveLength(POOL_PER_SITUATION)
+		expect(
+			rows.filter((x) => x.situation === "quiet" && x.status === "retired")
+				.length,
+		).toBeGreaterThan(0)
 	})
 
 	it("does nothing without an AI method and survives an AI that throws", async () => {
 		const db = await getTestDb()
-		expect(await generateBanterPool(db, {} as AIService)).toEqual({ added: 0 })
+		expect((await generateBanterPool(db, {} as AIService)).added).toBe(0)
 		const down = {
 			generateBanter: async () => {
 				throw new Error("down")
 			},
 		} as unknown as AIService
-		expect(await generateBanterPool(db, down)).toEqual({ added: 0 })
+		expect((await generateBanterPool(db, down)).added).toBe(0)
 		expect(await loadBanterPool(db)).toEqual([])
 	})
 
@@ -141,5 +152,35 @@ describe("the nightly banter pool", () => {
 		expect(got.body.banter.length).toBe(AI_BANTER_SITUATIONS.length * 2)
 		expect(got.body.banter[0]).toMatchObject({ lines: expect.any(Array) })
 		expect((await request(app).get("/api/gym/banter")).status).toBe(401)
+
+		// the player reports what played; it is counted against the item
+		const id = got.body.banter[0].id as number
+		const seen = await request(app)
+			.post("/api/gym/content/seen")
+			.set("Cookie", cookie)
+			.send({ ids: [id, id, 424242] })
+		expect(seen.status).toBe(200)
+		expect(seen.body.recorded).toBe(1)
+		const [row] = await db
+			.select()
+			.from(contentItems)
+			.where(eq(contentItems.id, id))
+		expect(row.shownCount).toBe(2)
+		expect(
+			(
+				await request(app)
+					.post("/api/gym/content/seen")
+					.send({ ids: [id] })
+			).status,
+		).toBe(401)
+		// junk in the body is ignored, not an error
+		expect(
+			(
+				await request(app)
+					.post("/api/gym/content/seen")
+					.set("Cookie", cookie)
+					.send({ ids: "no" })
+			).body.recorded,
+		).toBe(0)
 	})
 })

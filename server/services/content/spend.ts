@@ -1,5 +1,6 @@
 // The spend ledger: every model call writes a row; the budget and the report
 // read it back. Costs are stored as integer millionths of a dollar.
+import { AsyncLocalStorage } from "node:async_hooks"
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm"
 import { dayOf } from "../../../shared/content/budget.js"
 import { costUsd } from "../../../shared/content/pricing.js"
@@ -20,6 +21,20 @@ export type SpendEntry = {
 	ok?: boolean
 }
 
+type Collector = { usd: number; models: Set<string> }
+const collector = new AsyncLocalStorage<Collector>()
+
+/** Runs `fn` and adds up what the model calls made inside it cost (through
+ * any path that writes to the ledger), so a content job can put the cost on
+ * the items it produced. */
+export async function collectSpend<T>(
+	fn: () => Promise<T>,
+): Promise<{ result: T; usd: number; models: string[] }> {
+	const c: Collector = { usd: 0, models: new Set() }
+	const result = await collector.run(c, fn)
+	return { result, usd: c.usd, models: [...c.models] }
+}
+
 export async function recordSpend(
 	db: Db,
 	e: SpendEntry,
@@ -34,6 +49,11 @@ export async function recordSpend(
 			e.images ?? 0,
 			await getPriceOverrides(db),
 		)
+	const c = collector.getStore()
+	if (c) {
+		c.usd += usd
+		c.models.add(e.model)
+	}
 	await db.insert(aiSpend).values({
 		day: dayOf(now),
 		provider: e.provider,

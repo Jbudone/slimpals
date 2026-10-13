@@ -6,6 +6,7 @@ import {
 	json,
 	mysqlEnum,
 	mysqlTable,
+	primaryKey,
 	text,
 	timestamp,
 	unique,
@@ -805,4 +806,52 @@ export const aiSpend = mysqlTable(
 		ok: boolean("ok").notNull().default(true),
 	},
 	(t) => [index("ai_spend_day_idx").on(t.day)],
+)
+
+/** Every piece of generated content the pipeline publishes, with where it came
+ * from and who has seen it (docs/content_pipeline.md). Banter exchanges are
+ * the first type; the payload shape belongs to the type. */
+export const contentItems = mysqlTable(
+	"content_items",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		type: varchar("type", { length: 32 }).notNull(),
+		/** The situation or slot the item is for (a banter situation key). */
+		situation: varchar("situation", { length: 48 }).notNull(),
+		payload: json("payload").notNull(),
+		status: mysqlEnum("status", [
+			"candidate",
+			"approved",
+			"published",
+			"retired",
+			"rejected",
+		])
+			.notNull()
+			.default("published"),
+		/** `ai` or `scripted`. */
+		source: varchar("source", { length: 16 }).notNull().default("ai"),
+		model: varchar("model", { length: 80 }),
+		/** The cost of the generation call, split across the batch it made. */
+		costMicros: int("cost_micros").notNull().default(0),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		publishedAt: timestamp("published_at"),
+		shownCount: int("shown_count").notNull().default(0),
+		firstSeenAt: timestamp("first_seen_at"),
+		lastSeenAt: timestamp("last_seen_at"),
+	},
+	(t) => [
+		index("content_items_type_status_idx").on(t.type, t.status, t.situation),
+	],
+)
+
+/** How often each player has seen each item (repeat tracking, exposure). */
+export const contentSeen = mysqlTable(
+	"content_seen",
+	{
+		itemId: int("item_id").notNull(),
+		userId: varchar("user_id", { length: 36 }).notNull(),
+		count: int("count").notNull().default(0),
+		lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+	},
+	(t) => [primaryKey({ columns: [t.itemId, t.userId] })],
 )

@@ -19,7 +19,8 @@ import type { AuthRequest } from "../middleware/requireAuth.js"
 import { requireCronSecret } from "../middleware/requireCronSecret.js"
 import type { AIService } from "../services/ai/index.js"
 import { checkAndAward, shareBadges } from "../services/badges/index.js"
-import { loadBanterPool } from "../services/gym/banterPool.js"
+import { recordSeen } from "../services/content/items.js"
+import { BANTER_TYPE, loadBanterPool } from "../services/gym/banterPool.js"
 import {
 	BuildError,
 	buyLot,
@@ -858,6 +859,16 @@ export function createGymRouter(aiService: AIService) {
 	// The AI's nightly banter exchanges, shared by every gym.
 	router.get("/gym/banter", async (_req, res) => {
 		res.json({ banter: await loadBanterPool(db) })
+	})
+
+	// A player saw these banter exchanges (exposure telemetry for the content
+	// pipeline). Best effort: the client batches and never waits for it.
+	router.post("/gym/content/seen", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const ids = Array.isArray(req.body?.ids)
+			? (req.body.ids as unknown[]).map(Number)
+			: []
+		res.json({ recorded: await recordSeen(db, userId, BANTER_TYPE, ids) })
 	})
 
 	router.get("/gym/npc/:key", async (req, res) => {
