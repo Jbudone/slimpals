@@ -275,6 +275,8 @@ export class Life {
 	paused = false
 	/** What the gym holds now, for banter that fits it (none: no banter). */
 	banterContext: (() => BanterContext) | null = null
+	/** Told the id of each exchange that plays (AI ones are content items). */
+	onBanterPlayed: ((id: string) => void) | null = null
 	/** The AI's nightly exchanges, mixed in with the scripted ones. */
 	extraBanter: Banter[] = []
 	private banterTimer = 50
@@ -515,6 +517,7 @@ export class Life {
 				? [bond[1], bond[0]]
 				: (bond ?? pairs[Math.floor(this.rng() * pairs.length) % pairs.length])
 		this.banterSeen.push(b.id)
+		this.onBanterPlayed?.(b.id)
 		if (this.banterSeen.length > 6) this.banterSeen.shift()
 		this.banterTimer = (this.calm ? 150 : 100) + this.rng() * 60
 		b.lines.forEach((text, i) => {

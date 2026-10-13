@@ -1,77 +1,115 @@
-import { and, desc, eq, inArray, notInArray } from "drizzle-orm"
-import type { MySql2Database } from "drizzle-orm/mysql2"
+import { canSpend, dayOf } from "../../../shared/content/budget.js"
 import {
 	AI_BANTER_SITUATIONS,
 	cleanBanterLines,
 	parseBanterBlocks,
 } from "../../../shared/gym3d/banterAi.js"
-import type * as schema from "../../db/schema.js"
-import { banterPool } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
+import { getBudget } from "../content/config.js"
+import {
+	publishedItems,
+	publishItems,
+	retireBeyond,
+	unseenBacklog,
+} from "../content/items.js"
+import { collectSpend, spentOnDay } from "../content/spend.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
-
-type Db = MySql2Database<typeof schema>
+import type { Db } from "./layout3dStore.js"
 
 /** How many exchanges of each situation the pool keeps (the newest). */
 export const POOL_PER_SITUATION = 8
 
+/** A situation with this many published exchanges nobody has seen is not
+ * topped up: generated content players do not see is wasted money. */
+export const UNSEEN_BACKLOG_MAX = 4
+
+/** What one batch call is expected to cost at most, for the budget check. */
+const BATCH_ESTIMATE_USD = 0.01
+
+export const BANTER_TYPE = "banter"
+
+export type BanterRun = {
+	added: number
+	skippedBacklog: string[]
+	skippedBudget: boolean
+}
+
 /** The nightly batch: asks the AI for exchanges per situation, keeps the ones
- * that follow the banter style and prunes the pool to the newest few. Returns
- * how many exchanges were added; 0 without an AI method or when it fails. */
+ * that follow the banter style and publishes them as content items (the oldest
+ * of a situation are retired past the newest few). Skips a situation that
+ * still has unseen exchanges, and stops when the day's budget is used. */
 export async function generateBanterPool(
 	db: Db,
 	ai: AIService,
-): Promise<{ added: number }> {
-	if (!ai.generateBanter) return { added: 0 }
-	let added = 0
+	now: Date = new Date(),
+): Promise<BanterRun> {
+	const run: BanterRun = { added: 0, skippedBacklog: [], skippedBudget: false }
+	if (!ai.generateBanter) return run
 	for (const situation of AI_BANTER_SITUATIONS) {
 		try {
-			const text = await ai.generateBanter(
-				BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet,
+			if (
+				(await unseenBacklog(db, BANTER_TYPE, situation)) >= UNSEEN_BACKLOG_MAX
+			) {
+				run.skippedBacklog.push(situation)
+				continue
+			}
+			const verdict = canSpend(
+				await getBudget(db, now),
+				now,
+				await spentOnDay(db, dayOf(now)),
+				BATCH_ESTIMATE_USD,
 			)
-			const rows = parseBanterBlocks(text).flatMap((block) => {
+			if (!verdict.ok) {
+				run.skippedBudget = true
+				break
+			}
+			const {
+				result: text,
+				usd,
+				models,
+			} = await collectSpend(
+				() =>
+					ai.generateBanter?.(
+						BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet,
+					) as Promise<string>,
+			)
+			const good = parseBanterBlocks(text).flatMap((block) => {
 				const lines = cleanBanterLines(block)
-				return lines ? [{ situation, lines }] : []
+				return lines ? [lines] : []
 			})
-			if (rows.length) {
-				await db.insert(banterPool).values(rows)
-				added += rows.length
-				// keep only the newest few of this situation
-				const keep = await db
-					.select({ id: banterPool.id })
-					.from(banterPool)
-					.where(eq(banterPool.situation, situation))
-					.orderBy(desc(banterPool.id))
-					.limit(POOL_PER_SITUATION)
-				await db.delete(banterPool).where(
-					and(
-						eq(banterPool.situation, situation),
-						notInArray(
-							banterPool.id,
-							keep.map((k) => k.id),
-						),
-					),
+			if (good.length) {
+				const each = Math.round((usd * 1_000_000) / good.length)
+				await publishItems(
+					db,
+					good.map((lines) => ({
+						type: BANTER_TYPE,
+						situation,
+						payload: { lines },
+						model: models[0] ?? null,
+						costMicros: each,
+					})),
 				)
+				run.added += good.length
+				await retireBeyond(db, BANTER_TYPE, situation, POOL_PER_SITUATION)
 			}
 		} catch (err) {
 			console.error(`[banter] ${situation} failed, keeping the pool:`, err)
 		}
 	}
-	return { added }
+	return run
 }
 
-/** The pool as the client reads it: newest first. */
+/** The pool as the client reads it: newest first. The id is the content item's. */
 export async function loadBanterPool(
 	db: Db,
 ): Promise<{ id: number; situation: string; lines: string[] }[]> {
-	const rows = await db
-		.select()
-		.from(banterPool)
-		.where(inArray(banterPool.situation, [...AI_BANTER_SITUATIONS]))
-		.orderBy(desc(banterPool.id))
-	return rows.map((r) => ({
-		id: r.id,
-		situation: r.situation,
-		lines: Array.isArray(r.lines) ? (r.lines as string[]) : [],
-	}))
+	const rows = await publishedItems(db, BANTER_TYPE, [...AI_BANTER_SITUATIONS])
+	return rows.map((r) => {
+		const lines = (r.payload as { lines?: unknown } | null)?.lines
+		return {
+			id: r.id,
+			situation: r.situation,
+			lines: Array.isArray(lines) ? (lines as string[]) : [],
+		}
+	})
 }

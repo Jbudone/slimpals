@@ -20,6 +20,16 @@ type Overview = {
 		byPurpose: Bucket[]
 		byModel: Bucket[]
 	}
+	content: {
+		published: number
+		unseen: number
+		matured: number
+		maturedSeen: number
+		exposureRate: number | null
+		costUsd: number
+		seenCostUsd: number
+		byType: { type: string; published: number; seen: number }[]
+	}
 	report: {
 		enabled: boolean
 		cadence: "daily" | "weekly"
@@ -152,6 +162,24 @@ onMount(load)
 				Test OpenRouter
 			</button>
 		</div>
+
+		<h3>Content players see</h3>
+		<p data-testid="content-exposure">
+			{#if data.content.exposureRate === null}
+				<b>No exposure rate yet</b>
+				<span class="muted">(items need 14 days to be judged; target 85%)</span>
+			{:else}
+				<b>{Math.round(data.content.exposureRate * 100)}% seen</b>
+				<span class="muted">of {data.content.matured} items published 14+ days ago (target 85%)</span>
+			{/if}
+		</p>
+		<p class="muted">
+			{data.content.published} published, {data.content.unseen} not seen by anyone yet.
+			Item cost {usd(data.content.costUsd)}, {usd(data.content.seenCostUsd)} of it on items players saw.
+		</p>
+		{#each data.content.byType as t}
+			<p class="muted">{t.type}: {t.seen} of {t.published} seen</p>
+		{/each}
 
 		<h3>Last days: {usd(data.summary.totalUsd)} over {data.summary.calls} calls{data.summary.failed ? `, ${data.summary.failed} failed` : ""}</h3>
 		{#each [["By day", data.summary.byDay], ["By purpose", data.summary.byPurpose], ["By model", data.summary.byModel]] as [title, rows]}

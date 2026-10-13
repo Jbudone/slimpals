@@ -16,6 +16,7 @@ import {
 	type ReportConfig,
 	setReportConfig,
 } from "./config.js"
+import { type ContentStats, contentStats } from "./items.js"
 import {
 	type SpendBucket,
 	type SpendSummary,
@@ -40,8 +41,25 @@ export type ReportInput = {
 	budget: BudgetConfig
 	today: number
 	summary: SpendSummary
+	content?: ContentStats
 	/** Public address of the admin page, when known. */
 	pageUrl?: string
+}
+
+const pct = (n: number) => `${Math.round(n * 100)}%`
+
+function contentLines(c?: ContentStats): string[] {
+	if (!c) return ["Content: not tracked"]
+	const rate =
+		c.exposureRate === null
+			? "no items are old enough to judge yet"
+			: `${pct(c.exposureRate)} of items published 14+ days ago were seen (target 85%)`
+	return [
+		`Content: ${c.published} published, ${c.unseen} not seen by anyone yet`,
+		`Exposure: ${rate}`,
+		`Item cost ${usd(c.costUsd)}, of which ${usd(c.seenCostUsd)} on items players saw`,
+		"Not tracked yet: review feedback (a later phase).",
+	]
 }
 
 export function buildReport(i: ReportInput): { subject: string; text: string } {
@@ -61,8 +79,7 @@ export function buildReport(i: ReportInput): { subject: string; text: string } {
 		"",
 		...lines("By model", i.summary.byModel),
 		"",
-		"Not tracked yet: items published and seen, exposure rate, review feedback",
-		"(they arrive in later phases of the content pipeline).",
+		...contentLines(i.content),
 		...(i.pageUrl ? ["", `Page: ${i.pageUrl}`] : []),
 	].join("\n")
 	return { subject, text }
@@ -101,6 +118,7 @@ export async function sendReport(
 		budget,
 		today: await spentOnDay(db, dayOf(now)),
 		summary: await spendSummary(db, cfg.cadence === "weekly" ? 7 : 14, now),
+		content: await contentStats(db, now),
 		pageUrl: process.env.APP_URL ? `${process.env.APP_URL}/admin` : undefined,
 	})
 	return send({ to: await reportRecipients(db, cfg), subject, text })

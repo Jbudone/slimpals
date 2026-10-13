@@ -17,6 +17,7 @@ import {
 	setBudget,
 	setReportConfig,
 } from "../services/content/config.js"
+import { contentStats } from "../services/content/items.js"
 import {
 	type Adapters,
 	BudgetError,
@@ -48,6 +49,7 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			pipelineCapToday: pipelineCapUsd(budget, now),
 			spentToday: await spentOnDay(db, dayOf(now)),
 			summary: await spendSummary(db, days, now),
+			content: await contentStats(db, now),
 			report: await getReportConfig(db),
 			routes: await getRoutes(db),
 			keys: {

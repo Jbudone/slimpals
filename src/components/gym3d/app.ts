@@ -72,6 +72,7 @@ import type {
 	GymJobDto,
 	GymLayoutDto,
 } from "../../../shared/types"
+import { flushSeen, noteSeen } from "../../lib/contentSeen.js"
 import { story } from "../../lib/story.svelte.js"
 import { AssetCache } from "./engine/assets"
 import { batchMesh, mulberry32, type Part, pBox } from "./engine/helpers"
@@ -532,6 +533,9 @@ export class Gym3DApp {
 			calm,
 		)
 		this.life.banterContext = () => this.banterContext()
+		this.life.onBanterPlayed = (id) => {
+			if (id.startsWith("ai-")) noteSeen(id)
+		}
 		this.people.onUpgradedUse = (p, tier) =>
 			this.life.gearReaction(p, tier, this.clock)
 		this.people.onGhostStay = (p) => this.life.ghostStay(p, this.clock)
@@ -2711,6 +2715,7 @@ export class Gym3DApp {
 	dispose(): void {
 		if (this.disposed) return
 		this.disposed = true
+		void flushSeen()
 		if (this.pollTimer) clearInterval(this.pollTimer)
 		this.pollTimer = null
 		if (this.pollSoon) clearTimeout(this.pollSoon)
