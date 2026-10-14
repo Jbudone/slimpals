@@ -170,10 +170,23 @@ export class GeminiAIService implements AIService {
 		;(model as { generateContent: unknown }).generateContent = async (
 			...args: Parameters<typeof generate>
 		) => {
-			const result = await generate(...args)
+			let result: Awaited<ReturnType<typeof generate>>
+			try {
+				result = await generate(...args)
+			} catch (err) {
+				await recordSpendSafe(db, {
+					provider: "gemini",
+					model: params.model,
+					purpose,
+					ok: false,
+					note: err instanceof Error ? err.message : String(err),
+				})
+				throw err
+			}
 			const u = result.response.usageMetadata
 			const parts = result.response.candidates?.[0]?.content?.parts ?? []
-			void recordSpendSafe(db, {
+			// awaited, so a job that collects the cost of its calls sees it
+			await recordSpendSafe(db, {
 				provider: "gemini",
 				model: params.model,
 				purpose,

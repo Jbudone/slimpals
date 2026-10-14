@@ -222,3 +222,61 @@ describe("openrouter adapter", () => {
 		)
 	})
 })
+
+describe("the cost of a live Gemini call reaches a job that collects it", () => {
+	it("is counted before the call returns (the item cost was 0 when it was not)", async () => {
+		const { GeminiAIService } = await import(
+			"../../server/services/ai/index.js"
+		)
+		const { collectSpend } = await import(
+			"../../server/services/content/spend.js"
+		)
+		const svc = new GeminiAIService()
+		;(svc as unknown as { client: unknown }).client = {
+			getGenerativeModel: () => ({
+				generateContent: async () => ({
+					response: {
+						text: () => "A: One.\nB: Two.",
+						usageMetadata: {
+							promptTokenCount: 1000,
+							candidatesTokenCount: 500,
+						},
+						candidates: [],
+					},
+				}),
+			}),
+		}
+		const { usd, models } = await collectSpend(() =>
+			(
+				svc as unknown as { generateBanter: (s: string) => Promise<string> }
+			).generateBanter("a quiet day"),
+		)
+		expect(usd).toBeCloseTo((1000 * 0.3 + 500 * 2.5) / 1e6)
+		expect(models).toEqual(["gemini-2.5-flash"])
+	})
+
+	it("records a failed call with its reason", async () => {
+		const { GeminiAIService } = await import(
+			"../../server/services/ai/index.js"
+		)
+		const svc = new GeminiAIService()
+		;(svc as unknown as { client: unknown }).client = {
+			getGenerativeModel: () => ({
+				generateContent: async () => {
+					throw new Error("quota exceeded")
+				},
+			}),
+		}
+		await expect(
+			(
+				svc as unknown as { generateBanter: (s: string) => Promise<string> }
+			).generateBanter("x"),
+		).rejects.toThrow("quota exceeded")
+		const { recentFailures } = await import(
+			"../../server/services/content/spend.js"
+		)
+		const db = await getTestDb()
+		const f = await recentFailures(db, new Date(Date.now() - 60_000), 5)
+		expect(f[0]?.note).toBe("quota exceeded")
+	})
+})

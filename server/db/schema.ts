@@ -804,6 +804,8 @@ export const aiSpend = mysqlTable(
 		/** Cost in millionths of a US dollar (integer so sums are exact). */
 		usdMicros: int("usd_micros").notNull().default(0),
 		ok: boolean("ok").notNull().default(true),
+		/** Why a failed call failed. */
+		note: varchar("note", { length: 200 }),
 	},
 	(t) => [index("ai_spend_day_idx").on(t.day)],
 )

@@ -79,6 +79,7 @@ describe("report text", () => {
 	it("shows today against the cap and the breakdowns", () => {
 		const r = buildReport({
 			now: at("2026-10-13T15:00:00Z"),
+			windowHours: 24,
 			budget: defaultBudget(at("2026-10-13T00:00:00Z")),
 			today: 1.5,
 			summary: {
@@ -189,5 +190,100 @@ describe("resend", () => {
 		} finally {
 			process.env.RESEND_API_KEY = prev
 		}
+	})
+})
+
+describe("report detail", () => {
+	const base = {
+		now: at("2026-10-14T15:00:00Z"),
+		windowHours: 24,
+		budget: defaultBudget(at("2026-10-13T00:00:00Z")),
+		today: 0.5,
+		summary: {
+			from: "2026-10-13",
+			to: "2026-10-14",
+			totalUsd: 0.5,
+			calls: 2,
+			failed: 1,
+			byDay: [{ key: "2026-10-14", usd: 0.5, calls: 2 }],
+			byPurpose: [],
+			byModel: [],
+		},
+	}
+	const item = (over = {}) => ({
+		id: 7,
+		type: "banter",
+		situation: "quiet",
+		payload: { lines: ["The treadmill is fine.", "It is a treadmill."] },
+		model: "gemini-2.5-flash",
+		costMicros: 2100,
+		shownCount: 0,
+		status: "published",
+		...over,
+	})
+
+	it("shows the text of what was added, with its model and cost", () => {
+		const r = buildReport({ ...base, newItems: [item()] })
+		expect(r.text).toContain("NEW CONTENT (last 24 hours): 1 item(s)")
+		expect(r.text).toContain('"The treadmill is fine."')
+		expect(r.text).toContain("#7 [quiet] gemini-2.5-flash, $0.0021")
+		expect(r.subject).toContain("1 new")
+	})
+
+	it("says plainly when an item has no recorded cost, and flags new ones", () => {
+		const migrated = item({ id: 3, model: null, costMicros: 0 })
+		const r = buildReport({ ...base, newItems: [migrated] })
+		expect(r.text).toContain("cost not recorded")
+		expect(r.text).toContain(
+			"no cost recorded; the cost tracking may be broken",
+		)
+		// an item with a model but a sub-cent cost is not flagged as broken
+		const tiny = buildReport({
+			...base,
+			newItems: [item({ costMicros: 0 })],
+		})
+		expect(tiny.text).toContain("$0 (rounded down)")
+		expect(tiny.text).not.toContain("tracking may be broken")
+	})
+
+	it("lists heads-up lines, failures and the job result", () => {
+		const r = buildReport({
+			...base,
+			today: 4.5,
+			failures: [
+				{
+					at: at("2026-10-14T01:00:00Z"),
+					provider: "openrouter",
+					model: "x/y",
+					purpose: "banter",
+					note: "no credit",
+				},
+			],
+			banterRun: {
+				status: "ok",
+				finishedAt: at("2026-10-14T00:41:00Z"),
+				error: null,
+				result: { added: 6, skippedBacklog: ["quiet"], skippedBudget: false },
+			},
+			activity: { players: 2, items: 9 },
+			unseenBy: [{ type: "banter", situation: "quiet", n: 4 }],
+			keys: { gemini: true, openrouter: false },
+		})
+		expect(r.text).toContain("is 90% of the $5.00 cap")
+		expect(r.text).toContain("1 model call(s) failed")
+		expect(r.text).toContain("no credit")
+		expect(r.text).toContain("added 6 exchanges")
+		expect(r.text).toContain(
+			"skipped (unseen exchanges already waiting): quiet",
+		)
+		expect(r.text).toContain("2 player(s) saw 9 different item(s)")
+		expect(r.text).toContain("Waiting unseen: quiet 4")
+		expect(r.text).toContain("OpenRouter key is not set")
+	})
+
+	it("is calm when all is well", () => {
+		const r = buildReport({ ...base, summary: { ...base.summary, failed: 0 } })
+		expect(r.text).toContain("Nothing needs attention.")
+		expect(r.text).toContain("Nothing new.")
 	})
 })

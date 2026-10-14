@@ -169,6 +169,7 @@ export function createModelClient(
 						model: route.model,
 						purpose: req.task,
 						ok: false,
+						note: err instanceof Error ? err.message : String(err),
 					},
 					now,
 				).catch(() => undefined)
