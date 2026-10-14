@@ -19,6 +19,8 @@ export type SpendEntry = {
 	/** Cost reported by the provider; computed from the price table if absent. */
 	usd?: number
 	ok?: boolean
+	/** Why a call failed (the error message, cut short). */
+	note?: string
 }
 
 type Collector = { usd: number; models: Set<string> }
@@ -64,6 +66,7 @@ export async function recordSpend(
 		images: e.images ?? 0,
 		usdMicros: Math.round(usd * 1_000_000),
 		ok: e.ok ?? true,
+		note: e.note ? e.note.slice(0, 200) : null,
 	})
 	return usd
 }
@@ -151,4 +154,33 @@ export async function spendSummary(
 		byPurpose: await bucket(db, aiSpend.purpose, from, to),
 		byModel: await bucket(db, aiSpend.model, from, to),
 	}
+}
+
+export type SpendFailure = {
+	at: Date
+	provider: string
+	model: string
+	purpose: string
+	note: string | null
+}
+
+/** Failed model calls since `since`, newest first. */
+export async function recentFailures(
+	db: Db,
+	since: Date,
+	limit: number,
+): Promise<SpendFailure[]> {
+	const rows = await db
+		.select()
+		.from(aiSpend)
+		.where(and(eq(aiSpend.ok, false), gte(aiSpend.at, since)))
+		.orderBy(desc(aiSpend.id))
+		.limit(limit)
+	return rows.map((r) => ({
+		at: r.at,
+		provider: r.provider,
+		model: r.model,
+		purpose: r.purpose,
+		note: r.note,
+	}))
 }

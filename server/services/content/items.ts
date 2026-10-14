@@ -1,7 +1,7 @@
 // The item record (docs/content_pipeline.md, phase 1): every published piece
 // of generated content, where it came from, and who has seen it. Banter is the
 // first type. Seen counts feed the exposure rate that the budget protects.
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm"
 import { contentItems, contentSeen } from "../../db/schema.js"
 import type { Db } from "../gym/layout3dStore.js"
 
@@ -209,4 +209,62 @@ export async function contentStats(db: Db, now: Date): Promise<ContentStats> {
 		seenCostUsd: seenCostMicros / 1_000_000,
 		byType: [...types].map(([type, v]) => ({ type, ...v })),
 	}
+}
+
+/** Items made since `since`, newest first (the report shows their text). */
+export async function recentItems(db: Db, since: Date, limit: number) {
+	return db
+		.select()
+		.from(contentItems)
+		.where(gte(contentItems.createdAt, since))
+		.orderBy(desc(contentItems.id))
+		.limit(limit)
+}
+
+/** Published items nobody has seen, counted per type and situation. */
+export async function unseenBySituation(
+	db: Db,
+): Promise<{ type: string; situation: string; n: number }[]> {
+	const rows = await db
+		.select({
+			type: contentItems.type,
+			situation: contentItems.situation,
+			n: sql<string>`COUNT(*)`,
+		})
+		.from(contentItems)
+		.where(
+			and(eq(contentItems.status, "published"), eq(contentItems.shownCount, 0)),
+		)
+		.groupBy(contentItems.type, contentItems.situation)
+	return rows.map((r) => ({ ...r, n: Number(r.n) }))
+}
+
+/** The items played most, for spotting a line that repeats too much. */
+export async function mostPlayed(db: Db, limit: number) {
+	return db
+		.select()
+		.from(contentItems)
+		.where(
+			and(
+				eq(contentItems.status, "published"),
+				sql`${contentItems.shownCount} > 0`,
+			),
+		)
+		.orderBy(desc(contentItems.shownCount))
+		.limit(limit)
+}
+
+/** How many players saw content since `since`, and how many different items. */
+export async function activitySince(
+	db: Db,
+	since: Date,
+): Promise<{ players: number; items: number }> {
+	const [row] = await db
+		.select({
+			players: sql<string>`COUNT(DISTINCT ${contentSeen.userId})`,
+			items: sql<string>`COUNT(DISTINCT ${contentSeen.itemId})`,
+		})
+		.from(contentSeen)
+		.where(gte(contentSeen.lastSeenAt, since))
+	return { players: Number(row?.players ?? 0), items: Number(row?.items ?? 0) }
 }
