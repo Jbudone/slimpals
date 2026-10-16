@@ -66,9 +66,16 @@ describe("AI banter rules", () => {
 	})
 })
 
+let uniq = 0
+/** Banter text that never resembles an earlier call's (the pool drops near-duplicates). */
+const freshText = () => {
+	const n = ++uniq
+	return `A: Kettle${n} hums near window${n}.\nB: Nobody${n} answers doorbell${n}.\n\nA: Parcel${n} waits beside cabinet${n}.\nB: Courier${n} forgot signature${n}.`
+}
+
 const goodAI = {
-	generateBanter: async (scenario: string) =>
-		`A: About ${scenario.slice(0, 12).toLowerCase()}.\nB: Yes, it is.\n\nA: Second one here.\nB: Quite so.\n\nA: This breaks the rules!\nB: It does.`,
+	generateBanter: async () =>
+		`${freshText()}\n\nA: This breaks the rules!\nB: It does.`,
 } as unknown as AIService
 
 const { createApp } = await import("../../server/app.js")

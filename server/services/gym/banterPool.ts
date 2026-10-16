@@ -1,4 +1,5 @@
 import { canSpend, dayOf } from "../../../shared/content/budget.js"
+import { nearDuplicate } from "../../../shared/content/quality.js"
 import {
 	AI_BANTER_SITUATIONS,
 	cleanBanterLines,
@@ -12,6 +13,8 @@ import {
 	retireBeyond,
 	unseenBacklog,
 } from "../content/items.js"
+import { judgePending } from "../content/judge.js"
+import type { ModelClient } from "../content/modelClient.js"
 import { collectSpend, spentOnDay } from "../content/spend.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "./layout3dStore.js"
@@ -30,6 +33,10 @@ export const BANTER_TYPE = "banter"
 
 export type BanterRun = {
 	added: number
+	/** Dropped for being too close to an exchange already in the pool. */
+	duplicates: number
+	judged: number
+	judgeRejected: number
 	skippedBacklog: string[]
 	skippedBudget: boolean
 }
@@ -42,8 +49,16 @@ export async function generateBanterPool(
 	db: Db,
 	ai: AIService,
 	now: Date = new Date(),
+	judge?: ModelClient,
 ): Promise<BanterRun> {
-	const run: BanterRun = { added: 0, skippedBacklog: [], skippedBudget: false }
+	const run: BanterRun = {
+		added: 0,
+		duplicates: 0,
+		judged: 0,
+		judgeRejected: 0,
+		skippedBacklog: [],
+		skippedBudget: false,
+	}
 	if (!ai.generateBanter) return run
 	for (const situation of AI_BANTER_SITUATIONS) {
 		try {
@@ -73,10 +88,19 @@ export async function generateBanterPool(
 						BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet,
 					) as Promise<string>,
 			)
-			const good = parseBanterBlocks(text).flatMap((block) => {
+			const existing = (
+				await publishedItems(db, BANTER_TYPE, [...AI_BANTER_SITUATIONS])
+			).map((r) => (r.payload as { lines?: string[] }).lines ?? [])
+			const good: string[][] = []
+			for (const block of parseBanterBlocks(text)) {
 				const lines = cleanBanterLines(block)
-				return lines ? [lines] : []
-			})
+				if (!lines) continue
+				if (nearDuplicate(lines, [...existing, ...good])) {
+					run.duplicates++
+					continue
+				}
+				good.push(lines)
+			}
 			if (good.length) {
 				const each = Math.round((usd * 1_000_000) / good.length)
 				await publishItems(
@@ -94,6 +118,15 @@ export async function generateBanterPool(
 			}
 		} catch (err) {
 			console.error(`[banter] ${situation} failed, keeping the pool:`, err)
+		}
+	}
+	if (judge) {
+		try {
+			const j = await judgePending(db, judge, BANTER_TYPE)
+			run.judged = j.judged
+			run.judgeRejected = j.rejected
+		} catch (err) {
+			console.error("[banter] judging failed, items stay unjudged:", err)
 		}
 	}
 	return run

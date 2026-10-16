@@ -840,6 +840,12 @@ export const contentItems = mysqlTable(
 		shownCount: int("shown_count").notNull().default(0),
 		firstSeenAt: timestamp("first_seen_at"),
 		lastSeenAt: timestamp("last_seen_at"),
+		/** The model judge's score, 0 to 100 (null: not judged). */
+		judgeScore: int("judge_score"),
+		judgeModel: varchar("judge_model", { length: 80 }),
+		judgeNote: varchar("judge_note", { length: 300 }),
+		/** The owner's latest verdict: good, meh or bad (null: not reviewed). */
+		reviewState: varchar("review_state", { length: 8 }),
 	},
 	(t) => [
 		index("content_items_type_status_idx").on(t.type, t.status, t.situation),
@@ -856,4 +862,19 @@ export const contentSeen = mysqlTable(
 		lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
 	},
 	(t) => [primaryKey({ columns: [t.itemId, t.userId] })],
+)
+
+/** The owner's reviews of content items (one per item and reviewer). */
+export const contentReviews = mysqlTable(
+	"content_reviews",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		itemId: int("item_id").notNull(),
+		userId: varchar("user_id", { length: 36 }).notNull(),
+		verdict: varchar("verdict", { length: 8 }).notNull(),
+		tags: json("tags").notNull(),
+		note: varchar("note", { length: 300 }),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [unique("content_reviews_item_user_uq").on(t.itemId, t.userId)],
 )

@@ -39,6 +39,13 @@ afterAll(async () => {
 	await closeTestDb()
 })
 
+let uniq = 0
+/** Banter text that never resembles an earlier call's (the pool drops near-duplicates). */
+const freshText = () => {
+	const n = ++uniq
+	return `A: Kettle${n} hums near window${n}.\nB: Nobody${n} answers doorbell${n}.\n\nA: Parcel${n} waits beside cabinet${n}.\nB: Courier${n} forgot signature${n}.`
+}
+
 const ai = (usd = 0) =>
 	({
 		generateBanter: async () => {
@@ -51,7 +58,7 @@ const ai = (usd = 0) =>
 					purpose: "generateBanter",
 					usd,
 				})
-			return "A: First one here.\nB: Quite so.\n\nA: Second one here.\nB: Indeed."
+			return freshText()
 		},
 	}) as unknown as AIService
 

@@ -10,6 +10,7 @@ import {
 } from "../../shared/content/budget.js"
 import { db } from "../db/index.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
+import type { AuthRequest } from "../middleware/requireAuth.js"
 import {
 	getBudget,
 	getReportConfig,
@@ -24,6 +25,12 @@ import {
 	createModelClient,
 } from "../services/content/modelClient.js"
 import { sendReport } from "../services/content/report.js"
+import {
+	nextForReview,
+	ReviewError,
+	reviewStats,
+	submitReview,
+} from "../services/content/reviews.js"
 import { spendSummary, spentOnDay } from "../services/content/spend.js"
 import type { sendEmail } from "../services/email/resend.js"
 
@@ -50,6 +57,7 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			spentToday: await spentOnDay(db, dayOf(now)),
 			summary: await spendSummary(db, days, now),
 			content: await contentStats(db, now),
+			reviews: await reviewStats(db, new Date(now.getTime() - 86_400_000)),
 			report: await getReportConfig(db),
 			routes: await getRoutes(db),
 			keys: {
@@ -58,6 +66,31 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 				resend: Boolean(process.env.RESEND_API_KEY),
 			},
 		})
+	})
+
+	// The phone review queue: the next items worth the owner's attention.
+	router.get("/admin/content/review/next", requireAdmin, async (req, res) => {
+		const skip = String(req.query.skip ?? "")
+			.split(",")
+			.map(Number)
+			.filter((n) => Number.isInteger(n) && n > 0)
+			.slice(0, 200)
+		const out = await nextForReview(db, 3, skip)
+		const since = new Date(clock().getTime() - 86_400_000)
+		res.json({ ...out, stats: await reviewStats(db, since) })
+	})
+
+	router.post("/admin/content/review", requireAdmin, async (req, res) => {
+		try {
+			const userId = (req as AuthRequest).user.id
+			res.json(await submitReview(db, userId, req.body ?? {}))
+		} catch (err) {
+			if (err instanceof ReviewError) {
+				res.status(err.status).json({ error: err.message })
+				return
+			}
+			throw err
+		}
 	})
 
 	router.put("/admin/content/budget", requireAdmin, async (req, res) => {

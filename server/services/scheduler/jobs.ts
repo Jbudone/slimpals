@@ -7,6 +7,7 @@ import type { MySql2Database } from "drizzle-orm/mysql2"
 import type * as schema from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
 import { generateChallengeForMonth } from "../challenges/index.js"
+import { createModelClient } from "../content/modelClient.js"
 import { maybeSendReport } from "../content/report.js"
 import { generateBanterPool } from "../gym/banterPool.js"
 import { generateNightlyGymContent } from "../gym/content.js"
@@ -66,8 +67,8 @@ export function buildScheduledJobs(
 			key: "nightly-banter",
 			label: "Nightly NPC banter",
 			schedule: { kind: "daily", atMinute: 40 },
-			async run() {
-				return generateBanterPool(db, aiService)
+			async run(now) {
+				return generateBanterPool(db, aiService, now, createModelClient(db))
 			},
 		},
 		{
