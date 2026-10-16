@@ -30,6 +30,11 @@ type Overview = {
 		seenCostUsd: number
 		byType: { type: string; published: number; seen: number }[]
 	}
+	reviews: {
+		total: number
+		today: number
+		judgeAgreement: number | null
+	}
 	report: {
 		enabled: boolean
 		cadence: "daily" | "weekly"
@@ -162,6 +167,12 @@ onMount(load)
 				Test OpenRouter
 			</button>
 		</div>
+
+		<h3>Review</h3>
+		<p class="muted">
+			{data.reviews.total} reviewed ({data.reviews.today} in the last day){#if data.reviews.judgeAgreement !== null}; the judge agreed with you on {Math.round(data.reviews.judgeAgreement * 100)}%{/if}.
+		</p>
+		<a class="reviewlink" href="/review" data-testid="open-review">Open the review queue</a>
 
 		<h3>Content players see</h3>
 		<p data-testid="content-exposure">
@@ -355,6 +366,15 @@ input[type="date"],
 select {
 	padding: 0 var(--space-3);
 	max-width: 100%;
+}
+.reviewlink {
+	display: inline-block;
+	padding: 12px var(--space-4);
+	border-radius: var(--radius-sm);
+	background: var(--color-warning);
+	color: var(--admin-on-warning);
+	font-weight: var(--font-weight-medium);
+	text-decoration: none;
 }
 .meter {
 	height: 12px;

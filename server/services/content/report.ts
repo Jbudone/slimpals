@@ -24,6 +24,7 @@ import {
 	recentItems,
 	unseenBySituation,
 } from "./items.js"
+import { type ReviewStats, reviewStats } from "./reviews.js"
 import {
 	recentFailures,
 	type SpendBucket,
@@ -79,6 +80,7 @@ export type ReportInput = {
 	activity?: { players: number; items: number }
 	unseenBy?: { type: string; situation: string; n: number }[]
 	topPlayed?: ReportItem[]
+	reviews?: ReviewStats
 	keys?: { gemini: boolean; openrouter: boolean }
 	/** Public address of the admin page, when known. */
 	pageUrl?: string
@@ -159,10 +161,30 @@ function contentLines(c?: ContentStats): string[] {
 	]
 }
 
+function reviewLines(r?: ReviewStats): string[] {
+	if (!r || r.total === 0)
+		return ["No reviews yet (the phone review queue is at /review)."]
+	const v = r.byVerdict
+	return [
+		`${r.today} reviewed in this period, ${r.total} in all: ${v.good ?? 0} good, ${v.meh ?? 0} meh, ${v.bad ?? 0} bad`,
+		r.judgeAgreement === null
+			? "Judge agreement: nothing to compare yet"
+			: `Judge agreed with you on ${pct(r.judgeAgreement)} of ${r.judgeCompared} items`,
+		...(r.topTags.length
+			? [
+					`Most used tags: ${r.topTags.map((t) => `${t.tag} ${t.n}`).join(", ")}`,
+				]
+			: []),
+	]
+}
+
 function jobLines(run?: JobRunInfo): string[] {
 	if (!run) return ["Nightly banter job: no run recorded yet"]
 	const r = (run.result ?? {}) as {
 		added?: number
+		duplicates?: number
+		judged?: number
+		judgeRejected?: number
 		skippedBacklog?: string[]
 		skippedBudget?: boolean
 	}
@@ -170,6 +192,11 @@ function jobLines(run?: JobRunInfo): string[] {
 	return [
 		`Nightly banter job: ${run.status}, finished ${when} UTC` +
 			(typeof r.added === "number" ? `, added ${r.added} exchanges` : ""),
+		...(typeof r.judged === "number"
+			? [
+					`  judge scored ${r.judged}, rejected ${r.judgeRejected ?? 0}; ${r.duplicates ?? 0} near-duplicates dropped`,
+				]
+			: []),
 		...(r.skippedBacklog?.length
 			? [
 					`  skipped (unseen exchanges already waiting): ${r.skippedBacklog.join(", ")}`,
@@ -228,6 +255,9 @@ export function buildReport(i: ReportInput): { subject: string; text: string } {
 			? ["Most played (watch for repeats):", ...i.topPlayed.flatMap(itemBlock)]
 			: []),
 		"",
+		"YOUR REVIEWS",
+		...reviewLines(i.reviews),
+		"",
 		"CONTENT TOTALS",
 		...contentLines(i.content),
 		...(i.failures?.length
@@ -243,7 +273,6 @@ export function buildReport(i: ReportInput): { subject: string; text: string } {
 				]
 			: []),
 		"",
-		"Not tracked yet: your review ratings (the phone review queue is a later phase).",
 		...(i.pageUrl ? ["", `Page: ${i.pageUrl}`] : []),
 	].join("\n")
 	return { subject, text }
@@ -305,6 +334,7 @@ export async function sendReport(
 		activity: await activitySince(db, since),
 		unseenBy: await unseenBySituation(db),
 		topPlayed: await mostPlayed(db, 3),
+		reviews: await reviewStats(db, since),
 		keys: {
 			gemini: Boolean(process.env.GEMINI_API_KEY),
 			openrouter: Boolean(process.env.OPENROUTER_API_KEY),

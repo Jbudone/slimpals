@@ -173,6 +173,10 @@ async function handleStopImpersonating() {
 				{#await import("./pages/UiKit.svelte") then { default: UiKit }}
 					<UiKit />
 				{/await}
+			{:else if currentPath === "/review"}
+				{#await import("./pages/Review.svelte") then { default: Review }}
+					<Review />
+				{/await}
 			{:else if currentPath === "/content-tuning"}
 				{#await import("./pages/ContentTuning.svelte") then { default: ContentTuning }}
 					<ContentTuning />

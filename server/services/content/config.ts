@@ -36,6 +36,9 @@ export const DEFAULT_REPORT: ReportConfig = {
 
 export const DEFAULT_ROUTES: ModelRoutes = {
 	default: { provider: "gemini", model: "gemini-2.5-flash" },
+	// the judge is a cheaper model than the generator; point it at another
+	// family (an OpenRouter model) in the routes config to avoid self-preference
+	judge: { provider: "gemini", model: "gemini-2.5-flash-lite" },
 }
 
 async function read<T>(db: Db, key: string): Promise<T | null> {
