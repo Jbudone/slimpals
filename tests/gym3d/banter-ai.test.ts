@@ -8,6 +8,7 @@ import {
 	users,
 } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
+import { setAutoPublish } from "../../server/services/content/config.js"
 import {
 	generateBanterPool,
 	loadBanterPool,
@@ -95,6 +96,7 @@ beforeAll(async () => {
 })
 beforeEach(async () => {
 	await truncateAll()
+	await setAutoPublish(await getTestDb(), "banter", true)
 })
 afterAll(async () => {
 	await closeTestDb()

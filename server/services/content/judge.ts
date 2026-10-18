@@ -1,7 +1,7 @@
 // The model judge (docs/content_pipeline.md, phase 2): reads a new banter
 // exchange against the style doc and scores it. A low score keeps the item
 // from being published; the owner's review catches the judge's mistakes.
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import {
 	JUDGE_THRESHOLD,
 	type Judged,
@@ -85,7 +85,7 @@ export async function judgePending(
 		.where(
 			and(
 				eq(contentItems.type, type),
-				eq(contentItems.status, "published"),
+				inArray(contentItems.status, ["published", "candidate"]),
 				isNull(contentItems.judgeScore),
 			),
 		)

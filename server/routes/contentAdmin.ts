@@ -4,6 +4,7 @@
 import { Router } from "express"
 import {
 	BAKEOFF_DEFAULT_MODELS,
+	BAKEOFF_ENOUGH,
 	parseModelLabel,
 } from "../../shared/content/bakeoff.js"
 import {
@@ -25,14 +26,16 @@ import {
 	runBakeoff,
 } from "../services/content/bakeoff.js"
 import {
+	getAutoPublish,
 	getBudget,
 	getReportConfig,
 	getRoutes,
+	setAutoPublish,
 	setBudget,
 	setReportConfig,
 	setRoute,
 } from "../services/content/config.js"
-import { contentStats } from "../services/content/items.js"
+import { contentStats, pullUnreviewed } from "../services/content/items.js"
 import {
 	type Adapters,
 	BudgetError,
@@ -74,6 +77,7 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			reviews: await reviewStats(db, new Date(now.getTime() - 86_400_000)),
 			report: await getReportConfig(db),
 			routes: await getRoutes(db),
+			autoPublish: await getAutoPublish(db),
 			keys: {
 				gemini: Boolean(process.env.GEMINI_API_KEY),
 				openrouter: Boolean(process.env.OPENROUTER_API_KEY),
@@ -151,8 +155,10 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 	router.get("/admin/content/bakeoff/next", requireAdmin, async (req, res) => {
 		const userId = (req as AuthRequest).user.id
 		const round = await latestRound(db)
-		const pair = round ? await nextPair(db, userId, round) : null
-		res.json({ pair, ...(await bakeoffState(db, round)) })
+		const state = await bakeoffState(db, round)
+		const enough = state.votes >= BAKEOFF_ENOUGH
+		const pair = round && !enough ? await nextPair(db, userId, round) : null
+		res.json({ pair, enough, ...state })
 	})
 
 	router.post("/admin/content/bakeoff/vote", requireAdmin, async (req, res) => {
@@ -181,6 +187,30 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 				return
 			}
 			res.json({ routes: await setRoute(db, "banter", route) })
+		},
+	)
+
+	// Whether a content type plays as soon as it is written (off: the owner's
+	// good in the review queue publishes it).
+	router.put("/admin/content/autopublish", requireAdmin, async (req, res) => {
+		const { type, on } = req.body ?? {}
+		if (typeof type !== "string" || typeof on !== "boolean") {
+			res.status(400).json({ error: "type and on are required" })
+			return
+		}
+		try {
+			res.json({ autoPublish: await setAutoPublish(db, type, on) })
+		} catch (err) {
+			res.status(400).json({ error: (err as Error).message })
+		}
+	})
+
+	// Takes the AI banter and coach lines that nobody reviewed out of play.
+	router.post(
+		"/admin/content/pull-unreviewed",
+		requireAdmin,
+		async (_req, res) => {
+			res.json({ pulled: await pullUnreviewed(db, ["banter", "coach"]) })
 		},
 	)
 
