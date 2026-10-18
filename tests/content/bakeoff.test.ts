@@ -5,7 +5,10 @@ import {
 	nextPair,
 	runBakeoff,
 } from "../../server/services/content/bakeoff.js"
-import { setRoute } from "../../server/services/content/config.js"
+import {
+	setAutoPublish,
+	setRoute,
+} from "../../server/services/content/config.js"
 import {
 	type Adapters,
 	createModelClient,
@@ -75,6 +78,7 @@ describe("bake-off (db)", () => {
 	})
 	beforeEach(async () => {
 		await truncateAll()
+		await setAutoPublish(await getTestDb(), "banter", true)
 	})
 	afterAll(async () => {
 		await closeTestDb()

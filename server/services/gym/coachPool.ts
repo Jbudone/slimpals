@@ -19,8 +19,9 @@ import {
 	type CoachVoice,
 } from "../../../shared/gym3d/coachLines.js"
 import { contentSeen, users } from "../../db/schema.js"
-import { getBudget } from "../content/config.js"
+import { getAutoPublish, getBudget } from "../content/config.js"
 import {
+	candidateCount,
 	publishedItems,
 	publishItems,
 	retireBeyond,
@@ -37,6 +38,8 @@ export const COACH_TYPE = "coach"
 export const COACH_POOL_PER_KEY = 6
 /** Unseen lines waiting for a key before it is not topped up. */
 export const COACH_UNSEEN_MAX = 3
+/** Unreviewed candidates before no more are written. */
+export const COACH_CANDIDATE_MAX = 12
 const ASK = 4
 const BATCH_ESTIMATE_USD = 0.005
 
@@ -63,6 +66,7 @@ export type CoachRun = {
 	judgeRejected: number
 	skippedBacklog: string[]
 	skippedBudget: boolean
+	skippedReviewQueue?: boolean
 	voices: CoachVoice[]
 }
 
@@ -97,6 +101,11 @@ export async function generateCoachPool(
 		)
 	} catch {
 		// the brief below still carries the voice
+	}
+	const auto = (await getAutoPublish(db))[COACH_TYPE] === true
+	if (!auto && (await candidateCount(db, COACH_TYPE)) >= COACH_CANDIDATE_MAX) {
+		run.skippedReviewQueue = true
+		return run
 	}
 	run.voices = await voicesInUse(db)
 	outer: for (const voice of run.voices) {
@@ -145,6 +154,7 @@ export async function generateCoachPool(
 						good.map((lines) => ({
 							type: COACH_TYPE,
 							situation: key,
+							status: auto ? "published" : "candidate",
 							payload: { lines },
 							model: models[0] ?? result.model,
 							costMicros: each,

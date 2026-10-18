@@ -43,6 +43,7 @@ type Overview = {
 		lastSentKey: string | null
 	}
 	keys: { gemini: boolean; openrouter: boolean; resend: boolean }
+	autoPublish?: Record<string, boolean>
 }
 
 let data = $state<Overview | null>(null)
@@ -113,6 +114,24 @@ const saveReport = () =>
 				.filter(Boolean),
 		}),
 	)
+
+const setAuto = (type: string, on: boolean) =>
+	run(
+		on ? `${type} plays as soon as written` : `${type} waits for your good`,
+		() => api.put("/admin/content/autopublish", { type, on }),
+	)
+
+const pullAll = () => {
+	if (
+		!confirm(
+			"Take every unreviewed AI banter and coach line out of play? Scripted lines stay. You can still approve them later in the review queue.",
+		)
+	)
+		return
+	return run("Unreviewed AI lines pulled", () =>
+		api.post("/admin/content/pull-unreviewed"),
+	)
+}
 
 const sendNow = () =>
 	run("Report sent", async () => {
@@ -215,6 +234,18 @@ onMount(() => {
 				Test OpenRouter
 			</button>
 		</div>
+
+		<h3>What plays</h3>
+		<p class="muted">
+			AI lines wait in your review queue and play only after a Good. Turn this on for a type only when the judge agrees with you most of the time.
+		</p>
+		{#each ["banter", "coach"] as t}
+			<label class="row">
+				<input type="checkbox" checked={data.autoPublish?.[t] === true} disabled={busy} onchange={(e) => setAuto(t, e.currentTarget.checked)} data-testid="auto-{t}" />
+				{t} plays as soon as it is written
+			</label>
+		{/each}
+		<button type="button" disabled={busy} onclick={pullAll} data-testid="pull-unreviewed">Pull unreviewed AI lines</button>
 
 		<h3>Review</h3>
 		<p class="muted">

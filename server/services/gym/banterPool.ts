@@ -8,8 +8,9 @@ import {
 } from "../../../shared/gym3d/banterAi.js"
 import { contentSeen } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
-import { getBudget, hasRoute } from "../content/config.js"
+import { getAutoPublish, getBudget, hasRoute } from "../content/config.js"
 import {
+	candidateCount,
 	publishedItems,
 	publishItems,
 	retireBeyond,
@@ -29,6 +30,10 @@ export const POOL_PER_SITUATION = 8
  * topped up: generated content players do not see is wasted money. */
 export const UNSEEN_BACKLOG_MAX = 4
 
+/** Candidates waiting for the owner, per type, before more are not written:
+ * a long queue of unreviewed lines is a cost, not a stock. */
+export const CANDIDATE_MAX = 12
+
 /** What one batch call is expected to cost at most, for the budget check. */
 const BATCH_ESTIMATE_USD = 0.01
 
@@ -42,6 +47,8 @@ export type BanterRun = {
 	judgeRejected: number
 	skippedBacklog: string[]
 	skippedBudget: boolean
+	/** The review queue was full, so nothing was written. */
+	skippedReviewQueue?: boolean
 }
 
 /** The nightly batch: asks the AI for exchanges per situation, keeps the ones
@@ -66,6 +73,11 @@ export async function generateBanterPool(
 		skippedBudget: false,
 	}
 	if (!ai.generateBanter && !viaClient) return run
+	const auto = (await getAutoPublish(db))[BANTER_TYPE] === true
+	if (!auto && (await candidateCount(db, BANTER_TYPE)) >= CANDIDATE_MAX) {
+		run.skippedReviewQueue = true
+		return run
+	}
 	for (const situation of AI_BANTER_SITUATIONS) {
 		try {
 			if (
@@ -122,6 +134,7 @@ export async function generateBanterPool(
 					good.map((lines) => ({
 						type: BANTER_TYPE,
 						situation,
+						status: auto ? "published" : "candidate",
 						payload: { lines },
 						model: models[0] ?? null,
 						costMicros: each,

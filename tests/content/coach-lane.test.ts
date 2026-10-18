@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { contentSeen, users } from "../../server/db/schema.js"
+import { contentItems, contentSeen, users } from "../../server/db/schema.js"
+import { setAutoPublish } from "../../server/services/content/config.js"
 import {
 	type Adapters,
 	createModelClient,
@@ -93,6 +94,7 @@ describe("coach lane (db)", () => {
 	})
 	beforeEach(async () => {
 		await truncateAll()
+		await setAutoPublish(await getTestDb(), "coach", true)
 	})
 	afterAll(async () => {
 		await closeTestDb()
@@ -120,5 +122,38 @@ describe("coach lane (db)", () => {
 		const second = await generateCoachPool(db, client)
 		expect(second.skippedBacklog.length).toBeGreaterThan(0)
 		expect(COACH_TYPE).toBe("coach")
+	})
+})
+
+describe("review gate (db)", () => {
+	beforeAll(async () => {
+		await resetSchema()
+	})
+	beforeEach(async () => {
+		await truncateAll()
+	})
+	afterAll(async () => {
+		await closeTestDb()
+	})
+
+	it("writes candidates by default and stops when too many wait", async () => {
+		const db = await getTestDb()
+		await db.insert(users).values({
+			id: "g1",
+			email: "g1@t.test",
+			name: "G",
+			coachPersonality: "bro",
+		})
+		const client = createModelClient(db, adapters)
+		const first = await generateCoachPool(db, client)
+		expect(first.added).toBeGreaterThan(0)
+		expect(await loadCoachPool(db, "g1")).toHaveLength(0) // none plays yet
+		const rows = await db.select().from(contentItems)
+		expect(
+			rows.every((r) => r.status === "candidate" || r.status === "rejected"),
+		).toBe(true)
+		const second = await generateCoachPool(db, client)
+		expect(second.skippedReviewQueue).toBe(true)
+		expect(second.added).toBe(0)
 	})
 })

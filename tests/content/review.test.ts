@@ -8,7 +8,11 @@ import {
 	users,
 } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
-import { publishItems } from "../../server/services/content/items.js"
+import { setAutoPublish } from "../../server/services/content/config.js"
+import {
+	publishItems,
+	pullUnreviewed,
+} from "../../server/services/content/items.js"
 import { judgePending } from "../../server/services/content/judge.js"
 import {
 	BudgetError,
@@ -19,7 +23,10 @@ import {
 	reviewStats,
 	submitReview,
 } from "../../server/services/content/reviews.js"
-import { generateBanterPool } from "../../server/services/gym/banterPool.js"
+import {
+	generateBanterPool,
+	loadBanterPool,
+} from "../../server/services/gym/banterPool.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -35,6 +42,7 @@ beforeAll(async () => {
 })
 beforeEach(async () => {
 	await truncateAll()
+	await setAutoPublish(await getTestDb(), "banter", true)
 })
 afterAll(async () => {
 	await closeTestDb()
@@ -317,5 +325,76 @@ describe("the review API", () => {
 			.set("Cookie", boss)
 		expect(after.body.cards).toHaveLength(0)
 		expect(after.body.stats.byVerdict.good).toBe(1)
+	})
+})
+
+describe("gated publishing", () => {
+	it("a candidate plays only after the owner says good", async () => {
+		const db = await getTestDb()
+		const [id] = await publishItems(db, [
+			{
+				type: "banter",
+				situation: "quiet",
+				status: "candidate",
+				payload: { lines: ["A line here.", "Another one here."] },
+			},
+		])
+		const loaded = async () =>
+			(
+				await db
+					.select()
+					.from(contentItems)
+					.where(eq(contentItems.id, id as number))
+			)[0]
+		expect((await loaded())?.status).toBe("candidate")
+		expect((await loaded())?.publishedAt).toBeNull()
+		expect(await loadBanterPool(db)).toHaveLength(0)
+		const next = await nextForReview(db, 3)
+		expect(next.cards[0]?.status).toBe("candidate")
+		await submitReview(db, "admin-1", { itemId: id, verdict: "good" })
+		expect((await loaded())?.status).toBe("published")
+		expect(await loadBanterPool(db)).toHaveLength(1)
+		// meh lets a candidate go quietly, bad rejects it
+		const [m, b] = await publishItems(db, [
+			{
+				type: "banter",
+				situation: "quiet",
+				status: "candidate",
+				payload: { lines: ["One two three.", "Four five six."] },
+			},
+			{
+				type: "banter",
+				situation: "quiet",
+				status: "candidate",
+				payload: { lines: ["Seven eight nine.", "Ten eleven twelve."] },
+			},
+		])
+		expect(
+			(await submitReview(db, "admin-1", { itemId: m, verdict: "meh" })).status,
+		).toBe("retired")
+		expect(
+			(await submitReview(db, "admin-1", { itemId: b, verdict: "bad" })).status,
+		).toBe("rejected")
+	})
+
+	it("pulls unreviewed AI lines but keeps the ones the owner approved", async () => {
+		const db = await getTestDb()
+		const [keep, drop] = await publishItems(db, [
+			{
+				type: "banter",
+				situation: "quiet",
+				payload: { lines: ["Keep this one.", "Yes, keep it."] },
+			},
+			{
+				type: "coach",
+				situation: "bro:morning",
+				payload: { lines: ["Drop me", "Not reviewed."] },
+			},
+		])
+		await submitReview(db, "admin-1", { itemId: keep, verdict: "good" })
+		expect(await pullUnreviewed(db, ["banter", "coach"])).toBe(1)
+		const rows = await db.select().from(contentItems)
+		expect(rows.find((r) => r.id === drop)?.status).toBe("retired")
+		expect(rows.find((r) => r.id === keep)?.status).toBe("published")
 	})
 })

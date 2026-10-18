@@ -38,13 +38,15 @@ let mode = $state<"review" | "bakeoff">(
 )
 let pair = $state<Pair | null>(null)
 let pairLoaded = $state(false)
+let pairEnough = $state(false)
 
 async function loadPair() {
 	try {
-		const d = await api.get<{ pair: Pair | null }>(
+		const d = await api.get<{ pair: Pair | null; enough?: boolean }>(
 			"/admin/content/bakeoff/next",
 		)
 		pair = d.pair
+		pairEnough = d.enough === true
 		pairLoaded = true
 		error = null
 	} catch (e) {
@@ -185,8 +187,12 @@ onMount(() => {
 			<p class="muted">Loading…</p>
 		{:else if !pair}
 			<div class="empty" data-testid="bake-empty">
-				<h2>No pairs to compare</h2>
-				<p class="muted">Start a round from the Admin card, or you have voted on every pair.</p>
+				<h2>{pairEnough ? "That is enough votes" : "No pairs to compare"}</h2>
+				<p class="muted">
+					{pairEnough
+						? "The standings on the Admin card are settled enough to choose. More votes only cost your time."
+						: "Start a round from the Admin card, or you have voted on every pair."}
+				</p>
 			</div>
 		{:else}
 			<p class="muted">Which is funnier? {pair.left} more pairs.</p>
@@ -215,6 +221,7 @@ onMount(() => {
 		<div class="meta">
 			{#if card.type === "coach"}<span class="chip">coach line</span>{/if}
 			<span class="chip">{card.situation.replace(/[_:]/g, " ")}</span>
+			{#if card.status === "candidate"}<span class="chip">waiting for you</span>{/if}
 			{#if card.status === "rejected"}<span class="chip warn">judge rejected it</span>{/if}
 			{#if card.judgeScore !== null}<span class="chip">judge {card.judgeScore}</span>{/if}
 		</div>

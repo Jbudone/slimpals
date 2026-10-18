@@ -152,3 +152,21 @@ export async function setRoute(
 export async function hasRoute(db: Db, task: string): Promise<boolean> {
 	return Boolean((await read<ModelRoutes>(db, "routes"))?.[task])
 }
+
+/** Whether a content type plays as soon as it is written. Off by default: the
+ * owner's review (good) is what puts AI content in front of players, until
+ * the judge agrees with the owner often enough to trust. */
+export async function getAutoPublish(db: Db): Promise<Record<string, boolean>> {
+	return (await read<Record<string, boolean>>(db, "autopublish")) ?? {}
+}
+
+export async function setAutoPublish(
+	db: Db,
+	type: string,
+	on: boolean,
+): Promise<Record<string, boolean>> {
+	if (!/^[a-z_]{2,30}$/.test(type)) throw new Error("bad type")
+	const next = { ...(await getAutoPublish(db)), [type]: on }
+	await write(db, "autopublish", next)
+	return next
+}

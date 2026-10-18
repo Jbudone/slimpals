@@ -106,3 +106,15 @@ export function standings(
 		(x, y) => (y.rate ?? -1) - (x.rate ?? -1) || y.games - x.games,
 	)
 }
+
+/** Votes after which the standings are settled enough to choose; the voting
+ * page stops offering pairs (more votes are a cost to the owner's hour). */
+export const BAKEOFF_ENOUGH = 40
+
+/** The situations a round uses (a spread, not all seven: fewer pairs to judge). */
+export const BAKEOFF_SITUATIONS = [
+	"no_pool",
+	"crowded",
+	"fresh_upgrade",
+	"quiet",
+] as const

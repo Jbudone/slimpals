@@ -2,7 +2,10 @@ import { eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { contentItems, contentSeen, users } from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
-import { setBudget } from "../../server/services/content/config.js"
+import {
+	setAutoPublish,
+	setBudget,
+} from "../../server/services/content/config.js"
 import {
 	contentStats,
 	publishItems,
@@ -33,6 +36,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await truncateAll()
 	const db = await getTestDb()
+	await setAutoPublish(db, "banter", true)
 	await db.insert(users).values({ id: "u1", email: "p@x.test", name: "P" })
 })
 afterAll(async () => {

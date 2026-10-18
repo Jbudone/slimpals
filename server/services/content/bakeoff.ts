@@ -4,6 +4,7 @@
 import { eq, sql } from "drizzle-orm"
 import {
 	BAKEOFF_DEFAULT_MODELS,
+	BAKEOFF_SITUATIONS,
 	type Duel,
 	type Entry,
 	type ModelRoute,
@@ -14,7 +15,6 @@ import {
 	standings,
 } from "../../../shared/content/bakeoff.js"
 import {
-	AI_BANTER_SITUATIONS,
 	cleanBanterLines,
 	parseBanterBlocks,
 } from "../../../shared/gym3d/banterAi.js"
@@ -59,7 +59,7 @@ export async function runBakeoff(
 	try {
 		for (const route of models) {
 			const label = modelLabel(route)
-			for (const situation of AI_BANTER_SITUATIONS) {
+			for (const situation of BAKEOFF_SITUATIONS) {
 				try {
 					const res = await client.generateText({
 						task: "bakeoff",

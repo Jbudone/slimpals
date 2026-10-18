@@ -10,11 +10,14 @@ export type NewItem = {
 	situation: string
 	payload: unknown
 	source?: "ai" | "scripted"
+	/** `candidate` waits for the owner's good before it plays. */
+	status?: "candidate" | "published"
 	model?: string | null
 	costMicros?: number
 }
 
-/** Published at once (the automatic tier); returns the new ids. */
+/** Published at once (the automatic tier) unless the item is a `candidate`
+ * that waits for the owner's review; returns the new ids. */
 export async function publishItems(
 	db: Db,
 	items: NewItem[],
@@ -27,11 +30,11 @@ export async function publishItems(
 			type: i.type,
 			situation: i.situation,
 			payload: i.payload,
-			status: "published",
+			status: i.status ?? "published",
 			source: i.source ?? "ai",
 			model: i.model ?? null,
 			costMicros: i.costMicros ?? 0,
-			publishedAt: now,
+			publishedAt: (i.status ?? "published") === "published" ? now : null,
 		})
 		ids.push(Number((res as { insertId: number }).insertId))
 	}
@@ -267,4 +270,32 @@ export async function activitySince(
 		.from(contentSeen)
 		.where(gte(contentSeen.lastSeenAt, since))
 	return { players: Number(row?.players ?? 0), items: Number(row?.items ?? 0) }
+}
+
+/** Candidates of a type waiting for the owner's review. */
+export async function candidateCount(db: Db, type: string): Promise<number> {
+	const [row] = await db
+		.select({ n: sql<string>`COUNT(*)` })
+		.from(contentItems)
+		.where(
+			and(eq(contentItems.type, type), eq(contentItems.status, "candidate")),
+		)
+	return Number(row?.n ?? 0)
+}
+
+/** Takes every AI item of these types that is playing and that the owner has
+ * not reviewed out of play (retired, so it can be put back). Returns how many. */
+export async function pullUnreviewed(db: Db, types: string[]): Promise<number> {
+	const [res] = await db
+		.update(contentItems)
+		.set({ status: "retired" })
+		.where(
+			and(
+				inArray(contentItems.type, types),
+				eq(contentItems.status, "published"),
+				eq(contentItems.source, "ai"),
+				sql`${contentItems.reviewState} IS NULL`,
+			),
+		)
+	return Number((res as { affectedRows?: number }).affectedRows ?? 0)
 }

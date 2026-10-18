@@ -108,6 +108,9 @@ export type ReviewCandidate = {
  * small random audit). */
 export function reviewValue(c: ReviewCandidate, rand: () => number): number {
 	if (c.reviewState) return 0
+	// something waiting on the owner comes first, the best judged at the top
+	if (c.status === "candidate")
+		return 0.95 + ((c.judgeScore ?? 50) / 100) * 0.04 + rand() * 0.005
 	if (c.judgeScore === null) return 0.9 + rand() * 0.05
 	const near = 1 - Math.min(1, Math.abs(c.judgeScore - JUDGE_THRESHOLD) / 40)
 	const base = c.status === "rejected" ? 0.45 : 0.2

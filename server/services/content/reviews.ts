@@ -40,7 +40,7 @@ export async function nextForReview(
 		.where(
 			and(
 				sql`${contentItems.reviewState} IS NULL`,
-				inArray(contentItems.status, ["published", "rejected"]),
+				inArray(contentItems.status, ["candidate", "published", "rejected"]),
 			),
 		)
 		.orderBy(desc(contentItems.id))
@@ -118,12 +118,15 @@ export async function submitReview(
 	if (verdict === "bad") status = "rejected"
 	else if (verdict === "good" && item.status === "rejected")
 		status = "published"
+	// a candidate plays only on the owner's good; a meh just lets it go
+	else if (item.status === "candidate")
+		status = verdict === "good" ? "published" : "retired"
 	await db
 		.update(contentItems)
 		.set({
 			reviewState: verdict,
 			status: status as typeof item.status,
-			...(status === "published" && item.status === "rejected"
+			...(status === "published" && item.status !== "published"
 				? { publishedAt: new Date() }
 				: {}),
 		})
