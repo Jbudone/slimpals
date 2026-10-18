@@ -10,6 +10,7 @@ import { generateChallengeForMonth } from "../challenges/index.js"
 import { createModelClient } from "../content/modelClient.js"
 import { maybeSendReport } from "../content/report.js"
 import { generateBanterPool } from "../gym/banterPool.js"
+import { generateCoachPool } from "../gym/coachPool.js"
 import { generateNightlyGymContent } from "../gym/content.js"
 import { generateInspirationForAllUsers } from "../inspiration/index.js"
 import { generateSprintsForAllUsers } from "../sprints/index.js"
@@ -69,6 +70,14 @@ export function buildScheduledJobs(
 			schedule: { kind: "daily", atMinute: 40 },
 			async run(now) {
 				return generateBanterPool(db, aiService, now, createModelClient(db))
+			},
+		},
+		{
+			key: "nightly-coach",
+			label: "Nightly coach lines",
+			schedule: { kind: "daily", atMinute: 50 },
+			async run(now) {
+				return generateCoachPool(db, createModelClient(db), now)
 			},
 		},
 		{

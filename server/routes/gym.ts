@@ -34,6 +34,7 @@ import {
 } from "../services/gym/build3d.js"
 import { buyBurgerBaron } from "../services/gym/burger.js"
 import { beginNextCampaign, getCampaignDto } from "../services/gym/campaign.js"
+import { COACH_TYPE, loadCoachPool } from "../services/gym/coachPool.js"
 import {
 	appendMemoryEvent,
 	generateContentForUser,
@@ -869,7 +870,14 @@ export function createGymRouter(aiService: AIService) {
 		const ids = Array.isArray(req.body?.ids)
 			? (req.body.ids as unknown[]).map(Number)
 			: []
-		res.json({ recorded: await recordSeen(db, userId, BANTER_TYPE, ids) })
+		const type = req.body?.type === COACH_TYPE ? COACH_TYPE : BANTER_TYPE
+		res.json({ recorded: await recordSeen(db, userId, type, ids) })
+	})
+
+	// The AI's nightly coach lines (all voices; the client picks its own).
+	router.get("/gym/coach-lines", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		res.json({ lines: await loadCoachPool(db, userId) })
 	})
 
 	router.get("/gym/npc/:key", async (req, res) => {

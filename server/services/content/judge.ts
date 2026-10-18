@@ -14,6 +14,20 @@ import { BudgetError, type ModelClient } from "./modelClient.js"
 
 const SYSTEM = `You are a strict editor for a fitness game's ambient banter: two nearby gym-goers swap a short, dry exchange. Judge ONE exchange against the style rules. Score each of these from 1 (poor) to 5 (excellent): "specific" (a concrete detail, not a generic remark), "dry" (understated, deadpan, no jokes shouted), "natural" (people would really say it, no stiff phrasing), "in_character" (fits two ordinary gym members). Set "ai_speak" true if it sounds like an AI wrote it (a tidy moral, "as a fitness enthusiast", over-explaining the joke, lists). Reply with ONLY a JSON object: {"specific":n,"dry":n,"natural":n,"in_character":n,"ai_speak":bool,"note":"one short sentence"}.`
 
+const COACH_SYSTEM = `You are a strict editor for a fitness game's coach bubble: a short bold lead and one short follow-up the coach says to the player, in a chosen voice (friendly, drill sergeant, roaster, anime sensei, bro). Judge ONE line against the style rules. Score each of these from 1 (poor) to 5 (excellent): "specific" (a concrete detail of the moment, not a generic slogan), "dry" (restrained wit, no shouting), "natural" (a person would really say it), "in_character" (matches the named voice and stays on the player's side). Set "ai_speak" true if it sounds like an AI wrote it (a tidy moral, over-explaining, stock motivational filler). Reply with ONLY a JSON object: {"specific":n,"dry":n,"natural":n,"in_character":n,"ai_speak":bool,"note":"one short sentence"}.`
+
+/** The rubric and style doc each content type is judged against. */
+const SPECS: Record<string, { system: string; doc: string }> = {
+	banter: {
+		system: SYSTEM,
+		doc: "server/services/contentTuning/docs/npc_banter.md",
+	},
+	coach: {
+		system: COACH_SYSTEM,
+		doc: "server/services/contentTuning/docs/coach_lines.md",
+	},
+}
+
 export function judgePrompt(
 	styleDoc: string,
 	situation: string,
@@ -37,16 +51,18 @@ export async function judgeExchange(
 	client: ModelClient,
 	situation: string,
 	lines: readonly string[],
+	type = "banter",
 ): Promise<JudgeResult | null> {
+	const spec = SPECS[type] ?? (SPECS.banter as { system: string; doc: string })
 	let styleDoc = ""
 	try {
-		styleDoc = readTuningDoc("server/services/contentTuning/docs/npc_banter.md")
+		styleDoc = readTuningDoc(spec.doc)
 	} catch {
 		// the judge still has the rubric in its instructions
 	}
 	const out = await client.generateText({
 		task: "judge",
-		system: SYSTEM,
+		system: spec.system,
 		prompt: judgePrompt(styleDoc, situation, lines),
 		maxOutputTokens: 200,
 	})
@@ -80,7 +96,7 @@ export async function judgePending(
 		const lines = (r.payload as { lines?: string[] } | null)?.lines
 		if (!Array.isArray(lines)) continue
 		try {
-			const j = await judgeExchange(client, r.situation, lines)
+			const j = await judgeExchange(client, r.situation, lines, type)
 			if (!j) continue
 			const reject = j.score < JUDGE_THRESHOLD
 			await db

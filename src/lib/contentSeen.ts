@@ -8,7 +8,8 @@ const FLUSH_MS = 60_000
 const FLUSH_AT = 10
 const MAX_WAITING = 60
 
-let waiting: number[] = []
+export type SeenType = "banter" | "coach"
+let waiting: { id: number; type: SeenType }[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
 
 /** "ai-12" (a banter id in the picker) or 12: the content item id, or null. */
@@ -21,19 +22,25 @@ export async function flushSeen(): Promise<void> {
 	if (timer) clearTimeout(timer)
 	timer = null
 	if (waiting.length === 0) return
-	const ids = waiting
+	const batch = waiting
 	waiting = []
-	try {
-		await api.post("/gym/content/seen", { ids })
-	} catch {
-		waiting = [...ids, ...waiting].slice(-MAX_WAITING)
+	for (const type of ["banter", "coach"] as const) {
+		const ids = batch.filter((w) => w.type === type).map((w) => w.id)
+		if (ids.length === 0) continue
+		try {
+			await api.post("/gym/content/seen", { ids, type })
+		} catch {
+			waiting = [...ids.map((id) => ({ id, type })), ...waiting].slice(
+				-MAX_WAITING,
+			)
+		}
 	}
 }
 
-export function noteSeen(id: string | number): void {
+export function noteSeen(id: string | number, type: SeenType = "banter"): void {
 	const n = itemIdOf(id)
 	if (n === null) return
-	waiting.push(n)
+	waiting.push({ id: n, type })
 	if (waiting.length >= FLUSH_AT) void flushSeen()
 	else if (!timer) timer = setTimeout(() => void flushSeen(), FLUSH_MS)
 }

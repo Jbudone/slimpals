@@ -40,7 +40,24 @@ export type ChallengeStanding = {
 	complete?: boolean
 }
 
+/** A coach line written by the AI (a content item) for the current voice. */
+export type CoachAiLine = {
+	id: number
+	situation: string
+	lead: string
+	rest: string
+	/** The player has not seen it yet: preferred. */
+	unseen?: boolean
+}
+
+/** How often an AI line replaces a scripted one when one fits the moment. */
+export const AI_SHARE = 0.5
+/** How often an unseen AI line wins over the other AI lines. */
+export const AI_UNSEEN_FIRST = 0.8
+
 export type CoachContext = {
+	/** The voice's AI lines (content pipeline); scripted lines always remain. */
+	ai?: readonly CoachAiLine[]
 	/** The season dressing the gym: its lines now and then replace the task count. */
 	season?: Season | null
 	/** Tasks left today (check-in included). */
@@ -553,6 +570,17 @@ export function coachLineFor(
 		const from = fresh.length ? fresh : pool.map((v, i) => ({ v, i }))
 		const pick = from[Math.floor(rng() * from.length) % from.length]
 		return { id: id(pick.i), lead: pick.v[0], rest: pick.v[1] }
+	}
+	// an AI line for the moment, about half the time one fits
+	const aiPool = (c.ai ?? []).filter((a) => a.situation === sit)
+	if (aiPool.length && rng() < AI_SHARE) {
+		const aid = (a: CoachAiLine) => `ai-${a.id}`
+		const fresh = aiPool.filter((a) => !recent.includes(aid(a)))
+		let from = fresh.length ? fresh : aiPool
+		const unseen = from.filter((a) => a.unseen)
+		if (unseen.length && rng() < AI_UNSEEN_FIRST) from = unseen
+		const pick = from[Math.floor(rng() * from.length) % from.length]
+		return { id: aid(pick), lead: pick.lead, rest: pick.rest }
 	}
 	// a pile of waiting coins gets a nudge now and then, when nothing urgent is up
 	const nudge =
