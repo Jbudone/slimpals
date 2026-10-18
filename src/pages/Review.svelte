@@ -10,6 +10,7 @@ import { page } from "../router.svelte.js"
 
 type Card = {
 	id: number
+	type?: string
 	situation: string
 	lines: string[]
 	status: string
@@ -212,15 +213,20 @@ onMount(() => {
 		</div>
 	{:else}
 		<div class="meta">
-			<span class="chip">{card.situation.replace(/_/g, " ")}</span>
+			{#if card.type === "coach"}<span class="chip">coach line</span>{/if}
+			<span class="chip">{card.situation.replace(/[_:]/g, " ")}</span>
 			{#if card.status === "rejected"}<span class="chip warn">judge rejected it</span>{/if}
 			{#if card.judgeScore !== null}<span class="chip">judge {card.judgeScore}</span>{/if}
 		</div>
 
 		<div class="chat" data-testid="review-card" data-item={card.id}>
-			{#each card.lines as line, i}
-				<p class="bubble" class:right={i % 2 === 1}>{line}</p>
-			{/each}
+			{#if card.type === "coach"}
+				<p class="bubble"><b>{card.lines[0]}</b> {card.lines[1] ?? ""}</p>
+			{:else}
+				{#each card.lines as line, i}
+					<p class="bubble" class:right={i % 2 === 1}>{line}</p>
+				{/each}
+			{/if}
 		</div>
 		{#if card.judgeNote}<p class="note">Judge: {card.judgeNote}</p>{/if}
 
