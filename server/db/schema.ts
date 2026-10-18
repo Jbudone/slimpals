@@ -878,3 +878,34 @@ export const contentReviews = mysqlTable(
 	},
 	(t) => [unique("content_reviews_item_user_uq").on(t.itemId, t.userId)],
 )
+
+export const contentBakeoffEntries = mysqlTable(
+	"content_bakeoff_entries",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		round: varchar("round", { length: 40 }).notNull(),
+		situation: varchar("situation", { length: 40 }).notNull(),
+		model: varchar("model", { length: 120 }).notNull(),
+		lines: json("lines").notNull(),
+		costMicros: int("cost_micros").notNull().default(0),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [index("content_bakeoff_entries_round_idx").on(t.round)],
+)
+
+export const contentBakeoffVotes = mysqlTable(
+	"content_bakeoff_votes",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		round: varchar("round", { length: 40 }).notNull(),
+		userId: varchar("user_id", { length: 36 }).notNull(),
+		entryA: int("entry_a").notNull(),
+		entryB: int("entry_b").notNull(),
+		/** The winning entry id; null = a tie ("neither"). */
+		winner: int("winner"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [
+		unique("content_bakeoff_votes_pair_uq").on(t.userId, t.entryA, t.entryB),
+	],
+)

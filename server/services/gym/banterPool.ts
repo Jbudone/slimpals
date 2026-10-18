@@ -6,7 +6,7 @@ import {
 	parseBanterBlocks,
 } from "../../../shared/gym3d/banterAi.js"
 import type { AIService } from "../ai/index.js"
-import { getBudget } from "../content/config.js"
+import { getBudget, hasRoute } from "../content/config.js"
 import {
 	publishedItems,
 	publishItems,
@@ -14,8 +14,9 @@ import {
 	unseenBacklog,
 } from "../content/items.js"
 import { judgePending } from "../content/judge.js"
-import type { ModelClient } from "../content/modelClient.js"
+import { BudgetError, type ModelClient } from "../content/modelClient.js"
 import { collectSpend, spentOnDay } from "../content/spend.js"
+import { readTuningDoc } from "../contentTuning/fs.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "./layout3dStore.js"
 
@@ -51,6 +52,9 @@ export async function generateBanterPool(
 	now: Date = new Date(),
 	judge?: ModelClient,
 ): Promise<BanterRun> {
+	// once the owner picks a model for "banter" (the bake-off), it writes the
+	// batch through the budgeted client; until then the app's own AI does
+	const viaClient = judge && (await hasRoute(db, "banter")) ? judge : null
 	const run: BanterRun = {
 		added: 0,
 		duplicates: 0,
@@ -59,7 +63,7 @@ export async function generateBanterPool(
 		skippedBacklog: [],
 		skippedBudget: false,
 	}
-	if (!ai.generateBanter) return run
+	if (!ai.generateBanter && !viaClient) return run
 	for (const situation of AI_BANTER_SITUATIONS) {
 		try {
 			if (
@@ -78,16 +82,24 @@ export async function generateBanterPool(
 				run.skippedBudget = true
 				break
 			}
+			const scenario = BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet
 			const {
 				result: text,
 				usd,
 				models,
-			} = await collectSpend(
-				() =>
-					ai.generateBanter?.(
-						BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet,
-					) as Promise<string>,
-			)
+			} = await collectSpend(async () => {
+				if (!viaClient)
+					return (await ai.generateBanter?.(scenario as string)) as string
+				const res = await viaClient.generateText({
+					task: "banter",
+					system: readTuningDoc(
+						"server/services/contentTuning/docs/npc_banter.md",
+					),
+					prompt: `Situation: ${scenario}\n\nWrite the three exchanges now.`,
+					maxOutputTokens: 600,
+				})
+				return res.text
+			})
 			const existing = (
 				await publishedItems(db, BANTER_TYPE, [...AI_BANTER_SITUATIONS])
 			).map((r) => (r.payload as { lines?: string[] }).lines ?? [])
@@ -117,6 +129,10 @@ export async function generateBanterPool(
 				await retireBeyond(db, BANTER_TYPE, situation, POOL_PER_SITUATION)
 			}
 		} catch (err) {
+			if (err instanceof BudgetError) {
+				run.skippedBudget = true
+				break
+			}
 			console.error(`[banter] ${situation} failed, keeping the pool:`, err)
 		}
 	}

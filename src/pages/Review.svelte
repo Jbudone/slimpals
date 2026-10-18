@@ -24,6 +24,56 @@ type Stats = {
 	judgeAgreement: number | null
 }
 
+type Pair = {
+	a: { id: number; lines: string[] }
+	b: { id: number; lines: string[] }
+	situation: string
+	left: number
+}
+let mode = $state<"review" | "bakeoff">(
+	typeof location !== "undefined" && location.search.includes("mode=bakeoff")
+		? "bakeoff"
+		: "review",
+)
+let pair = $state<Pair | null>(null)
+let pairLoaded = $state(false)
+
+async function loadPair() {
+	try {
+		const d = await api.get<{ pair: Pair | null }>(
+			"/admin/content/bakeoff/next",
+		)
+		pair = d.pair
+		pairLoaded = true
+		error = null
+	} catch (e) {
+		error = (e as Error).message
+	}
+}
+
+async function vote(winner: "a" | "b" | "tie") {
+	if (!pair || busy) return
+	busy = true
+	try {
+		await api.post("/admin/content/bakeoff/vote", {
+			a: pair.a.id,
+			b: pair.b.id,
+			winner: winner === "tie" ? null : pair[winner].id,
+		})
+		doneThisSession++
+		await loadPair()
+	} catch (e) {
+		error = (e as Error).message
+	} finally {
+		busy = false
+	}
+}
+
+function setMode(m: "review" | "bakeoff") {
+	mode = m
+	if (m === "bakeoff") void loadPair()
+}
+
 let cards = $state<Card[]>([])
 let waiting = $state(0)
 let stats = $state<Stats | null>(null)
@@ -92,6 +142,12 @@ function toggle(tag: string) {
 
 function key(e: KeyboardEvent) {
 	if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey) return
+	if (mode === "bakeoff") {
+		if (e.key === "a" || e.key === "ArrowLeft") void vote("a")
+		else if (e.key === "b" || e.key === "ArrowRight") void vote("b")
+		else if (e.key === "t") void vote("tie")
+		return
+	}
 	if (e.key === "g") void decide("good")
 	else if (e.key === "m") void decide("meh")
 	else if (e.key === "b") void decide("bad")
@@ -100,6 +156,7 @@ function key(e: KeyboardEvent) {
 
 onMount(() => {
 	void load()
+	if (mode === "bakeoff") void loadPair()
 	const t = setInterval(() => (now = Date.now()), 30_000)
 	return () => clearInterval(t)
 })
@@ -115,8 +172,34 @@ onMount(() => {
 		</p>
 	</header>
 
+	<div class="modes" role="tablist">
+		<button type="button" class="tag" class:on={mode === "review"} onclick={() => setMode("review")} data-testid="mode-review">Review</button>
+		<button type="button" class="tag" class:on={mode === "bakeoff"} onclick={() => setMode("bakeoff")} data-testid="mode-bakeoff">Which is funnier?</button>
+	</div>
+
 	{#if error}
 		<p class="error">{error}</p>
+	{:else if mode === "bakeoff"}
+		{#if !pairLoaded}
+			<p class="muted">Loading…</p>
+		{:else if !pair}
+			<div class="empty" data-testid="bake-empty">
+				<h2>No pairs to compare</h2>
+				<p class="muted">Start a round from the Admin card, or you have voted on every pair.</p>
+			</div>
+		{:else}
+			<p class="muted">Which is funnier? {pair.left} more pairs.</p>
+			{#each [pair.a, pair.b] as opt, n}
+				<button type="button" class="opt" disabled={busy} onclick={() => vote(n === 0 ? "a" : "b")} data-testid={n === 0 ? "bake-a" : "bake-b"}>
+					<span class="optname">{n === 0 ? "A" : "B"}</span>
+					{#each opt.lines as line, i}
+						<span class="bubble" class:right={i % 2 === 1}>{line}</span>
+					{/each}
+				</button>
+			{/each}
+			<button type="button" class="skip" disabled={busy} onclick={() => vote("tie")} data-testid="bake-tie">Neither / tie</button>
+			<p class="hint muted">Names are hidden on purpose. Keys: a, b, t.</p>
+		{/if}
 	{:else if !stats}
 		<p class="muted">Loading…</p>
 	{:else if !card}
@@ -239,6 +322,33 @@ header {
 	background: var(--color-warning);
 	color: var(--admin-on-warning);
 	border-color: transparent;
+}
+.modes {
+	display: flex;
+	gap: var(--space-2);
+}
+.opt {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	text-align: left;
+	background: transparent;
+	color: var(--color-text);
+	border: 2px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3);
+	font: inherit;
+	cursor: pointer;
+}
+.opt:active {
+	border-color: var(--color-warning);
+}
+.optname {
+	font-size: var(--font-size-xs);
+	color: var(--color-text-muted);
+}
+.opt .bubble {
+	max-width: 100%;
 }
 .verdicts {
 	display: grid;

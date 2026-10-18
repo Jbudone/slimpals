@@ -3,6 +3,10 @@
 // that a provider key works.
 import { Router } from "express"
 import {
+	BAKEOFF_DEFAULT_MODELS,
+	parseModelLabel,
+} from "../../shared/content/bakeoff.js"
+import {
 	dailyCapUsd,
 	dayNumber,
 	dayOf,
@@ -12,11 +16,21 @@ import { db } from "../db/index.js"
 import { requireAdmin } from "../middleware/requireAdmin.js"
 import type { AuthRequest } from "../middleware/requireAuth.js"
 import {
+	BakeoffError,
+	bakeoffRunning,
+	bakeoffState,
+	castVote,
+	latestRound,
+	nextPair,
+	runBakeoff,
+} from "../services/content/bakeoff.js"
+import {
 	getBudget,
 	getReportConfig,
 	getRoutes,
 	setBudget,
 	setReportConfig,
+	setRoute,
 } from "../services/content/config.js"
 import { contentStats } from "../services/content/items.js"
 import {
@@ -92,6 +106,83 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			throw err
 		}
 	})
+
+	// The blind bake-off: start a round (runs in the background), vote on
+	// unnamed pairs, read the standings, point banter at the winner.
+	router.get("/admin/content/bakeoff", requireAdmin, async (_req, res) => {
+		res.json({
+			...(await bakeoffState(db, await latestRound(db))),
+			defaults: BAKEOFF_DEFAULT_MODELS,
+		})
+	})
+
+	router.post(
+		"/admin/content/bakeoff/start",
+		requireAdmin,
+		async (req, res) => {
+			if (bakeoffRunning()) {
+				res.status(409).json({ error: "A round is already running" })
+				return
+			}
+			const raw: unknown[] = Array.isArray(req.body?.models)
+				? req.body.models
+				: BAKEOFF_DEFAULT_MODELS.map((m) => `${m.provider}:${m.model}`)
+			const models = raw
+				.map((m) => (typeof m === "string" ? parseModelLabel(m) : null))
+				.filter((m): m is NonNullable<typeof m> => m !== null)
+				.slice(0, 8)
+			if (models.length < 2) {
+				res.status(400).json({
+					error:
+						"Give at least two models as provider:model (gemini or openrouter)",
+				})
+				return
+			}
+			const client = createModelClient(db, deps.adapters, clock)
+			const round = `b${clock().getTime().toString(36)}`
+			const done = runBakeoff(db, client, models, round).catch((err) =>
+				console.error("[bakeoff] failed:", err),
+			)
+			if (req.body?.wait) await done
+			res.status(202).json({ round })
+		},
+	)
+
+	router.get("/admin/content/bakeoff/next", requireAdmin, async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		const round = await latestRound(db)
+		const pair = round ? await nextPair(db, userId, round) : null
+		res.json({ pair, ...(await bakeoffState(db, round)) })
+	})
+
+	router.post("/admin/content/bakeoff/vote", requireAdmin, async (req, res) => {
+		try {
+			await castVote(db, (req as AuthRequest).user.id, req.body ?? {})
+			res.json({ ok: true })
+		} catch (err) {
+			if (err instanceof BakeoffError) {
+				res.status(err.status).json({ error: err.message })
+				return
+			}
+			throw err
+		}
+	})
+
+	router.post(
+		"/admin/content/bakeoff/apply",
+		requireAdmin,
+		async (req, res) => {
+			const route =
+				typeof req.body?.model === "string"
+					? parseModelLabel(req.body.model)
+					: null
+			if (!route) {
+				res.status(400).json({ error: "model must be provider:model" })
+				return
+			}
+			res.json({ routes: await setRoute(db, "banter", route) })
+		},
+	)
 
 	router.put("/admin/content/budget", requireAdmin, async (req, res) => {
 		try {

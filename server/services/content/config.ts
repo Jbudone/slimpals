@@ -130,3 +130,25 @@ export async function getPriceOverrides(
 ): Promise<Record<string, ModelPrice>> {
 	return (await read<Record<string, ModelPrice>>(db, "prices")) ?? {}
 }
+
+/** Points a task (for example "banter") at a model; the next call uses it. */
+export async function setRoute(
+	db: Db,
+	task: string,
+	route: ModelRoute,
+): Promise<ModelRoutes> {
+	if (
+		!/^[a-z_]{2,30}$/.test(task) ||
+		(route.provider !== "gemini" && route.provider !== "openrouter") ||
+		!route.model
+	)
+		throw new Error("bad route")
+	const stored = (await read<ModelRoutes>(db, "routes")) ?? {}
+	await write(db, "routes", { ...stored, [task]: route })
+	return getRoutes(db)
+}
+
+/** True when the owner pointed this task at a model (the default is not one). */
+export async function hasRoute(db: Db, task: string): Promise<boolean> {
+	return Boolean((await read<ModelRoutes>(db, "routes"))?.[task])
+}

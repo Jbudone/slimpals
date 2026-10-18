@@ -127,7 +127,55 @@ const testCall = (provider: "gemini" | "openrouter", model: string) =>
 		await api.post("/admin/content/test-call", { provider, model })
 	})
 
-onMount(load)
+type Bake = {
+	round: string | null
+	running: boolean
+	entries: number
+	votes: number
+	standings: {
+		model: string
+		wins: number
+		losses: number
+		ties: number
+		games: number
+		rate: number | null
+		avgCostUsd: number | null
+	}[]
+	defaults: { provider: string; model: string }[]
+}
+let bake = $state<Bake | null>(null)
+let bakeModels = $state("")
+
+async function loadBake() {
+	try {
+		bake = await api.get<Bake>("/admin/content/bakeoff")
+		if (!bakeModels)
+			bakeModels = bake.defaults
+				.map((m) => `${m.provider}:${m.model}`)
+				.join("\n")
+	} catch {
+		bake = null
+	}
+}
+const startBake = () =>
+	run(
+		"Bake-off started: it takes a few minutes, then vote on /review",
+		async () => {
+			await api.post("/admin/content/bakeoff/start", {
+				models: bakeModels.split(/\s+/).filter(Boolean),
+			})
+			await loadBake()
+		},
+	)
+const useForBanter = (model: string) =>
+	run(`Banter now uses ${model}`, () =>
+		api.post("/admin/content/bakeoff/apply", { model }),
+	)
+
+onMount(() => {
+	void load()
+	void loadBake()
+})
 </script>
 
 <section class="card" data-testid="admin-content">
@@ -173,6 +221,33 @@ onMount(load)
 			{data.reviews.total} reviewed ({data.reviews.today} in the last day){#if data.reviews.judgeAgreement !== null}; the judge agreed with you on {Math.round(data.reviews.judgeAgreement * 100)}%{/if}.
 		</p>
 		<a class="reviewlink" href="/review" data-testid="open-review">Open the review queue</a>
+
+		<h3>Model bake-off</h3>
+		<p class="muted">
+			Each model writes the same banter; you pick the funnier of two unnamed exchanges on the review page. Slugs are unverified: edit the list, one provider:model per line.
+		</p>
+		<textarea rows="6" bind:value={bakeModels} aria-label="Bake-off models" data-testid="bake-models"></textarea>
+		<button type="button" disabled={busy || bake?.running} onclick={startBake} data-testid="bake-start">
+			{bake?.running ? "Running…" : "Start a bake-off round"}
+		</button>
+		{#if bake?.round}
+			<p class="muted" data-testid="bake-summary">
+				Round {bake.round}: {bake.entries} exchanges, {bake.votes} votes.
+				<a href="/review?mode=bakeoff">Vote</a> · <button type="button" class="linklike" onclick={loadBake}>Refresh</button>
+			</p>
+			<table data-testid="bake-standings">
+				<tbody>
+					{#each bake.standings as s}
+						<tr>
+							<td>{s.model}</td>
+							<td class="num">{s.rate === null ? "–" : `${Math.round(s.rate * 100)}%`} ({s.wins}-{s.losses}-{s.ties})</td>
+							<td class="num">{s.avgCostUsd === null ? "" : usd(s.avgCostUsd)}</td>
+							<td class="num"><button type="button" disabled={busy || s.games < 5} onclick={() => useForBanter(s.model)}>Use for banter</button></td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		{/if}
 
 		<h3>Content players see</h3>
 		<p data-testid="content-exposure">
@@ -375,6 +450,20 @@ select {
 	color: var(--admin-on-warning);
 	font-weight: var(--font-weight-medium);
 	text-decoration: none;
+}
+.linklike {
+	background: none;
+	border: none;
+	color: inherit;
+	text-decoration: underline;
+	min-height: 0;
+	padding: 0;
+	cursor: pointer;
+}
+textarea {
+	width: 100%;
+	font: inherit;
+	padding: var(--space-2) var(--space-3);
 }
 .meter {
 	height: 12px;
