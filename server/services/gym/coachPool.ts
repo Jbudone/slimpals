@@ -6,6 +6,7 @@
 import { and, eq, inArray } from "drizzle-orm"
 import { canSpend, dayOf } from "../../../shared/content/budget.js"
 import { nearDuplicate } from "../../../shared/content/quality.js"
+import { hasCliche } from "../../../shared/content/tasteKit.js"
 import {
 	COACH_AI_SITUATIONS,
 	cleanCoachPair,
@@ -22,6 +23,7 @@ import { contentSeen, users } from "../../db/schema.js"
 import { getAutoPublish, getBudget } from "../content/config.js"
 import {
 	candidateCount,
+	keepTopCandidates,
 	publishedItems,
 	publishItems,
 	retireBeyond,
@@ -30,6 +32,7 @@ import {
 import { judgePending } from "../content/judge.js"
 import { BudgetError, type ModelClient } from "../content/modelClient.js"
 import { collectSpend, spentOnDay } from "../content/spend.js"
+import { loadKit } from "../content/tasteKit.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import type { Db } from "./layout3dStore.js"
 
@@ -40,7 +43,9 @@ export const COACH_POOL_PER_KEY = 6
 export const COACH_UNSEEN_MAX = 3
 /** Unreviewed candidates before no more are written. */
 export const COACH_CANDIDATE_MAX = 12
-const ASK = 4
+const ASK = 8
+/** Of a batch, how many the judge lets through to the owner. */
+const KEEP_PER_KEY = 2
 const BATCH_ESTIMATE_USD = 0.005
 
 const VOICE_BRIEF: Record<CoachVoice, string> = {
@@ -108,6 +113,12 @@ export async function generateCoachPool(
 		return run
 	}
 	run.voices = await voicesInUse(db)
+	const kit = await loadKit(db, COACH_TYPE)
+	const examples = (list: { lines: readonly string[] }[]) =>
+		list
+			.slice(0, 4)
+			.map((e) => `${e.lines[0]} | ${e.lines[1]}`)
+			.join("\n")
 	outer: for (const voice of run.voices) {
 		for (const sit of COACH_AI_SITUATIONS) {
 			const key = coachSituationKey(voice, sit)
@@ -130,8 +141,8 @@ export async function generateCoachPool(
 					client.generateText({
 						task: "coach",
 						system: styleDoc,
-						prompt: `You are ${COACH_NAMES[voice]}, ${VOICE_BRIEF[voice]}. Moment: ${MOMENT[sit]}. Write ${ASK} different coach lines for this moment, one per line, in the form: lead | follow-up. The lead is 1 to 5 words, the follow-up one short sentence. No exclamation marks, no placeholders, nothing about the body. Output only the lines.`,
-						maxOutputTokens: 400,
+						prompt: `You are ${COACH_NAMES[voice]}, ${VOICE_BRIEF[voice]}. Moment: ${MOMENT[sit]}. Write ${ASK} different coach lines for this moment, one per line, in the form: lead | follow-up. The lead is 1 to 5 words, the follow-up one short sentence. No exclamation marks, no placeholders, nothing about the body. Make them specific to the moment and different from each other, with a little dry wit rather than stock motivation.${kit.gold.length ? `\nLines the owner liked:\n${examples(kit.gold)}` : ""}${kit.anti.length ? `\nLines the owner rejected (nothing like these):\n${examples(kit.anti)}` : ""} Output only the lines.`,
+						maxOutputTokens: 900,
 					}),
 				)
 				const existing = (await publishedItems(db, COACH_TYPE, [key])).map(
@@ -140,7 +151,7 @@ export async function generateCoachPool(
 				const good: [string, string][] = []
 				for (const [lead, rest] of parseCoachPairs(result.text)) {
 					const pair = cleanCoachPair(lead, rest)
-					if (!pair) continue
+					if (!pair || hasCliche(pair)) continue
 					if (nearDuplicate(pair, [...existing, ...good])) {
 						run.duplicates++
 						continue
@@ -176,6 +187,15 @@ export async function generateCoachPool(
 		const j = await judgePending(db, client, COACH_TYPE)
 		run.judged = j.judged
 		run.judgeRejected = j.rejected
+		if (!auto)
+			for (const v of run.voices)
+				for (const s of COACH_AI_SITUATIONS)
+					await keepTopCandidates(
+						db,
+						COACH_TYPE,
+						coachSituationKey(v, s),
+						KEEP_PER_KEY,
+					)
 	} catch (err) {
 		console.error("[coach] judging failed, items stay unjudged:", err)
 	}
