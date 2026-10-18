@@ -113,11 +113,27 @@ function itemBlock(it: ReportItem): string[] {
 }
 
 /** Things worth a look, in plain words. Empty when all is well. */
+/** On the day a cheaper (or dearer) budget step begins, say so with what the
+ * period before it actually cost, so the step can be kept or changed. */
+export function budgetStepNotes(i: ReportInput): string[] {
+	const day = dayNumber(i.budget, i.now)
+	const steps = i.budget.steps
+	const idx = steps.findIndex((s) => s.fromDay === day && day > 0)
+	if (idx <= 0) return []
+	const prev = steps[idx - 1] as { usd: number }
+	const now = steps[idx] as { usd: number }
+	const days = i.summary.byDay.length || 1
+	return [
+		`The daily budget steps from ${usd(prev.usd)} to ${usd(now.usd)} today. The last ${days} day(s) cost ${usd(i.summary.totalUsd)} (${usd(i.summary.totalUsd / days)} a day). Change it on the Admin card if that is not right.`,
+	]
+}
+
 export function headsUp(i: ReportInput): string[] {
 	const out: string[] = []
 	const cap = dailyCapUsd(i.budget, i.now)
 	if (cap > 0 && i.today / cap >= 0.8)
 		out.push(`Today's spend is ${pct(i.today / cap)} of the ${usd(cap)} cap.`)
+	out.push(...budgetStepNotes(i))
 	if (i.failures && i.failures.length > 0)
 		out.push(
 			`${i.failures.length} model call(s) failed in this period (see Failures).`,

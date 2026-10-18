@@ -308,6 +308,33 @@ describe("report detail", () => {
 		expect(buildReport(base).text).not.toContain("MODEL BAKE-OFF")
 	})
 
+	it("announces a budget step with what the period before cost", () => {
+		const r = buildReport({
+			...base,
+			now: new Date("2026-10-15T14:00:00Z"),
+			budget: {
+				startDate: "2026-10-08",
+				steps: [
+					{ fromDay: 0, usd: 5 },
+					{ fromDay: 7, usd: 1 },
+				],
+				reservePct: 10,
+			},
+			summary: {
+				...base.summary,
+				totalUsd: 7,
+				byDay: Array.from({ length: 7 }, (_, k) => ({
+					key: `d${k}`,
+					usd: 1,
+					calls: 1,
+				})),
+			},
+		})
+		expect(r.text).toContain("steps from $5.00 to $1.00 today")
+		expect(r.text).toContain("$1.00 a day")
+		expect(buildReport(base).text).not.toContain("steps from")
+	})
+
 	it("is calm when all is well", () => {
 		const r = buildReport({ ...base, summary: { ...base.summary, failed: 0 } })
 		expect(r.text).toContain("Nothing needs attention.")
