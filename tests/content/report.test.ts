@@ -281,6 +281,33 @@ describe("report detail", () => {
 		expect(r.text).toContain("OpenRouter key is not set")
 	})
 
+	it("mentions the bake-off with a nudge to vote", () => {
+		const r = buildReport({
+			...base,
+			bakeoff: {
+				round: "b1",
+				running: false,
+				entries: 40,
+				votes: 6,
+				standings: [
+					{
+						model: "gemini:g1",
+						wins: 4,
+						losses: 1,
+						ties: 1,
+						games: 6,
+						rate: 0.75,
+						avgCostUsd: 0.001,
+					},
+				],
+			},
+		})
+		expect(r.text).toContain("MODEL BAKE-OFF")
+		expect(r.text).toContain("Leading: gemini:g1, 75% over 6 games")
+		expect(r.text).toContain("/review?mode=bakeoff")
+		expect(buildReport(base).text).not.toContain("MODEL BAKE-OFF")
+	})
+
 	it("is calm when all is well", () => {
 		const r = buildReport({ ...base, summary: { ...base.summary, failed: 0 } })
 		expect(r.text).toContain("Nothing needs attention.")
