@@ -271,3 +271,29 @@ and cost, not for taste.
 
 Banter freshness work (#303) is the first consumer, and the pipeline is how it
 gets done.
+
+## Status (updated 2026-10-18)
+
+| Phase | State |
+|---|---|
+| 0 Foundations (client, ledger, budget, report, admin card) | Built |
+| 1 Item record and exposure telemetry (banter) | Built |
+| 2a Gates, model judge, phone review queue | Built |
+| 2b Blind bake-off | Built; **needs a first round**: start it on the Admin card, vote at `/review?mode=bakeoff` |
+| 3 Weekly email and full dashboard | Report has daily detail, bake-off, budget-step notes; weekly cadence is a setting; no dashboard beyond the Admin card |
+| 4 Exposure-first, other automatic types | Exposure-first for banter and coach lines; **coach lines lane built** (nightly, judged, reviewable). Not yet: challenge lines, tournament flavour, staff room variety, demand-driven briefs |
+| 5 Art lane | Not started |
+| 6 Tier 2 drafting, council, shadow mode, golden regression | Not started |
+| 7 Budget step-down | Schedule built ($5 to $1 on day 7); the report announces the step with what the week cost |
+
+Why staff room variety has not been done: its episodes are ids tied to an arc,
+a slot date and a number (`roomState`, the diary, replays, the seen claim), so an
+AI episode needs its own way to become "the waiting one". The clean version is
+a bonus-episode slot that the review queue approves (status `candidate` to
+`published`), played through the same card. That is its own design step.
+
+Things to do by hand when you start (all on the phone):
+1. Admin card: check the key lights, run the test calls, then start a bake-off round.
+2. `/review?mode=bakeoff`: about 30 votes, then "Use for banter" on the leader.
+3. `/review`: judge items and coach lines (the queue fills after the 00:40 and 00:50 UTC jobs).
+4. Look at the first daily report; tell me what is noisy or missing.
