@@ -10,6 +10,7 @@ import {
 import { scheduledJobRuns, users } from "../../db/schema.js"
 import { type SendResult, sendEmail } from "../email/resend.js"
 import type { Db } from "../gym/layout3dStore.js"
+import { type BakeoffState, bakeoffState, latestRound } from "./bakeoff.js"
 import {
 	getBudget,
 	getReportConfig,
@@ -81,6 +82,7 @@ export type ReportInput = {
 	unseenBy?: { type: string; situation: string; n: number }[]
 	topPlayed?: ReportItem[]
 	reviews?: ReviewStats
+	bakeoff?: BakeoffState
 	keys?: { gemini: boolean; openrouter: boolean }
 	/** Public address of the admin page, when known. */
 	pageUrl?: string
@@ -178,6 +180,21 @@ function reviewLines(r?: ReviewStats): string[] {
 	]
 }
 
+export function bakeoffLines(b?: BakeoffState): string[] {
+	if (!b?.round) return []
+	if (b.running) return ["A bake-off round is still being written."]
+	const lead = b.standings.find((s) => s.games > 0)
+	return [
+		`Round ${b.round}: ${b.entries} exchanges, ${b.votes} votes.`,
+		lead
+			? `Leading: ${lead.model}, ${pct(lead.rate ?? 0)} over ${lead.games} games.`
+			: "No votes yet.",
+		b.votes < 30
+			? "A few more votes would settle it: open /review?mode=bakeoff on your phone."
+			: "Enough votes to choose: use the winner on the Admin card.",
+	]
+}
+
 function jobLines(run?: JobRunInfo): string[] {
 	if (!run) return ["Nightly banter job: no run recorded yet"]
 	const r = (run.result ?? {}) as {
@@ -257,6 +274,9 @@ export function buildReport(i: ReportInput): { subject: string; text: string } {
 		"",
 		"YOUR REVIEWS",
 		...reviewLines(i.reviews),
+		...(i.bakeoff?.round
+			? ["", "MODEL BAKE-OFF", ...bakeoffLines(i.bakeoff)]
+			: []),
 		"",
 		"CONTENT TOTALS",
 		...contentLines(i.content),
@@ -335,6 +355,7 @@ export async function sendReport(
 		unseenBy: await unseenBySituation(db),
 		topPlayed: await mostPlayed(db, 3),
 		reviews: await reviewStats(db, since),
+		bakeoff: await bakeoffState(db, await latestRound(db)),
 		keys: {
 			gemini: Boolean(process.env.GEMINI_API_KEY),
 			openrouter: Boolean(process.env.OPENROUTER_API_KEY),
