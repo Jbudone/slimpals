@@ -1,3 +1,4 @@
+import { and, eq, inArray } from "drizzle-orm"
 import { canSpend, dayOf } from "../../../shared/content/budget.js"
 import { nearDuplicate } from "../../../shared/content/quality.js"
 import {
@@ -5,6 +6,7 @@ import {
 	cleanBanterLines,
 	parseBanterBlocks,
 } from "../../../shared/gym3d/banterAi.js"
+import { contentSeen } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
 import { getBudget, hasRoute } from "../content/config.js"
 import {
@@ -151,14 +153,35 @@ export async function generateBanterPool(
 /** The pool as the client reads it: newest first. The id is the content item's. */
 export async function loadBanterPool(
 	db: Db,
-): Promise<{ id: number; situation: string; lines: string[] }[]> {
+	userId?: string,
+): Promise<
+	{ id: number; situation: string; lines: string[]; seen?: boolean }[]
+> {
 	const rows = await publishedItems(db, BANTER_TYPE, [...AI_BANTER_SITUATIONS])
+	// exposure-first: tell the client which ones this player has not seen
+	const seen = new Set<number>()
+	if (userId && rows.length) {
+		const s = await db
+			.select({ id: contentSeen.itemId })
+			.from(contentSeen)
+			.where(
+				and(
+					eq(contentSeen.userId, userId),
+					inArray(
+						contentSeen.itemId,
+						rows.map((r) => r.id),
+					),
+				),
+			)
+		for (const x of s) seen.add(x.id)
+	}
 	return rows.map((r) => {
 		const lines = (r.payload as { lines?: unknown } | null)?.lines
 		return {
 			id: r.id,
 			situation: r.situation,
 			lines: Array.isArray(lines) ? (lines as string[]) : [],
+			...(userId ? { seen: seen.has(r.id) } : {}),
 		}
 	})
 }

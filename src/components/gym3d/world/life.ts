@@ -479,11 +479,16 @@ export class Life {
 	/** Two people close together swap a scripted exchange that fits the gym
 	 * (rarely: one every minute or so). */
 	setExtraBanter(
-		rows: readonly { id: number; situation: string; lines: string[] }[],
+		rows: readonly {
+			id: number
+			situation: string
+			lines: string[]
+			seen?: boolean
+		}[],
 	): void {
 		this.extraBanter = rows.flatMap((r) => {
 			const b = banterFromAi(r)
-			return b ? [b] : []
+			return b ? [{ ...b, ...(r.seen === false ? { unseen: true } : {}) }] : []
 		})
 	}
 
@@ -518,6 +523,8 @@ export class Life {
 				: (bond ?? pairs[Math.floor(this.rng() * pairs.length) % pairs.length])
 		this.banterSeen.push(b.id)
 		this.onBanterPlayed?.(b.id)
+		const played = this.extraBanter.find((x) => x.id === b.id)
+		if (played) played.unseen = false
 		if (this.banterSeen.length > 6) this.banterSeen.shift()
 		this.banterTimer = (this.calm ? 150 : 100) + this.rng() * 60
 		b.lines.forEach((text, i) => {

@@ -35,6 +35,8 @@ export type BanterWhen = "event" | "classes" | "upgraded" | "maxout"
 
 export type Banter = {
 	id: string
+	/** An AI exchange this player has not seen yet; picked first (exposure). */
+	unseen?: boolean
 	/** Only when this room type does not exist yet. */
 	missingRoom?: string
 	/** Only when this gear is not placed anywhere. */
@@ -543,6 +545,9 @@ export function banterFor(
 
 /** One exchange for the gym as it is, not one of the `recent` ids when
  * another fits; null when nothing fits. */
+/** How often an unseen AI exchange wins over the rest of the fitting pool. */
+export const UNSEEN_FIRST = 0.8
+
 export function pickBanter(
 	ctx: BanterContext,
 	recent: readonly string[],
@@ -552,7 +557,11 @@ export function pickBanter(
 	const pool = banterFor(ctx, extra)
 	if (!pool.length) return null
 	const fresh = pool.filter((b) => !recent.includes(b.id))
-	const from = fresh.length ? fresh : pool
+	let from = fresh.length ? fresh : pool
+	// exposure-first: generated content costs money, so the player sees the
+	// exchanges they have not met yet before repeats (most of the time)
+	const unseen = from.filter((b) => b.unseen)
+	if (unseen.length && rng() < UNSEEN_FIRST) from = unseen
 	return from[Math.floor(rng() * from.length) % from.length]
 }
 

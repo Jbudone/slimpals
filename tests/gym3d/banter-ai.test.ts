@@ -1,14 +1,23 @@
 import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { contentItems, invites, users } from "../../server/db/schema.js"
+import {
+	contentItems,
+	contentSeen,
+	invites,
+	users,
+} from "../../server/db/schema.js"
 import type { AIService } from "../../server/services/ai/index.js"
 import {
 	generateBanterPool,
 	loadBanterPool,
 	POOL_PER_SITUATION,
 } from "../../server/services/gym/banterPool.js"
-import { type BanterContext, banterFor } from "../../shared/gym3d/banter.js"
+import {
+	type BanterContext,
+	banterFor,
+	pickBanter,
+} from "../../shared/gym3d/banter.js"
 import {
 	AI_BANTER_SITUATIONS,
 	banterFromAi,
@@ -103,6 +112,44 @@ describe("the nightly banter pool", () => {
 		)
 		// the one with an exclamation mark never got in
 		expect(JSON.stringify(pool)).not.toContain("breaks the rules")
+	})
+
+	it("tells a player which exchanges they have not seen", async () => {
+		const db = await getTestDb()
+		await generateBanterPool(db, goodAI)
+		const [first] = await loadBanterPool(db)
+		await db
+			.insert(contentSeen)
+			.values({ itemId: (first as { id: number }).id, userId: "u-seen" })
+		const pool = await loadBanterPool(db, "u-seen")
+		expect(pool.filter((p) => p.seen)).toHaveLength(1)
+		expect(pool.find((p) => p.id === first?.id)?.seen).toBe(true)
+		expect((await loadBanterPool(db, "nobody")).every((p) => !p.seen)).toBe(
+			true,
+		)
+	})
+
+	it("picks an unseen exchange most of the time", () => {
+		const ctx: BanterContext = { rooms: [], gear: [], crowded: true }
+		const extra = [
+			{
+				id: "ai-1",
+				lines: ["One two three.", "Four five six."],
+				crowded: true,
+				unseen: true,
+			},
+			{
+				id: "ai-2",
+				lines: ["Seven eight nine.", "Ten eleven twelve."],
+				crowded: true,
+			},
+		] as never
+		let hits = 0
+		for (let i = 0; i < 50; i++) {
+			const b = pickBanter(ctx, [], () => 0.1, extra)
+			if (b?.id === "ai-1") hits++
+		}
+		expect(hits).toBe(50)
 	})
 
 	it("keeps only the newest few of a situation", async () => {
