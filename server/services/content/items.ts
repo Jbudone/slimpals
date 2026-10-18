@@ -45,6 +45,7 @@ export async function publishedItems(
 	db: Db,
 	type: string,
 	situations: string[],
+	statuses: ("published" | "candidate")[] = ["published"],
 ) {
 	return db
 		.select()
@@ -52,7 +53,7 @@ export async function publishedItems(
 		.where(
 			and(
 				eq(contentItems.type, type),
-				eq(contentItems.status, "published"),
+				inArray(contentItems.status, statuses),
 				inArray(contentItems.situation, situations),
 			),
 		)
@@ -298,4 +299,38 @@ export async function pullUnreviewed(db: Db, types: string[]): Promise<number> {
 			),
 		)
 	return Number((res as { affectedRows?: number }).affectedRows ?? 0)
+}
+
+/** Of the judged, unreviewed candidates of a situation keeps the best `k` and
+ * rejects the rest: writing many and keeping few is how a batch gets better
+ * than any one try. Returns how many were rejected. */
+export async function keepTopCandidates(
+	db: Db,
+	type: string,
+	situation: string,
+	k: number,
+): Promise<number> {
+	const rows = await db
+		.select({ id: contentItems.id, score: contentItems.judgeScore })
+		.from(contentItems)
+		.where(
+			and(
+				eq(contentItems.type, type),
+				eq(contentItems.situation, situation),
+				eq(contentItems.status, "candidate"),
+				sql`${contentItems.reviewState} IS NULL`,
+				sql`${contentItems.judgeScore} IS NOT NULL`,
+			),
+		)
+		.orderBy(desc(contentItems.judgeScore), desc(contentItems.id))
+	const drop = rows.slice(k).map((r) => r.id)
+	if (!drop.length) return 0
+	await db
+		.update(contentItems)
+		.set({
+			status: "rejected",
+			judgeNote: "outscored by better lines in its batch",
+		})
+		.where(inArray(contentItems.id, drop))
+	return drop.length
 }

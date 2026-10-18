@@ -173,7 +173,7 @@ describe("POST /api/admin/content-tuning/npc_banter/default/generate", () => {
 			.set("Cookie", cookie)
 			.send({ contextParams: { situation: "no_pool" } })
 		expect(res.status).toBe(200)
-		expect(res.body.sample).toContain("rules: Write three short exchanges")
+		expect(res.body.sample).toContain("rules: Ambient gym banter")
 		expect(res.body.sample).toContain("MaxOut")
 	})
 })

@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm"
 import { canSpend, dayOf } from "../../../shared/content/budget.js"
 import { nearDuplicate } from "../../../shared/content/quality.js"
+import { banterBrief, hasCliche } from "../../../shared/content/tasteKit.js"
 import {
 	AI_BANTER_SITUATIONS,
 	cleanBanterLines,
@@ -8,9 +9,10 @@ import {
 } from "../../../shared/gym3d/banterAi.js"
 import { contentSeen } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
-import { getAutoPublish, getBudget, hasRoute } from "../content/config.js"
+import { getAutoPublish, getBudget } from "../content/config.js"
 import {
 	candidateCount,
+	keepTopCandidates,
 	publishedItems,
 	publishItems,
 	retireBeyond,
@@ -19,6 +21,7 @@ import {
 import { judgePending } from "../content/judge.js"
 import { BudgetError, type ModelClient } from "../content/modelClient.js"
 import { collectSpend, spentOnDay } from "../content/spend.js"
+import { loadKit } from "../content/tasteKit.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "./layout3dStore.js"
@@ -33,6 +36,10 @@ export const UNSEEN_BACKLOG_MAX = 4
 /** Candidates waiting for the owner, per type, before more are not written:
  * a long queue of unreviewed lines is a cost, not a stock. */
 export const CANDIDATE_MAX = 12
+
+/** Exchanges written per situation, and how many the best-of keeps. */
+export const WRITE_PER_BATCH = 10
+export const KEEP_PER_SITUATION = 2
 
 /** What one batch call is expected to cost at most, for the budget check. */
 const BATCH_ESTIMATE_USD = 0.01
@@ -49,6 +56,10 @@ export type BanterRun = {
 	skippedBudget: boolean
 	/** The review queue was full, so nothing was written. */
 	skippedReviewQueue?: boolean
+	/** Dropped for stock gym talk or AI filler. */
+	cliches?: number
+	/** Rejected because better lines in the same batch outscored them. */
+	outscored?: number
 }
 
 /** The nightly batch: asks the AI for exchanges per situation, keeps the ones
@@ -60,10 +71,13 @@ export async function generateBanterPool(
 	ai: AIService,
 	now: Date = new Date(),
 	judge?: ModelClient,
+	opts: { writeWithClient?: boolean } = {},
 ): Promise<BanterRun> {
-	// once the owner picks a model for "banter" (the bake-off), it writes the
-	// batch through the budgeted client; until then the app's own AI does
-	const viaClient = judge && (await hasRoute(db, "banter")) ? judge : null
+	// with a client the batch is written through the budgeted, routed client
+	// (the owner can pick the model from the bake-off); without one, the app's
+	// own AI writes it from the plain scenario (tests)
+	const viaClient = opts.writeWithClient === false ? null : (judge ?? null)
+	const kit = viaClient ? await loadKit(db, BANTER_TYPE) : null
 	const run: BanterRun = {
 		added: 0,
 		duplicates: 0,
@@ -109,18 +123,31 @@ export async function generateBanterPool(
 					system: readTuningDoc(
 						"server/services/contentTuning/docs/npc_banter.md",
 					),
-					prompt: `Situation: ${scenario}\n\nWrite the three exchanges now.`,
-					maxOutputTokens: 600,
+					prompt: banterBrief(
+						scenario as string,
+						kit ?? { gold: [], anti: [] },
+						WRITE_PER_BATCH,
+					),
+					maxOutputTokens: 1800,
 				})
 				return res.text
 			})
 			const existing = (
-				await publishedItems(db, BANTER_TYPE, [...AI_BANTER_SITUATIONS])
+				await publishedItems(
+					db,
+					BANTER_TYPE,
+					[...AI_BANTER_SITUATIONS],
+					["published", "candidate"],
+				)
 			).map((r) => (r.payload as { lines?: string[] }).lines ?? [])
 			const good: string[][] = []
 			for (const block of parseBanterBlocks(text)) {
 				const lines = cleanBanterLines(block)
 				if (!lines) continue
+				if (hasCliche(lines)) {
+					run.cliches = (run.cliches ?? 0) + 1
+					continue
+				}
 				if (nearDuplicate(lines, [...existing, ...good])) {
 					run.duplicates++
 					continue
@@ -156,6 +183,16 @@ export async function generateBanterPool(
 			const j = await judgePending(db, judge, BANTER_TYPE)
 			run.judged = j.judged
 			run.judgeRejected = j.rejected
+			if (!auto) {
+				run.outscored = 0
+				for (const s of AI_BANTER_SITUATIONS)
+					run.outscored += await keepTopCandidates(
+						db,
+						BANTER_TYPE,
+						s,
+						KEEP_PER_SITUATION,
+					)
+			}
 		} catch (err) {
 			console.error("[banter] judging failed, items stay unjudged:", err)
 		}

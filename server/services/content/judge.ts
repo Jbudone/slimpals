@@ -7,10 +7,12 @@ import {
 	type Judged,
 	parseJudge,
 } from "../../../shared/content/quality.js"
+import { judgeAnchors, type Kit } from "../../../shared/content/tasteKit.js"
 import { contentItems } from "../../db/schema.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import type { Db } from "../gym/layout3dStore.js"
 import { BudgetError, type ModelClient } from "./modelClient.js"
+import { loadKit } from "./tasteKit.js"
 
 const SYSTEM = `You are a strict editor for a fitness game's ambient banter: two nearby gym-goers swap a short, dry exchange. Judge ONE exchange against the style rules. Score each of these from 1 (poor) to 5 (excellent): "specific" (a concrete detail, not a generic remark), "dry" (understated, deadpan, no jokes shouted), "natural" (people would really say it, no stiff phrasing), "in_character" (fits two ordinary gym members). Set "ai_speak" true if it sounds like an AI wrote it (a tidy moral, "as a fitness enthusiast", over-explaining the joke, lists). Reply with ONLY a JSON object: {"specific":n,"dry":n,"natural":n,"in_character":n,"ai_speak":bool,"note":"one short sentence"}.`
 
@@ -32,11 +34,13 @@ export function judgePrompt(
 	styleDoc: string,
 	situation: string,
 	lines: readonly string[],
+	kit?: Kit,
 ): string {
 	return [
 		"Style rules:",
 		styleDoc.trim(),
 		"",
+		...(kit ? [judgeAnchors(kit), ""] : []),
 		`Situation: ${situation}`,
 		"Exchange:",
 		...lines.map((l, i) => `${i % 2 ? "B" : "A"}: ${l}`),
@@ -52,6 +56,7 @@ export async function judgeExchange(
 	situation: string,
 	lines: readonly string[],
 	type = "banter",
+	kit?: Kit,
 ): Promise<JudgeResult | null> {
 	const spec = SPECS[type] ?? (SPECS.banter as { system: string; doc: string })
 	let styleDoc = ""
@@ -63,7 +68,7 @@ export async function judgeExchange(
 	const out = await client.generateText({
 		task: "judge",
 		system: spec.system,
-		prompt: judgePrompt(styleDoc, situation, lines),
+		prompt: judgePrompt(styleDoc, situation, lines, kit),
 		maxOutputTokens: 200,
 	})
 	const j = parseJudge(out.text)
@@ -90,13 +95,14 @@ export async function judgePending(
 			),
 		)
 		.limit(limit)
+	const kit = await loadKit(db, type)
 	let judged = 0
 	let rejected = 0
 	for (const r of rows) {
 		const lines = (r.payload as { lines?: string[] } | null)?.lines
 		if (!Array.isArray(lines)) continue
 		try {
-			const j = await judgeExchange(client, r.situation, lines, type)
+			const j = await judgeExchange(client, r.situation, lines, type, kit)
 			if (!j) continue
 			const reject = j.score < JUDGE_THRESHOLD
 			await db

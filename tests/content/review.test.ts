@@ -139,12 +139,15 @@ describe("the banter job's gates", () => {
 		const now = new Date("2026-10-16T01:00:00Z")
 		const text =
 			"A: The cooler is new.\nB: It was there in March.\n\nA: Mirrors need cleaning.\nB: Nobody cleans mirrors."
-		await generateBanterPool(db, ai(text), now, judgeWith([verdictJson(4)]))
+		await generateBanterPool(db, ai(text), now, judgeWith([verdictJson(4)]), {
+			writeWithClient: false,
+		})
 		const again = await generateBanterPool(
 			db,
 			ai("A: The cooler is new.\nB: It was there in March."),
 			now,
 			judgeWith([verdictJson(4)]),
+			{ writeWithClient: false },
 		)
 		expect(again.duplicates).toBeGreaterThan(0)
 		expect(again.added).toBe(0)

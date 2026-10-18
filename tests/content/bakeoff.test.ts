@@ -115,7 +115,7 @@ describe("bake-off (db)", () => {
 		).rejects.toThrow()
 	})
 
-	it("banter generation follows the route once one is set", async () => {
+	it("banter generation goes through the budgeted client when one is given", async () => {
 		const db = await getTestDb()
 		const client = createModelClient(db, adapters)
 		let aiCalls = 0
@@ -125,12 +125,12 @@ describe("bake-off (db)", () => {
 				return fakeText()
 			},
 		} as never
-		await generateBanterPool(db, ai, new Date(), client)
-		expect(aiCalls).toBeGreaterThan(0)
-		const before = aiCalls
-		await setRoute(db, "banter", { provider: "openrouter", model: "o1" })
 		const run = await generateBanterPool(db, ai, new Date(), client)
-		expect(aiCalls).toBe(before)
+		expect(aiCalls).toBe(0)
 		expect(run.added).toBeGreaterThan(0)
+		await setRoute(db, "banter", { provider: "openrouter", model: "o1" })
+		const again = await generateBanterPool(db, ai, new Date(), client)
+		expect(aiCalls).toBe(0)
+		expect(again.added).toBeGreaterThanOrEqual(0)
 	})
 })
