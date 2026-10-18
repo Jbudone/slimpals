@@ -25,6 +25,7 @@ import ThemeLayer from "../components/ThemeLayer.svelte"
 import { api } from "../lib/api.js"
 import { challengeStanding } from "../lib/challengeCoach.js"
 import { checkinState } from "../lib/checkin.svelte.js"
+import { noteSeen } from "../lib/contentSeen.js"
 import { cosmetics, loadOwnedCosmetics } from "../lib/cosmetics.svelte.js"
 import { drawerUi } from "../lib/drawer.svelte.js"
 import { gymGoals, rewardText, setGymGoals } from "../lib/goals.svelte.js"
@@ -62,6 +63,27 @@ const coach = $derived(
 let coachOpen = $state(true)
 let coachTimer: ReturnType<typeof setTimeout> | null = null
 let coachPick = $state(0)
+/** The AI's coach lines for every voice (content pipeline); scripted ones remain. */
+let coachAiRows = $state<
+	{
+		id: number
+		voice: string
+		situation: string
+		lead: string
+		rest: string
+		seen?: boolean
+	}[]
+>([])
+/** AI lines shown this visit: not reactive, so a line holds still while it shows. */
+const shownAi = new Set<number>()
+async function loadCoachAi() {
+	try {
+		const d = await api.get<{ lines?: typeof coachAiRows }>("/gym/coach-lines")
+		coachAiRows = d.lines ?? []
+	} catch {
+		// the scripted lines do without
+	}
+}
 /** A gym sheet (kitchen, job, piece...) or move mode is up: the drawer
  * steps aside so the sheet has the room. */
 let sheetUp = $state(false)
@@ -120,6 +142,12 @@ const coachSay = $derived.by((): CoachSay => {
 	return coachLineFor(
 		voice,
 		{
+			ai: coachAiRows
+				.filter((r) => r.voice === voice)
+				.map((r) => ({
+					...r,
+					unseen: r.seen === false && !shownAi.has(r.id),
+				})),
 			left: c.all - c.done,
 			total: c.all,
 			loaded: today.loaded,
@@ -138,6 +166,10 @@ const coachSay = $derived.by((): CoachSay => {
 function showCoach(ms = 7000) {
 	coachOpen = true
 	recentCoach.push(coachSay.id)
+	if (coachSay.id.startsWith("ai-")) {
+		shownAi.add(Number(coachSay.id.slice(3)))
+		noteSeen(coachSay.id.slice(3), "coach")
+	}
 	if (recentCoach.length > 3) recentCoach.shift()
 	coachPick++
 	if (coachTimer) clearTimeout(coachTimer)
@@ -250,6 +282,7 @@ onMount(() => {
 	void loadStaffRoom()
 	void loadOwnedCosmetics()
 	void loadChallengeStanding()
+	void loadCoachAi()
 	if (!hasWebGL2()) failed = "webgl"
 	else load()
 	void loadToday()
