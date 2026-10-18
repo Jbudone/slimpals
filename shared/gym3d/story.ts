@@ -71,27 +71,24 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "street",
 		title: "Opening day",
 		recap:
-			"Slim Pals opens on a quiet street. The shop across the road is papered over.",
+			"Slim Pals opens with one member and no scissors. Across the road, someone is peeling paper off a window.",
 		lines: [
 			{
 				who: "narrator",
-				text: "Slim Pals opens on Pavement Street. The shop across the road is papered over.",
+				text: "Opening day. One member, one ribbon, and nobody has found the scissors.",
 			},
 			{
-				who: "lisa",
-				text: "First day. Nobody has signed in yet, but I have a drawer ready for the paperwork.",
+				who: "derek",
+				text: "I signed in first. Is there a prize for that? A small one would be fine.",
 			},
+			{ who: "lisa", text: "There is a pen. You may keep the pen." },
 			{
 				who: "marcus",
-				text: "A drawer for paperwork. You keep a drawer for everything.",
-			},
-			{
-				who: "lisa",
-				text: "Evidence, mostly. A street like this remembers things.",
+				text: "Take the pen, son. It's the best offer you'll get on this street.",
 			},
 			{
 				who: "narrator",
-				text: "Across the road, someone is peeling paper off a window.",
+				text: "Across the road, someone peels brown paper off an empty window, one slow strip at a time.",
 			},
 		],
 	},
@@ -102,18 +99,31 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "rival",
 		title: "A very good coat",
 		recap:
-			"Victor Maxwell visits in a very good coat and announces MaxOut. Marcus has heard that line before.",
+			"Victor Maxwell visits in a very good coat to say hello before his banners go up. Marcus finds something to do with a barbell.",
 		lines: [
 			{
-				who: "victor",
-				text: "Victor Maxwell. I am opening a gym across the road. MaxOut. It will be very good.",
+				who: "narrator",
+				text: "A man in a very good coat reads the noticeboard in the lobby as if it were a menu.",
 			},
-			{ who: "alex", text: "We are Slim Pals. We were here first." },
-			{ who: "victor", text: "Everyone has a number. I will find yours." },
-			{ who: "lisa", text: "Coat, charming, no handshake. Noted." },
 			{
-				who: "marcus",
-				text: "I have heard that line before. I just cannot think where.",
+				who: "victor",
+				text: "The sign-in sheet is laminated. That's a gym that expects to still be here. I admire that.",
+			},
+			{
+				who: "victor",
+				text: "Victor Maxwell. I open across the road in the spring. I wanted to say hello before the banners did.",
+			},
+			{
+				who: "alex",
+				text: "We opened three weeks ago. We are, um, quite established.",
+			},
+			{
+				who: "victor",
+				text: "You are. Good luck, truly. Everyone has a number, and I'd rather ask nicely.",
+			},
+			{
+				who: "narrator",
+				text: "At the back, Marcus finds something to do with a barbell that is already racked.",
 			},
 		],
 	},
@@ -124,22 +134,26 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "food",
 		title: "Free samples",
 		recap:
-			"Barry Baron hands out free burgers and mentions that someone has been measuring his shop.",
+			"Barry Baron brings a tray of samples, Dr. Kim assesses a chip, and someone has been measuring his shop.",
 		lines: [
 			{
 				who: "barry",
-				text: "Barry Baron, the Burger Baron, next door but one. Free samples for the street.",
+				text: "Burger Baron, next door but one. Samples for the street. Don't look at the tray like that.",
 			},
-			{ who: "kim", text: "Free burgers outside a gym. You are a brave man." },
+			{
+				who: "kim",
+				text: "It is mostly fryer. I can smell it from the rack. I will take one, to assess it.",
+			},
+			{ who: "barry", text: "Take two. Assess thoroughly." },
+			{
+				who: "kim",
+				text: "...This is a very good chip. I would like that kept between us.",
+			},
 			{
 				who: "barry",
-				text: "Brave, or worried. Somebody measured my shop with a tape this week.",
+				text: "Somebody was in my shop Tuesday with a tape measure. Neat little man. Took the back wall.",
 			},
-			{ who: "derek", text: "I'm only looking." },
-			{
-				who: "lisa",
-				text: "Somebody measured the Baron. I am writing that down.",
-			},
+			{ who: "lisa", text: "Name?" },
 		],
 	},
 	{
@@ -148,21 +162,32 @@ export const STORY: readonly StoryBeat[] = [
 		level: 4,
 		thread: "notebook",
 		title: "The new sign",
-		recap: "The MaxOut sign goes up with a line Marcus says is his.",
+		recap:
+			"The MaxOut sign goes up overnight with a line Marcus says is his, from page one of a black notebook.",
 		lines: [
 			{
 				who: "narrator",
-				text: "The MaxOut sign goes up across the road. It is very bright.",
+				text: "The MaxOut sign goes up overnight. By breakfast the whole street has stopped to read it.",
 			},
 			{
 				who: "alex",
-				text: "It says 'Show up. Start small. Get measured.' in letters a metre high.",
+				text: "'Show up. Start small. Get measured.' In letters a metre high.",
 			},
-			{ who: "marcus", text: "Show up. Start small. That part is not theirs." },
-			{ who: "rivera", text: "Marcus. Sit down. Tell us whose line that is." },
+			{
+				who: "derek",
+				text: "Can they just use a line? Is there a rule about lines?",
+			},
 			{
 				who: "marcus",
-				text: "Mine. Page one of a notebook. I will say the rest out loud when I can.",
+				text: "The first two parts are mine. I wrote them at my kitchen table.",
+			},
+			{
+				who: "rivera",
+				text: "Marcus. Sit down. Take your time and tell it plainly.",
+			},
+			{
+				who: "marcus",
+				text: "Page one of a black notebook. I left it behind on my way out.",
 			},
 		],
 	},
@@ -173,24 +198,25 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "rival",
 		title: "The offer",
 		recap:
-			"Victor offers to buy the gym and asks to keep Marcus, who knows 'the programme'.",
+			"Victor offers to buy the gym for far more than it is worth, and asks to keep Marcus, who knows 'the programme'.",
 		lines: [
 			{
 				who: "victor",
-				text: "A fair offer for the gym. The treadmills, the lease, the plant. Keep your staff.",
+				text: "A fair offer. The lease, the treadmills, the plant by the door. Keep your staff.",
 			},
 			{
 				who: "alex",
-				text: "No. The treadmills have asked me to say no as well.",
+				text: "That is... that would clear the lease. Twice. I am doing the sum again.",
 			},
+			{ who: "lisa", text: "Alex." },
 			{
 				who: "victor",
-				text: "Keep Marcus especially. He knows the programme.",
+				text: "Keep Marcus especially. He knows the programme better than anyone who has used it.",
 			},
-			{ who: "marcus", text: "I know it very well." },
+			{ who: "marcus", text: "I do. I know it very well." },
 			{
-				who: "lisa",
-				text: "'The programme.' I am writing that down, with the date.",
+				who: "alex",
+				text: "No. Thank you. No. The treadmills asked me to say no as well.",
 			},
 		],
 	},
@@ -201,21 +227,24 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "food",
 		title: "A friend of a friend",
 		recap:
-			"Barry orders a green juice for an imaginary friend who is worried about his lease.",
+			"Barry orders a green juice for a friend who is worried about his lease, and Dr. Kim lets him keep the friend.",
 		lines: [
-			{ who: "barry", text: "A green juice, please. It is for a friend." },
+			{ who: "barry", text: "One green juice, please. It's for a friend." },
 			{
 				who: "kim",
-				text: "Your friend has the same pickle stain on his sleeve as you.",
+				text: "Your friend has the same pickle stain on his sleeve that you do.",
 			},
 			{
 				who: "barry",
-				text: "He is worried. Somebody wants his lease and he does not know who.",
+				text: "He's worried. Somebody wants his building and he can't find out who.",
 			},
-			{ who: "kim", text: "Tell your friend the salad bar does not bite." },
+			{
+				who: "kim",
+				text: "Then tell your friend the first one is free, and the second is a conversation.",
+			},
 			{
 				who: "barry",
-				text: "He will think about it. He is a very stubborn friend.",
+				text: "He'll be touched. He's very proud. He may come in himself.",
 			},
 		],
 	},
@@ -226,19 +255,29 @@ export const STORY: readonly StoryBeat[] = [
 		thread: "notebook",
 		title: "The notebook",
 		recap:
-			"Marcus tells the street he wrote MaxOut's first programme, and it hangs on their wall under another name.",
+			"Marcus tells the street he wrote MaxOut's first programme, and that it hangs on their wall under somebody else's name.",
 		lines: [
 			{
 				who: "marcus",
-				text: "I was MaxOut's first trainer, before it had a sign. I wrote their programme in a notebook.",
+				text: "I was MaxOut's first trainer, before it had a sign or a coat. I wrote their programme by hand.",
 			},
 			{
 				who: "marcus",
-				text: "They put it on the wall. Somebody else's name is underneath it.",
+				text: "Then I left, over something small I'm still embarrassed about. The notebook stayed on a shelf.",
 			},
-			{ who: "rivera", text: "Whose name?" },
-			{ who: "marcus", text: "I do not know. I never went back to look." },
-			{ who: "lisa", text: "I have a date for that. I will find the page." },
+			{ who: "rivera", text: "And now it hangs on their wall." },
+			{
+				who: "marcus",
+				text: "Behind glass. Somebody else's name underneath. I haven't been back to look.",
+			},
+			{
+				who: "derek",
+				text: "We could go and look. As customers. I'd wear a hat.",
+			},
+			{
+				who: "lisa",
+				text: "Not yet. Give me a week and I'll find you a date for that page.",
+			},
 		],
 	},
 	{
@@ -247,21 +286,25 @@ export const STORY: readonly StoryBeat[] = [
 		level: 8,
 		thread: "rival",
 		title: "Fine print",
-		recap: "Barry's lease has been sold to a company whose name starts with V.",
+		recap:
+			"Barry's building has been sold to a company whose name starts with V. A light stays on at MaxOut.",
 		lines: [
 			{
 				who: "alex",
-				text: "The Baron's lease has been sold. It is on the register, in very small print.",
+				text: "The Baron's building sold in March. It's on the register, in very small type.",
 			},
-			{ who: "barry", text: "Sold to who?" },
-			{ who: "alex", text: "A company. The first letter is V." },
+			{
+				who: "barry",
+				text: "Sold to who? I paid rent to the same man for nineteen years.",
+			},
+			{ who: "alex", text: "A company. The name starts with a V." },
 			{
 				who: "lisa",
-				text: "The drawer is getting full. I am going to need a second one.",
+				text: "That's the third V this season. I'm going to need a second drawer.",
 			},
 			{
 				who: "narrator",
-				text: "Across the road, a light stays on late in the MaxOut office.",
+				text: "Across the road, the MaxOut office keeps a light on long after the builders have gone home.",
 			},
 		],
 	},
