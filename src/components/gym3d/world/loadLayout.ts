@@ -96,10 +96,15 @@ export async function loadLines(): Promise<NpcLines[]> {
 
 /** The AI's nightly banter exchanges (a nicety: empty when there are none). */
 export async function loadBanter(): Promise<
-	{ id: number; situation: string; lines: string[] }[]
+	{ id: number; situation: string; lines: string[]; seen?: boolean }[]
 > {
 	const d = await api.get<{
-		banter?: { id: number; situation: string; lines: string[] }[]
+		banter?: {
+			id: number
+			situation: string
+			lines: string[]
+			seen?: boolean
+		}[]
 	}>("/gym/banter")
 	return d.banter ?? []
 }

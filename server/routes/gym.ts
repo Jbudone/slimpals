@@ -857,8 +857,9 @@ export function createGymRouter(aiService: AIService) {
 	})
 
 	// The AI's nightly banter exchanges, shared by every gym.
-	router.get("/gym/banter", async (_req, res) => {
-		res.json({ banter: await loadBanterPool(db) })
+	router.get("/gym/banter", async (req, res) => {
+		const userId = (req as AuthRequest).user.id
+		res.json({ banter: await loadBanterPool(db, userId) })
 	})
 
 	// A player saw these banter exchanges (exposure telemetry for the content
