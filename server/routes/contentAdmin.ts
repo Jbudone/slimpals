@@ -50,6 +50,16 @@ import {
 	submitReview,
 } from "../services/content/reviews.js"
 import { spendSummary, spentOnDay } from "../services/content/spend.js"
+import {
+	approveDraft,
+	chapterRef,
+	draftArc,
+	draftOutlines,
+	draftScene,
+	listDrafts,
+	rejectDraft,
+	StoryCouncilError,
+} from "../services/content/storyCouncil.js"
 import type { sendEmail } from "../services/email/resend.js"
 
 /** The roles whose model the owner can choose. */
@@ -59,6 +69,9 @@ export const ROOM_ROLES = [
 	"critic",
 	"judge",
 	"coach",
+	"showrunner",
+	"reader",
+	"advocate",
 	"default",
 ]
 
@@ -249,6 +262,113 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			res.status(400).json({ error: (err as Error).message })
 		}
 	})
+
+	// The story council (docs/story_council.md): arc, then outlines, then a
+	// scene, each from the approved level above. Slow, so it runs in the
+	// background and the owner reads the drafts when they appear.
+	const storyRunning = new Set<string>()
+	const campaignOf = (v: unknown): number | null => {
+		const n = Number(v)
+		return Number.isInteger(n) && n >= 1 && n <= 99 ? n : null
+	}
+
+	router.get(
+		"/admin/content/story/:campaign",
+		requireAdmin,
+		async (req, res) => {
+			const campaign = campaignOf(req.params.campaign)
+			if (campaign === null) {
+				res.status(400).json({ error: "bad campaign" })
+				return
+			}
+			res.json({
+				drafts: await listDrafts(db, campaign),
+				running: [...storyRunning].filter((k) => k.startsWith(`${campaign}:`)),
+			})
+		},
+	)
+
+	router.post(
+		"/admin/content/story/:campaign/:stage",
+		requireAdmin,
+		async (req, res) => {
+			const campaign = campaignOf(req.params.campaign)
+			const stage = String(req.params.stage ?? "")
+			if (campaign === null || !["arc", "outlines", "scene"].includes(stage)) {
+				res
+					.status(400)
+					.json({ error: "campaign and stage (arc, outlines, scene) required" })
+				return
+			}
+			if (stage === "scene" && !Number.isInteger(Number(req.body?.chapter))) {
+				res.status(400).json({ error: "chapter is required" })
+				return
+			}
+			const ref =
+				stage === "scene"
+					? chapterRef(campaign, Number(req.body?.chapter))
+					: (stage as string)
+			const key = `${campaign}:${ref}`
+			if (storyRunning.has(key)) {
+				res.status(409).json({ error: "That is already being written" })
+				return
+			}
+			const ownerNotes =
+				typeof req.body?.notes === "string"
+					? req.body.notes.slice(0, 500)
+					: undefined
+			const client = createModelClient(db, deps.adapters, clock)
+			const run = async () => {
+				if (stage === "arc")
+					await draftArc(db, client, campaign, {
+						chapters: Number(req.body?.chapters) || undefined,
+						ownerNotes,
+					})
+				else if (stage === "outlines")
+					await draftOutlines(db, client, campaign, { ownerNotes })
+				else await draftScene(db, client, campaign, ref, { ownerNotes })
+			}
+			storyRunning.add(key)
+			const done = run()
+				.catch((err) =>
+					console.error(
+						`[story] ${key} failed:`,
+						err instanceof Error ? err.message : err,
+					),
+				)
+				.finally(() => storyRunning.delete(key))
+			if (req.body?.wait) await done
+			res.status(202).json({ started: key })
+		},
+	)
+
+	router.post(
+		"/admin/content/story/drafts/:id/:verdict",
+		requireAdmin,
+		async (req, res) => {
+			const id = Number(req.params.id)
+			try {
+				if (!Number.isInteger(id)) throw new StoryCouncilError(400, "bad id")
+				if (req.params.verdict === "approve")
+					res.json({ draft: await approveDraft(db, id) })
+				else if (req.params.verdict === "reject")
+					res.json({
+						draft: await rejectDraft(
+							db,
+							id,
+							typeof req.body?.notes === "string" ? req.body.notes : "",
+						),
+					})
+				else throw new StoryCouncilError(400, "approve or reject")
+			} catch (err) {
+				if (err instanceof StoryCouncilError) {
+					res.status(err.status).json({ error: err.message })
+					return
+				}
+				throw err
+			}
+		},
+	)
 
 	router.put("/admin/content/budget", requireAdmin, async (req, res) => {
 		try {

@@ -147,4 +147,33 @@ describe("content admin API", () => {
 			400,
 		)
 	})
+
+	it("guards the story council's routes", async () => {
+		const cookie = await login("boss5@slimpals.test", true)
+		const get = (path: string) => request(app).get(path).set("Cookie", cookie)
+		const post = (path: string, body: object = {}) =>
+			request(app).post(path).set("Cookie", cookie).send(body)
+		const empty = await get("/api/admin/content/story/13")
+		expect(empty.status).toBe(200)
+		expect(empty.body.drafts).toEqual([])
+		expect((await get("/api/admin/content/story/0")).status).toBe(400)
+		expect((await post("/api/admin/content/story/13/chapter")).status).toBe(400)
+		expect((await post("/api/admin/content/story/13/scene", {})).status).toBe(
+			400,
+		)
+		expect(
+			(await post("/api/admin/content/story/drafts/999/approve")).status,
+		).toBe(404)
+		expect((await post("/api/admin/content/story/drafts/1/maybe")).status).toBe(
+			400,
+		)
+		const player = await login("player9@slimpals.test", false)
+		expect(
+			(
+				await request(app)
+					.get("/api/admin/content/story/13")
+					.set("Cookie", player)
+			).status,
+		).toBe(403)
+	})
 })

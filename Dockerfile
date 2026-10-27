@@ -21,6 +21,8 @@ COPY --from=builder /app/server/db/migrations ./server/db/migrations
 # copied alongside dist/ or coach-message generation 500s in production.
 COPY --from=builder /app/server/services/ai/prompts ./server/services/ai/prompts
 COPY --from=builder /app/server/services/contentTuning/docs ./server/services/contentTuning/docs
+# The story council reads the series bible at runtime (docs/story_council.md).
+COPY --from=builder /app/docs/story_bible.md ./docs/story_bible.md
 COPY drizzle.config.ts ./
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
