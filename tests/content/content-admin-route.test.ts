@@ -122,4 +122,29 @@ describe("content admin API", () => {
 			.send({ provider: "carrier-pigeon" })
 		expect(res.status).toBe(400)
 	})
+
+	it("sets and clears the model behind a role of the writers' room", async () => {
+		const cookie = await login("boss4@slimpals.test", true)
+		const put = (body: object) =>
+			request(app)
+				.put("/api/admin/content/routes")
+				.set("Cookie", cookie)
+				.send(body)
+		const set = await put({
+			task: "critic",
+			model: "openrouter:vendor/some-model",
+		})
+		expect(set.status).toBe(200)
+		expect(set.body.routes.critic).toEqual({
+			provider: "openrouter",
+			model: "vendor/some-model",
+		})
+		expect(
+			(await put({ task: "critic", model: "" })).body.routes.critic,
+		).toBeUndefined()
+		expect((await put({ task: "nope", model: "gemini:x" })).status).toBe(400)
+		expect((await put({ task: "writer", model: "not a label" })).status).toBe(
+			400,
+		)
+	})
 })

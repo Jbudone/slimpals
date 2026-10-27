@@ -138,7 +138,7 @@ export async function setRoute(
 	route: ModelRoute,
 ): Promise<ModelRoutes> {
 	if (
-		!/^[a-z_]{2,30}$/.test(task) ||
+		!/^[a-z][a-z0-9_]{1,29}$/.test(task) ||
 		(route.provider !== "gemini" && route.provider !== "openrouter") ||
 		!route.model
 	)
@@ -165,8 +165,16 @@ export async function setAutoPublish(
 	type: string,
 	on: boolean,
 ): Promise<Record<string, boolean>> {
-	if (!/^[a-z_]{2,30}$/.test(type)) throw new Error("bad type")
+	if (!/^[a-z][a-z0-9_]{1,29}$/.test(type)) throw new Error("bad type")
 	const next = { ...(await getAutoPublish(db)), [type]: on }
 	await write(db, "autopublish", next)
 	return next
+}
+
+/** Puts a task back on the default route. */
+export async function clearRoute(db: Db, task: string): Promise<ModelRoutes> {
+	const stored = { ...((await read<ModelRoutes>(db, "routes")) ?? {}) }
+	delete stored[task]
+	await write(db, "routes", stored)
+	return getRoutes(db)
 }

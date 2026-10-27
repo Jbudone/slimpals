@@ -26,6 +26,7 @@ import {
 	runBakeoff,
 } from "../services/content/bakeoff.js"
 import {
+	clearRoute,
 	getAutoPublish,
 	getBudget,
 	getReportConfig,
@@ -50,6 +51,16 @@ import {
 } from "../services/content/reviews.js"
 import { spendSummary, spentOnDay } from "../services/content/spend.js"
 import type { sendEmail } from "../services/email/resend.js"
+
+/** The roles whose model the owner can choose. */
+export const ROOM_ROLES = [
+	"writer",
+	"writer2",
+	"critic",
+	"judge",
+	"coach",
+	"default",
+]
 
 export type ContentAdminDeps = {
 	adapters?: Adapters
@@ -213,6 +224,31 @@ export function createContentAdminRouter(deps: ContentAdminDeps = {}) {
 			res.json({ pulled: await pullUnreviewed(db, ["banter", "coach"]) })
 		},
 	)
+
+	// The model behind each role of the writers' room ("" puts it back on the default).
+	router.put("/admin/content/routes", requireAdmin, async (req, res) => {
+		const { task, model } = req.body ?? {}
+		if (typeof task !== "string" || !ROOM_ROLES.includes(task)) {
+			res
+				.status(400)
+				.json({ error: `task must be one of ${ROOM_ROLES.join(", ")}` })
+			return
+		}
+		try {
+			if (model === "" || model === null) {
+				res.json({ routes: await clearRoute(db, task) })
+				return
+			}
+			const route = typeof model === "string" ? parseModelLabel(model) : null
+			if (!route) {
+				res.status(400).json({ error: "model must be provider:model" })
+				return
+			}
+			res.json({ routes: await setRoute(db, task, route) })
+		} catch (err) {
+			res.status(400).json({ error: (err as Error).message })
+		}
+	})
 
 	router.put("/admin/content/budget", requireAdmin, async (req, res) => {
 		try {

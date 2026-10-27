@@ -14,6 +14,7 @@ import {
 	type Standing,
 	standings,
 } from "../../../shared/content/bakeoff.js"
+import { GOLD_BANTER } from "../../../shared/content/tasteKit.js"
 import {
 	cleanBanterLines,
 	parseBanterBlocks,
@@ -22,7 +23,10 @@ import { contentBakeoffEntries, contentBakeoffVotes } from "../../db/schema.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "../gym/layout3dStore.js"
+import { hasRoute } from "./config.js"
 import { BudgetError, type ModelClient } from "./modelClient.js"
+import { collectSpend } from "./spend.js"
+import { writeBanterWithRoom } from "./writersRoom.js"
 
 export type BakeoffRun = {
 	round: string
@@ -97,11 +101,71 @@ export async function runBakeoff(
 				}
 			}
 		}
+		// the pipelines are contestants too: the writers' room (whatever models
+		// are on its roles) and a few hand-written lines as the bar to beat
+		try {
+			const secondWriter = await hasRoute(db, "writer2")
+			for (const situation of BAKEOFF_SITUATIONS) {
+				const scenario = BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet
+				const { result: items, usd } = await collectSpend(() =>
+					writeBanterWithRoom(
+						client,
+						scenario as string,
+						{ gold: [], anti: [] },
+						{ secondWriter },
+					),
+				)
+				const good = items
+					.map((i) => cleanBanterLines(i.lines))
+					.filter((l): l is NonNullable<typeof l> => l !== null)
+					.slice(0, 3)
+				if (!good.length) continue
+				const each = Math.round((usd * 1_000_000) / good.length)
+				await db.insert(contentBakeoffEntries).values(
+					good.map((lines) => ({
+						round,
+						situation,
+						model: ROOM_LABEL,
+						lines,
+						costMicros: each,
+					})),
+				)
+				out.entries += good.length
+			}
+		} catch (err) {
+			if (err instanceof BudgetError) out.stoppedByBudget = true
+			else
+				out.errors.push({
+					model: ROOM_LABEL,
+					message: err instanceof Error ? err.message : String(err),
+				})
+		}
+		const gold = GOLD_BANTER.map((l) => cleanBanterLines(l)).filter(
+			(l): l is NonNullable<typeof l> => l !== null,
+		)
+		for (const [i, situation] of BAKEOFF_SITUATIONS.entries()) {
+			const mine = gold.filter((_, k) => k % BAKEOFF_SITUATIONS.length === i)
+			if (!mine.length) continue
+			await db.insert(contentBakeoffEntries).values(
+				mine.map((lines) => ({
+					round,
+					situation,
+					model: GOLD_LABEL,
+					lines,
+					costMicros: 0,
+				})),
+			)
+			out.entries += mine.length
+		}
 		return out
 	} finally {
 		running.delete(round)
 	}
 }
+
+/** Labels of the contestants that are not a single model. */
+export const ROOM_LABEL = "writers-room"
+export const GOLD_LABEL = "hand-written"
 
 export async function latestRound(db: Db): Promise<string | null> {
 	const [row] = await db

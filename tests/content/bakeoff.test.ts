@@ -99,6 +99,9 @@ describe("bake-off (db)", () => {
 		)
 		expect(run.errors.map((e) => e.model)).toEqual(["openrouter:broken/model"])
 		expect(run.entries).toBeGreaterThan(10)
+		// the hand-written bar is always in the round
+		const standing = await bakeoffState(db, "r1")
+		expect(standing.standings.map((s) => s.model)).toContain("hand-written")
 
 		const pair = await nextPair(db, "u1", "r1")
 		expect(pair).not.toBeNull()

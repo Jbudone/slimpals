@@ -9,7 +9,7 @@ import {
 } from "../../../shared/gym3d/banterAi.js"
 import { contentSeen } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
-import { getAutoPublish, getBudget } from "../content/config.js"
+import { getAutoPublish, getBudget, hasRoute } from "../content/config.js"
 import {
 	candidateCount,
 	keepTopCandidates,
@@ -22,6 +22,7 @@ import { judgePending } from "../content/judge.js"
 import { BudgetError, type ModelClient } from "../content/modelClient.js"
 import { collectSpend, spentOnDay } from "../content/spend.js"
 import { loadKit } from "../content/tasteKit.js"
+import { writeBanterWithRoom } from "../content/writersRoom.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "./layout3dStore.js"
@@ -78,6 +79,7 @@ export async function generateBanterPool(
 	// own AI writes it from the plain scenario (tests)
 	const viaClient = opts.writeWithClient === false ? null : (judge ?? null)
 	const kit = viaClient ? await loadKit(db, BANTER_TYPE) : null
+	const secondWriter = viaClient ? await hasRoute(db, "writer2") : false
 	const run: BanterRun = {
 		added: 0,
 		duplicates: 0,
@@ -111,26 +113,51 @@ export async function generateBanterPool(
 				break
 			}
 			const scenario = BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet
+			type Draft = {
+				block: string[]
+				meta?: { device: string; funny: number; note: string; revised: boolean }
+			}
 			const {
-				result: text,
+				result: drafts,
 				usd,
 				models,
-			} = await collectSpend(async () => {
-				if (!viaClient)
-					return (await ai.generateBanter?.(scenario as string)) as string
+			} = await collectSpend(async (): Promise<Draft[]> => {
+				if (!viaClient) {
+					const text = (await ai.generateBanter?.(scenario as string)) as string
+					return parseBanterBlocks(text).map((block) => ({ block }))
+				}
+				const k = kit ?? { gold: [], anti: [] }
+				// the writers' room first; a single-shot batch if it comes back empty
+				try {
+					const room = await writeBanterWithRoom(
+						viaClient,
+						scenario as string,
+						k,
+						{ secondWriter },
+					)
+					if (room.length)
+						return room.map((r) => ({
+							block: r.lines,
+							meta: {
+								device: r.device,
+								funny: r.funny,
+								note: r.note,
+								revised: r.revised,
+							},
+						}))
+				} catch (err) {
+					if (err instanceof BudgetError) throw err
+					console.error(`[banter] writers' room failed for ${situation}:`, err)
+				}
 				const res = await viaClient.generateText({
 					task: "banter",
 					system: readTuningDoc(
 						"server/services/contentTuning/docs/npc_banter.md",
 					),
-					prompt: banterBrief(
-						scenario as string,
-						kit ?? { gold: [], anti: [] },
-						WRITE_PER_BATCH,
-					),
+					prompt: banterBrief(scenario as string, k, WRITE_PER_BATCH),
 					maxOutputTokens: 1800,
 				})
-				return res.text
+				return parseBanterBlocks(res.text).map((block) => ({ block }))
 			})
 			const existing = (
 				await publishedItems(
@@ -141,7 +168,8 @@ export async function generateBanterPool(
 				)
 			).map((r) => (r.payload as { lines?: string[] }).lines ?? [])
 			const good: string[][] = []
-			for (const block of parseBanterBlocks(text)) {
+			const metaOf = new Map<string[], Draft["meta"]>()
+			for (const { block, meta } of drafts) {
 				const lines = cleanBanterLines(block)
 				if (!lines) continue
 				if (hasCliche(lines)) {
@@ -153,6 +181,7 @@ export async function generateBanterPool(
 					continue
 				}
 				good.push(lines)
+				metaOf.set(lines, meta)
 			}
 			if (good.length) {
 				const each = Math.round((usd * 1_000_000) / good.length)
@@ -162,7 +191,9 @@ export async function generateBanterPool(
 						type: BANTER_TYPE,
 						situation,
 						status: auto ? "published" : "candidate",
-						payload: { lines },
+						payload: metaOf.get(lines)
+							? { lines, room: metaOf.get(lines) }
+							: { lines },
 						model: models[0] ?? null,
 						costMicros: each,
 					})),
