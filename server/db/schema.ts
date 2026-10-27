@@ -909,3 +909,25 @@ export const contentBakeoffVotes = mysqlTable(
 		unique("content_bakeoff_votes_pair_uq").on(t.userId, t.entryA, t.entryB),
 	],
 )
+
+/** Drafts of the story council (docs/story_council.md): arc, outline and scene
+ * levels, each approved by the owner before the next is written. */
+export const storyDrafts = mysqlTable(
+	"story_drafts",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		campaign: int("campaign").notNull(),
+		/** `arc`, `outline` or `scene`. */
+		level: varchar("level", { length: 8 }).notNull(),
+		/** The campaign number for an arc, the chapter id otherwise. */
+		ref: varchar("ref", { length: 48 }).notNull(),
+		/** draft, approved, rejected or superseded. */
+		status: varchar("status", { length: 12 }).notNull().default("draft"),
+		body: json("body").notNull(),
+		trace: json("trace").notNull(),
+		notes: varchar("notes", { length: 500 }),
+		costMicros: int("cost_micros").notNull().default(0),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [index("story_drafts_ref_idx").on(t.campaign, t.level, t.ref)],
+)
