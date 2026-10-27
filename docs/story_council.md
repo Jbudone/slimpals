@@ -35,7 +35,12 @@ body (json), trace (the council's notes), cost. Approved scenes become live by o
 chapter in `getStoryDto` (same ids, levels and rewards, so seen-story records keep working);
 a campaign with no authored story yet is built entirely from approved drafts.
 
-## This slice, and what is next
+## Status
+Built: the engine, the review page (`/story-review`) and the override layer for campaigns with no
+authored story (13 and up). Not built: replacing an authored campaign (needs a mapping from council
+chapters to existing chapter ids so seen-story records survive), and a first real run.
+
+## Engine slice (earlier note)
 This slice is the engine: prompts, parsers, validators, the three stages and the gates
 between them, tested with fake models. Next: the review page and API (read a draft, approve,
 reject with a note), then applying approved scenes to the game, then a first real run by the

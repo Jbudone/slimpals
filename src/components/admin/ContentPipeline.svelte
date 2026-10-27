@@ -299,6 +299,7 @@ onMount(() => {
 			{data.reviews.total} reviewed ({data.reviews.today} in the last day){#if data.reviews.judgeAgreement !== null}; the judge agreed with you on {Math.round(data.reviews.judgeAgreement * 100)}%{/if}.
 		</p>
 		<a class="reviewlink" href="/review" data-testid="open-review">Open the review queue</a>
+		<a class="reviewlink" href="/story-review" data-testid="open-story-review">Story council</a>
 
 		<h3>Model bake-off</h3>
 		<p class="muted">

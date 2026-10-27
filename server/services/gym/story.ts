@@ -18,12 +18,12 @@ import {
 	type StoryDto,
 	type StorySeen,
 	storyContext,
-	storyFor,
 	storyState,
 } from "../../../shared/gym3d/story.js"
 import { gymRewards, userGyms } from "../../db/schema.js"
 import { BuildError } from "./build3d.js"
 import type { Db } from "./layout3dStore.js"
+import { beatsForCampaign } from "./storyBeats.js"
 
 const PREFIX = "story:"
 
@@ -70,7 +70,7 @@ export async function getStoryDto(
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
 	// each campaign has its own authored story (some have none yet)
-	const beats = storyFor(gym?.campaign ?? 1)
+	const beats = await beatsForCampaign(db, gym?.campaign ?? 1)
 	if (beats.length === 0)
 		return {
 			pending: null,

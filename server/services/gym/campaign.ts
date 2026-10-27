@@ -10,10 +10,10 @@ import {
 	daysBetween,
 	type HallEntry,
 } from "../../../shared/gym3d/campaign.js"
-import { storyFinaleOf } from "../../../shared/gym3d/story.js"
 import { gymPieces, gymPlots, gymRewards, userGyms } from "../../db/schema.js"
 import { BuildError } from "./build3d.js"
 import type { Db } from "./layout3dStore.js"
+import { finaleOfCampaign } from "./storyBeats.js"
 
 /** The campaign's story is done (its finale chapter was seen), or, for a
  * campaign with no story, the gym is far enough along. */
@@ -23,7 +23,7 @@ async function canFinish(db: Db, gymId: number): Promise<boolean> {
 		.from(userGyms)
 		.where(eq(userGyms.id, gymId))
 	if (!gym) return false
-	const finale = storyFinaleOf(gym.campaign)
+	const finale = await finaleOfCampaign(db, gym.campaign)
 	if (!finale) return gym.level >= CAMPAIGN_FALLBACK_LEVEL
 	const rows = await db
 		.select({ id: gymRewards.id })
