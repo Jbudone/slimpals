@@ -44,6 +44,7 @@ type Overview = {
 	}
 	keys: { gemini: boolean; openrouter: boolean; resend: boolean }
 	autoPublish?: Record<string, boolean>
+	routes?: Record<string, { provider: string; model: string }>
 }
 
 let data = $state<Overview | null>(null)
@@ -132,6 +133,40 @@ const pullAll = () => {
 		api.post("/admin/content/pull-unreviewed"),
 	)
 }
+
+const ROLES: { key: string; label: string; hint: string }[] = [
+	{
+		key: "writer",
+		label: "Writer",
+		hint: "drafts and revises (a strong model)",
+	},
+	{
+		key: "writer2",
+		label: "Second writer",
+		hint: "optional, another family for variety",
+	},
+	{
+		key: "critic",
+		label: "Critic",
+		hint: "reads cold and says what is weak (a different family from the writer)",
+	},
+	{ key: "judge", label: "Judge", hint: "scores what is kept" },
+	{ key: "coach", label: "Coach lines", hint: "writes the coach bubble lines" },
+	{ key: "default", label: "Everything else", hint: "fallback" },
+]
+let roleDraft = $state<Record<string, string>>({})
+const roleValue = (key: string) =>
+	roleDraft[key] ??
+	(data?.routes?.[key]
+		? `${data.routes[key].provider}:${data.routes[key].model}`
+		: "")
+const saveRole = (key: string) =>
+	run(`${key} model saved`, () =>
+		api.put("/admin/content/routes", {
+			task: key,
+			model: roleValue(key).trim(),
+		}),
+	)
 
 const sendNow = () =>
 	run("Report sent", async () => {
@@ -235,6 +270,18 @@ onMount(() => {
 			</button>
 		</div>
 
+		<h3>Models by role</h3>
+		<p class="muted">
+			One model writing and judging itself repeats its own habits. Put a strong writer, and a critic from another family, here (provider:model, for example openrouter:vendor/model). Empty uses the default.
+		</p>
+		{#each ROLES as r}
+			<label class="role">
+				<span>{r.label} <span class="muted">{r.hint}</span></span>
+				<input type="text" value={roleValue(r.key)} oninput={(e) => (roleDraft[r.key] = e.currentTarget.value)} placeholder="default" data-testid="role-{r.key}" />
+				<button type="button" disabled={busy} onclick={() => saveRole(r.key)}>Save</button>
+			</label>
+		{/each}
+
 		<h3>What plays</h3>
 		<p class="muted">
 			AI lines wait in your review queue and play only after a Good. Turn this on for a type only when the judge agrees with you most of the time.
@@ -273,7 +320,7 @@ onMount(() => {
 							<td>{s.model}</td>
 							<td class="num">{s.rate === null ? "–" : `${Math.round(s.rate * 100)}%`} ({s.wins}-{s.losses}-{s.ties})</td>
 							<td class="num">{s.avgCostUsd === null ? "" : usd(s.avgCostUsd)}</td>
-							<td class="num"><button type="button" disabled={busy || s.games < 5} onclick={() => useForBanter(s.model)}>Use for banter</button></td>
+							<td class="num">{#if s.model.includes(":")}<button type="button" disabled={busy || s.games < 5} onclick={() => useForBanter(s.model)}>Use for banter</button>{:else}<span class="muted">{s.model === "writers-room" ? "your pipeline" : "the bar"}</span>{/if}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -481,6 +528,11 @@ select {
 	color: var(--admin-on-warning);
 	font-weight: var(--font-weight-medium);
 	text-decoration: none;
+}
+.role {
+	display: grid;
+	gap: 4px;
+	margin-bottom: var(--space-3);
 }
 .linklike {
 	background: none;

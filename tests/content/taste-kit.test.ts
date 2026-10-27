@@ -145,7 +145,10 @@ describe("taste kit (db)", () => {
 			createModelClient(db, adapters(prompts)),
 		)
 		expect(prompts[0]).toContain("Approved example line.")
-		expect(prompts[0]).toContain("Write 10 different exchanges")
+		// the room found nothing it could use, so the single-shot batch ran
+		expect(
+			prompts.some((q) => q.includes("Write 10 different exchanges")),
+		).toBe(true)
 		expect(run.added).toBeGreaterThan(0)
 		const rows = await db.select().from(contentItems)
 		expect(rows.filter((r) => r.status === "candidate").length).toBe(run.added)
