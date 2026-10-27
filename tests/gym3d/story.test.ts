@@ -1,8 +1,18 @@
 import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { gymRewards, invites, userGyms, users } from "../../server/db/schema.js"
+import {
+	gymRewards,
+	invites,
+	storyDrafts,
+	userGyms,
+	users,
+} from "../../server/db/schema.js"
 import { getStoryDto, markBeatSeen } from "../../server/services/gym/story.js"
+import {
+	beatsForCampaign,
+	finaleOfCampaign,
+} from "../../server/services/gym/storyBeats.js"
 import {
 	GUEST_BEATS,
 	GUEST_MINUTES,
@@ -296,5 +306,76 @@ describe("the story route", () => {
 		expect(dto.chapter).toEqual({ n: 2, of: STORY.length })
 		expect(dto.previously).toBe(STORY[0].recap)
 		expect(dto.after).toBe(STORY[2].level)
+	})
+})
+
+describe("chapters the story council wrote", () => {
+	const arc = {
+		title: "A",
+		premise: "p",
+		stakes: "s",
+		threads: ["t"],
+		chapters: Array.from({ length: 6 }, (_, i) => ({
+			n: i + 1,
+			level: i + 1,
+			title: `T${i + 1}`,
+			logline: "l",
+			turn: "t",
+		})),
+	}
+	const scene = (n: number) => ({
+		id: `c13-${n}`,
+		title: `Scene ${n}`,
+		recap: `Recap ${n}`,
+		lines: [
+			{ who: "narrator", text: "A laminated sign hangs crooked." },
+			{ who: "lisa", text: "It is crooked." },
+			{ who: "marcus", text: "It has character." },
+		],
+	})
+	const put = async (
+		db: Awaited<ReturnType<typeof setup>>["db"],
+		level: string,
+		ref: string,
+		body: unknown,
+		status = "approved",
+	) =>
+		db
+			.insert(storyDrafts)
+			.values({ campaign: 13, level, ref, status, body, trace: {} })
+
+	it("plays only approved scenes of an approved arc, in order, with no skipping", async () => {
+		const { gymId, db } = await setup()
+		await db
+			.update(userGyms)
+			.set({ campaign: 13, level: 6 })
+			.where(eq(userGyms.id, gymId))
+		expect(await beatsForCampaign(db, 13)).toEqual([])
+		expect(await finaleOfCampaign(db, 13)).toBeNull()
+		// a draft arc and scenes change nothing
+		await put(db, "arc", "13", arc, "draft")
+		await put(db, "scene", "c13-1", scene(1), "draft")
+		expect(await beatsForCampaign(db, 13)).toEqual([])
+
+		await put(db, "arc", "13", arc)
+		await put(db, "scene", "c13-1", scene(1))
+		await put(db, "scene", "c13-2", scene(2))
+		await put(db, "scene", "c13-4", scene(4)) // a gap at 3: never reached
+		const beats = await beatsForCampaign(db, 13)
+		expect(beats.map((b) => b.id)).toEqual(["c13-1", "c13-2"])
+		expect(beats[1]?.level).toBe(2)
+		expect(await finaleOfCampaign(db, 13)).toBe("c13-2")
+
+		const now = new Date()
+		expect((await getStoryDto(db, gymId, now)).pending?.id).toBe("c13-1")
+		await markBeatSeen(db, gymId, "c13-1", now)
+		expect((await getStoryDto(db, gymId, now)).pending?.id).toBe("c13-2")
+	})
+
+	it("leaves an authored campaign alone", async () => {
+		const { db } = await setup()
+		await put(db, "arc", "1", arc)
+		await put(db, "scene", "c1-1", { ...scene(1), id: "c1-1" })
+		expect(await beatsForCampaign(db, 1)).toBe(STORY)
 	})
 })

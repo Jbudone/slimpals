@@ -9,7 +9,6 @@ import { CAMPAIGN_FALLBACK_LEVEL } from "../../shared/gym3d/campaign.js"
 import { cosmeticOf } from "../../shared/gym3d/cosmetics.js"
 import { themeOf, trackSteps } from "../../shared/gym3d/rewardTrack.js"
 import { STAFF, STAFF_MAX_LEVEL, staffDef } from "../../shared/gym3d/staff.js"
-import { storyFinaleOf } from "../../shared/gym3d/story.js"
 import { db } from "../db/index.js"
 import {
 	accounts,
@@ -81,6 +80,7 @@ import {
 } from "../services/gym/rewardTrackOverride.js"
 import type { ActivityStep } from "../services/gym/simulation.js"
 import { staffCards } from "../services/gym/staff.js"
+import { finaleOfCampaign } from "../services/gym/storyBeats.js"
 import type { Scheduler } from "../services/scheduler/index.js"
 import { isSchedulerEnabled } from "../services/scheduler/schedule.js"
 import {
@@ -1351,7 +1351,7 @@ export function createAdminRouter(aiService: AIService, scheduler: Scheduler) {
 			res.status(404).json({ error: "User has no gym" })
 			return
 		}
-		const finale = storyFinaleOf(gym.campaign)
+		const finale = await finaleOfCampaign(db, gym.campaign)
 		if (!finale) {
 			res.status(409).json({
 				error: `This campaign has no story: it can be finished from gym level ${CAMPAIGN_FALLBACK_LEVEL}`,
