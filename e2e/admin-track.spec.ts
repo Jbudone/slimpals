@@ -11,7 +11,7 @@ test("admin authors this month's reward track and clears it", async ({
 		data: { email: "admin@slimpals.test", password: "AdminPass1!" },
 	})
 	expect(res.ok()).toBe(true)
-	await page.goto("/admin")
+	await page.goto("/admin?tab=game")
 	const card = page.getByTestId("admin-track-authoring")
 	await expect(card).toBeVisible()
 	await card.getByTestId("admin-track-theme").fill("E2E Month")
