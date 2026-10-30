@@ -5,6 +5,8 @@
 // droughts are, and what a retuned curve would do, instead of guessing at
 // thresholds. Pure and seeded: the same inputs always give the same report.
 
+import { levelOfXp, xpOfLevel } from "./levels.js"
+
 export type DayState = "full" | "light" | "off"
 const STATES: DayState[] = ["full", "light", "off"]
 
@@ -176,10 +178,7 @@ export function simulate(
 
 // ── the game's rules, as thresholds ────────────────────────────────────────
 
-/** Gym level at `xp` (services/gym computeLevel). */
-export const levelOfXp = (xp: number): number => Math.floor(Math.sqrt(xp / 50))
-/** XP at which `level` begins. */
-export const xpOfLevel = (level: number): number => level * level * 50
+export { levelOfXp, xpOfLevel }
 
 export type Milestone = {
 	id: string

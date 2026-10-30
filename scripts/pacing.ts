@@ -14,7 +14,7 @@ import {
 import { storyFor } from "../shared/gym3d/story"
 
 const story = storyFor(1).map((b) => ({ id: b.id, level: b.level }))
-const maxLevel = 30
+const maxLevel = 60
 const milestones = buildMilestones({
 	maxLevel,
 	storyLevels: story,
@@ -54,7 +54,7 @@ for (const a of ARCHETYPES) {
 	const curve = medianCurve(runs)
 	const p = proposeLevelCurve(curve, 400)
 	out(
-		`Proposed level curve for this player: xp ~ ${p.a.toFixed(1)} x level^${p.p.toFixed(2)} (live: 50 x level^2)`,
+		`Proposed level curve for this player: xp ~ ${p.a.toFixed(1)} x level^${p.p.toFixed(2)} (live: see levels.ts)`,
 	)
 	out()
 }

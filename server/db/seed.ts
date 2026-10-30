@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import { respaceUnlocks } from "../../shared/gym3d/unlockLadder.js"
 import type { GymNpcRole, GymUpgradeCategory } from "../../shared/types.js"
 import type * as schema from "./schema.js"
 import { badges, gymClasses, gymNpcs, gymUpgradesCatalog } from "./schema.js"
@@ -377,7 +378,7 @@ type UpgradeRow = {
 	unlocksNpcKey: string | null
 }
 
-export const GYM_UPGRADES: UpgradeRow[] = [
+const RAW_UPGRADES: UpgradeRow[] = [
 	// ── Cardio ────────────────────────────────────────────────────────────
 	{
 		key: "cardio_treadmill",
@@ -862,7 +863,9 @@ export async function seedGymUpgrades(db: Db) {
 	await db
 		.insert(gymUpgradesCatalog)
 		.values(GYM_UPGRADES)
-		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
+		.onDuplicateKeyUpdate({
+			set: { name: sql`VALUES(name)`, requiredXp: sql`VALUES(required_xp)` },
+		})
 }
 
 type NpcRow = {
@@ -1352,7 +1355,7 @@ type ClassRow = {
 // open before its prerequisite room could plausibly exist — the actual
 // enforcement is server/routes/gym.ts checking the room category is
 // unlocked, this is just a sane authoring convention on top of that.
-export const CLASS_CATALOG: ClassRow[] = [
+const RAW_CLASSES: ClassRow[] = [
 	{
 		key: "boxing_6pm_class",
 		name: "6pm Boxing Class",
@@ -1377,10 +1380,20 @@ export const CLASS_CATALOG: ClassRow[] = [
 	},
 ]
 
+// Unlock XP is re-spaced onto a ladder (shared/gym3d/unlockLadder.ts), upgrades and classes together.
+const [SPACED_UPGRADES, SPACED_CLASSES] = respaceUnlocks(
+	RAW_UPGRADES,
+	RAW_CLASSES,
+)
+export const GYM_UPGRADES: UpgradeRow[] = SPACED_UPGRADES
+export const CLASS_CATALOG: ClassRow[] = SPACED_CLASSES
+
 export async function seedGymClasses(db: Db) {
 	if (CLASS_CATALOG.length === 0) return
 	await db
 		.insert(gymClasses)
 		.values(CLASS_CATALOG)
-		.onDuplicateKeyUpdate({ set: { name: sql`VALUES(name)` } })
+		.onDuplicateKeyUpdate({
+			set: { name: sql`VALUES(name)`, requiredXp: sql`VALUES(required_xp)` },
+		})
 }

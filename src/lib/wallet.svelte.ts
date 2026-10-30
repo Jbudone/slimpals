@@ -1,6 +1,7 @@
 // The HUD's numbers (level, XP, coins, Sweat, Greens) shared by every tab.
 // The 3D gym pushes its layout's balances here; ticking a task pushes the
 // server's answer after the reward chips land.
+import { levelOfXp, xpOfLevel } from "../../shared/gym3d/levels"
 import { cached, refresh } from "./net/swr.js"
 
 export type Wallet = {
@@ -56,9 +57,9 @@ export function levelOf(xp: number): {
 	xpIntoLevel: number
 	xpForLevel: number
 } {
-	const level = Math.floor(Math.sqrt(Math.max(0, xp) / 50))
-	const start = level * level * 50
-	const next = (level + 1) * (level + 1) * 50
+	const level = levelOfXp(xp)
+	const start = xpOfLevel(level)
+	const next = xpOfLevel(level + 1)
 	return { level, xpIntoLevel: xp - start, xpForLevel: next - start }
 }
 
