@@ -1,7 +1,14 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import {
+	type AdminTab,
+	TAB_IDS,
+	TAB_LABEL,
+	tabFromQuery,
+} from "../../shared/admin/inbox.js"
 import { CHALLENGE_CATALOG } from "../../shared/challenges/catalog.js"
 import { COSMETICS } from "../../shared/gym3d/cosmetics.js"
+import AdminInbox from "../components/admin/AdminInbox.svelte"
 import ContentPipeline from "../components/admin/ContentPipeline.svelte"
 import { api } from "../lib/api.js"
 import { fetchSession } from "../lib/auth.svelte.js"
@@ -1437,6 +1444,20 @@ async function runSeed(path: string, body: object, msg: string) {
 
 onMount(load)
 onMount(loadScheduler)
+let tab = $state<AdminTab>(
+	tabFromQuery(new URLSearchParams(window.location.search).get("tab")),
+)
+function pickTab(t: AdminTab) {
+	tab = t
+	try {
+		const u = new URL(window.location.href)
+		u.searchParams.set("tab", t)
+		window.history.replaceState(null, "", u)
+	} catch {
+		// the tab still switches
+	}
+}
+
 onMount(async () => {
 	try {
 		versionInfo = await api.get<VersionInfo>("/health")
@@ -1466,11 +1487,25 @@ onMount(async () => {
 		<span class="dev-tag">ADMIN ONLY</span>
 	</div>
 
-	{#if loading}
+	<nav class="admin-tabs" aria-label="Admin sections" data-testid="admin-tabs">
+		{#each TAB_IDS as t}
+			<button
+				type="button"
+				class:active={tab === t}
+				aria-current={tab === t ? "page" : undefined}
+				onclick={() => pickTab(t)}
+				data-testid={`admin-tab-${t}`}>{TAB_LABEL[t]}</button>
+		{/each}
+	</nav>
+
+	{#if tab === "todo"}
+		<AdminInbox />
+	{:else if loading}
 		<p class="muted">Loading…</p>
 	{:else if loadError}
 		<p class="error-text">{loadError}</p>
 	{:else}
+		{#if tab === "testing"}
 		<section class="card">
 			<h2>Create Test User</h2>
 			<div class="form-row">
@@ -2342,6 +2377,8 @@ onMount(async () => {
 				</tbody>
 			</table>
 		</section>
+		{/if}
+		{#if tab === "game"}
 		<section class="card" data-testid="admin-track-authoring">
 			<h2>Reward track</h2>
 			<p class="muted challenge-generate-note">
@@ -2372,7 +2409,11 @@ onMount(async () => {
 				{/if}
 			</div>
 		</section>
+		{/if}
+		{#if tab === "content"}
 		<ContentPipeline />
+		{/if}
+		{#if tab === "game"}
 		<section class="card">
 			<h2>Scheduled jobs</h2>
 			{#if schedulerError}
@@ -2451,6 +2492,8 @@ onMount(async () => {
 				{/if}
 			{/if}
 		</section>
+		{/if}
+		{#if tab === "community"}
 		<section class="card">
 			<h2>Tournaments ({tournaments.length})</h2>
 			<div class="field-row">
@@ -2673,10 +2716,14 @@ onMount(async () => {
 				</table>
 			{/if}
 		</section>
+		{/if}
 	{/if}
 </div>
 
 <style>
+	.admin-tabs { display: flex; gap: 0.4rem; overflow-x: auto; padding: 0.4rem 0; margin-bottom: 0.6rem; position: sticky; top: 0; z-index: 5; background: var(--bg, inherit); }
+	.admin-tabs button { min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px; border: 1px solid var(--border, #ccc); background: transparent; color: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+	.admin-tabs button.active { background: var(--accent, #3a7); border-color: transparent; color: #fff; }
 .admin-wrap {
 	--admin-on-warning: #1a1200;
 	max-width: 960px;

@@ -13,6 +13,7 @@ import {
 import { getDevAutologinUser } from "./middleware/devAutologin.js"
 import { requireAuth } from "./middleware/requireAuth.js"
 import { createAdminRouter, createImpersonationRouter } from "./routes/admin.js"
+import { createAdminInboxRouter } from "./routes/adminInbox.js"
 import { appleHealthRouter } from "./routes/appleHealth.js"
 import { badgesRouter } from "./routes/badges.js"
 import { createChallengesRouter } from "./routes/challenges.js"
@@ -148,6 +149,7 @@ export function createApp(
 	app.use("/api", createImpersonationRouter())
 	app.use("/api", createAdminRouter(aiService, scheduler))
 	app.use("/api", createContentAdminRouter())
+	app.use("/api", createAdminInboxRouter())
 	app.use("/api", createContentTuningRouter(aiService))
 
 	if (CLIENT_DIR) {
