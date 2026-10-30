@@ -15,6 +15,16 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-10-30-steadier-pacing",
+		date: "2026-10-30",
+		title: "Levels and gear now keep a steady pace",
+		items: [
+			"Levels used to get slower and slower. They now arrive at a steady pace if you keep checking in, so the story chapters follow along.",
+			"New gear and classes are spread out evenly instead of arriving in a rush and then a long wait.",
+			"Nothing you already unlocked is taken away, and your level can only go up.",
+		],
+	},
+	{
 		id: "2026-10-12-room-arcs",
 		date: "2026-10-12",
 		title: "More from the staff room",

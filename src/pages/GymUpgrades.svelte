@@ -1,6 +1,7 @@
 <script lang="ts">
 import { Dumbbell } from "@lucide/svelte"
 import { onMount } from "svelte"
+import { levelOfXp, xpOfLevel } from "../../shared/gym3d/levels"
 import Avatar from "../components/ui/Avatar.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
@@ -36,14 +37,14 @@ let error = $state<string | null>(null)
 let claiming = $state<string | null>(null)
 
 // Mirrors the pure computeLevel(xp) formula in
-// server/services/gym/index.ts (level = floor(sqrt(xp / 50))) — safe to
+// server/services/gym/index.ts (shared/gym3d/levels.ts) — safe to
 // duplicate since it's simple display math, not business/award logic.
 function computeLevel(xp: number): number {
-	return Math.floor(Math.sqrt(xp / 50))
+	return levelOfXp(xp)
 }
 
 function levelFloorXp(level: number): number {
-	return level * level * 50
+	return xpOfLevel(level)
 }
 
 let levelProgress = $derived.by(() => {

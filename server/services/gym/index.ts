@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm"
 import type { MySql2Database } from "drizzle-orm/mysql2"
+import { levelOfXp, xpOfLevel } from "../../../shared/gym3d/levels.js"
 import type * as schema from "../../db/schema.js"
 import {
 	gymUpgradesCatalog,
@@ -44,7 +45,7 @@ export function effectiveGymTime(
 }
 
 export function computeLevel(xp: number): number {
-	return Math.floor(Math.sqrt(xp / 50))
+	return levelOfXp(xp)
 }
 
 export type LevelProgress = {
@@ -62,8 +63,8 @@ export type LevelProgress = {
  * place. */
 export function getLevelProgress(xp: number): LevelProgress {
 	const level = computeLevel(xp)
-	const levelStartXp = level * level * 50
-	const nextLevelXp = (level + 1) * (level + 1) * 50
+	const levelStartXp = xpOfLevel(level)
+	const nextLevelXp = xpOfLevel(level + 1)
 	return {
 		level,
 		nextLevelXp,

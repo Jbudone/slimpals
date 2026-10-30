@@ -1,5 +1,6 @@
 // What the gym unlocks next, by XP: the upcoming gear in order, with how far
 // along the player is (pure, so the rewards page and tests agree).
+import { levelOfXp } from "../../shared/gym3d/levels"
 import type { GymLayoutDto } from "../../shared/types"
 
 export type LockedGear = GymLayoutDto["lockedGear"][number]
@@ -43,10 +44,9 @@ export function upcomingUnlocks(
  * stay a surprise (they appear as you level up). */
 export const REVEALED = 3
 
-/** The level whose XP range holds this XP (level L starts at 50 L² XP, the
+/** The level whose XP range holds this XP (level L starts at xpOfLevel(L) XP, the
  * same formula as `levelOf` in wallet.svelte.ts and the server). */
-export const levelAtXp = (xp: number): number =>
-	Math.floor(Math.sqrt(Math.max(0, xp) / 50))
+export const levelAtXp = (xp: number): number => levelOfXp(xp)
 
 export type UnlockRail = {
 	/** The next unlocks, soonest first, shown in full. */

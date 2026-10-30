@@ -80,21 +80,21 @@ describe("computeLevel", () => {
 		expect(computeLevel(0)).toBe(0)
 	})
 
-	it("returns 1 for 50 XP", () => {
-		expect(computeLevel(50)).toBe(1)
+	it("returns 1 for 90 XP", () => {
+		expect(computeLevel(90)).toBe(1)
 	})
 
-	it("returns 2 for 200 XP", () => {
-		expect(computeLevel(200)).toBe(2)
+	it("returns 2 for 255 XP", () => {
+		expect(computeLevel(255)).toBe(2)
 	})
 
-	it("returns 3 for 450 XP", () => {
-		expect(computeLevel(450)).toBe(3)
+	it("returns 3 for 468 XP", () => {
+		expect(computeLevel(468)).toBe(3)
 	})
 
 	it("returns floor for in-between values", () => {
 		expect(computeLevel(100)).toBe(1)
-		expect(computeLevel(199)).toBe(1)
+		expect(computeLevel(254)).toBe(1)
 	})
 })
 
@@ -139,11 +139,11 @@ describe("awardGymXp", () => {
 		})
 
 		await getOrCreateGym("user-xp-1", db)
-		const result = await awardGymXp("user-xp-1", 50, "test", db)
+		const result = await awardGymXp("user-xp-1", 90, "test", db)
 		expect(result.newLevel).toBe(true)
 
 		const gym = await getOrCreateGym("user-xp-1", db)
-		expect(gym.xp).toBe(50)
+		expect(gym.xp).toBe(90)
 		expect(gym.level).toBe(1)
 	})
 
@@ -194,7 +194,7 @@ describe("GET /api/gym", () => {
 		expect(res.body.gym.xp).toBe(0)
 		expect(res.body.upgrades.unlocked).toEqual([])
 		expect(res.body.upgrades.locked).toBeInstanceOf(Array)
-		expect(res.body.xpToNextLevel).toBe(50)
+		expect(res.body.xpToNextLevel).toBe(90)
 	})
 
 	it("returns 401 without auth", async () => {
@@ -233,9 +233,9 @@ describe("GET /api/gym/daily-summary", () => {
 		expect(res.status).toBe(200)
 		expect(res.body.level).toBe(0)
 		expect(res.body.xp).toBe(0)
-		expect(res.body.xpToNextLevel).toBe(50)
+		expect(res.body.xpToNextLevel).toBe(90)
 		expect(res.body.xpIntoLevel).toBe(0)
-		expect(res.body.xpForLevel).toBe(50)
+		expect(res.body.xpForLevel).toBe(90)
 	})
 })
 

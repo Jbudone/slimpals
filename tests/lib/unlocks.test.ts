@@ -46,7 +46,7 @@ describe("the unlock rail", () => {
 		const r = unlockRail(gearList, 0)
 		expect(REVEALED).toBe(3)
 		expect(r.shown.map((s) => s.key)).toEqual(["g100", "g400", "g900"])
-		expect(r.hint).toEqual({ requiredXp: 2000, level: 6, toGo: 2000 })
+		expect(r.hint).toEqual({ requiredXp: 2000, level: 7, toGo: 2000 })
 		// nothing about the fifth or sixth leaks out
 		expect(JSON.stringify(r)).not.toContain("g3000")
 		expect(JSON.stringify(r)).not.toContain("g5000")
@@ -62,8 +62,8 @@ describe("the unlock rail", () => {
 
 	it("names the level an XP total falls in", () => {
 		expect(levelAtXp(0)).toBe(0)
-		expect(levelAtXp(49)).toBe(0)
-		expect(levelAtXp(50)).toBe(1)
-		expect(levelAtXp(450)).toBe(3)
+		expect(levelAtXp(89)).toBe(0)
+		expect(levelAtXp(90)).toBe(1)
+		expect(levelAtXp(468)).toBe(3)
 	})
 })
