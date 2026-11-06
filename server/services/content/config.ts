@@ -39,6 +39,14 @@ export const DEFAULT_ROUTES: ModelRoutes = {
 	// the judge is a cheaper model than the generator; point it at another
 	// family (an OpenRouter model) in the routes config to avoid self-preference
 	judge: { provider: "gemini", model: "gemini-2.5-flash-lite" },
+	// the writing roles: the people who draft are one model family (Claude, via
+	// OpenRouter), the people who read them cold are another (Gemini Pro), so a
+	// shared blind spot does not pass itself. The owner's Admin choices win.
+	writer: { provider: "openrouter", model: "anthropic/claude-sonnet-4.5" },
+	showrunner: { provider: "openrouter", model: "anthropic/claude-sonnet-4.5" },
+	critic: { provider: "gemini", model: "gemini-2.5-pro" },
+	reader: { provider: "gemini", model: "gemini-2.5-pro" },
+	advocate: { provider: "gemini", model: "gemini-2.5-pro" },
 }
 
 async function read<T>(db: Db, key: string): Promise<T | null> {
