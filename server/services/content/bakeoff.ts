@@ -23,7 +23,7 @@ import { contentBakeoffEntries, contentBakeoffVotes } from "../../db/schema.js"
 import { readTuningDoc } from "../contentTuning/fs.js"
 import { BANTER_SCENARIOS } from "../contentTuning/npcBanter.js"
 import type { Db } from "../gym/layout3dStore.js"
-import { hasRoute } from "./config.js"
+import { hasRoute, hasWriter2 } from "./config.js"
 import { BudgetError, type ModelClient } from "./modelClient.js"
 import { collectSpend } from "./spend.js"
 import { writeBanterWithRoom } from "./writersRoom.js"
@@ -104,7 +104,7 @@ export async function runBakeoff(
 		// the pipelines are contestants too: the writers' room (whatever models
 		// are on its roles) and a few hand-written lines as the bar to beat
 		try {
-			const secondWriter = await hasRoute(db, "writer2")
+			const secondWriter = await hasWriter2(db)
 			for (const situation of BAKEOFF_SITUATIONS) {
 				const scenario = BANTER_SCENARIOS[situation] ?? BANTER_SCENARIOS.quiet
 				const { result: items, usd } = await collectSpend(() =>

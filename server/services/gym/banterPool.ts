@@ -9,7 +9,12 @@ import {
 } from "../../../shared/gym3d/banterAi.js"
 import { contentSeen } from "../../db/schema.js"
 import type { AIService } from "../ai/index.js"
-import { getAutoPublish, getBudget, hasRoute } from "../content/config.js"
+import {
+	getAutoPublish,
+	getBudget,
+	hasRoute,
+	hasWriter2,
+} from "../content/config.js"
 import {
 	candidateCount,
 	keepTopCandidates,
@@ -79,7 +84,7 @@ export async function generateBanterPool(
 	// own AI writes it from the plain scenario (tests)
 	const viaClient = opts.writeWithClient === false ? null : (judge ?? null)
 	const kit = viaClient ? await loadKit(db, BANTER_TYPE) : null
-	const secondWriter = viaClient ? await hasRoute(db, "writer2") : false
+	const secondWriter = viaClient ? await hasWriter2(db) : false
 	const run: BanterRun = {
 		added: 0,
 		duplicates: 0,
