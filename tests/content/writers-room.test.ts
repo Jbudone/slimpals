@@ -126,7 +126,8 @@ describe("writers' room (db)", () => {
 		const tasks = new Set(seen.map((s) => s.task))
 		expect(tasks.has("writer")).toBe(true)
 		expect(tasks.has("critic")).toBe(true)
-		expect(tasks.has("writer2")).toBe(false)
+		// a second writer drafts by default now
+		expect(tasks.has("writer2")).toBe(true)
 		const rows = await db.select().from(contentItems)
 		const withRoom = rows.filter(
 			(r) => (r.payload as { room?: unknown }).room !== undefined,
