@@ -62,30 +62,29 @@ const scene = (extra = "") => ({
 })
 
 let calls: string[] = []
-const adapters: Adapters = {
-	gemini: async (_r, req) => {
-		calls.push(req.task)
-		const p = req.prompt
-		let text = ""
-		if (req.task === "showrunner" && p.includes("Propose THREE"))
-			text = JSON.stringify([arc("A"), arc("B"), arc("C")])
-		else if (req.task === "reader")
-			text = JSON.stringify({ best: 1, fix: "Sharpen chapter three." })
-		else if (req.task === "showrunner" && p.startsWith("Revise this arc"))
-			text = JSON.stringify(arc("B revised"))
-		else if (req.task === "showrunner")
-			text = JSON.stringify(Array.from({ length: 7 }, (_, i) => outline(i + 1)))
-		else if (req.task === "advocate")
-			text = JSON.stringify([{ index: 0, ok: false, fix: "Give Lisa a want." }])
-		else if (req.task === "writer" && p.startsWith("Revise this scene"))
-			text = JSON.stringify(scene(" Revised."))
-		else if (req.task === "writer") text = JSON.stringify(scene())
-		else if (req.task === "critic")
-			text = JSON.stringify({ score: 3, fix: "Cut the quip." })
-		return { text, tokensIn: 10, tokensOut: 10 }
-	},
-	openrouter: async () => ({ text: "", tokensIn: 0, tokensOut: 0 }),
+const answer: Adapters["gemini"] = async (_r, req) => {
+	calls.push(req.task)
+	const p = req.prompt
+	let text = ""
+	if (req.task === "showrunner" && p.includes("Propose THREE"))
+		text = JSON.stringify([arc("A"), arc("B"), arc("C")])
+	else if (req.task === "reader")
+		text = JSON.stringify({ best: 1, fix: "Sharpen chapter three." })
+	else if (req.task === "showrunner" && p.startsWith("Revise this arc"))
+		text = JSON.stringify(arc("B revised"))
+	else if (req.task === "showrunner")
+		text = JSON.stringify(Array.from({ length: 7 }, (_, i) => outline(i + 1)))
+	else if (req.task === "advocate")
+		text = JSON.stringify([{ index: 0, ok: false, fix: "Give Lisa a want." }])
+	else if (req.task === "writer" && p.startsWith("Revise this scene"))
+		text = JSON.stringify(scene(" Revised."))
+	else if (req.task === "writer") text = JSON.stringify(scene())
+	else if (req.task === "critic")
+		text = JSON.stringify({ score: 3, fix: "Cut the quip." })
+	return { text, tokensIn: 10, tokensOut: 10 }
 }
+// the default roles mix both providers; the fake answers for either
+const adapters: Adapters = { gemini: answer, openrouter: answer }
 
 describe("story validators", () => {
 	it("accepts a usable arc and rejects thin or backwards ones", () => {

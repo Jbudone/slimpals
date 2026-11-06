@@ -39,6 +39,18 @@ export const DEFAULT_ROUTES: ModelRoutes = {
 	// the judge is a cheaper model than the generator; point it at another
 	// family (an OpenRouter model) in the routes config to avoid self-preference
 	judge: { provider: "gemini", model: "gemini-2.5-flash-lite" },
+	// the writing roles, from the owner's list: drafting is Claude plus a cheap
+	// second voice (DeepSeek), the cold readers are other families (Mistral,
+	// Llama), so a shared blind spot does not pass itself. Admin choices win.
+	writer: { provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
+	writer2: { provider: "openrouter", model: "deepseek/deepseek-chat" },
+	showrunner: { provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
+	critic: { provider: "openrouter", model: "mistralai/mistral-large-2407" },
+	reader: { provider: "openrouter", model: "mistralai/mistral-large-2407" },
+	advocate: {
+		provider: "openrouter",
+		model: "meta-llama/llama-3.3-70b-instruct",
+	},
 }
 
 async function read<T>(db: Db, key: string): Promise<T | null> {
@@ -146,6 +158,11 @@ export async function setRoute(
 	const stored = (await read<ModelRoutes>(db, "routes")) ?? {}
 	await write(db, "routes", { ...stored, [task]: route })
 	return getRoutes(db)
+}
+
+/** Whether a second drafting model joins the writers' room (a default now). */
+export async function hasWriter2(db: Db): Promise<boolean> {
+	return Boolean((await getRoutes(db)).writer2)
 }
 
 /** True when the owner pointed this task at a model (the default is not one). */

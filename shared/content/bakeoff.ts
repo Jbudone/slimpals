@@ -7,10 +7,10 @@ export type ModelRoute = { provider: "gemini" | "openrouter"; model: string }
 /** Starting candidates. Slugs are unverified; edit them on the Admin card. */
 export const BAKEOFF_DEFAULT_MODELS: ModelRoute[] = [
 	{ provider: "gemini", model: "gemini-2.5-flash" },
-	{ provider: "gemini", model: "gemini-2.5-flash-lite" },
-	{ provider: "openrouter", model: "anthropic/claude-haiku-4.5" },
-	{ provider: "openrouter", model: "openai/gpt-4o-mini" },
+	{ provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
 	{ provider: "openrouter", model: "deepseek/deepseek-chat" },
+	{ provider: "openrouter", model: "mistralai/mistral-large-2407" },
+	{ provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct" },
 ]
 
 export function modelLabel(r: ModelRoute): string {

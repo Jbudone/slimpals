@@ -16,6 +16,10 @@ export const DEFAULT_PRICES: Readonly<Record<string, ModelPrice>> = {
 	"gemini-2.5-flash": { inUsd: 0.3, outUsd: 2.5 },
 	"gemini-2.5-flash-lite": { inUsd: 0.1, outUsd: 0.4 },
 	"gemini-2.5-pro": { inUsd: 1.25, outUsd: 10 },
+	"anthropic/claude-3.5-sonnet": { inUsd: 3, outUsd: 15 },
+	"deepseek/deepseek-chat": { inUsd: 0.3, outUsd: 1.2 },
+	"mistralai/mistral-large-2407": { inUsd: 2, outUsd: 6 },
+	"meta-llama/llama-3.3-70b-instruct": { inUsd: 0.12, outUsd: 0.3 },
 	"gemini-2.5-flash-image": { inUsd: 0.3, outUsd: 30, imageUsd: 0.039 },
 }
 

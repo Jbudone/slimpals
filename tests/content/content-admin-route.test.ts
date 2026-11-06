@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { invites, users } from "../../server/db/schema.js"
+import { DEFAULT_ROUTES } from "../../server/services/content/config.js"
 import {
 	closeTestDb,
 	getTestDb,
@@ -139,8 +140,13 @@ describe("content admin API", () => {
 			provider: "openrouter",
 			model: "vendor/some-model",
 		})
+		// clearing a role puts its default back; a role with no default is gone
 		expect(
 			(await put({ task: "critic", model: "" })).body.routes.critic,
+		).toEqual(DEFAULT_ROUTES.critic)
+		await put({ task: "coach", model: "gemini:x-y" })
+		expect(
+			(await put({ task: "coach", model: "" })).body.routes.coach,
 		).toBeUndefined()
 		expect((await put({ task: "nope", model: "gemini:x" })).status).toBe(400)
 		expect((await put({ task: "writer", model: "not a label" })).status).toBe(
