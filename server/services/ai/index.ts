@@ -287,11 +287,6 @@ export class GeminiAIService implements AIService {
 			systemInstruction,
 		})
 
-		const weightLine =
-			stats.weightDeltaKg !== null
-				? `Weight change: ${stats.weightDeltaKg > 0 ? "+" : ""}${stats.weightDeltaKg.toFixed(1)}kg`
-				: "No weight entries this week"
-
 		const rulesDoc = readTuningDoc(
 			"server/services/contentTuning/docs/weekly_inspiration.md",
 		)
@@ -299,7 +294,6 @@ export class GeminiAIService implements AIService {
 
 ${userName}'s week in review:
 - Check-ins: ${stats.checkins}/7 days
-- ${weightLine}
 - Food logs: ${stats.foodLogs} meals tracked
 - Badges earned: ${stats.badgesEarned}`
 

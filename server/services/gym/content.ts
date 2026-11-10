@@ -138,7 +138,7 @@ async function generateGymEventForUser(
 			? unlockedKeys.slice(0, 10).join(", ")
 			: "basic equipment only"
 
-	const statsStr = `Check-ins last 7 days: ${userStats.checkinCount}. Streak: ${userStats.streak} days. Weight: ${userStats.latestWeightKg ?? "unknown"} kg.`
+	const statsStr = `Check-ins last 7 days: ${userStats.checkinCount}. Streak: ${userStats.streak} days.`
 
 	const prompt = buildGymEventPrompt({ level, upgradeList, statsStr })
 

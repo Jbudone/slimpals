@@ -162,7 +162,7 @@ export async function generateDialogBatch(
 	const profile = npc.personalityProfile as Record<string, unknown>
 
 	const statsStr = userStats
-		? `Streak: ${userStats.streak} days. Recent badges: ${userStats.recentBadges.join(", ") || "none"}. Latest weight: ${userStats.latestWeightKg ?? "unknown"} kg.`
+		? `Streak: ${userStats.streak} days. Recent badges: ${userStats.recentBadges.join(", ") || "none"}.`
 		: "No stats available yet."
 
 	const notesStr =

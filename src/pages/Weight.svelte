@@ -1,6 +1,5 @@
 <script lang="ts">
 import { onMount } from "svelte"
-import SocialWeightChart from "../components/SocialWeightChart.svelte"
 import Button from "../components/ui/Button.svelte"
 import Card from "../components/ui/Card.svelte"
 import WeightChart from "../components/WeightChart.svelte"
@@ -18,21 +17,9 @@ type WeightEntry = {
 	source: string
 }
 
-type UserSeries = {
-	userId: string
-	userName: string
-	color: string
-	entries: WeightEntry[]
-}
-
 let entries = $state<WeightEntry[]>([])
-let socialSeries = $state<UserSeries[]>([])
 let loading = $state(true)
-let socialLoading = $state(false)
 let error = $state<string | null>(null)
-
-// View toggle
-let groupView = $state(false)
 
 // Form state
 let weightInput = $state("")
@@ -64,7 +51,6 @@ let latest = $derived(
 )
 
 // Latest weight for the current user (for goal line anchor)
-let currentUserLatest = $derived(latest?.weightKg ?? null)
 
 // Goal from user profile
 let goal = $derived.by(() => {
@@ -118,16 +104,6 @@ async function loadEntries() {
 	}
 }
 
-async function loadSocial() {
-	if (socialSeries.length > 0) return
-	socialLoading = true
-	try {
-		socialSeries = await api.get<UserSeries[]>("/weight/social")
-	} finally {
-		socialLoading = false
-	}
-}
-
 async function handleSubmit(e: SubmitEvent) {
 	e.preventDefault()
 	formError = null
@@ -154,8 +130,6 @@ async function handleSubmit(e: SubmitEvent) {
 		weightInput = ""
 		noteInput = ""
 		dateInput = todayIso()
-		// Invalidate cached social data so it reloads fresh
-		socialSeries = []
 	} catch (err) {
 		formError = err instanceof Error ? err.message : "Failed to save entry"
 	} finally {
@@ -181,11 +155,6 @@ async function handleGoalSave(e: SubmitEvent) {
 	} finally {
 		savingGoal = false
 	}
-}
-
-async function onToggle() {
-	groupView = !groupView
-	if (groupView) await loadSocial()
 }
 
 onMount(async () => {
@@ -236,26 +205,12 @@ onMount(async () => {
 				{/if}
 			</div>
 
-			<div class="chart-toggle-row">
-				<button class="toggle-btn" onclick={onToggle} type="button">
-					{groupView ? "My Journey Only" : "Compare with Friends"}
-				</button>
-			</div>
-
-			{#if groupView}
-				{#if socialLoading}
-					<p class="muted">Loading group data…</p>
-				{:else}
-					<SocialWeightChart series={socialSeries} {currentUserLatest} {goal} />
-				{/if}
-			{:else}
-				<WeightChart
-					{entries}
-					viewMode={userProfile.data?.viewMode ?? "simple"}
-					heightCm={userProfile.data?.heightCm ?? null}
-					{goal}
-				/>
-			{/if}
+			<WeightChart
+				{entries}
+				viewMode={userProfile.data?.viewMode ?? "simple"}
+				heightCm={userProfile.data?.heightCm ?? null}
+				{goal}
+			/>
 		</Card>
 
 		<Card>
@@ -416,28 +371,6 @@ onMount(async () => {
 .overview-delta-label {
 	font-size: var(--font-size-xs);
 	color: var(--color-text-muted);
-}
-
-.chart-toggle-row {
-	display: flex;
-	justify-content: flex-end;
-	margin: var(--space-3) 0 var(--space-2);
-}
-
-.toggle-btn {
-	padding: 0.375rem 0.875rem;
-	font-size: 0.8125rem;
-	font-weight: 600;
-	border: 1px solid var(--color-accent);
-	color: var(--color-accent);
-	background: transparent;
-	border-radius: var(--radius-full);
-	cursor: pointer;
-	white-space: nowrap;
-}
-
-.toggle-btn:hover {
-	background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 .section-heading {

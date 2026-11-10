@@ -15,6 +15,16 @@ export type ChangeEntry = {
 
 export const CHANGELOG: readonly ChangeEntry[] = [
 	{
+		id: "2026-11-10-weight-private",
+		date: "2026-11-10",
+		title: "Your weight is yours alone",
+		items: [
+			"Removed Compare with Friends from the Weight page. Nobody else can see your weight history now.",
+			"Weight is no longer sent to the coach or gym characters when they write lines about your week.",
+			"Weight milestone posts no longer include your current weight.",
+		],
+	},
+	{
 		id: "2026-10-30-steadier-pacing",
 		date: "2026-10-30",
 		title: "Levels and gear now keep a steady pace",

@@ -8,17 +8,6 @@ import { awardGymXp } from "../services/gym/index.js"
 import { dayKey, payReward, weightReward } from "../services/gym/rewards.js"
 import { ensureCheckin } from "./checkins.js"
 
-const USER_COLORS = [
-	"#6366f1",
-	"#f59e0b",
-	"#10b981",
-	"#ef4444",
-	"#8b5cf6",
-	"#ec4899",
-	"#06b6d4",
-	"#84cc16",
-]
-
 export const weightRouter = Router()
 
 function entryPayload(row: typeof weightEntries.$inferSelect) {
@@ -147,7 +136,6 @@ weightRouter.post("/weight", async (req, res) => {
 						type: "weight_update",
 						content: {
 							milestoneKg: m,
-							currentWeightKg: stored / 10,
 							text: `Lost ${m}kg!`,
 						},
 					})
@@ -172,37 +160,4 @@ weightRouter.get("/weight", async (req, res) => {
 		.orderBy(asc(weightEntries.recordedAt))
 
 	res.json(rows.map(entryPayload))
-})
-
-weightRouter.get("/weight/social", async (_req, res) => {
-	// Fetch all users ordered by creation date for stable color assignment
-	const allUsers = await db
-		.select({ id: users.id, name: users.name })
-		.from(users)
-		.orderBy(asc(users.createdAt))
-
-	const allEntries = await db
-		.select()
-		.from(weightEntries)
-		.orderBy(asc(weightEntries.recordedAt))
-
-	// Group entries by userId
-	const byUser = new Map<string, typeof allEntries>()
-	for (const entry of allEntries) {
-		const list = byUser.get(entry.userId) ?? []
-		list.push(entry)
-		byUser.set(entry.userId, list)
-	}
-
-	// Only include users who have at least one entry
-	const result = allUsers
-		.filter((u) => byUser.has(u.id))
-		.map((u, idx) => ({
-			userId: u.id,
-			userName: u.name,
-			color: USER_COLORS[idx % USER_COLORS.length],
-			entries: (byUser.get(u.id) ?? []).map(entryPayload),
-		}))
-
-	res.json(result)
 })
