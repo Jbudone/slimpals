@@ -427,9 +427,10 @@ describe("POST /api/weight — auto-share to social feed", () => {
 		expect(weightUpdatePosts).toHaveLength(1)
 		expect(weightUpdatePosts[0].content).toMatchObject({
 			milestoneKg: 5,
-			currentWeightKg: 84,
 			text: "Lost 5kg!",
 		})
+		// the post never carries the person's actual weight
+		expect(weightUpdatePosts[0].content).not.toHaveProperty("currentWeightKg")
 	})
 
 	it("does not post a weight_update entry when autoShareWeightMilestones is disabled (the default)", async () => {
