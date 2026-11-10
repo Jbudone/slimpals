@@ -1,5 +1,12 @@
 # Audit 2: clinical psychology and behaviour change (2026-11-10)
 
+> **Scope note (owner, same day):** SlimPals is used only by the owner and a few friends, not the public. This audit judged it as a public health
+> app, so its compliance, age-gating, sign-up, "I'm struggling" pause and tournament/badge removal advice mostly does not apply and has been shelved.
+> Kept as a reference if the audience ever widens. Still worth doing for a friends app: the food-feedback tone (jokes target the food and the
+> situation, not the person), and weight no longer going into AI prompts. Whether friends can see each other's weights is the owner's call (PR #334 is
+> held for that decision).
+
+
 Commissioned by the owner. Done by a Fable subagent briefed as a clinical psychologist / behaviour-change scientist specialising in digital
 health and eating-disorder risk; read-only, ran no code, saw no live AI output. "Verified" = read in the repo; "from memory" = research cited without
 re-checking (verify before quoting). I re-checked `GET /weight/social` and `autoShareBadges` / tournament types myself: confirmed.
