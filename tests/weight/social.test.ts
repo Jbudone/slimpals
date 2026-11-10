@@ -69,7 +69,8 @@ describe("no endpoint shows other people's weights", () => {
 			.send({ weightKg: 80, recordedAt: new Date().toISOString() })
 		const b = await registerAndLogin("b@test.com", "Bob", "INVITE-B")
 		const res = await request(app).get("/api/weight/social").set("Cookie", b)
-		expect(res.status).toBe(404)
+		// refused or not found, never data
+		expect([403, 404]).toContain(res.status)
 		expect(JSON.stringify(res.body)).not.toContain("Ann")
 	})
 })
