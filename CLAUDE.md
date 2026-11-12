@@ -1,5 +1,7 @@
 # slimpals — Codebase Guide
 
+**Start every session by reading `docs/studio/memory.md`** (the owner's preferences, decisions, discoveries and open threads) and `docs/studio/todo.md` (the master list). For writing sessions use the `writers-room` skill. Update the memory file at every milestone and before context is cleared.
+
 ## Stack
 - **Frontend**: Svelte 5, Vite (port 5173), Tailwind CSS
 - **Backend**: Express + TypeScript, port 3000
