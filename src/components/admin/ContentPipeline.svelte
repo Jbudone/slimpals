@@ -300,6 +300,7 @@ onMount(() => {
 		</p>
 		<a class="reviewlink" href="/review" data-testid="open-review">Open the review queue</a>
 		<a class="reviewlink" href="/story-review" data-testid="open-story-review">Story council</a>
+		<a class="reviewlink" href="/studio" data-testid="open-studio">The Studio</a>
 
 		<h3>Model bake-off</h3>
 		<p class="muted">

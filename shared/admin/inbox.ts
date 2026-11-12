@@ -110,6 +110,20 @@ export function buildInbox(f: InboxFacts): InboxTask[] {
 			minutes: 15,
 		},
 		{
+			id: "check-studio",
+			kind: "check",
+			title: "Try the Studio board",
+			steps: [
+				"Open the Studio and add a premise (for example a Bro Hype fad).",
+				"Open it, paste or type a script as 'who | text' lines and tap Save version.",
+				"Move it between Ideas, Next, In progress, Paused and Done, and pick a Friday or Sunday slot.",
+			],
+			tell: "Say what felt clumsy on your phone, and what the Studio should do next (play a piece in the cutscene card, a second opinion from another model, canon).",
+			cta: "Open the Studio",
+			href: "/studio",
+			minutes: 5,
+		},
+		{
 			id: "check-story-pilot",
 			kind: "check",
 			title: "Read the act-one story rewrite",

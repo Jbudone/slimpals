@@ -302,6 +302,13 @@
       "when": 1791080400000,
       "tag": "0042_story_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1791166800000,
+      "tag": "0043_studio_pieces",
+      "breakpoints": true
     }
   ]
 }

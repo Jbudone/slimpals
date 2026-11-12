@@ -19,6 +19,8 @@ Then read `docs/studio/todo.md` (master list) and, for writing sessions, `docs/s
 - 2026-11-10: Writing roles use these default models (Admin can override): writer/showrunner `anthropic/claude-3.5-sonnet`, writer2 `deepseek/deepseek-chat`, critic/reader `mistralai/mistral-large-2407`, advocate `meta-llama/llama-3.3-70b-instruct`. Slugs are UNVERIFIED (owner to run "Test OpenRouter" per model).
 - 2026-11-10: Levels use XP = 90 x level^1.5; gear/class unlocks sit on a ladder (`shared/gym3d/levels.ts`, `unlockLadder.ts`).
 
+- 2026-11-12: Studio Phase 1 slice 1 built on branch `claude/cloud-session-usage-ivkcwd` (not yet a PR): `/studio` board. DB route test (`tests/content/studio-route.test.ts`) could not run locally (no MariaDB on port 3307); CI will.
+
 ## Discoveries
 - The earlier "voice cards" and 12 banter samples (writers' room audit) were catchphrase templates built on lore nobody had seen; the owner found them unfunny. Premise-first, pictureable, self-contained scenes work much better (see `pieces/`).
 - Owner reactions that worked: The Union (D&D) "perfect"; Brody's red-light-therapy opening "absolute gold"; Fibermaxxing, creatine gummies, mini-trampoline, tongue-twister-in-Zone-5 ideas "very funny".

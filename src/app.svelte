@@ -181,6 +181,10 @@ async function handleStopImpersonating() {
 				{#await import("./pages/StoryReview.svelte") then { default: StoryReview }}
 					<StoryReview />
 				{/await}
+			{:else if currentPath === "/studio"}
+				{#await import("./pages/Studio.svelte") then { default: Studio }}
+					<Studio />
+				{/await}
 			{:else if currentPath === "/content-tuning"}
 				{#await import("./pages/ContentTuning.svelte") then { default: ContentTuning }}
 					<ContentTuning />

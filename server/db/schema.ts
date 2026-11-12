@@ -931,3 +931,31 @@ export const storyDrafts = mysqlTable(
 	},
 	(t) => [index("story_drafts_ref_idx").on(t.campaign, t.level, t.ref)],
 )
+
+/** The Studio (docs/studio): writing pieces and their saved versions. */
+export const studioPieces = mysqlTable("studio_pieces", {
+	id: int("id").autoincrement().primaryKey(),
+	title: varchar("title", { length: 120 }).notNull(),
+	kind: varchar("kind", { length: 12 }).notNull().default("other"),
+	status: varchar("status", { length: 12 }).notNull().default("idea"),
+	premise: varchar("premise", { length: 600 }).notNull().default(""),
+	notes: varchar("notes", { length: 2000 }).notNull().default(""),
+	slot: varchar("slot", { length: 10 }),
+	lines: json("lines").notNull(),
+	version: int("version").notNull().default(0),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+})
+
+export const studioPieceVersions = mysqlTable(
+	"studio_piece_versions",
+	{
+		id: int("id").autoincrement().primaryKey(),
+		pieceId: int("piece_id").notNull(),
+		version: int("version").notNull(),
+		lines: json("lines").notNull(),
+		note: varchar("note", { length: 200 }),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(t) => [index("studio_piece_versions_piece_idx").on(t.pieceId, t.version)],
+)

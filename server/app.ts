@@ -29,6 +29,7 @@ import { missionsRouter } from "./routes/missions.js"
 import { validateInvite } from "./routes/register.js"
 import { socialRouter } from "./routes/social.js"
 import { createSprintsRouter } from "./routes/sprints.js"
+import { createStudioRouter } from "./routes/studio.js"
 import { createTournamentsRouter } from "./routes/tournaments.js"
 import { usersRouter } from "./routes/users.js"
 import { weightRouter } from "./routes/weight.js"
@@ -150,6 +151,7 @@ export function createApp(
 	app.use("/api", createAdminRouter(aiService, scheduler))
 	app.use("/api", createContentAdminRouter())
 	app.use("/api", createAdminInboxRouter())
+	app.use("/api", createStudioRouter())
 	app.use("/api", createContentTuningRouter(aiService))
 
 	if (CLIENT_DIR) {

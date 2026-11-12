@@ -19,6 +19,7 @@ export type RoutePath =
 	| "/content-tuning"
 	| "/review"
 	| "/story-review"
+	| "/studio"
 
 export const nav = $state<{ path: RoutePath; params: Record<string, string> }>({
 	path: "/",
@@ -61,6 +62,7 @@ export function initRouter() {
 	page("/content-tuning", go("/content-tuning"))
 	page("/review", go("/review"))
 	page("/story-review", go("/story-review"))
+	page("/studio", go("/studio"))
 	page("/", go("/"))
 	page()
 }
